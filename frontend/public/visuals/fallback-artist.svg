@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" role="img" aria-label="SongLib Amp fallback artist backdrop">
+  <defs>
+    <radialGradient id="g1" cx="48%" cy="35%" r="58%">
+      <stop offset="0" stop-color="#7b5a2b"/>
+      <stop offset=".38" stop-color="#2c2118"/>
+      <stop offset="1" stop-color="#050507"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" x2="1">
+      <stop offset="0" stop-color="#f1c76d" stop-opacity=".08"/>
+      <stop offset=".5" stop-color="#f1c76d" stop-opacity=".42"/>
+      <stop offset="1" stop-color="#f1c76d" stop-opacity=".04"/>
+    </linearGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="18"/></filter>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#g1)"/>
+  <path d="M0 782c226-94 373-88 558-26 206 69 327 74 518-4 251-102 522-88 844 52v276H0z" fill="#0c0d10"/>
+  <g filter="url(#soft)" opacity=".82">
+    <ellipse cx="950" cy="510" rx="350" ry="210" fill="#d69c43" opacity=".16"/>
+    <ellipse cx="1290" cy="340" rx="250" ry="170" fill="#d69c43" opacity=".10"/>
+  </g>
+  <g fill="#101116">
+    <path d="M646 727c-20-105 30-202 115-224 92-24 157 50 153 167l-9 221H657z"/>
+    <path d="M894 710c-2-112 58-191 146-191 87 0 146 82 139 198l-13 174H903z"/>
+    <path d="M1165 735c5-104 70-176 151-160 76 16 120 99 94 192l-34 124h-237z"/>
+  </g>
+  <g fill="none" stroke="url(#gold)" stroke-width="2">
+    <path d="M164 652c240-100 365-100 581 0s342 100 566 0 337-100 496 0"/>
+    <path d="M120 710c256-82 393-82 612 0s337 82 545 0 324-82 520 0" opacity=".55"/>
+    <path d="M230 592c193-72 299-72 491 0s303 72 505 0 312-72 464 0" opacity=".35"/>
+  </g>
+  <g fill="#efbd56" opacity=".55">
+    <circle cx="392" cy="392" r="3"/>
+    <circle cx="481" cy="455" r="2"/>
+    <circle cx="1326" cy="424" r="3"/>
+    <circle cx="1466" cy="512" r="2"/>
+    <circle cx="1606" cy="358" r="2"/>
+  </g>
+</svg>

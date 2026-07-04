@@ -1,0 +1,15 @@
+.DS_Store
+.env
+.venv/
+frontend/node_modules/
+frontend/dist/
+**/__pycache__/
+*.pyc
+*.db
+*.db-shm
+*.db-wal
+data/
+downloads/
+deploy-backups/
+frontend/src/_login_backup_v065/
+screenshots/

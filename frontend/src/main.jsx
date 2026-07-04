@@ -1,0 +1,7707 @@
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { createRoot } from "react-dom/client";
+import { motion } from "motion/react";
+import {
+  Activity,
+  Album,
+  ArrowDownToLine,
+  BookOpenText,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  CircleAlert,
+  Clock3,
+  Code2,
+  Disc3,
+  Download,
+  Eye,
+  EyeOff,
+  FileAudio,
+  FileUp,
+  FolderTree,
+  Gauge,
+  Home,
+  Image,
+  Fingerprint,
+  Heart,
+  KeyRound,
+  Library,
+  Link2,
+  ListMusic,
+  LoaderCircle,
+  LogIn,
+  LogOut,
+  Maximize2,
+  Menu,
+  Music2,
+  Palette,
+  Pause,
+  List,
+  LocateFixed,
+  Mic2,
+  Play,
+  Plus,
+  Power,
+  Radio,
+  RefreshCw,
+  Repeat,
+  RotateCcw,
+  ScrollText,
+  Search,
+  Server,
+  Settings,
+  ShieldCheck,
+  Shuffle,
+  Sparkles,
+  Tags,
+  TestTube2,
+  Trash2,
+  User,
+  UserRound,
+  UsersRound,
+  Volume2,
+  WandSparkles,
+  Wifi,
+  X,
+  Zap,
+} from "lucide-react";
+import "./styles.css";
+import { BRAND } from "./config/brand";
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}
+
+const api = async (path, options = {}) => {
+  const isForm = options.body instanceof FormData;
+  const response = await fetch(path, {
+    credentials: "include",
+    headers: {
+      ...(isForm ? {} : { "Content-Type": "application/json" }),
+      ...(options.headers || {}),
+    },
+    ...options,
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const detail =
+      typeof data.detail === "string" ? data.detail : data.detail?.message;
+    const error = new Error(
+      data.message || detail || `请求失败 (${response.status})`,
+    );
+    error.code = data.error_code || data.detail?.error_code;
+    throw error;
+  }
+  return data;
+};
+
+const nav = [
+  { id: "home", label: "首页", icon: Home },
+  { id: "manage", label: "管理中心", icon: Gauge, admin: true },
+  { id: "library", label: "音乐库", icon: Library },
+  { id: "player", label: "播放器", icon: Play },
+  { id: "discover", label: "发现", icon: Sparkles },
+  { id: "me", label: "我的", icon: UserRound },
+  { id: "settings", label: "设置", icon: Settings },
+];
+
+const managementNav = [
+  {
+    id: "local",
+    label: "本地曲库",
+    icon: FolderTree,
+    desc: "真实 NAS 文件、分类、标签与回滚",
+  },
+  {
+    id: "scrape",
+    label: "刮削中心",
+    icon: WandSparkles,
+    desc: "封面、歌词、背景、中文简介补齐",
+  },
+  {
+    id: "download",
+    label: "下载入库",
+    icon: ArrowDownToLine,
+    desc: "搜索、下载、确认入库与冲突检查",
+  },
+  {
+    id: "sources",
+    label: "音乐源管理",
+    icon: Wifi,
+    desc: "导入、隔离校验、启停与日志",
+  },
+  {
+    id: "tasks",
+    label: "任务中心",
+    icon: Activity,
+    desc: "运行中、待确认、失败与历史任务",
+  },
+  {
+    id: "settings",
+    label: "系统设置",
+    icon: Settings,
+    desc: "Plex、账号、安全、日志与偏好",
+  },
+];
+
+const fmt = (value) => new Intl.NumberFormat("zh-CN").format(value || 0);
+const pct = (value, total) => (total ? Math.round((value / total) * 100) : 0);
+const timeAgo = (value) => {
+  if (!value) return "刚刚";
+  const seconds = Math.floor((Date.now() - new Date(value).getTime()) / 1000);
+  if (seconds < 60) return `${Math.max(0, seconds)} 秒前`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} 分钟前`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)} 小时前`;
+  return new Date(value).toLocaleDateString("zh-CN");
+};
+
+const dashboardGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 11)
+    return [
+      "早上好，",
+      "今天想听点什么？",
+      "今天适合先扫描曲库，再补齐缺失的封面和歌词。",
+    ];
+  if (hour >= 11 && hour < 14)
+    return [
+      "中午好，",
+      "看看最近入库的音乐。",
+      "午间整理一下下载和待入库内容，曲库会更清爽。",
+    ];
+  if (hour >= 14 && hour < 18)
+    return [
+      "下午好，",
+      "让曲库保持完整。",
+      "适合处理缺失歌词、封面和目录规范这些细活。",
+    ];
+  if (hour >= 18 && hour < 23)
+    return [
+      "晚上好，",
+      "让音乐库保持漂亮而完整。",
+      "今晚可以从待入库、最近任务和缺失信息开始收尾。",
+    ];
+  return [
+    "夜深了，",
+    "适合整理一些安静的歌。",
+    "轻一点地整理封面、歌词和最近下载的音乐。",
+  ];
+};
+
+const VISUAL_FALLBACKS = Object.freeze({
+  login: "/visuals/login-bg.jpg",
+  artist: "/visuals/fallback-artist.svg",
+  player: "/visuals/fallback-player.svg",
+  cover: "/visuals/fallback-cover-vinyl.svg",
+});
+
+const coverUrlFor = (track) =>
+  track?.albumCoverUrl ||
+  track?.coverUrl ||
+  track?.thumbUrl ||
+  track?.raw?.coverUrl ||
+  track?.raw?.thumbUrl ||
+  "";
+
+const normalizeTrackTitle = (value) =>
+  String(value || "")
+    .replace(/\.(flac|mp3|m4a|wav|ape|aac|ogg)$/i, "")
+    .replace(/^\s*\d{1,3}\s*[-_.、]\s*/, "")
+    .replace(/\s*[-_.\s]+(?:official\s*)?(?:music\s*)?(?:video|mv)\s*$/i, "")
+    .replace(
+      /\s*\[(?:mqms2|hi-?res|flac|320k|128k|official|无损|高品|mq)\]\s*/gi,
+      " ",
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+
+const trackIdentity = (track) => {
+  if (!track) return "";
+  if (track.canonicalKey) return track.canonicalKey;
+  if (track.id) return String(track.id);
+  if (track.ratingKey) return `plex-${track.ratingKey}`;
+  if (track.plexRatingKey) return `plex-${track.plexRatingKey}`;
+  if (track.localFileId) return `local-${track.localFileId}`;
+  const title = normalizeTrackTitle(track.title || track.filename);
+  return [
+    track.sourceType || track.source || "local",
+    title,
+    track.artist || track.grandparentTitle || "",
+    track.album || track.parentTitle || "",
+  ]
+    .join("|")
+    .toLowerCase();
+};
+
+function useMediaQuery(query) {
+  const [matches, setMatches] = useState(
+    () => window.matchMedia?.(query)?.matches || false,
+  );
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    const change = () => setMatches(media.matches);
+    change();
+    media.addEventListener?.("change", change);
+    return () => media.removeEventListener?.("change", change);
+  }, [query]);
+  return matches;
+}
+
+const isPlayableDuration = (track) => {
+  const seconds = Number(track?.duration || 0);
+  if (!seconds) return true;
+  return seconds > 5 && seconds < 60 * 60 * 6;
+};
+
+const sanitizeQueue = (items = [], current = null) => {
+  const seen = new Set(current ? [trackIdentity(current)] : []);
+  return (items || []).filter(Boolean).filter((item) => {
+    if (!isPlayableDuration(item)) return false;
+    const key = trackIdentity(item);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
+const persistableTrack = (track) => {
+  if (!track || track.sourceType === "source_preview") return null;
+  const { audioUrl, transcodeUrls, raw, ...rest } = track;
+  return rest;
+};
+
+const storedJson = (key, fallback) => {
+  try {
+    return JSON.parse(localStorage.getItem(key) || "") || fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const userIsAdmin = (user) => ["admin", "owner"].includes(user?.role);
+const activeNavId = (active) =>
+  managementNav.some((item) => item.id === active) ? "manage" : active;
+
+function Brand({ compact = false }) {
+  return (
+    <div className={`brand ${compact ? "compact" : ""}`}>
+      <img className="brand-mark" src={BRAND.mark} alt="" />
+      {!compact && (
+        <div>
+          <b>{BRAND.sidebarTitle}</b>
+          <small>{BRAND.sidebarSlogan}</small>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AppBackdrop({
+  image,
+  variant = "default",
+  fallback = VISUAL_FALLBACKS.artist,
+}) {
+  const resolved = image || fallback;
+  const [current, setCurrent] = useState(resolved);
+  const [previous, setPrevious] = useState("");
+  useEffect(() => {
+    if (!resolved || resolved === current) return;
+    setPrevious(current);
+    setCurrent(resolved);
+    const timer = setTimeout(() => setPrevious(""), 3200);
+    return () => clearTimeout(timer);
+  }, [resolved, current]);
+  return (
+    <div className={`app-backdrop ${variant}`} aria-hidden="true">
+      {previous && (
+        <img className="backdrop-image previous" src={previous} alt="" />
+      )}
+      <img className="backdrop-image current" src={current} alt="" />
+      <i className="backdrop-vignette" />
+      <i className="backdrop-aurora" />
+    </div>
+  );
+}
+
+function LoginMotionBackdrop() {
+  const particles = useMemo(
+    () =>
+      Array.from({ length: 60 }, (_, index) => ({
+        id: index,
+        left: `${(index * 37) % 100}%`,
+        duration: 12 + ((index * 17) % 12),
+        delay: (index * 29) % 15,
+        x: Math.sin(index) * 120,
+      })),
+    [],
+  );
+  return (
+    <div className="login-motion-bg" aria-hidden="true">
+      <div className="login-base-map">
+        <div className="login-base-vignette" />
+      </div>
+      <svg
+        className="login-flow-lines"
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+      >
+        <defs>
+          <linearGradient
+            id="songlib-login-line-gradient"
+            x1="0%"
+            y1="0%"
+            x2="100%"
+            y2="0%"
+          >
+            <stop offset="0%" stopColor="rgba(245, 158, 11, 0)" />
+            <stop offset="50%" stopColor="rgba(245, 158, 11, 0.8)" />
+            <stop offset="100%" stopColor="rgba(245, 158, 11, 0)" />
+          </linearGradient>
+        </defs>
+        {Array.from({ length: 8 }, (_, index) => (
+          <motion.path
+            key={index}
+            d={`M -10 ${20 + index * 15} Q ${40 + index * 5} ${30 - index * 5} ${70 + index * 10} ${50 + index * 10} T 110 ${40 + index * 10}`}
+            fill="none"
+            stroke="url(#songlib-login-line-gradient)"
+            strokeWidth={0.55}
+            strokeLinecap="round"
+            strokeOpacity={0.42}
+            vectorEffect="non-scaling-stroke"
+            initial={{ pathLength: 0, opacity: 0, pathOffset: 0 }}
+            animate={{
+              pathLength: [0, 0.18, 0.18, 0],
+              opacity: [0, 0.42, 0.26, 0],
+              pathOffset: [0, 0.18, 0.46, 0.72],
+            }}
+            transition={{
+              duration: 26 + index * 4.5,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: index * 4.8,
+            }}
+          />
+        ))}
+      </svg>
+      <div className="login-video-wrap">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="login-video"
+          src="/visuals/songlib-login-background.mp4"
+        />
+      </div>
+      <div className="login-gradient-top" />
+      <div className="login-gradient-side" />
+      <motion.div
+        className="login-breath-glow top-left"
+        animate={{ opacity: [0.2, 0.6, 0.2] }}
+        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="login-breath-glow top-right"
+        animate={{ opacity: [0.1, 0.5, 0.1] }}
+        transition={{
+          duration: 8,
+          repeat: Infinity,
+          ease: "easeInOut",
+          delay: 2,
+        }}
+      />
+      <div className="login-dust">
+        {particles.map((item) => (
+          <motion.i
+            key={item.id}
+            style={{ left: item.left }}
+            animate={{
+              y: ["0vh", "-120vh"],
+              x: [0, item.x],
+              opacity: [0, 1, 0],
+            }}
+            transition={{
+              duration: item.duration,
+              repeat: Infinity,
+              ease: "linear",
+              delay: item.delay,
+            }}
+          />
+        ))}
+      </div>
+      <div className="login-ambient-glow" />
+      <motion.div
+        className="login-card-glow"
+        animate={{ opacity: [0.3, 0.7, 0.3] }}
+        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+      />
+    </div>
+  );
+}
+
+function LoginFeatureCard({ icon: Icon, title, desc, delay }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.6, delay, ease: "easeOut" }}
+      className="login-motion-feature"
+    >
+      <div>
+        <Icon />
+      </div>
+      <section>
+        <h4>{title}</h4>
+        <p>{desc}</p>
+      </section>
+    </motion.div>
+  );
+}
+
+function ArtistBackdrop({ imageUrl }) {
+  return (
+    <AppBackdrop
+      image={imageUrl}
+      variant="home artist-backdrop"
+      fallback={VISUAL_FALLBACKS.artist}
+    />
+  );
+}
+
+function PlayerBackdrop({ imageUrl }) {
+  return (
+    <AppBackdrop
+      image={imageUrl}
+      variant="player player-backdrop"
+      fallback={VISUAL_FALLBACKS.player}
+    />
+  );
+}
+
+function Spectrum({ bars = 42 }) {
+  return (
+    <div className="spectrum" aria-hidden="true">
+      {Array.from({ length: bars }, (_, index) => (
+        <i key={index} style={{ "--h": `${22 + ((index * 17) % 54)}%` }} />
+      ))}
+    </div>
+  );
+}
+
+function PwaInstallPrompt() {
+  const [event, setEvent] = useState(null),
+    [visible, setVisible] = useState(false),
+    [manual, setManual] = useState(false);
+  const standalone =
+    window.matchMedia?.("(display-mode: standalone)")?.matches ||
+    window.navigator.standalone;
+  useEffect(() => {
+    if (standalone || localStorage.getItem("songlib-pwa-dismissed") === "1")
+      return;
+    const timer = setTimeout(() => {
+      setVisible(true);
+      setManual(true);
+    }, 2600);
+    const onPrompt = (e) => {
+      e.preventDefault();
+      setEvent(e);
+      setVisible(true);
+      setManual(false);
+      clearTimeout(timer);
+    };
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    window.addEventListener("appinstalled", () => {
+      setVisible(false);
+      localStorage.setItem("songlib-pwa-dismissed", "1");
+    });
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("beforeinstallprompt", onPrompt);
+    };
+  }, []);
+  if (!visible || standalone) return null;
+  const install = async () => {
+    if (event) {
+      event.prompt();
+      const result = await event.userChoice.catch(() => ({
+        outcome: "dismissed",
+      }));
+      if (result.outcome === "accepted") {
+        localStorage.setItem("songlib-pwa-dismissed", "1");
+        setVisible(false);
+      }
+    } else setManual(true);
+  };
+  const dismiss = () => {
+    localStorage.setItem("songlib-pwa-dismissed", "1");
+    setVisible(false);
+  };
+  return (
+    <aside className="pwa-prompt panel">
+      <button className="icon-button" onClick={dismiss}>
+        <X />
+      </button>
+      <div className="pwa-icon">
+        <img src="/icons/icon-192.png" alt="" />
+      </div>
+      <div>
+        <strong>安装音屿轻应用</strong>
+        <p>
+          {manual
+            ? "Mac Safari 可在“文件/分享”菜单选择添加到 Dock；Chrome/Edge 可点地址栏安装图标，或点下方按钮尝试安装。"
+            : "把音屿安装到桌面，像原生 App 一样打开。"}
+        </p>
+        <div>
+          <button className="primary small" onClick={install}>
+            <Download />
+            安装应用
+          </button>
+          <button className="secondary small" onClick={dismiss}>
+            稍后再说
+          </button>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function Login({ onLogin }) {
+  const [username, setUsername] = useState("admin");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(true);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const submit = async (event) => {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      await api("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ username, password }),
+      });
+      onLogin();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <main className="login-page login-motion-page">
+      <LoginMotionBackdrop />
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="login-motion-logo"
+      >
+        <div className="login-motion-logo-mark">
+          <img src={BRAND.mark} alt="" />
+        </div>
+        <div>
+          <h1>
+            {BRAND.name}
+            <span>|</span>
+            {BRAND.cnName}
+          </h1>
+          <p>让散落的音乐 回到自己的岛屿</p>
+        </div>
+      </motion.div>
+
+      <div className="login-motion-shell">
+        <div className="login-motion-grid">
+          <section className="login-motion-left">
+            <div>
+              <motion.div
+                initial={{ opacity: 0, x: -30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+                className="login-motion-copy"
+              >
+                <h3>
+                  <span />
+                  PRIVATE MUSIC OPERATIONS
+                </h3>
+                <h2>
+                  让散落的音乐,
+                  <br />
+                  回到自己的<span>岛屿。</span>
+                </h2>
+                <p>
+                  连接 NAS、Plex
+                  与本地音乐库，建立属于你的私有音乐运营中枢，掌控每一刻旋律。
+                </p>
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+                className="login-motion-features"
+              >
+                <LoginFeatureCard
+                  delay={0.3}
+                  icon={Server}
+                  title="连接 NAS"
+                  desc="集中管理音乐资料"
+                />
+                <LoginFeatureCard
+                  delay={0.4}
+                  icon={Play}
+                  title="连接 Plex"
+                  desc="同步媒体与播放"
+                />
+                <LoginFeatureCard
+                  delay={0.5}
+                  icon={ShieldCheck}
+                  title="私有安全"
+                  desc="您的数据，您掌控"
+                />
+                <LoginFeatureCard
+                  delay={0.6}
+                  icon={Activity}
+                  title="运营洞察"
+                  desc="深度分析音乐资产"
+                />
+              </motion.div>
+            </div>
+          </section>
+
+          <section className="login-motion-right">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.98, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{
+                duration: 0.8,
+                delay: 0.3,
+                ease: [0.16, 1, 0.3, 1],
+              }}
+              className="login-motion-card-group"
+            >
+              <div className="login-motion-hover-glow" />
+              <div className="login-motion-card">
+                <div className="login-motion-card-line" />
+                <div className="login-motion-card-head">
+                  <div>
+                    <img src={BRAND.mark} alt="" />
+                  </div>
+                  <h2>
+                    {BRAND.name}
+                    <span>{BRAND.cnName}</span>
+                  </h2>
+                  <p>SECURE ACCESS</p>
+                </div>
+
+                <form className="login-motion-form" onSubmit={submit}>
+                  <h3>登录控制台</h3>
+                  <label>用户名</label>
+                  <div className="login-motion-input">
+                    <User />
+                    <input
+                      autoFocus
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      placeholder="输入用户名"
+                    />
+                  </div>
+                  <label>密码</label>
+                  <div className="login-motion-input">
+                    <KeyRound />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••••••"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((value) => !value)}
+                    >
+                      {showPassword ? <EyeOff /> : <Eye />}
+                    </button>
+                  </div>
+                  <div className="login-motion-row">
+                    <label className="login-motion-remember">
+                      <input
+                        type="checkbox"
+                        checked={remember}
+                        onChange={(e) => setRemember(e.target.checked)}
+                      />
+                      <i>
+                        <Check />
+                      </i>
+                      <span>保持登录</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setError(
+                          "请在 NAS 容器内执行：docker exec songlib-amp python -m app.cli reset-admin --from-env，使用 .env 中的 APP_PASSWORD 安全重置。",
+                        )
+                      }
+                    >
+                      忘记密码？
+                    </button>
+                  </div>
+                  {error && (
+                    <div className="form-error login-motion-error">
+                      <CircleAlert />
+                      {error}
+                    </div>
+                  )}
+                  <button
+                    className="login-motion-submit"
+                    disabled={busy || !password}
+                  >
+                    {busy ? <LoaderCircle className="spin" /> : <LogIn />}
+                    进入音屿控制台
+                  </button>
+                </form>
+
+                <div className="login-motion-divider">
+                  <span />
+                  或使用
+                  <span />
+                </div>
+                <button className="login-motion-sso" disabled>
+                  <Fingerprint />
+                  SSO 单点登录（企业）
+                </button>
+                <footer>
+                  <span className="status-dot" />
+                  NAS 本地运行 · 数据不会上传云端
+                </footer>
+              </div>
+            </motion.div>
+          </section>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function SidebarMiniPlayer({ openPlayer }) {
+  const player = usePlayer();
+  const current = player.currentTrack;
+  if (!current) return null;
+  const cover = coverUrlFor(current) || VISUAL_FALLBACKS.cover;
+  const title = current.title || "未命名歌曲";
+  const artist = current.artist || "未知歌手";
+  const progress = player.duration
+    ? pct(player.currentTime, player.duration)
+    : 0;
+  const liked = player.isFavorite(current);
+  return (
+    <section className="sidebar-player" aria-label="侧边栏迷你播放器">
+      <div className="sidebar-player-head">
+        <button className="sidebar-player-cover" onClick={openPlayer}>
+          {cover ? <img src={cover} alt="" /> : <Music2 />}
+        </button>
+        <div>
+          <strong>{title}</strong>
+          <span>{artist}</span>
+        </div>
+        <button
+          className={`sidebar-like ${liked ? "active" : ""}`}
+          aria-label={liked ? "取消喜欢" : "喜欢"}
+          onClick={() => player.toggleFavorite(current)}
+        >
+          <Heart />
+        </button>
+      </div>
+      <div className="sidebar-player-controls">
+        <button onClick={player.previous} aria-label="上一首">
+          <ChevronRight className="prev-icon" />
+        </button>
+        <button
+          className="sidebar-play"
+          onClick={player.toggle}
+          aria-label={player.isPlaying ? "暂停" : "播放"}
+        >
+          {player.isPlaying ? <Pause /> : <Play />}
+        </button>
+        <button onClick={player.next} aria-label="下一首">
+          <ChevronRight />
+        </button>
+      </div>
+      <div className="sidebar-player-progress">
+        <i style={{ width: `${progress}%` }} />
+      </div>
+      <div className="sidebar-player-time">
+        <span>{formatTime(player.currentTime)}</span>
+        <span>{formatTime(player.duration)}</span>
+      </div>
+    </section>
+  );
+}
+
+function Sidebar({
+  active,
+  onChange,
+  open,
+  close,
+  logout,
+  version,
+  openPlayer,
+  isAdmin = true,
+}) {
+  const visibleNav = nav.filter((item) => !item.admin || isAdmin);
+  const highlighted = activeNavId(active);
+  return (
+    <>
+      <aside className={`sidebar ${open ? "open" : ""}`}>
+        <div className="sidebar-top">
+          <Brand />
+          <button className="icon-button mobile-only" onClick={close}>
+            <X />
+          </button>
+        </div>
+        <div className="side-version">v{version || BRAND.version}</div>
+        <nav>
+          {visibleNav.map((item) => (
+            <button
+              key={item.id}
+              className={highlighted === item.id ? "active" : ""}
+              onClick={() => {
+                onChange(item.id);
+                close();
+              }}
+            >
+              <item.icon />
+              <span>{item.label}</span>
+              {highlighted === item.id && <i />}
+            </button>
+          ))}
+        </nav>
+        <div className="side-health">
+          <div className="health-icon">
+            <Wifi size={17} />
+          </div>
+          <div>
+            <strong>本地运行中</strong>
+            <span>NAS 曲库 · Plex 联动</span>
+          </div>
+        </div>
+        <button className="logout" onClick={logout}>
+          <LogOut size={18} />
+          退出登录
+        </button>
+      </aside>
+      {open && <button className="backdrop mobile-only" onClick={close} />}
+    </>
+  );
+}
+
+function Topbar({ title, subtitle, openMenu, onNavigate, logout, profile }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const submitSearch = (event) => {
+    event?.preventDefault?.();
+    const text = query.trim();
+    if (!text) return;
+    localStorage.setItem("songlib-global-search", text);
+    onNavigate("search");
+  };
+  return (
+    <header className="topbar">
+      <button className="icon-button mobile-only" onClick={openMenu}>
+        <Menu />
+      </button>
+      <div>
+        <h2>{title}</h2>
+        <p>{subtitle}</p>
+      </div>
+      <div className="top-actions">
+        <form className="top-search" onSubmit={submitSearch}>
+          <Search />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") submitSearch(e);
+            }}
+            placeholder="搜索音乐、艺术家、专辑…"
+          />
+          <kbd>↵</kbd>
+        </form>
+        <button
+          className="brand-status"
+          title={`${BRAND.fullName} · 音屿正在本地运行`}
+        >
+          <img src={BRAND.mark} alt="" />
+          <span />
+        </button>
+        <button
+          className="icon-button notification"
+          onClick={() => onNavigate("tasks")}
+        >
+          <Activity />
+          <span />
+        </button>
+        <div className="user-entry">
+          <button
+            className="avatar"
+            onClick={() => setOpen(!open)}
+            aria-label="用户菜单"
+          >
+            {profile?.avatarUrl ? (
+              <img src={profile.avatarUrl} alt="" />
+            ) : (
+              <UserRound />
+            )}
+            <ChevronDown />
+          </button>
+          {open && (
+            <div className="user-menu panel">
+              <strong>{profile?.displayName || "音屿控制台"}</strong>
+              <button
+                onClick={() => {
+                  onNavigate("settings");
+                  setOpen(false);
+                }}
+              >
+                <UserRound />
+                账号设置
+              </button>
+              <button
+                onClick={() => {
+                  onNavigate("settings");
+                  setOpen(false);
+                }}
+              >
+                <Settings />
+                系统设置
+              </button>
+              <button onClick={logout}>
+                <LogOut />
+                退出登录
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  detail,
+  tone = "amber",
+  progress,
+}) {
+  return (
+    <article className="stat-card">
+      <div className={`stat-icon ${tone}`}>
+        <Icon />
+      </div>
+      <div className="stat-copy">
+        <span>{label}</span>
+        <strong>{fmt(value)}</strong>
+        <small>{detail}</small>
+      </div>
+      <svg
+        className={`sparkline ${tone}`}
+        viewBox="0 0 120 36"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <path d="M2 27 C14 20 20 24 30 16 S48 22 58 12 S76 18 86 9 S104 18 118 11" />
+      </svg>
+      {progress !== undefined && (
+        <div className="mini-progress">
+          <i style={{ width: `${progress}%` }} />
+        </div>
+      )}
+    </article>
+  );
+}
+
+function SectionHead({ title, note, action }) {
+  return (
+    <div className="section-head">
+      <div>
+        <h3>{title}</h3>
+        {note && <p>{note}</p>}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function Empty({ icon: Icon = Music2, title, text }) {
+  return (
+    <div className="empty">
+      <div>
+        <Icon />
+      </div>
+      <h4>{title}</h4>
+      <p>{text}</p>
+    </div>
+  );
+}
+
+function Dashboard({ stats, jobs, loading, navigate, runJob, isAdmin = true }) {
+  const heroImages = stats?.heroImages || [];
+  const [heroIndex, setHeroIndex] = useState(0);
+  useEffect(() => {
+    if (heroImages.length < 2) return;
+    const timer = setInterval(
+      () => setHeroIndex((value) => (value + 1) % heroImages.length),
+      18000,
+    );
+    return () => clearInterval(timer);
+  }, [heroImages.length]);
+  if (loading) return <PageLoader />;
+  const artistCoverage = pct(stats.artistPosters, stats.artists);
+  const albumCoverage = pct(stats.albumCovers, stats.albums);
+  const lyricCoverage = pct(stats.localLyrics, stats.tracks);
+  const [greeting, greetingAccent] = dashboardGreeting();
+  const hero = heroImages[heroIndex % Math.max(heroImages.length, 1)];
+  return (
+    <div className="page dashboard-page">
+      <section className="hero-panel">
+        <div className="hero-glow" />
+        <div className="hero-content">
+          <span className="eyebrow">
+            <Sparkles size={14} />
+            PRIVATE MUSIC UNIVERSE
+          </span>
+          <small className="hero-kicker">
+            {greeting}
+            {greetingAccent}
+          </small>
+          <h1>
+            先把<span>曲库健康</span>做完整
+          </h1>
+          <p>
+            Plex {stats.plexConnected ? "已连接" : "暂不可用"}，已读取 {fmt(stats.tracks)} 首曲目；
+            先处理缺失资料、失败任务和待入库内容。
+          </p>
+          <div className="hero-actions">
+            <button
+              className="primary"
+              onClick={() => runJob("plex_sync")}
+            >
+              <RefreshCw />
+              同步 Plex
+            </button>
+            <button className="secondary" onClick={() => runJob("local_scan")}>
+              <FolderTree />
+              扫描本地曲库
+            </button>
+          </div>
+        </div>
+        <div className="hero-disc hero-artist-card">
+          <div
+            className={`vinyl ${hero?.coverUrl || hero?.imageUrl ? "with-cover" : ""}`}
+          >
+            {hero?.coverUrl || hero?.imageUrl ? (
+              <img src={hero.coverUrl || hero.imageUrl} alt="" />
+            ) : (
+              <span>
+                <Music2 />
+              </span>
+            )}
+          </div>
+          <div className="now-playing">
+            <i />
+            <div>
+              <small>Plex 连接状态</small>
+              <b>{stats.plexConnected ? "已连接" : "需要检查"}</b>
+            </div>
+            <button onClick={() => navigate("settings")}>
+              <Settings />
+            </button>
+          </div>
+        </div>
+      </section>
+      {isAdmin && (
+        <section className="task-summary dashboard-status-summary">
+          <button onClick={() => navigate("settings")}>
+            <Server /><strong>{stats.plexConnected ? "正常" : "异常"}</strong><span>Plex 连接</span>
+          </button>
+          <button onClick={() => navigate("local")}>
+            <FolderTree /><strong>{fmt(stats.localTracks)}</strong><span>{stats.localLastScanAt ? `本地扫描 ${timeAgo(stats.localLastScanAt)}` : "尚未本地扫描"}</span>
+          </button>
+          <button onClick={() => navigate("download")}>
+            <ArrowDownToLine /><strong>{stats.waitingIngest || 0}</strong><span>待入库</span>
+          </button>
+          <button onClick={() => navigate("tasks")}>
+            <CircleAlert /><strong>{stats.failedTasks || 0}</strong><span>失败任务</span>
+          </button>
+        </section>
+      )}
+      <SectionHead
+        title="曲库健康"
+        note="封面、歌词和本地文件完整度"
+        action={
+          isAdmin ? (
+            <button className="text-button" onClick={() => navigate("manage")}>
+              进入管理中心
+              <ChevronRight />
+            </button>
+          ) : null
+        }
+      />
+      <section className="stats-grid">
+        <StatCard
+          icon={UsersRound}
+          label="歌手"
+          value={stats.artists}
+          detail={`${stats.artistPosters} 位已有海报`}
+          tone="amber"
+          progress={artistCoverage}
+        />
+        <StatCard
+          icon={Album}
+          label="专辑"
+          value={stats.albums}
+          detail={`${albumCoverage}% 封面完整`}
+          tone="violet"
+          progress={albumCoverage}
+        />
+        <StatCard
+          icon={Music2}
+          label="单曲"
+          value={stats.tracks}
+          detail={
+            stats.plexConnected || stats.plexAvailable !== false
+              ? "Plex 已收录"
+              : "本地文件已索引"
+          }
+          tone="blue"
+        />
+        <StatCard
+          icon={BookOpenText}
+          label="本地歌词"
+          value={stats.localLyrics}
+          detail={`${stats.missingLyrics} 首待补`}
+          tone="green"
+          progress={lyricCoverage}
+        />
+      </section>
+      {isAdmin && (
+        <section className="dashboard-quick panel">
+          <SectionHead title="管理快捷操作" note="选择要处理的内容" />
+          <div>
+            {[
+              ["同步 Plex", RefreshCw, () => runJob("plex_sync")],
+              ["扫描本地曲库", FolderTree, () => runJob("local_scan")],
+              ["补齐缺失资料", WandSparkles, () => navigate("scrape")],
+              ["查看待入库", ArrowDownToLine, () => navigate("download")],
+              ["失败任务", CircleAlert, () => navigate("tasks")],
+              ["备份与日志", ShieldCheck, () => navigate("settings")],
+            ].map(([label, Icon, action]) => (
+              <button key={label} onClick={action}>
+                <Icon />
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+      {isAdmin && (
+        <div className="dashboard-columns">
+          <section className="panel coverage-panel">
+            <SectionHead title="完整度雷达" note="当前音乐库的关键资料覆盖率" />
+            <div className="coverage-list">
+              {[
+                ["歌手海报", artistCoverage, Image, "amber"],
+                [
+                  "歌手背景",
+                  pct(stats.artistBackgrounds, stats.artists),
+                  Palette,
+                  "violet",
+                ],
+                [
+                  "中文简介",
+                  pct(stats.chineseBios, stats.artists),
+                  FileAudio,
+                  "blue",
+                ],
+                ["专辑封面", albumCoverage, Album, "green"],
+                ["时间轴歌词", lyricCoverage, BookOpenText, "pink"],
+              ].map(([label, value, Icon, tone]) => (
+                <div className="coverage-row" key={label}>
+                  <div className={`tiny-icon ${tone}`}>
+                    <Icon />
+                  </div>
+                  <div className="coverage-main">
+                    <div>
+                      <span>{label}</span>
+                      <b>{value}%</b>
+                    </div>
+                    <div className="bar">
+                      <i className={tone} style={{ width: `${value}%` }} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+          <section className="panel recent-panel">
+            <SectionHead
+              title="最近任务"
+              note="下载、整理、刮削与扫描记录"
+              action={
+                <button
+                  className="text-button"
+                  onClick={() => navigate("tasks")}
+                >
+                  查看全部
+                  <ChevronRight />
+                </button>
+              }
+            />
+            <div className="job-list">
+              {jobs.length ? (
+                jobs.slice(0, 5).map((job) => <JobRow job={job} key={job.id} />)
+              ) : (
+                <Empty
+                  icon={Clock3}
+                  title="暂无任务记录"
+                  text="扫描曲库或补齐资料后，会生成可追踪的任务记录。"
+                />
+              )}
+            </div>
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function JobRow({ job }) {
+  const state = job.status;
+  return (
+    <div className="job-row">
+      <div className={`job-state ${state}`}>
+        {state === "running" ? (
+          <LoaderCircle className="spin" />
+        ) : state === "completed" ? (
+          <Check />
+        ) : state === "failed" ? (
+          <CircleAlert />
+        ) : (
+          <Clock3 />
+        )}
+      </div>
+      <div className="job-info">
+        <div>
+          <strong>{job.title}</strong>
+          <span>{timeAgo(job.created_at)}</span>
+        </div>
+        <p>{job.message || (state === "queued" ? "等待执行" : "任务完成")}</p>
+        {state === "running" && (
+          <div className="bar">
+            <i className="amber" style={{ width: `${job.progress}%` }} />
+          </div>
+        )}
+      </div>
+      <em>
+        {state === "running"
+          ? `${job.progress}%`
+          : state === "completed"
+            ? "完成"
+            : state === "failed"
+              ? "失败"
+              : "排队"}
+      </em>
+    </div>
+  );
+}
+
+function MediaLibrary({ initialTab = "artists", play, previewBackdrop }) {
+  const [tab, setTab] = useState(initialTab);
+  const [search, setSearch] = useState(
+    () => localStorage.getItem("songlib-global-search") || "",
+  );
+  const [data, setData] = useState({ items: [], total: 0 });
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    if (search) localStorage.removeItem("songlib-global-search");
+  }, []);
+  const load = async () => {
+    setLoading(true);
+    try {
+      setData(
+        await api(
+          `/api/library/${tab}?pageSize=100&search=${encodeURIComponent(search)}`,
+        ),
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    const timer = setTimeout(load, 180);
+    return () => clearTimeout(timer);
+  }, [tab, search]);
+  const showTracks = (item) => {
+    setTab("tracks");
+    setSearch(item.title || "");
+  };
+  const playFirst = async (item) => {
+    const query = encodeURIComponent(item.title || "");
+    const result = await api(`/api/library/tracks?pageSize=8&search=${query}`);
+    const first = result.items?.[0];
+    if (first) play?.({ ...first, source: "plex_item" });
+  };
+  return (
+    <div className="page library-page">
+      <div className="library-toolbar">
+        <div className="segmented">
+          {[
+            ["artists", "歌手"],
+            ["albums", "专辑"],
+            ["tracks", "单曲"],
+          ].map(([id, label]) => (
+            <button
+              className={tab === id ? "active" : ""}
+              onClick={() => setTab(id)}
+              key={id}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="search-field">
+          <Search />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={`搜索${tab === "artists" ? "歌手" : tab === "albums" ? "专辑" : "单曲"}…`}
+          />
+        </div>
+        <span className="result-count">{fmt(data.total)} 项</span>
+      </div>
+      {loading ? (
+        <PageLoader />
+      ) : tab === "tracks" ? (
+        <TrackTable items={data.items} play={play} />
+      ) : (
+        <div className="media-grid">
+          {data.items.map((item) => (
+            <MediaCard
+              item={item}
+              type={tab}
+              key={item.ratingKey}
+              showTracks={showTracks}
+              playFirst={playFirst}
+              previewBackdrop={previewBackdrop}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MediaCard({ item, type, showTracks, playFirst, previewBackdrop }) {
+  const isArtist = type === "artists";
+  const isAlbum = type === "albums";
+  const canBackdrop = isArtist && item.artUrl;
+  return (
+    <article className="media-card">
+      <div className="media-art">
+        {item.thumbUrl ? (
+          <img src={item.thumbUrl} loading="lazy" />
+        ) : (
+          <div className="art-placeholder">
+            {isArtist ? <UserRound /> : <Disc3 />}
+          </div>
+        )}
+        <div className="media-overlay media-actions">
+          <button
+            onClick={() => playFirst?.(item)}
+            title={isArtist ? "播放这个歌手的曲目" : "播放这张专辑"}
+          >
+            <Play fill="currentColor" />
+          </button>
+          <button
+            onClick={() => showTracks?.(item)}
+            title={isArtist ? "查看歌手曲目" : "查看专辑曲目"}
+          >
+            <ListMusic />
+          </button>
+          {canBackdrop && (
+            <button
+              onClick={() =>
+                previewBackdrop?.({
+                  imageUrl: item.artUrl,
+                  coverUrl: item.thumbUrl || item.artUrl,
+                  title: item.title,
+                  subtitle: "手动选择的歌手背景",
+                })
+              }
+              title="用作当前背景"
+            >
+              <Image />
+            </button>
+          )}
+        </div>
+        {!item.hasCover && <span className="missing-badge">缺封面</span>}
+        {item.hasBackground && <span className="background-badge">有背景</span>}
+      </div>
+      <h4>{item.title || "未命名"}</h4>
+      <p>
+        {isArtist
+          ? `${(item.tags?.genre || []).slice(0, 2).join(" · ") || "音乐人"}`
+          : item.parentTitle || item.year || "未知歌手"}
+      </p>
+      <div className="chips media-health-chips">
+        <span>{item.synced ? "已同步" : "待同步"}</span>
+        {isArtist && <span>{item.hasChineseBio ? "中文简介完整" : "缺中文简介"}</span>}
+        {isArtist && <span>{item.hasBackground ? "背景完整" : "缺背景"}</span>}
+      </div>
+    </article>
+  );
+}
+
+function TrackTable({ items, play }) {
+  return (
+    <div className="track-table panel">
+      <div className="track-head">
+        <span>#</span>
+        <span>标题</span>
+        <span>歌手</span>
+        <span>专辑</span>
+        <span>时长</span>
+      </div>
+      {items.map((item, index) => (
+        <button
+          className="track-row track-button"
+          key={item.ratingKey}
+          onClick={() => play?.({ ...item, source: "plex_item" })}
+        >
+          <span>{String(index + 1).padStart(2, "0")}</span>
+          <span className="track-title">
+            <div>
+              <Music2 />
+            </div>
+            <b>{item.title}</b>
+          </span>
+          <span>{item.grandparentTitle || item.originalTitle || "—"}</span>
+          <span>{item.parentTitle || "—"}</span>
+          <span>
+            {item.duration
+              ? `${Math.floor(item.duration / 60000)}:${String(Math.floor(item.duration / 1000) % 60).padStart(2, "0")}`
+              : "—"}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function LocalLibraryPage({ runJob, play, notify, navigate }) {
+  const [tab, setTab] = useState("files"),
+    [data, setData] = useState({ items: [], total: 0, stats: {} }),
+    [search, setSearch] = useState(
+      () => localStorage.getItem("songlib-global-search") || "",
+    ),
+    [missing, setMissing] = useState(""),
+    [loading, setLoading] = useState(true),
+    [selected, setSelected] = useState([]),
+    [previews, setPreviews] = useState([]),
+    [editing, setEditing] = useState(null),
+    [operations, setOperations] = useState([]),
+    [error, setError] = useState("");
+  const [categories, setCategories] = useState({ summary: [], groups: {} });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [activeFilter, setActiveFilter] = useState(null);
+  useEffect(() => {
+    if (search) localStorage.removeItem("songlib-global-search");
+  }, []);
+  const load = async () => {
+    setLoading(true);
+    try {
+      setData(
+        await api(
+          `/api/local/files?limit=${pageSize}&offset=${(page - 1) * pageSize}&search=${encodeURIComponent(search)}&missing=${missing}`,
+        ),
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    const timer = setTimeout(load, 180);
+    return () => clearTimeout(timer);
+  }, [search, missing, page, pageSize]);
+  const toggle = (id) =>
+    setSelected((value) =>
+      value.includes(id) ? value.filter((item) => item !== id) : [...value, id],
+    );
+  const preview = async () => {
+    if (!selected.length) return;
+    try {
+      const result = await api("/api/local/organize/preview", {
+        method: "POST",
+        body: JSON.stringify({ fileIds: selected }),
+      });
+      setPreviews(result.items);
+      setTab("preview");
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  const apply = async () => {
+    if (!previews.length) return;
+    if (
+      !confirm(
+        `确认按预览结果整理 ${previews.length} 个文件？\n\n执行前请确认目标路径无误，操作会写入回滚记录。`,
+      )
+    )
+      return;
+    try {
+      await api("/api/local/organize/apply", {
+        method: "POST",
+        body: JSON.stringify({ previews }),
+      });
+      notify("整理任务已加入队列");
+      navigate("tasks");
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  const saveTags = async (event) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const changes = Object.fromEntries(form.entries());
+    try {
+      await api(`/api/local/files/${editing.id}/tags`, {
+        method: "PATCH",
+        body: JSON.stringify({ changes }),
+      });
+      setEditing(null);
+      notify("标签已写入音频文件");
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  const switchTab = async (value) => {
+    setTab(value);
+    if (value === "history")
+      try {
+        setOperations(await api("/api/local/operations"));
+      } catch (err) {
+        setError(err.message);
+      }
+    if (value === "categories")
+      try {
+        setCategories(await api("/api/local/categories"));
+      } catch (err) {
+        setError(err.message);
+      }
+  };
+  const applyCategory = (item, type, label) => {
+    setMissing(item.missing || "");
+    setSearch(item.search || item.name || "");
+    setPage(1);
+    setActiveFilter({
+      type: label || type,
+      name: item.name,
+      missing: item.missing || "",
+    });
+    setTab("files");
+  };
+  const clearFilter = () => {
+    setSearch("");
+    setMissing("");
+    setActiveFilter(null);
+    setPage(1);
+  };
+  const rollback = async (item) => {
+    if (!confirm("确认回滚这次操作？音屿会检查路径冲突后再执行。")) return;
+    try {
+      await api(`/api/local/operations/${item.id}/rollback`, {
+        method: "POST",
+      });
+      setOperations(await api("/api/local/operations"));
+      notify("操作已安全回滚");
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  const stats = data.stats || {};
+  return (
+    <div className="page local-page">
+      <section className="local-hero panel">
+        <div>
+          <span className="eyebrow">
+            <FolderTree />
+            NAS MUSIC LIBRARY
+          </span>
+          <h1>管理 NAS 上的真实音乐文件。</h1>
+          <p>扫描、检查和整理正式音乐库；Plex 用于展示、播放与同步。</p>
+        </div>
+        <div>
+          <button className="secondary" onClick={() => runJob("plex_sync")}>
+            <RefreshCw />
+            同步 Plex 对照
+          </button>
+          <button className="primary" onClick={() => runJob("local_scan")}>
+            <FolderTree />
+            扫描本地曲库
+          </button>
+        </div>
+      </section>
+      <div className="local-stats">
+        <StatCard icon={FileAudio} label="本地音频" value={stats.total} />
+        <StatCard
+          icon={Image}
+          label="缺封面"
+          value={stats.missing_cover}
+          tone="violet"
+        />
+        <StatCard
+          icon={BookOpenText}
+          label="缺歌词"
+          value={stats.missing_lyrics}
+          tone="blue"
+        />
+        <StatCard
+          icon={CircleAlert}
+          label="目录待整理"
+          value={stats.bad_path}
+          tone="amber"
+        />
+      </div>
+      <div className="local-tabs">
+        {[
+          ["files", "文件浏览"],
+          ["categories", "分类浏览"],
+          ["missing", "缺失信息"],
+          ["preview", "入库预览"],
+          ["history", "操作历史"],
+        ].map(([id, label]) => (
+          <button
+            className={tab === id ? "active" : ""}
+            onClick={() => switchTab(id)}
+            key={id}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {error && (
+        <div className="inline-error">
+          <CircleAlert />
+          {error}
+        </div>
+      )}
+      {tab === "files" && (
+        <section className="panel local-workspace">
+          {activeFilter && (
+            <div className="library-context">
+              <span>分类浏览</span>
+              <ChevronRight />
+              <span>{activeFilter.type}</span>
+              <ChevronRight />
+              <strong>{activeFilter.name}</strong>
+              <button onClick={clearFilter}>
+                {activeFilter.type}={activeFilter.name}
+                <X />
+              </button>
+            </div>
+          )}
+          <div className="local-toolbar">
+            <div className="search-field">
+              <Search />
+              <input
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                  setActiveFilter(null);
+                }}
+                placeholder="搜索文件、歌曲、歌手或专辑…"
+              />
+            </div>
+            <span>{data.total} 个真实文件</span>
+            <button
+              className="secondary small"
+              disabled={!selected.length}
+              onClick={preview}
+            >
+              <WandSparkles />
+              整理预览 ({selected.length})
+            </button>
+          </div>
+          {loading ? (
+            <PageLoader />
+          ) : (
+            <div className="local-table">
+              <div className="local-row local-head">
+                <span></span>
+                <span>歌曲 / 文件</span>
+                <span>歌手</span>
+                <span>专辑</span>
+                <span>状态</span>
+                <span>操作</span>
+              </div>
+              {data.items.map((item) => (
+                <div className="local-row" key={item.id}>
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(item.id)}
+                    onChange={() => toggle(item.id)}
+                  />
+                  <div className="local-title">
+                    <strong>{item.title || item.filename}</strong>
+                    <small>{item.path}</small>
+                  </div>
+                  <span>{item.artist || "未知歌手"}</span>
+                  <span>{item.album || "未知专辑"}</span>
+                  <div className="file-flags">
+                    <i className={item.has_cover ? "ok" : ""}>封面</i>
+                    <i className={item.has_lrc ? "ok" : ""}>歌词</i>
+                    <i className={item.plex_matched ? "ok" : ""}>Plex</i>
+                  </div>
+                  <div className="row-actions">
+                    <button title="播放" onClick={() => play(item)}>
+                      <Play />
+                    </button>
+                    <button title="编辑标签" onClick={() => setEditing(item)}>
+                      <Tags />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {!loading && data.total > pageSize && (
+            <div className="pagination">
+              <button
+                disabled={page <= 1}
+                onClick={() => setPage((value) => Math.max(1, value - 1))}
+              >
+                上一页
+              </button>
+              <span>
+                第 {page} / {Math.ceil(data.total / pageSize)} 页
+              </span>
+              <select
+                value={pageSize}
+                onChange={(event) => {
+                  setPageSize(Number(event.target.value));
+                  setPage(1);
+                }}
+              >
+                <option value="30">每页 30 首</option>
+                <option value="50">每页 50 首</option>
+                <option value="100">每页 100 首</option>
+              </select>
+              <button
+                disabled={page >= Math.ceil(data.total / pageSize)}
+                onClick={() => setPage((value) => value + 1)}
+              >
+                下一页
+              </button>
+            </div>
+          )}
+        </section>
+      )}
+      {tab === "missing" && (
+        <section className="panel missing-workspace">
+          <SectionHead
+            title="缺失信息扫描"
+            note="筛选真实文件，不修改 Plex 条目"
+          />
+          <div className="missing-filters">
+            {[
+              ["cover", "缺封面", stats.missing_cover],
+              ["lyrics", "缺歌词", stats.missing_lyrics],
+              ["artist", "缺歌手", stats.missing_artist],
+              ["album", "缺专辑", stats.missing_album],
+              ["path", "目录不规范", stats.bad_path],
+              ["plex", "Plex 未识别", stats.plex_unmatched],
+            ].map(([id, label, count]) => (
+              <button
+                className={missing === id ? "active" : ""}
+                onClick={() => {
+                  setMissing(id);
+                  setActiveFilter({
+                    type: "缺失信息",
+                    name: label,
+                    missing: id,
+                  });
+                  setPage(1);
+                  setTab("files");
+                }}
+                key={id}
+              >
+                <b>{count || 0}</b>
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+      {tab === "categories" && (
+        <section className="panel category-workspace">
+          <SectionHead
+            title="曲库分类"
+            note="选择分类后可继续筛选、播放或编辑，返回时保留分类上下文。"
+          />
+          <div className="category-summary">
+            {(categories.summary || []).map((item) => (
+              <button
+                key={item.id}
+                onClick={() => {
+                  if (item.id === "tracks") clearFilter();
+                  else setActiveFilter(null);
+                  setTab(item.id === "tracks" ? "files" : "categories");
+                }}
+              >
+                <strong>{fmt(item.count)}</strong>
+                <span>{item.label}</span>
+                <small>{item.note}</small>
+              </button>
+            ))}
+          </div>
+          <div className="category-groups">
+            {[
+              ["genre", "流派 / 风格"],
+              ["artist", "艺人"],
+              ["album", "专辑"],
+              ["folder", "顶层文件夹"],
+              ["format", "文件格式"],
+              ["quality", "音质规格"],
+              ["year", "年份"],
+              ["scene", "场景精选"],
+              ["missing", "待修复"],
+            ].map(([key, title]) => (
+              <div className="category-group" key={key}>
+                <h3>{title}</h3>
+                <div>
+                  {(categories.groups?.[key] || []).map((item) => (
+                    <button
+                      key={item.id || item.name}
+                      onClick={() => applyCategory(item, key, title)}
+                    >
+                      <span>{item.name}</span>
+                      <b>{fmt(item.count)}</b>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+      {tab === "preview" && (
+        <section className="panel preview-workspace">
+          <SectionHead
+            title="整理预览"
+            note="确认前不会移动任何文件"
+            action={
+              previews.length ? (
+                <button className="primary" onClick={apply}>
+                  <Check />
+                  确认执行
+                </button>
+              ) : null
+            }
+          />
+          {previews.length ? (
+            <div className="preview-list">
+              {previews.map((item) => (
+                <div key={item.fileId}>
+                  <div>
+                    <small>原路径</small>
+                    <code>{item.sourcePath}</code>
+                  </div>
+                  <ChevronRight />
+                  <div>
+                    <small>新路径</small>
+                    <code>{item.targetPath}</code>
+                  </div>
+                  <i className={item.conflict ? "danger" : "safe"}>
+                    {item.conflict ? "存在冲突" : "安全"}
+                  </i>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <Empty
+              icon={WandSparkles}
+              title="暂无整理预览"
+              text="在文件浏览中勾选歌曲，再点击“整理预览”。"
+            />
+          )}
+        </section>
+      )}
+      {tab === "history" && (
+        <section className="panel operation-workspace">
+          <SectionHead
+            title="操作历史"
+            note="标签写入、移动和下载入库均有回滚数据"
+          />
+          <div className="operation-list">
+            {operations.length ? (
+              operations.map((item) => (
+                <div key={item.id}>
+                  <span>{item.action}</span>
+                  <code>{item.target_id || "—"}</code>
+                  <i>{item.rollbackable ? "可回滚" : "仅记录"}</i>
+                  <time>{timeAgo(item.created_at)}</time>
+                  {item.rollbackable ? (
+                    <button onClick={() => rollback(item)}>
+                      <RotateCcw />
+                      回滚
+                    </button>
+                  ) : null}
+                </div>
+              ))
+            ) : (
+              <Empty
+                icon={RotateCcw}
+                title="暂无修改记录"
+                text="完成标签写入、文件整理或入库后，记录会显示在这里。"
+              />
+            )}
+          </div>
+        </section>
+      )}
+      {editing && (
+        <div className="modal-wrap">
+          <button className="modal-backdrop" onClick={() => setEditing(null)} />
+          <form className="modal panel tag-modal" onSubmit={saveTags}>
+            <div className="modal-head">
+              <div>
+                <span className="eyebrow">AUDIO TAGS</span>
+                <h3>{editing.filename}</h3>
+              </div>
+              <button
+                type="button"
+                className="icon-button"
+                onClick={() => setEditing(null)}
+              >
+                <X />
+              </button>
+            </div>
+            <div className="tag-grid">
+              {[
+                ["title", "标题"],
+                ["artist", "歌手"],
+                ["album", "专辑"],
+                ["albumArtist", "专辑艺术家"],
+                ["year", "年份"],
+                ["trackNumber", "音轨号"],
+                ["discNumber", "碟号"],
+                ["genre", "流派"],
+              ].map(([key, label]) => (
+                <label key={key}>
+                  {label}
+                  <input
+                    name={key}
+                    defaultValue={
+                      editing[key] ||
+                      editing[
+                        key.replace(/[A-Z]/g, (m) => "_" + m.toLowerCase())
+                      ] ||
+                      ""
+                    }
+                  />
+                </label>
+              ))}
+            </div>
+            <p className="modal-note">
+              <ShieldCheck />
+              保存会直接写入真实音频标签，并记录可回滚的旧值。
+            </p>
+            <button className="primary full">
+              <Tags />
+              确认写入标签
+            </button>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DiscoverPage({ play, navigate, isAdmin = true }) {
+  const [feed, setFeed] = useState({ categories: [], playlists: [] }),
+    [category, setCategory] = useState("热门"),
+    [detail, setDetail] = useState(null),
+    [detailPage, setDetailPage] = useState(1);
+  const [loading, setLoading] = useState(true),
+    [detailLoading, setDetailLoading] = useState(false),
+    [error, setError] = useState(""),
+    [queueing, setQueueing] = useState(false);
+  const loadFeed = async (name) => {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await api(
+        `/api/discovery/playlists?category=${encodeURIComponent(name || "热门")}`,
+      );
+      setFeed(data);
+      setCategory(data.selectedCategory || name || "热门");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    loadFeed("热门");
+  }, []);
+  const openPlaylist = async (item) => {
+    setDetailLoading(true);
+    setError("");
+    setDetailPage(1);
+    try {
+      setDetail(await api(`/api/discovery/playlists/${item.id}`));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+  const playMatched = (track) => track?.localTrack && play(track.localTrack);
+  const locateMatched = async (track) => {
+    const resources = track?.localTrack?.resources || [];
+    const local = resources.find((item) => item.type === "local_file");
+    if (local?.path) {
+      await navigator.clipboard?.writeText(local.path);
+      return;
+    }
+    const plexResource = resources.find((item) => item.type === "plex_item");
+    if (plexResource?.id) {
+      const info = await api(`/api/plex/items/${plexResource.id}/playback`);
+      if (info.openPlexUrl) window.open(info.openPlexUrl, "_blank");
+    }
+  };
+  const queueMissing = async () => {
+    const tracks = (detail?.tracks || []).filter((item) => item.canDownload);
+    if (!tracks.length || !detail.downloadSource) return;
+    setQueueing(true);
+    setError("");
+    try {
+      const result = await api("/api/discovery/download-missing", {
+        method: "POST",
+        body: JSON.stringify({
+          sourceId: detail.downloadSource.id,
+          quality: "320k",
+          tracks,
+        }),
+      });
+      if (result.created) {
+        navigate?.("tasks");
+      } else setError(result.errors?.[0]?.error || "没有可加入的下载候选");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setQueueing(false);
+    }
+  };
+  const categories = feed.categories || [],
+    playlists = feed.playlists || [];
+  const detailPageSize = 50;
+  const detailTracks = detail?.tracks || [];
+  const detailPages = Math.max(
+    1,
+    Math.ceil(detailTracks.length / detailPageSize),
+  );
+  const visibleDetailTracks = detailTracks.slice(
+    (detailPage - 1) * detailPageSize,
+    detailPage * detailPageSize,
+  );
+  return (
+    <div className="page discover-page">
+      <section className="page-intro">
+        <span className="eyebrow">
+          <Sparkles />
+          MUSIC DISCOVERY
+        </span>
+        <h1>
+          从歌单发现，<span>在自己的曲库里播放。</span>
+        </h1>
+        <p>歌单只作为发现来源；歌曲会先与本地文件和 Plex 合并匹配。</p>
+      </section>
+      {error && (
+        <div className="inline-error">
+          <CircleAlert />
+          {error}
+        </div>
+      )}
+      <div className="discover-layout">
+        <section className="panel discover-panel playlist-taxonomy">
+          <SectionHead
+            title="歌单分类"
+            note={
+              feed.source === "netease-hottags"
+                ? "网易云音乐公开分类"
+                : "平台暂时不可用"
+            }
+          />
+          <div className="playlist-tags">
+            {categories.map((item) => (
+              <button
+                className={category === item.name ? "active" : ""}
+                key={item.id}
+                onClick={() => {
+                  setDetail(null);
+                  setDetailPage(1);
+                  loadFeed(item.name);
+                }}
+              >
+                <span>{item.name}</span>
+                {item.count ? <b>{fmt(item.count)}</b> : null}
+              </button>
+            ))}
+          </div>
+        </section>
+        <section className="panel discover-panel">
+          <SectionHead
+            title={`${category}歌单`}
+            note="选择歌单后查看本地匹配结果"
+          />
+          {loading ? (
+            <PageLoader />
+          ) : playlists.length ? (
+            <div className="playlist-card-grid">
+              {playlists.map((item) => (
+                <button key={item.id} onClick={() => openPlaylist(item)}>
+                  <div>
+                    {item.coverUrl ? (
+                      <img src={item.coverUrl} alt="" />
+                    ) : (
+                      <ListMusic />
+                    )}
+                  </div>
+                  <strong>{item.title}</strong>
+                  <span>
+                    {item.creator} · {fmt(item.trackCount)} 首
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <Empty
+              icon={Radio}
+              title="暂时没有读到歌单"
+              text="稍后刷新分类；本地曲库和播放器不受影响。"
+            />
+          )}
+        </section>
+        {(detailLoading || detail) && (
+          <section className="panel discover-panel playlist-detail">
+            <SectionHead
+              title={detail?.playlist?.title || "正在读取歌单"}
+              note={
+                detail
+                  ? `${detail.summary.matched} 首已匹配 · ${detail.summary.downloadable} 首可下载 · ${detail.summary.unavailable} 首无法识别`
+                  : ""
+              }
+              action={
+                detail && isAdmin && detail.summary.downloadable ? (
+                  <button
+                    className="primary small"
+                    disabled={queueing}
+                    onClick={queueMissing}
+                  >
+                    {queueing ? (
+                      <LoaderCircle className="spin" />
+                    ) : (
+                      <Download />
+                    )}
+                    批量加入下载
+                  </button>
+                ) : null
+              }
+            />
+            {detailLoading ? (
+              <PageLoader />
+            ) : (
+              <div className="playlist-match-table">
+                {visibleDetailTracks.map((item, index) => (
+                  <div key={`${item.platformTrackId}-${index}`}>
+                    <span>
+                      {String(
+                        (detailPage - 1) * detailPageSize + index + 1,
+                      ).padStart(2, "0")}
+                    </span>
+                    <div>
+                      <strong>{item.title}</strong>
+                      <small>
+                        {item.artist || "未知歌手"} · {item.album || "未知专辑"}
+                      </small>
+                    </div>
+                    <i className={item.matchStatus}>
+                      {item.matchStatus === "matched"
+                        ? `已匹配 · ${item.localTrack?.sourceSummary || "本地"}`
+                        : item.canDownload
+                          ? "可下载"
+                          : "无法识别"}
+                    </i>
+                    {item.matchStatus === "matched" ? (
+                      <div className="inline-task-actions">
+                        <button onClick={() => playMatched(item)}><Play />播放</button>
+                        <button onClick={() => locateMatched(item)}><LocateFixed />{item.localTrack?.sourceTypes?.includes("local_file") ? "复制路径" : "打开 Plex"}</button>
+                      </div>
+                    ) : item.canDownload && isAdmin ? (
+                      <button
+                        onClick={() => {
+                          localStorage.setItem(
+                            "songlib-download-query",
+                            `${item.title} ${item.artist}`,
+                          );
+                          navigate?.("download");
+                        }}
+                      >
+                        <Download />
+                        下载
+                      </button>
+                    ) : (
+                      <span />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {!detailLoading && detailTracks.length > detailPageSize && (
+              <div className="pagination">
+                <button
+                  className="secondary small"
+                  disabled={detailPage <= 1}
+                  onClick={() => setDetailPage((value) => value - 1)}
+                >
+                  上一页
+                </button>
+                <span>
+                  第 {detailPage} / {detailPages} 页 · 共 {detailTracks.length}{" "}
+                  首
+                </span>
+                <button
+                  className="secondary small"
+                  disabled={detailPage >= detailPages}
+                  onClick={() => setDetailPage((value) => value + 1)}
+                >
+                  下一页
+                </button>
+              </div>
+            )}
+          </section>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const parseLrc = (text) =>
+  (text || "")
+    .replace(/\\n/g, "\n")
+    .split(/\r?\n/)
+    .flatMap((line) => {
+      const match = line.match(/\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?]\s*(.*)$/);
+      if (!match) return [];
+      return [
+        {
+          time:
+            Number(match[1]) * 60 +
+            Number(match[2]) +
+            Number(`0.${match[3] || 0}`),
+          text: match[4] || "♪",
+        },
+      ];
+    })
+    .sort((a, b) => a.time - b.time);
+
+const displayLyricsFor = (track, parsed) => {
+  if (parsed.length) return parsed;
+  const plain = (track?.lyrics || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (plain.length)
+    return plain.map((text, index) => ({ time: index * 7, text }));
+  return [];
+};
+
+const PlayerContext = createContext(null);
+const usePlayer = () => useContext(PlayerContext);
+
+const sourceLabel = (sourceType) =>
+  ({
+    local_file: "本地文件",
+    plex_item: "Plex 曲目",
+    source_preview: "下载前试听",
+  })[sourceType] || "本地文件";
+
+function immediatePlaybackTrack(input, quality = "original") {
+  if (!input) return null;
+  let candidate = input;
+  if (Array.isArray(input.resources)) {
+    const resource =
+      input.preferredResource ||
+      input.resources.find((item) => item.type === "local_file") ||
+      input.resources.find((item) => item.type === "plex_item");
+    if (!resource) return null;
+    candidate = {
+      ...input,
+      ...resource,
+      source: resource.source || resource.type,
+      sourceType: resource.type,
+    };
+  }
+  const sourceType =
+    candidate.sourceType ||
+    candidate.source ||
+    (candidate.ratingKey || candidate.plexRatingKey
+      ? "plex_item"
+      : "local_file");
+  const rawDuration = Number(candidate.duration || 0);
+  const duration = rawDuration > 60 * 60 * 6 ? rawDuration / 1000 : rawDuration;
+  if (sourceType === "local_file") {
+    const id = candidate.localFileId || candidate.id;
+    if (!id || (!candidate.path && !candidate.file)) return null;
+    return {
+      id: `local-${id}`,
+      sourceType: "local_file",
+      title: normalizeTrackTitle(candidate.title || candidate.filename),
+      artist: candidate.artist || "未知歌手",
+      album: candidate.album || "未知专辑",
+      duration,
+      coverUrl:
+        candidate.coverUrl ||
+        (candidate.hasCover || candidate.has_cover
+          ? `/api/local/files/${encodeURIComponent(id)}/cover`
+          : ""),
+      artistBackgroundUrl: candidate.artistBackgroundUrl || "",
+      audioUrl: `/api/local/files/${encodeURIComponent(id)}/stream`,
+      lyrics: candidate.lyrics || "",
+      quality: "original",
+      bitrate: "original",
+      localFileId: id,
+      file: candidate.path || candidate.file || "",
+      raw: candidate,
+    };
+  }
+  if (sourceType === "plex_item") {
+    const ratingKey =
+      candidate.plexRatingKey || candidate.ratingKey || candidate.id;
+    if (!ratingKey) return null;
+    return {
+      id: `plex-${ratingKey}`,
+      sourceType: "plex_item",
+      title: normalizeTrackTitle(candidate.title),
+      artist: candidate.artist || candidate.grandparentTitle || "未知歌手",
+      album: candidate.album || candidate.parentTitle || "未知专辑",
+      duration,
+      coverUrl: candidate.coverUrl || candidate.thumbUrl || "",
+      artistBackgroundUrl:
+        candidate.artistBackgroundUrl || candidate.artUrl || "",
+      audioUrl: `/api/player/plex/${encodeURIComponent(ratingKey)}/stream?bitrate=${encodeURIComponent(quality)}`,
+      lyrics: candidate.lyrics || "",
+      quality,
+      bitrate: quality,
+      plexRatingKey: ratingKey,
+      file: candidate.path || candidate.file || "",
+      raw: candidate,
+    };
+  }
+  return null;
+}
+
+async function toPlaybackTrack(input, quality = "original") {
+  if (!input) return null;
+  if (Array.isArray(input.resources)) {
+    const resource =
+      input.preferredResource ||
+      input.resources.find((item) => item.type === "local_file") ||
+      input.resources.find((item) => item.type === "plex_item");
+    if (!resource) throw new Error("这首歌没有可播放资源");
+    return toPlaybackTrack(
+      {
+        ...input,
+        ...resource,
+        source: resource.source || resource.type,
+        sourceType: resource.type,
+      },
+      quality,
+    );
+  }
+  if (input.sourceType && input.audioUrl) return input;
+  const sourceType = input.sourceType || input.source || "local_file";
+  if (sourceType === "plex_item") {
+    const ratingKey = input.plexRatingKey || input.ratingKey;
+    const info = await api(`/api/plex/items/${ratingKey}/playback`);
+    const audioUrl =
+      quality === "original"
+        ? info.directPlayUrl
+        : info.transcodeUrls?.[quality] || info.directPlayUrl;
+    return {
+      id: `plex-${ratingKey}`,
+      sourceType: "plex_item",
+      title: normalizeTrackTitle(info.title),
+      artist: info.artist,
+      album: info.album,
+      duration: Math.round((info.duration || 0) / 1000),
+      coverUrl: info.coverUrl,
+      artistBackgroundUrl: info.artistBackgroundUrl,
+      audioUrl,
+      lyrics: info.lyrics || "",
+      quality,
+      bitrate: quality,
+      plexRatingKey: ratingKey,
+      file: info.file,
+      openPlexUrl: info.openPlexUrl,
+      transcodeUrls: info.transcodeUrls || {},
+      raw: info,
+    };
+  }
+  if (sourceType === "source_preview") {
+    const data = await api("/api/player/source-preview", {
+      method: "POST",
+      body: JSON.stringify({
+        sourceId: input.sourceId,
+        quality: input.quality || quality,
+        item: input.item || input,
+      }),
+    });
+    return {
+      id: `preview-${input.trackId || input.id || Date.now()}`,
+      sourceType: "source_preview",
+      title: normalizeTrackTitle(data.title || input.title),
+      artist: data.artist || input.artist,
+      album: data.album || input.album,
+      coverUrl: data.coverUrl || input.coverUrl || input.cover,
+      audioUrl: data.streamUrl,
+      lyrics: "",
+      quality: data.quality || input.quality || quality,
+      sourceId: input.sourceId,
+      raw: input,
+    };
+  }
+  const data = await api(`/api/player/local/${input.localFileId || input.id}`);
+  let lyrics = "";
+  if (data.lyricsUrl) {
+    const lyricData = await api(data.lyricsUrl).catch(() => ({ lyrics: "" }));
+    lyrics = lyricData.lyrics || "";
+  }
+  return {
+    id: `local-${data.id}`,
+    sourceType: "local_file",
+    title: normalizeTrackTitle(data.title || data.filename),
+    artist: data.artist,
+    album: data.album,
+    duration: Math.round((data.duration || 0) / 1000),
+    coverUrl: data.coverUrl,
+    artistBackgroundUrl: data.artistBackgroundUrl,
+    audioUrl: data.streamUrl,
+    lyrics,
+    quality: "original",
+    bitrate: "original",
+    localFileId: data.id,
+    file: data.file,
+    raw: data,
+  };
+}
+
+function PlayerProvider({ children }) {
+  const audioRef = useRef(null);
+  const hydratedRef = useRef(false);
+  const [state, setState] = useState({
+    currentTrack: null,
+    queue: [],
+    isPlaying: false,
+    currentTime: 0,
+    duration: 0,
+    volume: 0.86,
+    playMode: "order",
+    quality: "original",
+    loading: false,
+    error: "",
+  });
+  const [favorites, setFavorites] = useState(() =>
+    storedJson("songlib-favorites", {}),
+  );
+  const [history, setHistory] = useState(() =>
+    storedJson("songlib-play-history", []),
+  );
+  const [playEvents, setPlayEvents] = useState(() =>
+    storedJson("songlib-play-events", []),
+  );
+  const [playlists, setPlaylists] = useState(() =>
+    storedJson("songlib-playlists", {}),
+  );
+  const currentTrack = state.currentTrack;
+  useEffect(() => {
+    let cancelled = false;
+    api("/api/player/state")
+      .then(async (remote) => {
+        if (cancelled) return;
+        if (Object.keys(remote.favorites || {}).length)
+          setFavorites(remote.favorites);
+        if ((remote.history || []).length) setHistory(remote.history);
+        if ((remote.playEvents || []).length) setPlayEvents(remote.playEvents);
+        if (Object.keys(remote.playlists || {}).length)
+          setPlaylists(remote.playlists);
+        if ((remote.queue || []).length)
+          setState((value) => ({ ...value, queue: remote.queue }));
+        if (remote.currentTrack) {
+          try {
+            const restored = await toPlaybackTrack(
+              remote.currentTrack,
+              "original",
+            );
+            if (!cancelled)
+              setState((value) => ({
+                ...value,
+                currentTrack: restored,
+                isPlaying: false,
+                duration: restored.duration || 0,
+              }));
+          } catch {}
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        hydratedRef.current = true;
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  useEffect(() => {
+    localStorage.setItem("songlib-favorites", JSON.stringify(favorites));
+  }, [favorites]);
+  useEffect(() => {
+    localStorage.setItem(
+      "songlib-play-history",
+      JSON.stringify(history.slice(0, 100)),
+    );
+  }, [history]);
+  useEffect(() => {
+    localStorage.setItem(
+      "songlib-play-events",
+      JSON.stringify(playEvents.slice(0, 1000)),
+    );
+  }, [playEvents]);
+  useEffect(() => {
+    localStorage.setItem("songlib-playlists", JSON.stringify(playlists));
+  }, [playlists]);
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    const timer = setTimeout(
+      () =>
+        api("/api/player/state", {
+          method: "PATCH",
+          body: JSON.stringify({
+            values: {
+              queue: state.queue.map(persistableTrack).filter(Boolean),
+              currentTrack: persistableTrack(state.currentTrack),
+              favorites,
+              history,
+              playEvents,
+              playlists,
+            },
+          }),
+        }).catch(() => {}),
+      900,
+    );
+    return () => clearTimeout(timer);
+  }, [
+    state.queue,
+    state.currentTrack?.id,
+    favorites,
+    history,
+    playEvents,
+    playlists,
+  ]);
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) audio.volume = state.volume;
+  }, [state.volume]);
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !currentTrack) return;
+    audio.src = currentTrack.audioUrl || "";
+    audio.load();
+    if (state.isPlaying && currentTrack.audioUrl)
+      audio
+        .play()
+        .catch((err) =>
+          setState((s) => ({ ...s, error: err.message, isPlaying: false })),
+        );
+  }, [currentTrack?.id, currentTrack?.audioUrl]);
+  const remember = (track) => {
+    const playedAt = new Date().toISOString();
+    setPlayEvents((value) => [{ ...track, playedAt }, ...value].slice(0, 1000));
+    setHistory((value) => {
+      const item = { ...track, playedAt };
+      return [
+        item,
+        ...value.filter(
+          (entry) => trackIdentity(entry) !== trackIdentity(track),
+        ),
+      ].slice(0, 100);
+    });
+  };
+  const play = async (input, queue = []) => {
+    setState((s) => ({ ...s, loading: true, error: "" }));
+    try {
+      const immediate = immediatePlaybackTrack(input, state.quality);
+      if (immediate) {
+        if (!isPlayableDuration(immediate))
+          throw new Error("这首歌的时长异常，已阻止播放并避免污染队列。");
+        const nextQueue = sanitizeQueue(
+          queue.length ? queue : state.queue,
+          immediate,
+        );
+        remember(immediate);
+        setState((s) => ({
+          ...s,
+          currentTrack: immediate,
+          queue: nextQueue,
+          isPlaying: true,
+          loading: false,
+          currentTime: 0,
+          duration: immediate.duration || 0,
+          error: "",
+        }));
+        const audio = audioRef.current;
+        if (audio) {
+          audio.src = immediate.audioUrl;
+          audio.load();
+          audio.play().catch((err) =>
+            setState((s) => ({
+              ...s,
+              isPlaying: false,
+              error: err.message || "浏览器阻止了自动播放，请再点一次播放。",
+            })),
+          );
+        }
+        toPlaybackTrack(input, state.quality)
+          .then((fullTrack) => {
+            if (!fullTrack) return;
+            setState((s) =>
+              trackIdentity(s.currentTrack) === trackIdentity(immediate)
+                ? {
+                    ...s,
+                    currentTrack: {
+                      ...immediate,
+                      ...fullTrack,
+                      audioUrl: immediate.audioUrl,
+                    },
+                  }
+                : s,
+            );
+          })
+          .catch(() => {});
+        return;
+      }
+      const track = await toPlaybackTrack(input, state.quality);
+      if (!track?.audioUrl)
+        throw new Error(
+          "没有拿到可播放地址。若你通过 HTTPS 访问，请确认已使用音屿同源代理播放流。",
+        );
+      if (!isPlayableDuration(track))
+        throw new Error("这首歌的时长异常，已阻止播放并避免污染队列。");
+      const nextQueue = sanitizeQueue(
+        queue.length ? queue : state.queue,
+        track,
+      );
+      remember(track);
+      setState((s) => ({
+        ...s,
+        currentTrack: track,
+        queue: nextQueue,
+        isPlaying: true,
+        loading: false,
+        currentTime: 0,
+        duration: track.duration || 0,
+        error: "",
+      }));
+    } catch (err) {
+      setState((s) => ({
+        ...s,
+        loading: false,
+        isPlaying: false,
+        error: err.message || "播放失败",
+      }));
+    }
+  };
+  const pause = () => {
+    audioRef.current?.pause();
+    setState((s) => ({ ...s, isPlaying: false }));
+  };
+  const resume = () => {
+    if (!state.currentTrack?.audioUrl) {
+      setState((s) => ({ ...s, error: "当前曲目没有可播放地址" }));
+      return;
+    }
+    audioRef.current
+      ?.play()
+      .then(() => setState((s) => ({ ...s, isPlaying: true, error: "" })))
+      .catch((err) =>
+        setState((s) => ({ ...s, error: err.message, isPlaying: false })),
+      );
+  };
+  const toggle = () =>
+    state.currentTrack
+      ? state.isPlaying
+        ? pause()
+        : resume()
+      : setState((s) => ({
+          ...s,
+          error: "还没有播放内容。可以先随机播放、打开音乐库或查看今日推荐。",
+        }));
+  const seek = (time) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = time;
+    }
+    setState((s) => ({ ...s, currentTime: time }));
+  };
+  const setVolume = (volume) =>
+    setState((s) => ({ ...s, volume: Number(volume) }));
+  const setQuality = async (quality) => {
+    const audio = audioRef.current;
+    const keep = audio?.currentTime || 0;
+    setState((s) => ({ ...s, quality }));
+    if (!currentTrack) return;
+    if (currentTrack.sourceType === "plex_item") {
+      const track = await toPlaybackTrack(
+        {
+          ...currentTrack,
+          source: "plex_item",
+          ratingKey: currentTrack.plexRatingKey,
+        },
+        quality,
+      );
+      setState((s) => ({ ...s, currentTrack: track, isPlaying: s.isPlaying }));
+      setTimeout(() => {
+        if (audioRef.current) {
+          audioRef.current.currentTime = keep;
+          if (state.isPlaying) audioRef.current.play().catch(() => {});
+        }
+      }, 200);
+    }
+  };
+  const setQueue = (queue) =>
+    setState((s) => ({ ...s, queue: sanitizeQueue(queue, s.currentTrack) }));
+  const addToQueue = async (input) => {
+    try {
+      const track = await toPlaybackTrack(input, state.quality);
+      if (!isPlayableDuration(track)) throw new Error("时长异常，已跳过。");
+      setState((s) => ({
+        ...s,
+        queue: sanitizeQueue([...s.queue, track], s.currentTrack),
+        error: "",
+      }));
+    } catch (err) {
+      setState((s) => ({ ...s, error: err.message || "加入队列失败" }));
+    }
+  };
+  const removeFromQueue = (id) =>
+    setState((s) => ({
+      ...s,
+      queue: s.queue.filter((item) => item.id !== id),
+    }));
+  const setPlayMode = (playMode) => setState((s) => ({ ...s, playMode }));
+  const favoriteId = (track) =>
+    track?.id || track?.ratingKey || track?.localFileId || track?.title;
+  const isFavorite = (track) => !!favorites[favoriteId(track)];
+  const toggleFavorite = (track) => {
+    const id = favoriteId(track);
+    if (!id) return;
+    setFavorites((value) => {
+      const next = { ...value };
+      next[id]
+        ? delete next[id]
+        : (next[id] = {
+            ...track,
+            title: track.title,
+            artist: track.artist,
+            album: track.album,
+            likedAt: new Date().toISOString(),
+          });
+      return next;
+    });
+  };
+  const createPlaylist = (name) => {
+    const clean = String(name || "").trim();
+    if (!clean) return;
+    setPlaylists((value) => (value[clean] ? value : { ...value, [clean]: [] }));
+  };
+  const deletePlaylist = (name) =>
+    setPlaylists((value) => {
+      const next = { ...value };
+      delete next[name];
+      return next;
+    });
+  const addToPlaylist = (name, track) => {
+    if (!name || !track) return;
+    setPlaylists((value) => {
+      const items = value[name] || [];
+      if (items.some((item) => trackIdentity(item) === trackIdentity(track)))
+        return value;
+      return {
+        ...value,
+        [name]: [...items, persistableTrack(track)].filter(Boolean),
+      };
+    });
+  };
+  const next = () => {
+    const nextTrack = state.queue[0];
+    if (nextTrack) {
+      setState((s) => ({ ...s, queue: s.queue.slice(1) }));
+      play(nextTrack, state.queue.slice(1));
+    }
+  };
+  const previous = () => seek(0);
+  const clear = () => {
+    audioRef.current?.pause();
+    setState((s) => ({
+      ...s,
+      currentTrack: null,
+      isPlaying: false,
+      currentTime: 0,
+      error: "",
+    }));
+  };
+  const value = {
+    ...state,
+    audioRef,
+    history,
+    playEvents,
+    playlists,
+    favorites,
+    play,
+    pause,
+    resume,
+    toggle,
+    next,
+    previous,
+    seek,
+    setVolume,
+    setQueue,
+    addToQueue,
+    removeFromQueue,
+    setQuality,
+    setPlayMode,
+    isFavorite,
+    toggleFavorite,
+    createPlaylist,
+    deletePlaylist,
+    addToPlaylist,
+    clear,
+  };
+  return (
+    <PlayerContext.Provider value={value}>
+      {children}
+      <audio
+        ref={audioRef}
+        className="global-audio"
+        onTimeUpdate={(e) => {
+          const audio = e.currentTarget;
+          const currentTime = audio.currentTime || 0;
+          const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+          setState((s) => ({
+            ...s,
+            currentTime,
+            duration: duration || s.duration,
+          }));
+        }}
+        onLoadedMetadata={(e) => {
+          const duration = Number.isFinite(e.currentTarget.duration)
+            ? e.currentTarget.duration
+            : 0;
+          setState((s) => ({ ...s, duration: duration || s.duration }));
+        }}
+        onError={(e) => {
+          const error = e.currentTarget.error;
+          setState((s) => ({
+            ...s,
+            isPlaying: false,
+            error:
+              error?.message ||
+              `音频加载失败（错误码 ${error?.code || "未知"}）`,
+          }));
+        }}
+        onPlay={() => setState((s) => ({ ...s, isPlaying: true, error: "" }))}
+        onPause={() => setState((s) => ({ ...s, isPlaying: false }))}
+        onEnded={() => (state.playMode === "repeat_one" ? seek(0) : next())}
+      />
+    </PlayerContext.Provider>
+  );
+}
+
+function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
+  const player = usePlayer(),
+    current = player.currentTrack;
+  const [lyricsFull, setLyricsFull] = useState(false);
+  const [seeds, setSeeds] = useState([]),
+    [seedLoading, setSeedLoading] = useState(false);
+  useEffect(() => {
+    if (current || seeds.length || seedLoading) return;
+    setSeedLoading(true);
+    Promise.all([
+      api("/api/local/files?limit=10").catch(() => ({ items: [] })),
+      api("/api/library/tracks?pageSize=10").catch(() => ({ items: [] })),
+    ])
+      .then(([local, plexTracks]) => {
+        const localItems = (local.items || []).map((item) => ({
+          ...item,
+          source: "local_file",
+        }));
+        const plexItems = (plexTracks.items || []).map((item) => ({
+          ...item,
+          source: "plex_item",
+        }));
+        setSeeds([...localItems, ...plexItems].slice(0, 12));
+      })
+      .finally(() => setSeedLoading(false));
+  }, [current, seeds.length, seedLoading]);
+  const parsedLyrics = parseLrc(current?.lyrics || "");
+  const displayLyrics = displayLyricsFor(current, parsedLyrics);
+  const activeLine = displayLyrics.reduce(
+    (acc, line, index) => (line.time <= player.currentTime ? index : acc),
+    0,
+  );
+  const albumCover = coverUrlFor(current);
+  const bg = albumCover || "";
+  const cover = albumCover || VISUAL_FALLBACKS.cover;
+  const accent =
+    current?.accentColor ||
+    current?.dominantColor ||
+    current?.raw?.accentColor ||
+    current?.raw?.dominantColor ||
+    "#e3b459";
+  const meta = [
+    ["专辑", current?.album || "未知专辑", Album],
+    ["来源", sourceLabel(current?.sourceType), Server],
+    current?.raw?.year || current?.year
+      ? ["年份", current.raw?.year || current.year, Clock3]
+      : null,
+    current?.raw?.genre || current?.genre
+      ? ["风格", current.raw?.genre || current.genre, Tags]
+      : null,
+  ].filter(Boolean);
+  const queue = player.queue || [];
+  const queueTotal = [current, ...queue]
+    .filter(Boolean)
+    .reduce((sum, item) => sum + Number(item.duration || 0), 0);
+  const showLyrics = playerSettings.showLyrics !== false;
+  const liked = player.isFavorite(current);
+  const addCurrentToPlaylist = () => {
+    const names = Object.keys(player.playlists || {});
+    const name = names.length
+      ? prompt(`添加到歌单（已有：${names.join("、")}）`, names[0])
+      : prompt("新建歌单名称");
+    if (!name) return;
+    if (!player.playlists?.[name]) player.createPlaylist(name);
+    player.addToPlaylist(name, current);
+  };
+  if (!current)
+    return (
+      <div className="page player-page">
+        <section className="player-stage player-pro player-empty-state smart-player-empty">
+          <div className="player-bg" />
+          <div className="player-bg-gradient" />
+          <div className="player-empty-copy">
+            {player.loading || seedLoading ? (
+              <LoaderCircle className="spin" />
+            ) : (
+              <Play />
+            )}
+            <span className="eyebrow">
+              <Radio />
+              SMART QUEUE
+            </span>
+            <h1>{player.loading ? "正在准备播放…" : "还没有播放内容"}</h1>
+            <p>
+              {player.error ||
+                "从音乐库、发现页或最近播放里选一首；也可以让音屿从真实曲库里随机开播。"}
+            </p>
+            <div className="player-empty-actions">
+              <button
+                className="primary"
+                disabled={!seeds.length}
+                onClick={() =>
+                  player.play(
+                    seeds[Math.floor(Math.random() * seeds.length)],
+                    sanitizeQueue(seeds),
+                  )
+                }
+              >
+                <Shuffle />
+                随机播放
+              </button>
+              <button
+                className="secondary"
+                onClick={() => navigate?.("library")}
+              >
+                <Library />
+                打开音乐库
+              </button>
+              <button
+                className="secondary"
+                onClick={() => navigate?.("discover")}
+              >
+                <Sparkles />
+                今日推荐
+              </button>
+            </div>
+            {player.error && (
+              <button className="secondary" onClick={player.clear}>
+                <X />
+                清除错误
+              </button>
+            )}
+          </div>
+          <div className="player-seed-grid">
+            {seeds.length ? (
+              seeds.slice(0, 8).map((item) => (
+                <button
+                  key={`${item.source}-${item.id || item.ratingKey}`}
+                  onClick={() => player.play(item, sanitizeQueue(seeds, item))}
+                >
+                  <div className="seed-cover">
+                    {coverUrlFor(item) ? (
+                      <img src={coverUrlFor(item)} alt="" />
+                    ) : (
+                      <Disc3 />
+                    )}
+                  </div>
+                  <strong>
+                    {normalizeTrackTitle(item.title || item.filename)}
+                  </strong>
+                  <span>
+                    {item.artist || item.grandparentTitle || "未知歌手"}
+                  </span>
+                  <Play />
+                </button>
+              ))
+            ) : (
+              <Empty
+                icon={Music2}
+                title="还没读到可播曲目"
+                text="扫描本地曲库或同步 Plex 后，这里会出现真实推荐。"
+              />
+            )}
+          </div>
+        </section>
+      </div>
+    );
+  return (
+    <div className="page player-page" style={{ "--player-accent": accent }}>
+      <section className="player-stage player-pro player-immersive">
+        <div
+          className="player-bg"
+          style={{ backgroundImage: `url(${bg || VISUAL_FALLBACKS.player})` }}
+        />
+        <div className="player-bg-gradient" />
+        <div className="player-layout player-immersive-grid">
+          <article className="player-primary-card">
+            <div className="player-art-wrap">
+              <div className="player-disc-halo">
+                <span />
+              </div>
+              <div className="player-cover">
+                {cover ? (
+                  <img src={cover} alt={current.title || "专辑封面"} />
+                ) : (
+                  <Music2 />
+                )}
+              </div>
+              <div className="player-badges">
+                <span>
+                  {player.quality === "original"
+                    ? "无损原始"
+                    : player.quality.toUpperCase()}
+                </span>
+                <span>{sourceLabel(current.sourceType)}</span>
+                <span>FLAC / Plex Ready</span>
+              </div>
+            </div>
+            <div className="player-main">
+              <span className="eyebrow">
+                <Radio />
+                NOW PLAYING
+              </span>
+              <h1>{current.title || "未命名歌曲"}</h1>
+              <p className="player-artist-line">
+                {current.artist || "未知歌手"}
+                <ChevronRight />
+                {current.album || "未知专辑"}
+              </p>
+              <div className="player-meta-line">
+                {meta.map(([label, value, Icon]) => (
+                  <span key={label}>
+                    <Icon />
+                    {label}：{value}
+                  </span>
+                ))}
+              </div>
+              {player.error && (
+                <div className="inline-error">
+                  <CircleAlert />
+                  {player.error}
+                </div>
+              )}
+              <Spectrum bars={64} />
+              <div className="player-progress">
+                <span>{formatTime(player.currentTime)}</span>
+                <input
+                  type="range"
+                  min="0"
+                  max={player.duration || 0}
+                  value={Math.min(player.currentTime, player.duration || 0)}
+                  onChange={(e) => player.seek(Number(e.target.value))}
+                />
+                <span>{formatTime(player.duration)}</span>
+              </div>
+              <div className="player-main-controls">
+                <button
+                  aria-label="随机播放"
+                  onClick={() => player.setQueue([...queue].reverse())}
+                >
+                  <Shuffle />
+                </button>
+                <button aria-label="上一首" onClick={player.previous}>
+                  <ChevronRight className="prev-icon" />
+                </button>
+                <button
+                  className="play-large"
+                  aria-label={player.isPlaying ? "暂停" : "播放"}
+                  onClick={player.toggle}
+                >
+                  {player.isPlaying ? <Pause /> : <Play />}
+                </button>
+                <button aria-label="下一首" onClick={player.next}>
+                  <ChevronRight />
+                </button>
+                <button
+                  className={player.playMode === "repeat_one" ? "active" : ""}
+                  aria-label={
+                    player.playMode === "repeat_one"
+                      ? "单曲循环已开启"
+                      : "开启单曲循环"
+                  }
+                  onClick={() =>
+                    player.setPlayMode(
+                      player.playMode === "repeat_one" ? "order" : "repeat_one",
+                    )
+                  }
+                >
+                  <Repeat />
+                </button>
+              </div>
+              <div className="player-controls-extra">
+                <label className="quality-select">
+                  <span>音质</span>
+                  <select
+                    value={player.quality}
+                    onChange={(e) => player.setQuality(e.target.value)}
+                  >
+                    <option value="original">Original</option>
+                    <option value="320k">320K</option>
+                    <option value="256k">256K</option>
+                    <option value="192k">192K</option>
+                    <option value="128k">128K</option>
+                  </select>
+                </label>
+                <label className="quality-select">
+                  <span>速度</span>
+                  <select
+                    onChange={(e) => {
+                      if (player.audioRef.current)
+                        player.audioRef.current.playbackRate = Number(
+                          e.target.value,
+                        );
+                    }}
+                    defaultValue="1"
+                  >
+                    <option value="0.75">0.75x</option>
+                    <option value="1">1x</option>
+                    <option value="1.25">1.25x</option>
+                    <option value="1.5">1.5x</option>
+                  </select>
+                </label>
+                <label className="quality-select">
+                  <Volume2 />
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={player.volume}
+                    onChange={(e) => player.setVolume(e.target.value)}
+                  />
+                </label>
+                <button
+                  className={`secondary small ${liked ? "active" : ""}`}
+                  onClick={() => player.toggleFavorite(current)}
+                >
+                  <Heart />
+                  {liked ? "已喜欢" : "喜欢"}
+                </button>
+                <button
+                  className="secondary small"
+                  onClick={addCurrentToPlaylist}
+                >
+                  <ListMusic />
+                  加入歌单
+                </button>
+                {isAdmin && (
+                  <button
+                    className="secondary small"
+                    disabled={!current.file}
+                    onClick={() =>
+                      current.file &&
+                      navigator.clipboard?.writeText(current.file)
+                    }
+                  >
+                    <LocateFixed />
+                    定位文件
+                  </button>
+                )}
+                {isAdmin && (
+                  <button
+                    className="secondary small"
+                    disabled={!current.openPlexUrl}
+                    onClick={() =>
+                      current.openPlexUrl &&
+                      window.open(current.openPlexUrl, "_blank")
+                    }
+                  >
+                    <Server />
+                    打开 Plex
+                  </button>
+                )}
+              </div>
+            </div>
+          </article>
+          <aside className="queue-panel">
+            <SectionHead
+              title={`播放队列（${queue.length + 1}）`}
+              note={`总时长 ${queueTotal ? formatTime(queueTotal) : formatTime(player.duration)}`}
+              action={
+                queue.length ? (
+                  <button
+                    className="text-button"
+                    onClick={() => player.setQueue([])}
+                  >
+                    清空
+                  </button>
+                ) : (
+                  <span className="queue-hint">没有待播歌曲</span>
+                )
+              }
+            />
+            <button className="queue-item active" onClick={() => {}}>
+              <div className="queue-thumb">
+                {cover ? <img src={cover} alt="" /> : <Music2 />}
+              </div>
+              <div>
+                <strong>{current.title}</strong>
+                <span>{current.artist || "未知歌手"} · 正在播放</span>
+              </div>
+              <span className="playing-indicator">
+                <i />
+                <i />
+                <i />
+              </span>
+              <em>{formatTime(player.duration)}</em>
+            </button>
+            {queue.length ? (
+              queue.map((item, index) => (
+                <button
+                  className="queue-item"
+                  key={item.id || `${item.title}-${index}`}
+                  onClick={() =>
+                    player.play(
+                      item,
+                      queue.filter((_, i) => i !== index),
+                    )
+                  }
+                >
+                  <span className="queue-index">
+                    {String(index + 2).padStart(2, "0")}
+                  </span>
+                  <div>
+                    <strong>{item.title}</strong>
+                    <span>
+                      {item.artist || "未知歌手"} · {item.album || "待播放"}
+                    </span>
+                  </div>
+                  <em>{item.duration ? formatTime(item.duration) : "—"}</em>
+                  <X
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      player.removeFromQueue(item.id);
+                    }}
+                  />
+                </button>
+              ))
+            ) : (
+              <div className="queue-empty">
+                <ListMusic />
+                <strong>队列为空</strong>
+                <span>在音乐库、发现页或搜索结果里点“下一首/加入队列”。</span>
+              </div>
+            )}
+          </aside>
+          {showLyrics ? (
+            <section className="lyrics-panel player-lyrics-card">
+              <div className="lyrics-head">
+                <Mic2 />
+                <span>歌词</span>
+                <div>
+                  {displayLyrics.length ? (
+                    <button
+                      className="lyrics-fullscreen-button"
+                      onClick={() => setLyricsFull(true)}
+                    >
+                      <Maximize2 />
+                      全屏歌词
+                    </button>
+                  ) : isAdmin ? (
+                    <button
+                      className="lyrics-fullscreen-button"
+                      onClick={() => navigate?.("scrape")}
+                    >
+                      <WandSparkles />
+                      补歌词
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+              {displayLyrics.length ? (
+                displayLyrics.map((line, index) => (
+                  <p
+                    className={index === activeLine ? "active" : ""}
+                    key={`${line.time}-${index}`}
+                  >
+                    {line.text}
+                  </p>
+                ))
+              ) : (
+                <Empty
+                  icon={Mic2}
+                  title="这首歌还没有可用歌词"
+                  text={
+                    isAdmin
+                      ? "可去刮削中心补齐时间轴歌词。"
+                      : "管理员补齐歌词后会自动显示。"
+                  }
+                />
+              )}
+            </section>
+          ) : (
+            <section className="lyrics-panel player-lyrics-card">
+              <Empty
+                icon={Mic2}
+                title="歌词显示已关闭"
+                text="可在系统设置 > 播放器中重新打开。"
+              />
+            </section>
+          )}
+        </div>
+      </section>
+      {lyricsFull && showLyrics && (
+        <LyricsFullscreenOverlay
+          current={current}
+          cover={cover}
+          bg={bg}
+          lines={displayLyrics}
+          activeLine={activeLine}
+          player={player}
+          onClose={() => setLyricsFull(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function LyricsFullscreenOverlay({
+  current,
+  cover,
+  bg,
+  lines,
+  activeLine,
+  player,
+  onClose,
+}) {
+  useEffect(() => {
+    const handler = (event) => {
+      if (event.key === "Escape") onClose?.();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+  return (
+    <section
+      className="lyrics-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label="全屏歌词"
+    >
+      <div className="lyrics-overlay-backdrop" aria-hidden="true">
+        <img src={bg || cover || VISUAL_FALLBACKS.player} alt="" />
+        <i />
+      </div>
+      <button className="lyrics-overlay-close" onClick={onClose}>
+        <X />
+        关闭
+      </button>
+      <div className="lyrics-overlay-song">
+        <div className="lyrics-overlay-cover">
+          {cover ? <img src={cover} alt="" /> : <Music2 />}
+        </div>
+        <div>
+          <strong>{current?.title || "未命名歌曲"}</strong>
+          <span>
+            {current?.artist || "未知歌手"} · {current?.album || "未知专辑"}
+          </span>
+        </div>
+      </div>
+      <div className="lyrics-overlay-lines">
+        {lines.map((line, index) => (
+          <p
+            className={
+              index === activeLine
+                ? "active"
+                : Math.abs(index - activeLine) <= 1
+                  ? "near"
+                  : "far"
+            }
+            key={`${line.time}-${index}`}
+            onClick={() => Number.isFinite(line.time) && player.seek(line.time)}
+          >
+            {line.text}
+          </p>
+        ))}
+      </div>
+      <div className="lyrics-overlay-controls">
+        <span>{formatTime(player.currentTime)}</span>
+        <input
+          type="range"
+          min="0"
+          max={player.duration || 0}
+          value={Math.min(player.currentTime, player.duration || 0)}
+          onChange={(e) => player.seek(Number(e.target.value))}
+        />
+        <span>{formatTime(player.duration)}</span>
+        <button onClick={player.previous}>
+          <ChevronRight className="prev-icon" />
+        </button>
+        <button className="play-large" onClick={player.toggle}>
+          {player.isPlaying ? <Pause /> : <Play />}
+        </button>
+        <button onClick={player.next}>
+          <ChevronRight />
+        </button>
+      </div>
+    </section>
+  );
+}
+
+const formatTime = (value) => {
+  const v = Math.max(0, Math.floor(value || 0));
+  return `${Math.floor(v / 60)}:${String(v % 60).padStart(2, "0")}`;
+};
+
+function MiniPlayer({ openPlayer, navigate }) {
+  const player = usePlayer(),
+    current = player.currentTrack;
+  if (!current) return null;
+  const cover = coverUrlFor(current) || VISUAL_FALLBACKS.cover;
+  const liked = player.isFavorite(current);
+  return (
+    <div className="mini-player">
+      <button className="mini-cover" onClick={openPlayer}>
+        <img src={cover} alt="" />
+      </button>
+      <div className="mini-copy">
+        <strong>{current.title}</strong>
+        <span>
+          {current.artist || "未知歌手"} · {sourceLabel(current.sourceType)}
+        </span>
+      </div>
+      <button
+        className={`mini-like ${liked ? "active" : ""}`}
+        aria-label={liked ? "取消喜欢" : "喜欢"}
+        onClick={() => player.toggleFavorite(current)}
+      >
+        <Heart />
+      </button>
+      <div className="mini-controls">
+        <button onClick={player.previous}>
+          <ChevronRight className="prev-icon" />
+        </button>
+        <button onClick={player.toggle}>
+          {player.isPlaying ? <Pause /> : <Play />}
+        </button>
+        <button onClick={player.next}>
+          <ChevronRight />
+        </button>
+        <div className="mini-progress">
+          <i
+            style={{
+              width: `${player.duration ? pct(player.currentTime, player.duration) : 0}%`,
+            }}
+          />
+        </div>
+        <span>
+          {formatTime(player.currentTime)} / {formatTime(player.duration)}
+        </span>
+      </div>
+      <label className="mini-volume">
+        <select
+          value={player.quality}
+          onChange={(e) => player.setQuality(e.target.value)}
+        >
+          <option value="original">Original</option>
+          <option value="320k">320K</option>
+          <option value="256k">256K</option>
+          <option value="192k">192K</option>
+          <option value="128k">128K</option>
+        </select>
+        <Volume2 />
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value={player.volume}
+          onChange={(e) => player.setVolume(e.target.value)}
+        />
+      </label>
+      <button className="icon-button" onClick={openPlayer}>
+        <ListMusic />
+      </button>
+      <button className="icon-button" onClick={player.clear}>
+        <X />
+      </button>
+    </div>
+  );
+}
+
+const scrapeTabs = [
+  {
+    id: "plex",
+    kind: "scrape_plex_metadata",
+    icon: UsersRound,
+    tone: "amber",
+    title: "Plex 元数据补全",
+    desc: "补齐歌手海报、背景、中文简介与专辑封面，并触发 Plex 扫描。",
+    chips: ["歌手海报", "歌手背景", "中文简介", "专辑封面"],
+  },
+  {
+    id: "tags",
+    kind: "fill_local_tags",
+    icon: Tags,
+    tone: "blue",
+    title: "本地标签补全",
+    desc: "扫描标题、歌手、专辑、年份、音轨号与流派，为后续整理提供依据。",
+    chips: ["标题", "歌手", "专辑", "年份", "音轨号", "流派"],
+  },
+  {
+    id: "assets",
+    kind: "fill_assets",
+    icon: BookOpenText,
+    tone: "violet",
+    title: "封面与歌词",
+    desc: "补齐 cover.jpg、内嵌封面、同名 .lrc 与 UTF-8 歌词文件。",
+    chips: ["cover.jpg", "内嵌封面", "同名 LRC", "UTF-8"],
+  },
+  {
+    id: "rename",
+    kind: "local_organize",
+    icon: FolderTree,
+    tone: "green",
+    title: "重命名与目录整理",
+    desc: "按 Plex 规则生成目标路径，先预览冲突，再批量移动目录。",
+    chips: ["路径预览", "冲突检测", "Unknown 修复", "回滚"],
+  },
+  {
+    id: "tasks",
+    kind: "tasks",
+    icon: ScrollText,
+    tone: "pink",
+    title: "任务记录",
+    desc: "查看刮削、扫描、整理的进度、计数、错误和日志。",
+    chips: ["进度", "成功/失败/跳过", "错误日志", "取消/重试"],
+  },
+];
+
+function ScrapeCenter({ jobs, navigate, settings }) {
+  const activeKinds = new Set(
+    jobs
+      .filter((j) => ["queued", "running"].includes(j.status))
+      .map((j) => j.kind),
+  );
+  const [tab, setTab] = useState("plex"),
+    [mode, setMode] = useState(settings?.scrapeRules?.defaultMode || "missing"),
+    [scope, setScope] = useState("missing"),
+    [scopeValue, setScopeValue] = useState("");
+  const [plan, setPlan] = useState(null),
+    [planPage, setPlanPage] = useState(1),
+    [busy, setBusy] = useState(""),
+    [error, setError] = useState("");
+  const action = scrapeTabs.find((item) => item.id === tab) || scrapeTabs[0];
+  const generatePlan = async () => {
+    setBusy("preview");
+    setError("");
+    try {
+      setPlan(
+        await api("/api/scrape/preview", {
+          method: "POST",
+          body: JSON.stringify({ kind: action.kind, scope, scopeValue, mode, limit: 150 }),
+        }),
+      );
+      setPlanPage(1);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy("");
+    }
+  };
+  const planPageSize = 50;
+  const planItems = plan?.items || [];
+  const planPages = Math.max(1, Math.ceil(planItems.length / planPageSize));
+  const visiblePlanItems = planItems.slice(
+    (planPage - 1) * planPageSize,
+    planPage * planPageSize,
+  );
+  const applyPlan = async () => {
+    if (!plan) {
+      generatePlan();
+      return;
+    }
+    if (
+      !confirm(
+        `确认应用“${action.title}”？\n\n范围：${scope}\n模式：${mode}\n执行后会进入任务中心，可在日志/回滚记录中追踪。`,
+      )
+    )
+      return;
+    setBusy("apply");
+    setError("");
+    try {
+      await api("/api/scrape/apply", {
+        method: "POST",
+        body: JSON.stringify({ planId: plan.id }),
+      });
+      navigate?.("tasks");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy("");
+    }
+  };
+  return (
+    <div className="page scrape-page">
+      <section className="page-intro">
+        <span className="eyebrow">
+          <Zap size={14} />
+          SCRAPE CENTER
+        </span>
+        <h1>补齐封面、歌词、背景与中文简介。</h1>
+        <p>先核对旧值、候选结果、来源与冲突，再决定是否应用。</p>
+      </section>
+      <div className="scrape-tabs">
+        {scrapeTabs.map((item) => (
+          <button
+            className={tab === item.id ? "active" : ""}
+            onClick={() => {
+              if (item.id === "tasks") {
+                navigate?.("tasks");
+                return;
+              }
+              setTab(item.id);
+              setPlan(null);
+              setPlanPage(1);
+            }}
+            key={item.id}
+          >
+            <item.icon />
+            {item.title}
+          </button>
+        ))}
+      </div>
+      <section className="panel scrape-workbench">
+        <div className="scrape-main">
+          <div className={`action-icon ${action.tone}`}>
+            <action.icon />
+          </div>
+          <div>
+            <h3>{action.title}</h3>
+            <p>{action.desc}</p>
+            <div className="chips">
+              {action.chips.map((chip) => (
+                <span key={chip}>{chip}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="scrape-options">
+          <label>
+            范围
+            <select
+              value={scope}
+              onChange={(e) => {
+                setScope(e.target.value);
+                setPlan(null);
+                setPlanPage(1);
+              }}
+            >
+              <option value="all">全部</option>
+              <option value="missing">缺失项</option>
+              <option value="specific_artist">指定歌手</option>
+              <option value="specific_album">指定专辑</option>
+              <option value="folder">指定文件夹</option>
+              <option value="missing_cover">仅缺失封面</option>
+              <option value="missing_lyrics">仅缺失歌词</option>
+              <option value="missing_background">仅缺失背景图</option>
+              <option value="missing_bio">仅缺失中文简介</option>
+              <option value="unknown">Unknown Artist / Album</option>
+            </select>
+          </label>
+          {["specific_artist", "specific_album", "folder"].includes(scope) && (
+            <label>
+              {scope === "folder" ? "目录" : "名称"}
+              <input
+                value={scopeValue}
+                onChange={(e) => {
+                  setScopeValue(e.target.value);
+                  setPlan(null);
+                }}
+                placeholder={scope === "folder" ? "/music/歌手/专辑" : "输入准确名称"}
+              />
+            </label>
+          )}
+          <label>
+            模式
+            <select
+              value={mode}
+              onChange={(e) => {
+                setMode(e.target.value);
+                setPlan(null);
+                setPlanPage(1);
+              }}
+            >
+              <option value="missing">只补缺失</option>
+              <option value="incremental">增量更新</option>
+              <option value="refresh">全量刷新</option>
+              <option value="force">强制覆盖</option>
+            </select>
+          </label>
+        </div>
+        {error && (
+          <div className="inline-error">
+            <CircleAlert />
+            {error}
+          </div>
+        )}
+        <div className="preview-list scrape-preview">
+          {plan ? (
+            <>
+              <div>
+                <div>
+                  <small>预览生成时间</small>
+                  <code>
+                    {new Date(plan.createdAt).toLocaleString("zh-CN")}
+                  </code>
+                </div>
+                <ChevronRight />
+                <div>
+                  <small>策略</small>
+                  <code>
+                    {plan.scope} · {plan.mode}
+                  </code>
+                </div>
+                <i className="safe">未执行</i>
+              </div>
+              <div className="scrape-summary">
+                <span>新增 {plan.summary.create}</span>
+                <span>替换 {plan.summary.replace}</span>
+                <span>跳过 {plan.summary.skip}</span>
+                <span>冲突 {plan.summary.conflicts}</span>
+              </div>
+              <div className="scrape-diff-head">
+                <span>对象 / 字段</span>
+                <span>旧值</span>
+                <span>候选新值</span>
+                <span>来源 / 置信度</span>
+                <span>结果</span>
+              </div>
+              {visiblePlanItems.map((item) => (
+                <div className="scrape-diff-row" key={item.id}>
+                  <div>
+                    <strong>{item.target}</strong>
+                    <small>{item.field}</small>
+                  </div>
+                  <code>{item.oldValue}</code>
+                  <code>{item.newValue}</code>
+                  <div>
+                    <strong>{item.candidateSource}</strong>
+                    <small>{Math.round(item.confidence * 100)}% 置信度</small>
+                  </div>
+                  <i
+                    className={
+                      item.conflict || item.action === "skip"
+                        ? "danger"
+                        : "safe"
+                    }
+                  >
+                    {item.skipReason ||
+                      (item.conflict
+                        ? "存在冲突"
+                        : item.action === "replace"
+                          ? "将替换"
+                          : "将新增")}
+                  </i>
+                </div>
+              ))}
+              {planItems.length > planPageSize && (
+                <div className="pagination scrape-pagination">
+                  <button
+                    className="secondary small"
+                    disabled={planPage <= 1}
+                    onClick={() => setPlanPage((value) => value - 1)}
+                  >
+                    上一页
+                  </button>
+                  <span>
+                    第 {planPage} / {planPages} 页 · 共 {planItems.length} 项
+                  </span>
+                  <button
+                    className="secondary small"
+                    disabled={planPage >= planPages}
+                    onClick={() => setPlanPage((value) => value + 1)}
+                  >
+                    下一页
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div>
+              <div>
+                <small>预览状态</small>
+                <code>尚未生成</code>
+              </div>
+              <ChevronRight />
+              <div>
+                <small>下一步</small>
+                <code>先点击生成差异预览</code>
+              </div>
+              <i>不会执行</i>
+            </div>
+          )}
+        </div>
+        <div className="scrape-actions">
+          <button
+            className="secondary"
+            disabled={activeKinds.has(action.kind) || !!busy}
+            onClick={generatePlan}
+          >
+            {busy === "preview" ? <LoaderCircle className="spin" /> : <Gauge />}
+            生成差异预览
+          </button>
+          <button
+            className="primary"
+            disabled={
+              activeKinds.has(action.kind) ||
+              !plan ||
+              !!busy ||
+              plan.summary.create + plan.summary.replace === 0
+            }
+            onClick={applyPlan}
+          >
+            {activeKinds.has(action.kind) || busy === "apply" ? (
+              <LoaderCircle className="spin" />
+            ) : (
+              <Check />
+            )}
+            应用修改
+          </button>
+        </div>
+      </section>
+      <section className="safe-note">
+        <ShieldCheck />
+        <div>
+          <strong>安全写入策略</strong>
+          <p>无法精确匹配的条目会自动跳过；完成后可在任务中心查看结果。</p>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+const SOURCE_STATES = {
+  unverified: ["未验证", "muted"],
+  imported: ["已导入", "amber"],
+  search_ok: ["搜索可用", "blue"],
+  inspect_ok: ["格式已识别", "amber"],
+  partial: ["部分可用", "amber"],
+  resolve_ok: ["解析可用", "green"],
+  unavailable: ["不可用", "red"],
+  disabled: ["已禁用", "muted"],
+};
+
+function SourceManager({ sources, refreshSources, notify }) {
+  const [mode, setMode] = useState("url"),
+    [name, setName] = useState(""),
+    [url, setUrl] = useState(""),
+    [code, setCode] = useState(""),
+    [file, setFile] = useState(null);
+  const [busy, setBusy] = useState(false),
+    [error, setError] = useState(""),
+    [keyword, setKeyword] = useState(""),
+    [quality, setQuality] = useState("320k");
+  const [testing, setTesting] = useState(""),
+    [testData, setTestData] = useState(null),
+    [logs, setLogs] = useState(null),
+    [inspection, setInspection] = useState(null);
+  const importSource = async (event) => {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      let result;
+      if (mode === "file") {
+        if (!file) throw new Error("请选择本地 .js 音乐源文件。");
+        const body = new FormData();
+        body.append("name", name);
+        body.append("file", file);
+        result = await api("/api/sources/import-file", {
+          method: "POST",
+          body,
+        });
+      } else if (mode === "code")
+        result = await api("/api/sources/import-code", {
+          method: "POST",
+          body: JSON.stringify({ name, code }),
+        });
+      else
+        result = await api("/api/sources/import-url", {
+          method: "POST",
+          body: JSON.stringify({ name, url }),
+        });
+      await refreshSources();
+      setName("");
+      setUrl("");
+      setCode("");
+      setFile(null);
+      if (!result.ok) setError(`导入完成但校验失败：${result.message}`);
+      else notify(result.message);
+    } catch (err) {
+      setError(`导入失败：${err.message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const testSearch = async (source) => {
+    const probe = keyword.trim();
+    if (!probe) {
+      setError(
+        "请输入一首你真实想测试的歌曲或歌手，系统不会再使用演示关键词。",
+      );
+      return;
+    }
+    setTesting(source.id);
+    setError("");
+    try {
+      const platform = source.supportedPlatforms?.includes("tx")
+        ? "tx"
+        : source.supportedPlatforms?.[0];
+      const result = await api(`/api/sources/${source.id}/test-search`, {
+        method: "POST",
+        body: JSON.stringify({ keyword: probe, platform }),
+      });
+      setTestData({ source, result });
+      await refreshSources();
+      notify(`“${source.displayName}”测试搜索成功`);
+    } catch (err) {
+      setError(`测试搜索失败：${err.message}`);
+      await refreshSources();
+    } finally {
+      setTesting("");
+    }
+  };
+  const inspect = async (source) => {
+    setTesting(`inspect-${source.id}`);
+    setError("");
+    try {
+      const result = await api(`/api/sources/${source.id}/inspect`, {
+        method: "POST",
+      });
+      setInspection({ source, result });
+      await refreshSources();
+    } catch (err) {
+      setError(`格式检查失败：${err.message}`);
+    } finally {
+      setTesting("");
+    }
+  };
+  const testResolve = async (track) => {
+    setTesting(`resolve-${track.trackId}`);
+    setError("");
+    try {
+      const result = await api(
+        `/api/sources/${testData.source.id}/test-resolve`,
+        { method: "POST", body: JSON.stringify({ track, quality }) },
+      );
+      notify(result.message);
+      await refreshSources();
+    } catch (err) {
+      setError(`解析失败：${err.message}`);
+      await refreshSources();
+    } finally {
+      setTesting("");
+    }
+  };
+  const toggle = async (source) => {
+    try {
+      await api(
+        `/api/sources/${source.id}/${source.enabled ? "disable" : "enable"}`,
+        { method: "POST" },
+      );
+      await refreshSources();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  const remove = async (source) => {
+    if (!confirm(`确定删除“${source.displayName}”？这不会删除音乐库文件。`))
+      return;
+    try {
+      await api(`/api/sources/${source.id}`, { method: "DELETE" });
+      if (logs?.source.id === source.id) setLogs(null);
+      await refreshSources();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  const showLogs = async (source) => {
+    try {
+      setLogs({ source, items: await api(`/api/sources/${source.id}/logs`) });
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  return (
+    <div className="page sources-page">
+      <section className="source-layout">
+        <form className="panel source-import" onSubmit={importSource}>
+          <SectionHead
+            title="导入音乐源"
+            note="URL、本地文件与源码都会先隔离校验"
+          />
+          <div className="import-tabs">
+            {[
+              ["url", Link2, "在线 URL"],
+              ["file", FileUp, "本地文件"],
+              ["code", Code2, "粘贴源码"],
+            ].map(([id, Icon, label]) => (
+              <button
+                type="button"
+                className={mode === id ? "active" : ""}
+                onClick={() => {
+                  setMode(id);
+                  setError("");
+                }}
+                key={id}
+              >
+                <Icon />
+                {label}
+              </button>
+            ))}
+          </div>
+          <label>
+            显示名称（可选）
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="例如：我的无损源"
+            />
+          </label>
+          {mode === "url" && (
+            <label>
+              Raw JavaScript URL
+              <input
+                required
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://…/latest.js"
+              />
+            </label>
+          )}
+          {mode === "file" && (
+            <label className="file-picker">
+              <input
+                type="file"
+                accept=".js,application/javascript,text/javascript"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+              />
+              <FileUp />
+              <strong>{file?.name || "选择本地 .js 文件"}</strong>
+              <span>最大 2 MB · 浏览器上传，不填写电脑路径</span>
+            </label>
+          )}
+          {mode === "code" && (
+            <label>
+              JavaScript 源码
+              <textarea
+                required
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="粘贴完整 LX 自定义音乐源源码…"
+              />
+            </label>
+          )}
+          <p className="modal-note">
+            <ShieldCheck />
+            不内置第三方音乐源。仅导入你信任且有权使用的脚本；音屿不绕过 DRM。
+          </p>
+          <button className="primary full" disabled={busy}>
+            {busy ? <LoaderCircle className="spin" /> : <Plus />}导入并隔离校验
+          </button>
+        </form>
+        <section className="panel source-guide">
+          <span className="eyebrow">
+            <TestTube2 />
+            SOURCE CHECK
+          </span>
+          <h3>验证通过后再启用。</h3>
+          <p>
+            音屿会依次检查格式、搜索能力与真实音频地址解析，状态清晰后再用于下载。
+          </p>
+          <ol>
+            <li>
+              <b>01</b> 导入并检查脚本结构
+            </li>
+            <li>
+              <b>02</b> 测试目录搜索
+            </li>
+            <li>
+              <b>03</b> 测试播放地址解析
+            </li>
+            <li>
+              <b>04</b> 启用后进入下载页
+            </li>
+          </ol>
+        </section>
+      </section>
+      {error && (
+        <div className="inline-error">
+          <CircleAlert />
+          {error}
+        </div>
+      )}
+      <section className="panel installed-sources">
+        <SectionHead
+          title="已安装音乐源"
+          note={`${sources.length} 个来源 · 格式、搜索、解析与启用状态分别记录`}
+        />
+        {sources.length ? (
+          <div className="source-cards">
+            {sources.map((source) => {
+              const [label, tone] = SOURCE_STATES[source.status] || [
+                source.status,
+                "muted",
+              ];
+              return (
+                <article className="source-card" key={source.id}>
+                  <div className="source-card-head">
+                    <div className="source-logo">
+                      <Music2 />
+                    </div>
+                    <div>
+                      <strong>{source.displayName}</strong>
+                      <span>
+                        {source.metadata?.author || "自定义来源"} ·{" "}
+                        {source.sourceType}
+                      </span>
+                    </div>
+                    <i className={`source-state ${tone}`}>{label}</i>
+                  </div>
+                  <dl>
+                    <div>
+                      <dt>检测格式</dt>
+                      <dd>
+                        {source.detectedFormat || "待检查"} ·{" "}
+                        {source.compatibility || "未知"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>搜索 / 解析</dt>
+                      <dd>
+                        {source.searchOk ? "可用" : "未通过"} /{" "}
+                        {source.resolveOk ? "可用" : "未通过"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>支持平台</dt>
+                      <dd>
+                        {source.supportedPlatforms?.join(" · ") || "未知"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>支持音质</dt>
+                      <dd>
+                        {source.supportedQualities?.join(" · ") || "待测试"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>最近测试</dt>
+                      <dd>
+                        {source.lastTestAt
+                          ? timeAgo(source.lastTestAt)
+                          : "尚未测试"}
+                      </dd>
+                    </div>
+                  </dl>
+                  {source.lastErrorMessage && (
+                    <p className="source-error">
+                      <CircleAlert />
+                      {source.lastErrorMessage}
+                    </p>
+                  )}
+                  <div className="source-actions">
+                    <button
+                      className="secondary small"
+                      disabled={testing === `inspect-${source.id}`}
+                      onClick={() => inspect(source)}
+                    >
+                      {testing === `inspect-${source.id}` ? (
+                        <LoaderCircle className="spin" />
+                      ) : (
+                        <Gauge />
+                      )}
+                      检查格式
+                    </button>
+                    <button
+                      className="secondary small"
+                      disabled={testing === source.id}
+                      onClick={() => testSearch(source)}
+                    >
+                      {testing === source.id ? (
+                        <LoaderCircle className="spin" />
+                      ) : (
+                        <Search />
+                      )}
+                      测试搜索
+                    </button>
+                    <button
+                      className="icon-button"
+                      title="查看日志"
+                      onClick={() => showLogs(source)}
+                    >
+                      <ScrollText />
+                    </button>
+                    <button
+                      className={`icon-button ${source.enabled ? "powered" : ""}`}
+                      title={source.enabled ? "禁用" : "启用"}
+                      onClick={() => toggle(source)}
+                    >
+                      <Power />
+                    </button>
+                    <button
+                      className="icon-button danger"
+                      title="删除"
+                      onClick={() => remove(source)}
+                    >
+                      <Trash2 />
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <Empty
+            icon={Wifi}
+            title="还没有音乐源"
+            text="可通过 URL、本地 .js 文件或粘贴源码导入。"
+          />
+        )}
+      </section>
+      {testData && (
+        <section className="panel source-test">
+          <SectionHead
+            title={`测试搜索 · ${testData.source.displayName}`}
+            note={`找到 ${testData.result.count} 首候选歌曲，可选择一首测试播放地址`}
+            action={
+              <select
+                value={quality}
+                onChange={(e) => setQuality(e.target.value)}
+              >
+                <option value="128k">128K</option>
+                <option value="320k">320K</option>
+                <option value="flac">FLAC</option>
+                <option value="flac24bit">Hi-Res</option>
+              </select>
+            }
+          />
+          <div className="result-list">
+            {testData.result.results.map((item) => (
+              <div
+                className="result-row source-result"
+                key={`${item.platform}-${item.trackId}`}
+              >
+                <div className="result-cover">
+                  {item.coverUrl ? <img src={item.coverUrl} /> : <Music2 />}
+                </div>
+                <div className="result-main">
+                  <strong>{item.title}</strong>
+                  <span>
+                    {item.artist} · {item.album || "单曲"}
+                  </span>
+                </div>
+                <span className="duration">
+                  {Math.floor(item.duration / 60)}:
+                  {String(item.duration % 60).padStart(2, "0")}
+                </span>
+                <div className="quality-dots">
+                  {item.qualities.slice(-2).map((q) => (
+                    <i key={q}>{q}</i>
+                  ))}
+                </div>
+                <button
+                  className="secondary small"
+                  disabled={testing === `resolve-${item.trackId}`}
+                  onClick={() => testResolve(item)}
+                >
+                  {testing === `resolve-${item.trackId}` ? (
+                    <LoaderCircle className="spin" />
+                  ) : (
+                    <TestTube2 />
+                  )}
+                  测试解析
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+      {logs && (
+        <div className="modal-wrap">
+          <button className="modal-backdrop" onClick={() => setLogs(null)} />
+          <section className="modal panel log-modal">
+            <div className="modal-head">
+              <div>
+                <span className="eyebrow">SOURCE LOG</span>
+                <h3>{logs.source.displayName}</h3>
+              </div>
+              <button className="icon-button" onClick={() => setLogs(null)}>
+                <X />
+              </button>
+            </div>
+            <div className="log-list">
+              {logs.items.length ? (
+                logs.items.map((item) => (
+                  <div className={item.level} key={item.id}>
+                    <time>
+                      {new Date(item.created_at).toLocaleString("zh-CN")}
+                    </time>
+                    <b>{item.action}</b>
+                    <p>{item.message}</p>
+                  </div>
+                ))
+              ) : (
+                <Empty
+                  icon={ScrollText}
+                  title="暂无日志"
+                  text="执行导入或测试后会记录在这里。"
+                />
+              )}
+            </div>
+          </section>
+        </div>
+      )}
+      {inspection && (
+        <div className="modal-wrap">
+          <button
+            className="modal-backdrop"
+            onClick={() => setInspection(null)}
+          />
+          <section className="modal panel inspect-modal">
+            <div className="modal-head">
+              <div>
+                <span className="eyebrow">SOURCE FORMAT</span>
+                <h3>{inspection.source.displayName}</h3>
+              </div>
+              <button
+                className="icon-button"
+                onClick={() => setInspection(null)}
+              >
+                <X />
+              </button>
+            </div>
+            <div className="inspect-summary">
+              <i
+                className={`source-state ${inspection.result.ok ? "green" : "red"}`}
+              >
+                {inspection.result.compatibility}
+              </i>
+              <strong>{inspection.result.detected_format}</strong>
+              <p>{inspection.result.message}</p>
+            </div>
+            <dl>
+              <div>
+                <dt>顶层接口</dt>
+                <dd>{inspection.result.top_level_keys?.join(" · ") || "无"}</dd>
+              </div>
+              <div>
+                <dt>搜索</dt>
+                <dd>
+                  {inspection.result.methods?.search
+                    ? "源内置"
+                    : "音屿目录适配器"}
+                </dd>
+              </div>
+              <div>
+                <dt>地址解析</dt>
+                <dd>{inspection.result.methods?.resolve ? "支持" : "缺失"}</dd>
+              </div>
+              <div>
+                <dt>歌词 / 封面</dt>
+                <dd>
+                  {inspection.result.methods?.lyric ? "支持" : "—"} /{" "}
+                  {inspection.result.methods?.cover ? "支持" : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt>平台</dt>
+                <dd>
+                  {inspection.result.supported_platforms?.join(" · ") || "未知"}
+                </dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DownloadCenter({
+  sources,
+  createDownload,
+  navigate,
+  playPreview,
+  notify,
+}) {
+  const ready = sources.filter((source) => source.enabled && source.searchOk);
+  const [query, setQuery] = useState(
+      () => localStorage.getItem("songlib-download-query") || "",
+    ),
+    [platform, setPlatform] = useState("tx"),
+    [searchType, setSearchType] = useState("song"),
+    [results, setResults] = useState([]),
+    [loading, setLoading] = useState(false),
+    [sourceId, setSourceId] = useState(""),
+    [quality, setQuality] = useState("320k"),
+    [error, setError] = useState("");
+  const [target, setTarget] = useState("nas");
+  const [pending, setPending] = useState([]),
+    [selectedPending, setSelectedPending] = useState([]);
+  useEffect(() => {
+    if (!ready.some((source) => source.id === sourceId))
+      setSourceId(ready[0]?.id || "");
+  }, [sources, sourceId]);
+  const selected = ready.find((source) => source.id === sourceId);
+  const loadPending = async () => {
+    try {
+      const data = await api("/api/downloads/pending");
+      setPending(data.items || []);
+    } catch {}
+  };
+  useEffect(() => {
+    loadPending();
+    localStorage.removeItem("songlib-download-query");
+  }, []);
+  const submit = async (event) => {
+    event.preventDefault();
+    if (!query.trim() || !sourceId) return;
+    setLoading(true);
+    setError("");
+    try {
+      const data = await api(`/api/sources/${sourceId}/test-search`, {
+        method: "POST",
+        body: JSON.stringify({
+          keyword: query,
+          platform: platform === "all" ? "tx" : platform,
+        }),
+      });
+      setResults(data.results || []);
+    } catch (err) {
+      setError(`搜索失败：${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+  const albumGroups = useMemo(
+    () =>
+      Object.values(
+        results.reduce((map, item) => {
+          const key = `${item.album || "单曲"}-${item.artist}`;
+          map[key] ||= {
+            album: item.album || "单曲",
+            artist: item.artist,
+            coverUrl: item.coverUrl,
+            tracks: [],
+          };
+          map[key].tracks.push(item);
+          return map;
+        }, {}),
+      ),
+    [results],
+  );
+  const deviceDownload = async (item) => {
+    const data = await api("/api/downloads/device-token", {
+      method: "POST",
+      body: JSON.stringify({ item, sourceId, quality }),
+    });
+    const link = document.createElement("a");
+    link.href = data.downloadUrl;
+    link.download = data.filename || "";
+    link.rel = "noopener";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    notify?.(`已向当前设备下载《${item.title}》`);
+  };
+  const downloadOne = async (item) => {
+    if (target === "device") {
+      await deviceDownload(item);
+      return;
+    }
+    await createDownload(item, sourceId, quality);
+    await loadPending();
+  };
+  const downloadMany = async (items) => {
+    if (target === "device") {
+      for (const item of items) await deviceDownload(item);
+      notify?.(`已向当前设备发起 ${items.length} 个下载`);
+      return;
+    }
+    for (const item of items) await createDownload(item, sourceId, quality);
+    await loadPending();
+    notify?.(`已加入 ${items.length} 首歌曲到待入库流程`);
+  };
+  const togglePending = (id) =>
+    setSelectedPending((value) =>
+      value.includes(id) ? value.filter((item) => item !== id) : [...value, id],
+    );
+  const decide = async (action) => {
+    const ids = selectedPending.length
+      ? selectedPending
+      : pending.map((item) => item.jobId);
+    if (!ids.length) return;
+    const verb = action === "confirm" ? "确认入库" : "删除下载文件";
+    if (
+      !confirm(
+        `${verb} ${ids.length} 首待入库歌曲？\n\n音屿会创建任务并写入操作记录，确认入库后会触发 Plex 扫描；删除会移入曲库回收区。`,
+      )
+    )
+      return;
+    await api(
+      `/api/downloads/${action === "confirm" ? "batch-confirm" : "batch-cancel"}`,
+      { method: "POST", body: JSON.stringify({ jobIds: ids }) },
+    );
+    setSelectedPending([]);
+    await loadPending();
+    notify?.(action === "confirm" ? "批量入库任务已创建" : "已移入回收站");
+  };
+  if (!ready.length)
+    return (
+      <div className="page download-page">
+        <section className="download-hero">
+          <div>
+            <span className="eyebrow">
+              <ArrowDownToLine />
+              MUSIC DOWNLOAD
+            </span>
+            <h1>搜索音乐，保存到你的 NAS。</h1>
+            <p>启用可搜索、可解析的音乐源后即可下载。</p>
+          </div>
+        </section>
+        <section className="panel download-empty">
+          <Empty
+            icon={Wifi}
+            title="暂无可用音乐源"
+            text="请在“音乐源管理”中完成格式检查、搜索测试与解析测试。"
+          />
+          <button className="primary" onClick={() => navigate("sources")}>
+            <Wifi />
+            去音乐源管理
+          </button>
+        </section>
+      </div>
+    );
+  return (
+    <div className="page download-page">
+      <section className="download-hero">
+        <div>
+          <span className="eyebrow">
+            <ArrowDownToLine />
+            MUSIC DOWNLOAD
+          </span>
+          <h1>
+            搜索音乐，
+            {target === "device" ? "下载到当前设备。" : "保存到你的 NAS。"}
+          </h1>
+          <p>
+            {target === "device"
+              ? "当前设备模式会直接触发浏览器下载，适合电脑或手机临时保存。"
+              : "下载文件先进入临时区，确认元数据与目录结构后再批量入库。"}
+          </p>
+        </div>
+        <div className="hero-actions">
+          <button className="secondary" onClick={loadPending}>
+            <RefreshCw />
+            刷新待入库
+          </button>
+          <button className="secondary" onClick={() => navigate("sources")}>
+            <Settings />
+            管理音乐源
+          </button>
+        </div>
+      </section>
+      <section className="source-strip download-controls">
+        <div className="source-summary">
+          <div className="status-orb">
+            <Wifi />
+          </div>
+          <div>
+            <strong>{ready.length} 个已启用来源</strong>
+            <span>
+              {selected?.resolveOk
+                ? "下载地址解析可用"
+                : "该来源尚未通过解析测试"}
+            </span>
+          </div>
+        </div>
+        <div className="target-toggle">
+          <button
+            className={target === "nas" ? "active" : ""}
+            onClick={() => setTarget("nas")}
+          >
+            <Server />
+            NAS 入库
+          </button>
+          <button
+            className={target === "device" ? "active" : ""}
+            onClick={() => setTarget("device")}
+          >
+            <Download />
+            当前设备
+          </button>
+        </div>
+        <select value={sourceId} onChange={(e) => setSourceId(e.target.value)}>
+          {ready.map((source) => (
+            <option value={source.id} key={source.id}>
+              {source.displayName}
+            </option>
+          ))}
+        </select>
+        <select value={platform} onChange={(e) => setPlatform(e.target.value)}>
+          <option value="tx">QQ 音乐</option>
+          <option value="wy">网易云</option>
+          <option value="all">全源</option>
+        </select>
+        <select
+          value={searchType}
+          onChange={(e) => setSearchType(e.target.value)}
+        >
+          <option value="song">歌曲</option>
+          <option value="album">专辑</option>
+          <option value="artist">歌手</option>
+          <option value="playlist">歌单</option>
+        </select>
+        <select value={quality} onChange={(e) => setQuality(e.target.value)}>
+          <option value="128k">标准 128K</option>
+          <option value="320k">高品质 320K</option>
+          <option value="flac">无损 FLAC</option>
+          <option value="flac24bit">Hi-Res</option>
+        </select>
+      </section>
+      <form className="catalog-search" onSubmit={submit}>
+        <div className="big-search">
+          <Search />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="搜索歌曲、专辑名、歌手或歌单"
+          />
+          <button className="primary" disabled={loading || !selected}>
+            {loading ? <LoaderCircle className="spin" /> : "搜索"}
+          </button>
+        </div>
+      </form>
+      {error && (
+        <div className="inline-error">
+          <CircleAlert />
+          {error}
+        </div>
+      )}
+      <section className="search-results panel">
+        <SectionHead
+          title={searchType === "album" ? "专辑结果" : "搜索结果"}
+          note={
+            results.length
+              ? `找到 ${results.length} 首候选歌曲 · 当前目标：${target === "device" ? "当前设备" : "NAS 待入库"}`
+              : "可解析的歌曲可加入下载队列"
+          }
+        />
+        {loading ? (
+          <PageLoader />
+        ) : results.length ? (
+          searchType === "album" ? (
+            <div className="album-results">
+              {albumGroups.map((group) => (
+                <article
+                  className="album-result"
+                  key={`${group.album}-${group.artist}`}
+                >
+                  <div className="result-cover big">
+                    {group.coverUrl ? <img src={group.coverUrl} /> : <Album />}
+                  </div>
+                  <div>
+                    <strong>{group.album}</strong>
+                    <span>
+                      {group.artist} · {group.tracks.length} 首 ·{" "}
+                      {platform === "tx"
+                        ? "QQ 音乐"
+                        : platform === "wy"
+                          ? "网易云"
+                          : "全源"}
+                    </span>
+                    <div className="quality-dots">
+                      <i>{quality}</i>
+                      <i>
+                        {target === "device" ? "浏览器下载" : "本地匹配待检查"}
+                      </i>
+                    </div>
+                  </div>
+                  <div className="album-actions">
+                    <button
+                      className="secondary small"
+                      onClick={() => setResults(group.tracks)}
+                    >
+                      查看曲目
+                    </button>
+                    <button
+                      className="primary small"
+                      disabled={!selected?.resolveOk}
+                      onClick={() => downloadMany(group.tracks)}
+                    >
+                      <Download />
+                      {target === "device" ? "下载到设备" : "下载整张专辑"}
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="result-list">
+              {results.map((item) => (
+                <div
+                  className="result-row"
+                  key={`${item.platform}-${item.trackId}`}
+                >
+                  <div className="result-cover">
+                    {item.coverUrl ? <img src={item.coverUrl} /> : <Music2 />}
+                  </div>
+                  <div className="result-main">
+                    <strong>{item.title}</strong>
+                    <span>
+                      {item.artist} · {item.album || "单曲"}
+                    </span>
+                  </div>
+                  <span className="duration">
+                    {Math.floor(item.duration / 60)}:
+                    {String(item.duration % 60).padStart(2, "0")}
+                  </span>
+                  <div className="quality-dots">
+                    {item.qualities.slice(-2).map((q) => (
+                      <i key={q}>{q}</i>
+                    ))}
+                  </div>
+                  <div className="row-actions wide">
+                    <button
+                      title="试听"
+                      onClick={() =>
+                        playPreview?.({
+                          ...item,
+                          source: "source_preview",
+                          sourceId,
+                          quality,
+                          item,
+                        })
+                      }
+                    >
+                      <Play />
+                    </button>
+                    <button
+                      title={
+                        selected?.resolveOk
+                          ? target === "device"
+                            ? "下载到当前设备"
+                            : "下载并加入待入库"
+                          : "请先测试解析"
+                      }
+                      disabled={!selected?.resolveOk}
+                      onClick={() => downloadOne(item)}
+                    >
+                      <Download />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        ) : (
+          <Empty
+            icon={Search}
+            title="搜索歌曲、专辑或歌手"
+            text="结果会展示歌手、专辑、时长与可选音质。"
+          />
+        )}
+      </section>
+      <section className="panel pending-ingest">
+        <SectionHead
+          title="待入库"
+          note={`${pending.length} 首歌曲已下载到临时区，尚未进入正式曲库`}
+          action={
+            <div className="pending-actions">
+              <button
+                className="secondary small"
+                disabled={!pending.length}
+                onClick={() => decide("cancel")}
+              >
+                <Trash2 />
+                批量删除下载文件
+              </button>
+              <button
+                className="primary small"
+                disabled={!pending.length}
+                onClick={() => decide("confirm")}
+              >
+                <Check />
+                批量确认入库
+              </button>
+            </div>
+          }
+        />
+        {pending.length ? (
+          <div className="pending-table">
+            <div className="pending-row pending-head">
+              <span></span>
+              <span>歌曲</span>
+              <span>来源 / 音质</span>
+              <span>当前位置 / 入库位置</span>
+              <span>状态</span>
+            </div>
+            {pending.map((item) => (
+              <div className="pending-row" key={item.jobId}>
+                <input
+                  type="checkbox"
+                  checked={selectedPending.includes(item.jobId)}
+                  onChange={() => togglePending(item.jobId)}
+                />
+                <div>
+                  <strong>{item.title}</strong>
+                  <small>
+                    {item.artist} · {item.album}
+                  </small>
+                </div>
+                <span>
+                  {item.source || "音乐源"} · {item.quality}
+                </span>
+                <div className="pending-paths">
+                  <code>{item.currentPath || item.downloadPath}</code>
+                  <ChevronRight />
+                  <code>{item.proposedPath || item.targetPath}</code>
+                </div>
+                <div className="file-flags">
+                  <i className="pending-stage">
+                    {item.stageLabel || "临时区 · 待确认"}
+                  </i>
+                  <i className={item.tagStatus === "标签已准备" ? "ok" : ""}>
+                    {item.tagStatus}
+                  </i>
+                  <i className={item.coverStatus === "封面已准备" ? "ok" : ""}>
+                    {item.coverStatus}
+                  </i>
+                  <i className={item.lyricStatus === "歌词已准备" ? "ok" : ""}>
+                    {item.lyricStatus}
+                  </i>
+                  <i className={!item.conflict ? "ok" : ""}>
+                    {item.conflict ? "冲突" : "无冲突"}
+                  </i>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <Empty
+            icon={Download}
+            title="暂无待入库歌曲"
+            text="下载完成后，歌曲会在这里等待批量确认入库。"
+          />
+        )}
+      </section>
+    </div>
+  );
+}
+
+function Tasks({ jobs, refresh, navigate }) {
+  const [detail, setDetail] = useState(null),
+    [error, setError] = useState("");
+  const [filter, setFilter] = useState("running");
+  const inspect = async (id) => {
+    try {
+      setDetail(await api(`/api/jobs/${id}`));
+      setError("");
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  const control = async (job, action) => {
+    if (!confirm(`${action === "retry" ? "重试" : "安全取消"}：${job.title}？`)) return;
+    try {
+      await api(`/api/jobs/${job.id}/${action}`, { method: "POST" });
+      setDetail(null);
+      await refresh();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  const label = (status) =>
+    status === "running"
+      ? "执行中"
+      : status === "completed"
+        ? "完成"
+        : status === "failed"
+          ? "失败"
+          : status === "waiting_confirm"
+            ? "待确认"
+            : status === "cancelled"
+              ? "已取消"
+              : "排队";
+  const groups = {
+    running: jobs.filter((j) => ["running", "queued"].includes(j.status)),
+    confirm: jobs.filter((j) => j.status === "waiting_confirm"),
+    failed: jobs.filter((j) => j.status === "failed"),
+    history: jobs.filter(
+      (j) =>
+        !["running", "queued", "waiting_confirm", "failed"].includes(j.status),
+    ),
+    all: jobs,
+  };
+  const visible = groups[filter] || jobs;
+  return (
+    <div className="page tasks-page">
+      <SectionHead
+        title="任务中心"
+        note="运行中、待确认、失败和历史任务分开处理"
+        action={
+          <button className="secondary small" onClick={refresh}>
+            <RefreshCw />
+            刷新
+          </button>
+        }
+      />
+      {error && (
+        <div className="inline-error">
+          <CircleAlert />
+          {error}
+        </div>
+      )}
+      <div className="task-summary">
+        <button
+          className={filter === "running" ? "active" : ""}
+          onClick={() => setFilter("running")}
+        >
+          <LoaderCircle />
+          <strong>{groups.running.length}</strong>
+          <span>正在执行</span>
+        </button>
+        <button
+          className={filter === "confirm" ? "active" : ""}
+          onClick={() => setFilter("confirm")}
+        >
+          <WandSparkles />
+          <strong>{groups.confirm.length}</strong>
+          <span>待我确认</span>
+        </button>
+        <button
+          className={filter === "failed" ? "active" : ""}
+          onClick={() => setFilter("failed")}
+        >
+          <CircleAlert />
+          <strong>{groups.failed.length}</strong>
+          <span>失败任务</span>
+        </button>
+        <button
+          className={filter === "history" ? "active" : ""}
+          onClick={() => setFilter("history")}
+        >
+          <Check />
+          <strong>{groups.history.length}</strong>
+          <span>历史记录</span>
+        </button>
+      </div>
+      <section className="panel task-list">
+        <div className="task-list-head">
+          <span>任务</span>
+          <span>状态</span>
+          <span>时间</span>
+        </div>
+        {visible.length ? (
+          visible.map((job) => (
+            <div
+              className="task-detail"
+              key={job.id}
+              onClick={() => inspect(job.id)}
+            >
+              <div className={`job-state ${job.status}`}>
+                {job.status === "running" ? (
+                  <LoaderCircle className="spin" />
+                ) : job.status === "completed" ? (
+                  <Check />
+                ) : job.status === "failed" ? (
+                  <CircleAlert />
+                ) : job.status === "waiting_confirm" ? (
+                  <WandSparkles />
+                ) : (
+                  <Clock3 />
+                )}
+              </div>
+              <div className="task-copy">
+                <strong>{job.title}</strong>
+                <span>
+                  {job.error_message ||
+                    job.message ||
+                    `任务 #${job.id} · 发起时间 ${timeAgo(job.created_at)}`}
+                </span>
+                {!["queued", "running", "waiting_confirm"].includes(job.status) && (
+                  <small>成功 {job.success_count || 0} · 失败 {job.failed_count || 0} · 跳过 {job.skipped_count || 0}</small>
+                )}
+                {job.status === "running" && (
+                  <div className="bar">
+                    <i
+                      className="amber"
+                      style={{ width: `${job.progress}%` }}
+                    />
+                  </div>
+                )}
+                {job.status === "waiting_confirm" && (
+                  <div className="inline-task-actions">
+                    <button
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        navigate?.("download");
+                      }}
+                    >
+                      打开待入库
+                    </button>
+                  </div>
+                )}
+                {["running", "queued"].includes(job.status) && (
+                  <div className="inline-task-actions">
+                    <button onClick={(event) => { event.stopPropagation(); control(job, "cancel"); }}>
+                      取消任务
+                    </button>
+                  </div>
+                )}
+                {["failed", "cancelled"].includes(job.status) && (
+                  <div className="inline-task-actions">
+                    <button className="confirm" onClick={(event) => { event.stopPropagation(); control(job, "retry"); }}>
+                      重试
+                    </button>
+                  </div>
+                )}
+              </div>
+              <em className={`status-pill ${job.status}`}>
+                {label(job.status)}
+              </em>
+              <time>{timeAgo(job.created_at)}</time>
+            </div>
+          ))
+        ) : (
+          <Empty
+            icon={Activity}
+            title="这一类暂时没有任务"
+            text="任务会按运行、确认、失败和历史自动归类。"
+          />
+        )}
+      </section>
+      {detail && (
+        <div className="modal-wrap">
+          <button className="modal-backdrop" onClick={() => setDetail(null)} />
+          <section className="modal panel log-modal job-modal">
+            <div className="modal-head">
+              <div>
+                <span className="eyebrow">任务详情</span>
+                <h3>{detail.title}</h3>
+              </div>
+              <button className="icon-button" onClick={() => setDetail(null)}>
+                <X />
+              </button>
+            </div>
+            <dl className="task-detail-meta">
+              <div>
+                <dt>任务名称</dt>
+                <dd>{detail.title}</dd>
+              </div>
+              <div>
+                <dt>开始时间</dt>
+                <dd>
+                  {detail.created_at
+                    ? new Date(detail.created_at).toLocaleString("zh-CN")
+                    : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt>当前进度</dt>
+                <dd>{detail.progress || 0}%</dd>
+              </div>
+              <div>
+                <dt>状态</dt>
+                <dd>{label(detail.status)}</dd>
+              </div>
+              <div>
+                <dt>执行范围</dt>
+                <dd>{detail.payload?.scope || "全部"}{detail.payload?.scopeValue ? ` · ${detail.payload.scopeValue}` : ""}</dd>
+              </div>
+              <div>
+                <dt>结果</dt>
+                <dd>成功 {detail.success_count || 0} · 失败 {detail.failed_count || 0} · 跳过 {detail.skipped_count || 0}</dd>
+              </div>
+              <div>
+                <dt>结束时间</dt>
+                <dd>{detail.finished_at ? new Date(detail.finished_at).toLocaleString("zh-CN") : "—"}</dd>
+              </div>
+            </dl>
+            {detail.error_message && (
+              <div className="inline-error">
+                <CircleAlert />
+                {detail.error_code}: {detail.error_message}
+              </div>
+            )}
+            {detail.status === "waiting_confirm" && detail.result?.preview && (
+              <div className="ingest-preview">
+                <div>
+                  <small>临时文件</small>
+                  <code>{detail.result.preview.incomingPath}</code>
+                </div>
+                <ChevronRight />
+                <div>
+                  <small>目标路径</small>
+                  <code>{detail.result.preview.targetPath}</code>
+                </div>
+                <dl>
+                  <div>
+                    <dt>歌曲</dt>
+                    <dd>{detail.result.preview.title}</dd>
+                  </div>
+                  <div>
+                    <dt>歌手 / 专辑</dt>
+                    <dd>
+                      {detail.result.preview.artist} ·{" "}
+                      {detail.result.preview.album}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>音质</dt>
+                    <dd>{detail.result.preview.quality}</dd>
+                  </div>
+                  <div>
+                    <dt>冲突</dt>
+                    <dd>
+                      {detail.result.preview.conflictAdjusted
+                        ? "已自动使用安全新文件名"
+                        : "无"}
+                    </dd>
+                  </div>
+                </dl>
+                <div className="decision-actions">
+                  <button className="primary" onClick={() => { setDetail(null); navigate?.("download"); }}>
+                    <ArrowDownToLine />打开待入库批量处理
+                  </button>
+                </div>
+              </div>
+            )}
+            <div className="decision-actions">
+              {["running", "queued"].includes(detail.status) && (
+                <button className="secondary" onClick={() => control(detail, "cancel")}><X />取消任务</button>
+              )}
+              {["failed", "cancelled"].includes(detail.status) && (
+                <button className="primary" onClick={() => control(detail, "retry")}><RefreshCw />重试任务</button>
+              )}
+            </div>
+            <div className="log-list">
+              {detail.logs?.map((item) => (
+                <div className={item.level} key={item.id}>
+                  <time>
+                    {new Date(item.created_at).toLocaleString("zh-CN")}
+                  </time>
+                  <p>{item.message}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SettingsPage({ settings, logout, navigate, isAdmin = true }) {
+  const [current, setCurrent] = useState(""),
+    [next, setNext] = useState(""),
+    [message, setMessage] = useState("");
+  const [tab, setTab] = useState(isAdmin ? "plex" : "user"),
+    [draft, setDraft] = useState({}),
+    [plexOpen, setPlexOpen] = useState(false),
+    [plex, setPlex] = useState(settings.plex || {});
+  const [profile, setProfile] = useState(settings.user || {}),
+    [logs, setLogs] = useState(null),
+    [logsLoading, setLogsLoading] = useState(false);
+  const [backups, setBackups] = useState([]),
+    [backupBusy, setBackupBusy] = useState("");
+  const defaultPlayerPrefs = {
+    defaultSource: "local_first",
+    remoteBitrate: "320k",
+    autoTranscode: false,
+    showLyrics: true,
+    blurBackground: true,
+    extractColor: true,
+  };
+  const [playerPrefs, setPlayerPrefs] = useState({
+    ...defaultPlayerPrefs,
+    ...(settings.player || {}),
+  });
+  useEffect(() => {
+    setDraft(settings || {});
+    setPlex(settings.plex || {});
+    setProfile(settings.user || {});
+    setPlayerPrefs({ ...defaultPlayerPrefs, ...(settings.player || {}) });
+  }, [settings]);
+  useEffect(() => {
+    if (!isAdmin && tab !== "user") setTab("user");
+  }, [isAdmin, tab]);
+  const change = async (event) => {
+    event.preventDefault();
+    setMessage("");
+    try {
+      await api("/api/auth/change-password", {
+        method: "POST",
+        body: JSON.stringify({ currentPassword: current, newPassword: next }),
+      });
+      setMessage("密码已更新，请重新登录");
+      setTimeout(logout, 1200);
+    } catch (err) {
+      setMessage(err.message);
+    }
+  };
+  const save = async () => {
+    if (!isAdmin) return setMessage("当前账号没有修改系统设置权限");
+    await api("/api/settings", {
+      method: "PATCH",
+      body: JSON.stringify({ values: draft }),
+    });
+    setMessage("设置已保存");
+  };
+  const savePlayerPrefs = async () => {
+    if (!isAdmin) return setMessage("当前账号没有修改播放器全局偏好权限");
+    const values = { ...draft, player: playerPrefs };
+    await api("/api/settings", {
+      method: "PATCH",
+      body: JSON.stringify({ values }),
+    });
+    setDraft(values);
+    setMessage("播放器偏好已保存，播放器页面会立即按“显示歌词”等选项刷新。");
+  };
+  const togglePlayerPref = (key) =>
+    setPlayerPrefs((value) => ({ ...value, [key]: !value[key] }));
+  const saveProfile = async (values) => {
+    const result = await api("/api/profile", {
+      method: "PATCH",
+      body: JSON.stringify({ values }),
+    });
+    setProfile(result.profile);
+    setMessage("个人资料已保存");
+  };
+  const uploadAvatar = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const body = new FormData();
+    body.append("file", file);
+    try {
+      const result = await api("/api/profile/avatar", { method: "POST", body });
+      setProfile(result.profile);
+      setMessage("头像已更新，刷新页面后顶部菜单也会同步。");
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      event.target.value = "";
+    }
+  };
+  const loadLogs = async () => {
+    if (!isAdmin) return;
+    setLogsLoading(true);
+    try {
+      setLogs(await api("/api/logs/summary?limit=120"));
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+  const loadBackups = async () => {
+    try {
+      const data = await api("/api/backups");
+      setBackups(data.items || []);
+    } catch (err) {
+      setMessage(err.message);
+    }
+  };
+  const createBackup = async () => {
+    setBackupBusy("create");
+    try {
+      await api("/api/backups", { method: "POST" });
+      setMessage("数据库备份已创建");
+      await loadBackups();
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBackupBusy("");
+    }
+  };
+  const restoreBackup = async (item) => {
+    if (
+      !confirm(
+        `恢复备份 ${item.name}？\n\n当前账号、设置、任务和索引会回到该备份时间。音乐文件不会被覆盖。`,
+      )
+    )
+      return;
+    setBackupBusy(item.name);
+    try {
+      const result = await api(
+        `/api/backups/${encodeURIComponent(item.name)}/restore`,
+        { method: "POST" },
+      );
+      setMessage(result.message);
+      setTimeout(logout, 1200);
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBackupBusy("");
+    }
+  };
+  useEffect(() => {
+    if (tab === "logs") {
+      if (!logs) loadLogs();
+      loadBackups();
+    }
+  }, [tab]);
+  const refreshPlex = async () => setPlex(await api("/api/settings/plex"));
+  const syncPlex = async () => {
+    try {
+      await api("/api/plex/sync", { method: "POST" });
+      setMessage("Plex 同步任务已加入队列");
+    } catch (err) {
+      setMessage(err.message);
+    }
+  };
+  const testSavedPlex = async () => {
+    try {
+      const result = await api("/api/plex/test", {
+        method: "POST",
+        body: JSON.stringify({ serverUrl: plex.serverUrl, token: "" }),
+      });
+      setMessage(result.message || "Plex 连接成功");
+      await refreshPlex();
+    } catch (err) {
+      setMessage(err.message);
+    }
+  };
+  const tabs = isAdmin
+    ? [
+        ["plex", "Plex 连接", Server],
+        ["paths", "本地路径", FolderTree],
+        ["ingest", "下载与入库", ArrowDownToLine],
+        ["scrape", "刮削规则", WandSparkles],
+        ["naming", "命名规则", Tags],
+        ["exclude", "扫描排除", ShieldCheck],
+        ["player", "播放器", Play],
+        ["user", "用户与安全", UserRound],
+        ["logs", "备份与日志", ScrollText],
+      ]
+    : [["user", "用户与安全", UserRound]];
+  const templates = draft.namingTemplates || settings.namingTemplates || {};
+  const scrapeRules = draft.scrapeRules || settings.scrapeRules || {
+    defaultMode: "missing",
+    writeCover: true,
+    writeLyrics: true,
+    refreshPlex: true,
+    skipExistingCover: true,
+    skipExistingLyrics: true,
+  };
+  const templateLabels = {
+    album: "普通专辑",
+    multiDisc: "多碟专辑",
+    compilation: "合辑",
+    unknown: "信息不完整",
+  };
+  const templateExample = (value) =>
+    String(value || "")
+      .replaceAll("{artist}", "周杰伦")
+      .replaceAll("{album}", "叶惠美")
+      .replaceAll("{year}", "2003")
+      .replaceAll("{discNumber}", "2")
+      .replaceAll("{trackNumber}", "03")
+      .replaceAll("{title}", "晴天")
+      .replaceAll("{ext}", "flac");
+  return (
+    <div className="page settings-page">
+      <div className="settings-tabs">
+        {tabs.map(([id, label, Icon]) => (
+          <button
+            className={tab === id ? "active" : ""}
+            onClick={() => setTab(id)}
+            key={id}
+          >
+            <Icon />
+            {label}
+          </button>
+        ))}
+      </div>
+      <section className="panel settings-workbench">
+        {message && (
+          <div className="inline-info">
+            <ShieldCheck />
+            {message}
+          </div>
+        )}
+        {tab === "plex" && (
+          <div className="settings-grid">
+            <SettingBlock
+              icon={Server}
+              title="Plex 连接"
+              note="Plex 负责展示、播放、扫描、刷新与远程播放。"
+            >
+              <dl>
+                <div>
+                  <dt>启用状态</dt>
+                  <dd>{plex.enabled ? "已启用" : "未启用"}</dd>
+                </div>
+                <div>
+                  <dt>服务器名称</dt>
+                  <dd>{plex.name || settings.plexServerName}</dd>
+                </div>
+                <div>
+                  <dt>Plex 地址</dt>
+                  <dd>{plex.serverUrl || settings.plexUrl}</dd>
+                </div>
+                <div>
+                  <dt>外网播放地址</dt>
+                  <dd>{plex.externalUrl || settings.externalPlexUrl}</dd>
+                </div>
+                <div>
+                  <dt>Token</dt>
+                  <dd>{plex.hasToken ? "已保存" : "未保存"}</dd>
+                </div>
+                <div>
+                  <dt>同步媒体库</dt>
+                  <dd>
+                    {plex.selectedLibraryKeys === "all"
+                      ? "全部音乐库"
+                      : (plex.selectedLibraryKeys || []).join(", ") ||
+                        "未选择"}{" "}
+                    · {plex.syncedLibraryCount || 0} 个
+                  </dd>
+                </div>
+                <div>
+                  <dt>最近连接</dt>
+                  <dd>
+                    {plex.lastConnectedAt
+                      ? timeAgo(plex.lastConnectedAt)
+                      : "尚未测试"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>最近同步</dt>
+                  <dd>
+                    {plex.lastSyncAt ? timeAgo(plex.lastSyncAt) : "尚未同步"}
+                  </dd>
+                </div>
+              </dl>
+              <div className="setting-actions">
+                <button
+                  className="primary small"
+                  onClick={() => setPlexOpen(true)}
+                >
+                  <Settings />
+                  配置 Plex
+                </button>
+                <button className="secondary small" onClick={testSavedPlex}>
+                  <TestTube2 />
+                  测试连接
+                </button>
+                <button className="secondary small" onClick={syncPlex}>
+                  <RefreshCw />
+                  立即同步
+                </button>
+              </div>
+            </SettingBlock>
+            <SettingBlock
+              icon={Library}
+              title="Plex 音乐资料库"
+              note="配置窗口中可以刷新并选择全部或指定音乐库。"
+            >
+              {plex.libraries?.length ? (
+                <div className="plex-library-chips">
+                  {plex.libraries.map((item) => (
+                    <span
+                      key={item.key}
+                      className={item.enabled ? "active" : ""}
+                    >
+                      {item.title}
+                      <small>#{item.key}</small>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <Empty
+                  icon={Library}
+                  title="未读取到音乐库"
+                  text="请先在配置窗口测试连接并刷新媒体库列表。"
+                />
+              )}
+            </SettingBlock>
+            <SettingBlock
+              icon={Activity}
+              title="系统信息"
+              note="当前部署版本与运行限制。"
+            >
+              <dl>
+                <div>
+                  <dt>产品</dt>
+                  <dd>{BRAND.fullName}</dd>
+                </div>
+                <div>
+                  <dt>版本</dt>
+                  <dd>v{settings.version || BRAND.version}</dd>
+                </div>
+                <div>
+                  <dt>音乐源文件限制</dt>
+                  <dd>{settings.sourceMaxSizeMb} MB</dd>
+                </div>
+                <div>
+                  <dt>单音频限制</dt>
+                  <dd>{settings.maxDownloadMb} MB</dd>
+                </div>
+              </dl>
+            </SettingBlock>
+          </div>
+        )}
+        {tab === "paths" && (
+          <div className="settings-grid">
+            <SettingBlock
+              icon={FolderTree}
+              title="本地路径"
+              note="NAS 本地音乐文件是源数据层。"
+            >
+              <dl>
+                <div>
+                  <dt>正式音乐库</dt>
+                  <dd>{settings.musicRoot}</dd>
+                </div>
+                <div>
+                  <dt>下载临时目录</dt>
+                  <dd>{settings.downloadTempDir}</dd>
+                </div>
+                <div>
+                  <dt>入库临时区</dt>
+                  <dd>{settings.incomingDir}</dd>
+                </div>
+                <div>
+                  <dt>手动下载目录</dt>
+                  <dd>{settings.manualDownloadDir}</dd>
+                </div>
+                <div>
+                  <dt>回收站</dt>
+                  <dd>{settings.trashDir}</dd>
+                </div>
+              </dl>
+            </SettingBlock>
+            <SettingBlock
+              icon={Image}
+              title="保存规则"
+              note="封面与歌词优先保存到本地曲库。"
+            >
+              <dl>
+                <div>
+                  <dt>歌词保存</dt>
+                  <dd>{settings.lyricRule}</dd>
+                </div>
+                <div>
+                  <dt>封面保存</dt>
+                  <dd>{settings.coverRule}</dd>
+                </div>
+              </dl>
+            </SettingBlock>
+          </div>
+        )}
+        {tab === "ingest" && (
+          <div className="settings-grid">
+            <SettingBlock
+              icon={Download}
+              title="下载与入库"
+              note="下载先进入临时目录，再批量确认到正式曲库。"
+            >
+              <dl>
+                <div>
+                  <dt>临时下载</dt>
+                  <dd>{settings.downloadTempDir}</dd>
+                </div>
+                <div>
+                  <dt>待入库</dt>
+                  <dd>{settings.incomingDir}</dd>
+                </div>
+                <div>
+                  <dt>正式曲库</dt>
+                  <dd>{settings.musicRoot}</dd>
+                </div>
+              </dl>
+              <button
+                className="primary small"
+                onClick={() => navigate?.("download")}
+              >
+                <Check />
+                打开待入库
+              </button>
+            </SettingBlock>
+            <SettingBlock
+              icon={RotateCcw}
+              title="回滚策略"
+              note="移动、标签写入与下载入库均记录操作日志。"
+            >
+              <p className="setting-copy">
+                确认入库前会检查冲突；取消入库会移动到回收站目录。
+              </p>
+            </SettingBlock>
+          </div>
+        )}
+        {tab === "scrape" && (
+          <SettingBlock
+            icon={WandSparkles}
+            title="刮削规则"
+            note="默认只补缺失；覆盖模式仍需在刮削中心逐次确认。"
+          >
+            <div className="settings-switches">
+              <label>
+                默认模式
+                <select
+                  value={scrapeRules.defaultMode}
+                  onChange={(e) => setDraft((value) => ({ ...value, scrapeRules: { ...scrapeRules, defaultMode: e.target.value } }))}
+                >
+                  <option value="missing">只补缺失</option>
+                  <option value="incremental">增量更新</option>
+                  <option value="refresh">全量刷新</option>
+                  <option value="force">强制覆盖</option>
+                </select>
+              </label>
+              {[
+                ["写入 cover.jpg", "writeCover"],
+                ["写入同名 .lrc", "writeLyrics"],
+                ["完成后刷新 Plex", "refreshPlex"],
+                ["跳过已有封面", "skipExistingCover"],
+                ["跳过已有歌词", "skipExistingLyrics"],
+              ].map(([label, key]) => (
+                <label key={key}>
+                  <input
+                    type="checkbox"
+                    checked={!!scrapeRules[key]}
+                    onChange={() => setDraft((value) => ({ ...value, scrapeRules: { ...scrapeRules, [key]: !scrapeRules[key] } }))}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+            <button className="secondary small" onClick={save}><Check />保存刮削规则</button>
+          </SettingBlock>
+        )}
+        {tab === "naming" && (
+          <SettingBlock
+            icon={Tags}
+            title="命名规则"
+            note="模板会在整理预览中生成目标路径。"
+          >
+            <div className="template-list">
+              {Object.entries(templates).map(([key, value]) => (
+                <label key={key}>
+                  {templateLabels[key] || key}
+                  <input
+                    value={value}
+                    onChange={(e) =>
+                      setDraft((v) => ({
+                        ...v,
+                        namingTemplates: {
+                          ...(v.namingTemplates || templates),
+                          [key]: e.target.value,
+                        },
+                      }))
+                    }
+                  />
+                  <small>
+                    示例：
+                    {templateExample(value)}
+                  </small>
+                </label>
+              ))}
+            </div>
+            <button className="secondary small" onClick={save}>
+              <Check />
+              保存命名模板
+            </button>
+          </SettingBlock>
+        )}
+        {tab === "exclude" && (
+          <SettingBlock
+            icon={ShieldCheck}
+            title="扫描排除规则"
+            note="这些目录不会被当作正式曲库扫描。"
+          >
+            <label className="exclude-editor">
+              每行一个目录
+              <textarea
+                value={(draft.excludeDirs || settings.excludeDirs || []).join(
+                  "\n",
+                )}
+                onChange={(event) =>
+                  setDraft((value) => ({
+                    ...value,
+                    excludeDirs: event.target.value
+                      .split(/\r?\n/)
+                      .map((item) => item.trim())
+                      .filter(Boolean),
+                  }))
+                }
+              />
+            </label>
+            <button className="secondary small" onClick={save}>
+              <Check />
+              保存排除规则
+            </button>
+          </SettingBlock>
+        )}
+        {tab === "player" && (
+          <SettingBlock
+            icon={Play}
+            title="播放器设置"
+            note="这些偏好会保存到服务端，并立即影响播放器的歌词显示等行为。"
+          >
+            <div className="settings-switches">
+              {[
+                ["本地优先", "defaultSource", true],
+                ["远程默认 320K", "remoteBitrate", true],
+                ["自动转码", "autoTranscode"],
+                ["显示歌词", "showLyrics"],
+                ["背景低模糊", "blurBackground"],
+                ["封面取色", "extractColor"],
+              ].map(([label, key, derived]) => (
+                <label
+                  key={key}
+                  title={
+                    derived ? "策略项会参与后续播放解析默认值" : "可立即保存"
+                  }
+                >
+                  <input
+                    type="checkbox"
+                    checked={
+                      key === "defaultSource"
+                        ? playerPrefs.defaultSource === "local_first"
+                        : key === "remoteBitrate"
+                          ? playerPrefs.remoteBitrate === "320k"
+                          : !!playerPrefs[key]
+                    }
+                    onChange={() =>
+                      key === "defaultSource"
+                        ? setPlayerPrefs((v) => ({
+                            ...v,
+                            defaultSource:
+                              v.defaultSource === "local_first"
+                                ? "plex_first"
+                                : "local_first",
+                          }))
+                        : key === "remoteBitrate"
+                          ? setPlayerPrefs((v) => ({
+                              ...v,
+                              remoteBitrate:
+                                v.remoteBitrate === "320k"
+                                  ? "original"
+                                  : "320k",
+                            }))
+                          : togglePlayerPref(key)
+                    }
+                  />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
+            <div className="setting-actions">
+              <button className="primary small" onClick={savePlayerPrefs}>
+                <Check />
+                保存播放器偏好
+              </button>
+              <button
+                className="secondary small"
+                onClick={() => navigate?.("player")}
+              >
+                <Play />
+                打开播放器验证
+              </button>
+            </div>
+          </SettingBlock>
+        )}
+        {tab === "user" && (
+          <div className="settings-grid">
+            <SettingBlock
+              icon={UserRound}
+              title="用户偏好"
+              note="头像、主题、默认音乐源与默认音质。"
+            >
+              <div className="profile-card">
+                <div className="profile-avatar">
+                  {profile?.avatarUrl ? (
+                    <img src={profile.avatarUrl} alt="" />
+                  ) : (
+                    <UserRound />
+                  )}
+                </div>
+                <div>
+                  <strong>
+                    {profile?.displayName || settings.user?.username || "admin"}
+                  </strong>
+                  <span>@{settings.user?.username || "admin"}</span>
+                  <label className="secondary small avatar-upload">
+                    <Image />
+                    更换头像
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      onChange={uploadAvatar}
+                    />
+                  </label>
+                </div>
+              </div>
+              <div className="profile-form">
+                <label>
+                  显示名称
+                  <input
+                    value={profile?.displayName || ""}
+                    onChange={(e) =>
+                      setProfile((v) => ({ ...v, displayName: e.target.value }))
+                    }
+                  />
+                </label>
+                <label>
+                  默认音源
+                  <select
+                    value={profile?.defaultSource || "tx"}
+                    onChange={(e) =>
+                      setProfile((v) => ({
+                        ...v,
+                        defaultSource: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value="tx">QQ 音乐</option>
+                    <option value="wy">网易云</option>
+                  </select>
+                </label>
+                <label>
+                  默认音质
+                  <select
+                    value={profile?.defaultQuality || "320k"}
+                    onChange={(e) =>
+                      setProfile((v) => ({
+                        ...v,
+                        defaultQuality: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value="128k">128K</option>
+                    <option value="320k">320K</option>
+                    <option value="flac">FLAC</option>
+                    <option value="flac24bit">Hi-Res</option>
+                  </select>
+                </label>
+                <button
+                  className="secondary small"
+                  onClick={() => saveProfile(profile)}
+                >
+                  <Check />
+                  保存偏好
+                </button>
+              </div>
+            </SettingBlock>
+            <section className="setting-card">
+              <div className="setting-title">
+                <KeyRound />
+                <div>
+                  <h3>修改密码</h3>
+                  <p>更换音屿 Web 控制台密码。</p>
+                </div>
+              </div>
+              <form className="password-form" onSubmit={change}>
+                <label>
+                  当前密码
+                  <input
+                    type="password"
+                    value={current}
+                    onChange={(e) => setCurrent(e.target.value)}
+                  />
+                </label>
+                <label>
+                  新密码
+                  <input
+                    type="password"
+                    minLength="10"
+                    value={next}
+                    onChange={(e) => setNext(e.target.value)}
+                    placeholder="至少 10 个字符"
+                  />
+                </label>
+                {message && <p className="form-message">{message}</p>}
+                <button className="secondary">
+                  <ShieldCheck />
+                  更新密码
+                </button>
+              </form>
+            </section>
+          </div>
+        )}
+        {tab === "logs" && (
+          <>
+            <SettingBlock
+              icon={ShieldCheck}
+              title="备份与恢复"
+              note="备份账号、设置、任务、索引和操作记录；音乐文件不会复制。"
+            >
+              <div className="backup-toolbar">
+                <button
+                  className="primary small"
+                  disabled={!!backupBusy}
+                  onClick={createBackup}
+                >
+                  {backupBusy === "create" ? (
+                    <LoaderCircle className="spin" />
+                  ) : (
+                    <Plus />
+                  )}
+                  创建备份
+                </button>
+                <span>备份保存在 NAS 的 /data/backups</span>
+              </div>
+              <div className="backup-list">
+                {backups.length ? (
+                  backups.map((item) => (
+                    <div key={item.name}>
+                      <ShieldCheck />
+                      <div>
+                        <strong>{item.name}</strong>
+                        <span>
+                          {new Date(item.createdAt).toLocaleString("zh-CN")} ·{" "}
+                          {(item.size / 1024 / 1024).toFixed(1)} MB
+                        </span>
+                      </div>
+                      <a
+                        className="secondary small"
+                        href={`/api/backups/${encodeURIComponent(item.name)}/download`}
+                      >
+                        <Download />
+                        导出
+                      </a>
+                      <button
+                        className="secondary small"
+                        disabled={!!backupBusy}
+                        onClick={() => restoreBackup(item)}
+                      >
+                        {backupBusy === item.name ? (
+                          <LoaderCircle className="spin" />
+                        ) : (
+                          <RotateCcw />
+                        )}
+                        恢复
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <Empty
+                    icon={ShieldCheck}
+                    title="还没有备份"
+                    text="创建首个备份后，可在这里导出或恢复。"
+                  />
+                )}
+              </div>
+            </SettingBlock>
+            <SettingBlock
+              icon={ScrollText}
+              title="运行日志"
+              note="操作日志、任务日志、音乐源日志与回滚记录集中查看。"
+            >
+              <div className="log-toolbar">
+                <button
+                  className="secondary small"
+                  disabled={logsLoading}
+                  onClick={loadLogs}
+                >
+                  {logsLoading ? (
+                    <LoaderCircle className="spin" />
+                  ) : (
+                    <RefreshCw />
+                  )}
+                  刷新日志
+                </button>
+                <span>
+                  {logs?.updatedAt
+                    ? `更新于 ${new Date(logs.updatedAt).toLocaleString("zh-CN")}`
+                    : "点击刷新读取日志"}
+                </span>
+              </div>
+              {logsLoading ? (
+                <PageLoader />
+              ) : (
+                <div className="settings-log-grid">
+                  <div>
+                    <h3>任务日志</h3>
+                    {(logs?.jobLogs || []).slice(0, 30).map((item) => (
+                      <div className={`log-line ${item.level}`} key={item.id}>
+                        <time>
+                          {new Date(item.created_at).toLocaleString("zh-CN")}
+                        </time>
+                        <strong>
+                          {item.job_title || item.job_kind || "任务"}
+                        </strong>
+                        <span>{item.message}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <h3>音乐源日志</h3>
+                    {(logs?.sourceLogs || []).slice(0, 30).map((item) => (
+                      <div className={`log-line ${item.level}`} key={item.id}>
+                        <time>
+                          {new Date(item.created_at).toLocaleString("zh-CN")}
+                        </time>
+                        <strong>{item.source_name || item.action}</strong>
+                        <span>{item.message}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <h3>操作与回滚</h3>
+                    {(logs?.operations || []).slice(0, 30).map((item) => (
+                      <div className={`log-line ${item.status}`} key={item.id}>
+                        <time>
+                          {new Date(item.created_at).toLocaleString("zh-CN")}
+                        </time>
+                        <strong>{item.action}</strong>
+                        <span>
+                          {item.target_id || item.error_message || "已记录"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </SettingBlock>
+          </>
+        )}
+      </section>
+      {isAdmin && tab === "user" && <UserAccounts />}
+      {isAdmin && plexOpen && (
+        <PlexSettingsModal
+          initial={plex}
+          onClose={() => setPlexOpen(false)}
+          onSaved={async (next) => {
+            setPlex(next);
+            setPlexOpen(false);
+            setMessage("Plex 配置已保存");
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function PlexSettingsModal({ initial, onClose, onSaved }) {
+  const [draft, setDraft] = useState({
+    enabled: initial.enabled ?? true,
+    name: initial.name || "Plex",
+    serverUrl: initial.serverUrl || "",
+    externalUrl: initial.externalUrl || "",
+    token: "",
+    selectedLibraryKeys: initial.selectedLibraryKeys || "all",
+  });
+  const [libraries, setLibraries] = useState(initial.libraries || []),
+    [busy, setBusy] = useState(""),
+    [message, setMessage] = useState(""),
+    [showToken, setShowToken] = useState(false);
+  const selectedAll = draft.selectedLibraryKeys === "all";
+  const selectedKeys = Array.isArray(draft.selectedLibraryKeys)
+    ? draft.selectedLibraryKeys
+    : [];
+  const validateBaseUrl = (value, label, required = true) => {
+    const raw = (value || "").trim();
+    if (!raw && !required) return "";
+    if (!raw) throw new Error(`${label}不能为空`);
+    let parsed;
+    try {
+      parsed = new URL(raw);
+    } catch {
+      throw new Error(`${label}必须是 http 或 https 地址`);
+    }
+    if (!["http:", "https:"].includes(parsed.protocol) || !parsed.host)
+      throw new Error(`${label}必须是 http 或 https 地址`);
+    if (
+      (parsed.pathname && parsed.pathname !== "/") ||
+      parsed.search ||
+      parsed.hash
+    )
+      throw new Error(`${label}只能填写根地址，不能带路径、参数或片段`);
+    return raw.replace(/\/+$/, "");
+  };
+  const setField = (key, value) => setDraft((v) => ({ ...v, [key]: value }));
+  const refreshLibraries = async () => {
+    setBusy("libraries");
+    setMessage("");
+    try {
+      const data = await api("/api/plex/libraries");
+      setLibraries(data.items || []);
+      setMessage(`已读取 ${data.items?.length || 0} 个音乐库`);
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBusy("");
+    }
+  };
+  const test = async () => {
+    setBusy("test");
+    setMessage("");
+    try {
+      const serverUrl = validateBaseUrl(draft.serverUrl, "服务器内网地址");
+      const result = await api("/api/plex/test", {
+        method: "POST",
+        body: JSON.stringify({ serverUrl, token: draft.token }),
+      });
+      setLibraries(result.libraries || []);
+      setMessage(result.message || "Plex 连接成功");
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBusy("");
+    }
+  };
+  const save = async () => {
+    setBusy("save");
+    setMessage("");
+    try {
+      const safe = {
+        ...draft,
+        serverUrl: validateBaseUrl(draft.serverUrl, "服务器内网地址"),
+        externalUrl: validateBaseUrl(draft.externalUrl, "外网播放地址", false),
+      };
+      const result = await api("/api/settings/plex", {
+        method: "POST",
+        body: JSON.stringify(safe),
+      });
+      onSaved(result.settings);
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBusy("");
+    }
+  };
+  const toggleLibrary = (key) =>
+    setDraft((v) => {
+      const keys = Array.isArray(v.selectedLibraryKeys)
+        ? v.selectedLibraryKeys
+        : [];
+      return {
+        ...v,
+        selectedLibraryKeys: keys.includes(key)
+          ? keys.filter((item) => item !== key)
+          : [...keys, key],
+      };
+    });
+  return (
+    <div className="modal-wrap">
+      <button className="modal-backdrop" onClick={onClose} />
+      <section className="modal panel plex-modal">
+        <div className="modal-head">
+          <div>
+            <span className="eyebrow">
+              <Server />
+              PLEX MEDIA SERVER
+            </span>
+            <h3>配置 Plex 媒体服务器</h3>
+          </div>
+          <button className="icon-button" onClick={onClose}>
+            <X />
+          </button>
+        </div>
+        <div className="plex-form">
+          <label className="switch-line">
+            <input
+              type="checkbox"
+              checked={draft.enabled}
+              onChange={(e) => setField("enabled", e.target.checked)}
+            />
+            <span>启用 Plex 联动与媒体库同步</span>
+          </label>
+          <div className="plex-grid">
+            <label>
+              显示名称
+              <input
+                value={draft.name}
+                onChange={(e) => setField("name", e.target.value)}
+                placeholder="例如：极空间 Plex"
+              />
+            </label>
+            <label>
+              服务器内网地址
+              <input
+                value={draft.serverUrl}
+                onChange={(e) => setField("serverUrl", e.target.value)}
+                placeholder="http://192.168.31.185:32400"
+              />
+            </label>
+            <label>
+              外网播放地址（可选）
+              <input
+                value={draft.externalUrl}
+                onChange={(e) => setField("externalUrl", e.target.value)}
+                placeholder="https://plex.example.com"
+              />
+            </label>
+            <label>
+              X-Plex-Token
+              <div className="token-row">
+                <input
+                  type={showToken ? "text" : "password"}
+                  value={draft.token}
+                  onChange={(e) => setField("token", e.target.value)}
+                  placeholder={
+                    initial.hasToken
+                      ? "留空则继续使用已保存 Token"
+                      : "输入 X-Plex-Token"
+                  }
+                />
+                <button type="button" onClick={() => setShowToken((v) => !v)}>
+                  {showToken ? "隐藏" : "显示"}
+                </button>
+              </div>
+            </label>
+          </div>
+          <div className="library-mode">
+            <button
+              type="button"
+              className={selectedAll ? "active" : ""}
+              onClick={() => setField("selectedLibraryKeys", "all")}
+            >
+              <Library />
+              同步全部音乐库
+            </button>
+            <button
+              type="button"
+              className={!selectedAll ? "active" : ""}
+              onClick={() =>
+                setField(
+                  "selectedLibraryKeys",
+                  selectedKeys.length ? selectedKeys : [],
+                )
+              }
+            >
+              <ListMusic />
+              仅同步指定音乐库
+            </button>
+          </div>
+          <div className="library-tools">
+            <button
+              className="secondary small"
+              disabled={!!busy}
+              onClick={test}
+            >
+              {busy === "test" ? (
+                <LoaderCircle className="spin" />
+              ) : (
+                <TestTube2 />
+              )}
+              测试连接
+            </button>
+            <button
+              className="secondary small"
+              disabled={!!busy}
+              onClick={refreshLibraries}
+            >
+              {busy === "libraries" ? (
+                <LoaderCircle className="spin" />
+              ) : (
+                <RefreshCw />
+              )}
+              刷新媒体库
+            </button>
+          </div>
+          <div className="library-list">
+            {libraries.length ? (
+              libraries.map((item) => (
+                <label
+                  key={item.key}
+                  className={`library-row ${item.enabled ? "active" : ""}`}
+                >
+                  <input
+                    type="checkbox"
+                    disabled={selectedAll}
+                    checked={selectedAll || selectedKeys.includes(item.key)}
+                    onChange={() => toggleLibrary(item.key)}
+                  />
+                  <div>
+                    <strong>{item.title}</strong>
+                    <span>
+                      {item.type || "music"} · #{item.key}
+                    </span>
+                  </div>
+                  <i>{item.enabled ? "已同步" : "未选中"}</i>
+                </label>
+              ))
+            ) : (
+              <Empty
+                icon={Library}
+                title="还没有媒体库列表"
+                text="先测试连接或刷新媒体库，音屿会只展示 Plex 音乐资料库。"
+              />
+            )}
+          </div>
+          {message && (
+            <div className="inline-info">
+              <ShieldCheck />
+              {message}
+            </div>
+          )}
+          <div className="modal-actions">
+            <button className="secondary" onClick={onClose}>
+              取消
+            </button>
+            <button className="primary" disabled={!!busy} onClick={save}>
+              {busy === "save" ? <LoaderCircle className="spin" /> : <Check />}
+              确认保存
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function UserAccounts() {
+  const [items, setItems] = useState([]),
+    [form, setForm] = useState({
+      username: "",
+      displayName: "",
+      password: "",
+      role: "listener",
+      permissions: ["listen"],
+      libraryScopes: [],
+    }),
+    [busy, setBusy] = useState(""),
+    [message, setMessage] = useState("");
+  const [resetting, setResetting] = useState(null),
+    [resetPassword, setResetPassword] = useState("");
+  const strength = (password) => {
+    let score = 0;
+    if ((password || "").length >= 10) score++;
+    if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++;
+    if (/\d/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
+    return ["太弱", "偏弱", "可用", "较强", "很强"][score];
+  };
+  const load = async () => {
+    try {
+      const data = await api("/api/users");
+      setItems(data.items || []);
+    } catch (err) {
+      setMessage(err.message);
+    }
+  };
+  useEffect(() => {
+    load();
+  }, []);
+  const create = async (event) => {
+    event.preventDefault();
+    if (strength(form.password) === "太弱")
+      return setMessage("密码至少 10 位，建议包含大小写、数字和符号。");
+    setBusy("create");
+    setMessage("");
+    try {
+      await api("/api/users", { method: "POST", body: JSON.stringify(form) });
+      setForm({
+        username: "",
+        displayName: "",
+        password: "",
+        role: "listener",
+        permissions: ["listen"],
+        libraryScopes: [],
+      });
+      setMessage("账号已创建");
+      load();
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBusy("");
+    }
+  };
+  const toggle = async (item) => {
+    if (!confirm(`${item.enabled ? "停用" : "启用"}账号 ${item.username}？`))
+      return;
+    setBusy(item.id);
+    setMessage("");
+    try {
+      await api(`/api/users/${item.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ enabled: !item.enabled }),
+      });
+      load();
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBusy("");
+    }
+  };
+  const rename = async (item) => {
+    const username = prompt(
+      "新的用户名（admin 内置账号不可改名）",
+      item.username,
+    );
+    if (!username) return;
+    const displayName =
+      prompt("显示名称", item.displayName || username) || username;
+    setBusy(item.id);
+    try {
+      await api(`/api/users/${item.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ username, displayName }),
+      });
+      load();
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBusy("");
+    }
+  };
+  const editAccess = async (item) => {
+    const permissions = prompt(
+      "操作权限（逗号分隔：listen, manage_library, manage_sources, view_logs, manage_users）",
+      (item.permissions || []).join(", "),
+    );
+    if (permissions === null) return;
+    const scopes = prompt(
+      "可访问目录（相对 /music，逗号分隔；* 表示全部）",
+      (item.libraryScopes || []).join(", "),
+    );
+    if (scopes === null) return;
+    setBusy(item.id);
+    try {
+      await api(`/api/users/${item.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          permissions: permissions
+            .split(",")
+            .map((value) => value.trim())
+            .filter(Boolean),
+          libraryScopes: scopes
+            .split(",")
+            .map((value) => value.trim())
+            .filter(Boolean),
+        }),
+      });
+      setMessage("权限范围已更新");
+      load();
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBusy("");
+    }
+  };
+  const submitReset = async (event) => {
+    event.preventDefault();
+    if (!resetting) return;
+    if (strength(resetPassword) === "太弱")
+      return setMessage("新密码至少 10 位，建议包含大小写、数字和符号。");
+    if (
+      !confirm(
+        `确认重置 ${resetting.username} 的密码？该账号需要使用新密码重新登录。`,
+      )
+    )
+      return;
+    setBusy(resetting.id);
+    try {
+      await api(`/api/users/${resetting.id}/password`, {
+        method: "POST",
+        body: JSON.stringify({ password: resetPassword }),
+      });
+      setMessage(`已重置 ${resetting.username} 的密码`);
+      setResetting(null);
+      setResetPassword("");
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBusy("");
+    }
+  };
+  const remove = async (item) => {
+    if (
+      !confirm(
+        `删除账号 ${item.username}？\n\n此操作会移除登录能力，但不会删除音乐文件。`,
+      )
+    )
+      return;
+    setBusy(item.id);
+    try {
+      await api(`/api/users/${item.id}`, { method: "DELETE" });
+      load();
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBusy("");
+    }
+  };
+  return (
+    <section className="panel account-panel">
+      <SectionHead
+        title="账户与多用户"
+        note="普通用户只看到播放、收藏、发现和个人页；管理员才显示管理中心。"
+        action={
+          <button className="secondary small" onClick={load}>
+            <RefreshCw />
+            刷新
+          </button>
+        }
+      />
+      {message && (
+        <div className="inline-info">
+          <ShieldCheck />
+          {message}
+        </div>
+      )}
+      <div className="account-list">
+        {items.map((item) => (
+          <div className="account-row" key={item.id}>
+            <UserRound />
+            <div>
+              <strong>{item.displayName || item.username}</strong>
+              <span>
+                @{item.username} · {item.role || "listener"} ·{" "}
+                {item.enabled ? "已启用" : "已停用"} ·{" "}
+                {item.lastLoginAt
+                  ? `上次登录 ${timeAgo(item.lastLoginAt)}`
+                  : "未登录"}
+                <br />
+                权限：{(item.permissions || []).join("、")} · 目录：
+                {(item.libraryScopes || []).join("、") || "未授权"}
+              </span>
+            </div>
+            <button className="secondary small" onClick={() => rename(item)}>
+              改名
+            </button>
+            <button
+              className="secondary small"
+              onClick={() => editAccess(item)}
+            >
+              权限范围
+            </button>
+            <button
+              className="secondary small"
+              onClick={() => setResetting(item)}
+            >
+              重置密码
+            </button>
+            <button
+              className="secondary small"
+              disabled={busy === item.id}
+              onClick={() => toggle(item)}
+            >
+              {item.enabled ? "停用" : "启用"}
+            </button>
+            <button className="icon-button danger" onClick={() => remove(item)}>
+              <Trash2 />
+            </button>
+          </div>
+        ))}
+      </div>
+      <form className="account-create" onSubmit={create}>
+        <label>
+          用户名
+          <input
+            value={form.username}
+            onChange={(e) =>
+              setForm((v) => ({ ...v, username: e.target.value }))
+            }
+            placeholder="例如 playsong"
+          />
+        </label>
+        <label>
+          显示名称
+          <input
+            value={form.displayName}
+            onChange={(e) =>
+              setForm((v) => ({ ...v, displayName: e.target.value }))
+            }
+            placeholder="例如 PlaySong"
+          />
+        </label>
+        <label>
+          角色
+          <select
+            value={form.role}
+            onChange={(e) => {
+              const role = e.target.value;
+              setForm((v) => ({
+                ...v,
+                role,
+                permissions:
+                  role === "listener"
+                    ? ["listen"]
+                    : role === "library_admin"
+                      ? [
+                          "listen",
+                          "manage_library",
+                          "manage_sources",
+                          "view_logs",
+                        ]
+                      : [
+                          "listen",
+                          "manage_library",
+                          "manage_sources",
+                          "manage_users",
+                          "view_logs",
+                        ],
+                libraryScopes: role === "listener" ? [] : ["*"],
+              }));
+            }}
+          >
+            <option value="listener">普通用户</option>
+            <option value="library_admin">曲库管理员</option>
+            <option value="admin">管理员</option>
+          </select>
+        </label>
+        <label className="account-scope">
+          可访问目录
+          <input
+            value={(form.libraryScopes || []).join(", ")}
+            onChange={(event) =>
+              setForm((value) => ({
+                ...value,
+                libraryScopes: event.target.value
+                  .split(",")
+                  .map((item) => item.trim())
+                  .filter(Boolean),
+              }))
+            }
+            placeholder="例如：周杰伦, 五月天；* 表示全部"
+          />
+          <small>按 /music 下的相对目录限制本地文件访问。</small>
+        </label>
+        <div className="account-permissions">
+          {[
+            ["listen", "播放"],
+            ["manage_library", "曲库管理"],
+            ["manage_sources", "音乐源"],
+            ["view_logs", "日志/备份"],
+            ["manage_users", "用户管理"],
+          ].map(([key, label]) => (
+            <label key={key}>
+              <input
+                type="checkbox"
+                checked={(form.permissions || []).includes(key)}
+                disabled={key === "listen"}
+                onChange={() =>
+                  setForm((value) => ({
+                    ...value,
+                    permissions: value.permissions.includes(key)
+                      ? value.permissions.filter((item) => item !== key)
+                      : [...value.permissions, key],
+                  }))
+                }
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+        <label>
+          初始密码
+          <input
+            type="password"
+            autoComplete="new-password"
+            value={form.password}
+            onChange={(e) =>
+              setForm((v) => ({ ...v, password: e.target.value }))
+            }
+            placeholder="至少 10 位"
+          />
+          <small>强度：{strength(form.password)}</small>
+        </label>
+        <button className="primary small" disabled={busy === "create"}>
+          {busy === "create" ? <LoaderCircle className="spin" /> : <Plus />}
+          新建用户
+        </button>
+      </form>
+      <p className="setting-copy">
+        安全重置命令：
+        <code>
+          docker exec songlib-amp python -m app.cli reset-admin --from-env
+        </code>
+        。这会把 admin 密码恢复为 NAS `.env` 里的 APP_PASSWORD。
+      </p>
+      {resetting && (
+        <div className="modal-wrap">
+          <button
+            className="modal-backdrop"
+            onClick={() => setResetting(null)}
+          />
+          <form
+            className="modal panel password-reset-modal"
+            onSubmit={submitReset}
+          >
+            <div className="modal-head">
+              <div>
+                <span className="eyebrow">RESET PASSWORD</span>
+                <h3>重置 {resetting.username} 的密码</h3>
+              </div>
+              <button
+                type="button"
+                className="icon-button"
+                onClick={() => setResetting(null)}
+              >
+                <X />
+              </button>
+            </div>
+            <label>
+              新密码
+              <input
+                autoFocus
+                type="password"
+                autoComplete="new-password"
+                minLength="10"
+                value={resetPassword}
+                onChange={(e) => setResetPassword(e.target.value)}
+                placeholder="至少 10 位"
+              />
+              <small>强度：{strength(resetPassword)}</small>
+            </label>
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setResetting(null)}
+              >
+                取消
+              </button>
+              <button className="primary" disabled={busy === resetting.id}>
+                {busy === resetting.id ? (
+                  <LoaderCircle className="spin" />
+                ) : (
+                  <ShieldCheck />
+                )}
+                确认重置
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function SettingBlock({ icon: Icon, title, note, children }) {
+  return (
+    <section className="setting-card">
+      <div className="setting-title">
+        <Icon />
+        <div>
+          <h3>{title}</h3>
+          <p>{note}</p>
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function PageLoader() {
+  return (
+    <div className="page-loader">
+      <LoaderCircle className="spin" />
+      <span>正在读取音乐库…</span>
+    </div>
+  );
+}
+
+function Toast({ toast, clear }) {
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(clear, 3200);
+    return () => clearTimeout(t);
+  }, [toast]);
+  if (!toast) return null;
+  return (
+    <div className={`toast ${toast.type || "ok"}`}>
+      {toast.type === "error" ? <CircleAlert /> : <Check />}
+      <span>{toast.message}</span>
+      <button onClick={clear}>
+        <X />
+      </button>
+    </div>
+  );
+}
+
+function GlobalSearchPage({ play, navigate, isAdmin }) {
+  const player = usePlayer();
+  const [query, setQuery] = useState(
+      () => localStorage.getItem("songlib-global-search") || "",
+    ),
+    [loading, setLoading] = useState(false),
+    [groups, setGroups] = useState({
+      tracks: [],
+      artists: [],
+      albums: [],
+      pending: [],
+    }),
+    [error, setError] = useState("");
+  const search = async (event) => {
+    event?.preventDefault?.();
+    const text = query.trim();
+    if (!text) return;
+    localStorage.setItem("songlib-global-search", text);
+    setLoading(true);
+    setError("");
+    try {
+      const [tracks, artists, albums, pending] = await Promise.all([
+        api(
+          `/api/catalog/unified?limit=40&q=${encodeURIComponent(text)}`,
+        ).catch(() => ({ items: [] })),
+        api(
+          `/api/library/artists?pageSize=12&search=${encodeURIComponent(text)}`,
+        ).catch(() => ({ items: [] })),
+        api(
+          `/api/library/albums?pageSize=12&search=${encodeURIComponent(text)}`,
+        ).catch(() => ({ items: [] })),
+        isAdmin
+          ? api("/api/downloads/pending").catch(() => ({ items: [] }))
+          : Promise.resolve({ items: [] }),
+      ]);
+      setGroups({
+        tracks: tracks.items || [],
+        artists: artists.items || [],
+        albums: albums.items || [],
+        pending: (pending.items || []).filter((item) =>
+          JSON.stringify(item).includes(text),
+        ),
+      });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    if (query) search();
+  }, []);
+  const groupTotal = Object.values(groups).reduce(
+    (sum, items) => sum + (items?.length || 0),
+    0,
+  );
+  const TrackActions = ({ item }) => (
+    <div className="search-row-actions">
+      <button title="播放" onClick={() => play(item)}>
+        <Play />
+      </button>
+      <button title="下一首" onClick={() => player.addToQueue(item)}>
+        <ListMusic />
+      </button>
+      <button title="收藏" onClick={() => player.toggleFavorite(item)}>
+        <Heart />
+      </button>
+      {isAdmin && (
+        <button
+          title="编辑/定位"
+          onClick={() =>
+            navigate(
+              item.sourceTypes?.includes("local_file") ? "local" : "library",
+            )
+          }
+        >
+          <Tags />
+        </button>
+      )}
+    </div>
+  );
+  return (
+    <div className="page global-search-page">
+      <section className="page-intro">
+        <span className="eyebrow">
+          <Search />
+          GLOBAL SEARCH
+        </span>
+        <h1>全局搜索</h1>
+        <p>同一首歌只显示一次，本地文件与 Plex 作为可切换资源附在歌曲下。</p>
+      </section>
+      <form className="catalog-search" onSubmit={search}>
+        <div className="big-search">
+          <Search />
+          <input
+            autoFocus
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="搜索歌曲、艺术家、专辑、文件名…"
+          />
+          <button className="primary" disabled={loading}>
+            {loading ? <LoaderCircle className="spin" /> : "搜索"}
+          </button>
+        </div>
+      </form>
+      {error && (
+        <div className="inline-error">
+          <CircleAlert />
+          {error}
+        </div>
+      )}
+      {loading ? (
+        <PageLoader />
+      ) : (
+        <div className="search-groups">
+          {!groupTotal && query ? (
+            <Empty
+              icon={Search}
+              title="没有找到匹配内容"
+              text="换个关键词，或先扫描本地曲库/同步 Plex。"
+            />
+          ) : null}
+          <section className="panel">
+            <SectionHead
+              title="单曲"
+              note={`${groups.tracks.length} 首标准歌曲实体`}
+            />
+            {groups.tracks.map((item) => (
+              <div className="search-result-row" key={item.id}>
+                <Music2 />
+                <div>
+                  <strong>{item.title}</strong>
+                  <span>
+                    {item.artist || "未知歌手"} · {item.album || "未知专辑"}
+                    <em className={`match-badge ${item.matchStatus}`}>
+                      {item.sourceSummary}
+                    </em>
+                  </span>
+                </div>
+                <TrackActions item={item} />
+              </div>
+            ))}
+          </section>
+          <section className="panel">
+            <SectionHead
+              title="艺人 / 专辑"
+              note={`${groups.artists.length} 位艺人 · ${groups.albums.length} 张专辑`}
+            />
+            <div className="search-card-grid">
+              {[
+                ...groups.artists.map((item) => ({ ...item, type: "artists" })),
+                ...groups.albums.map((item) => ({ ...item, type: "albums" })),
+              ].map((item) => (
+                <button
+                  key={`${item.type}-${item.ratingKey}`}
+                  onClick={() => {
+                    navigate("library");
+                    localStorage.setItem("songlib-global-search", item.title);
+                  }}
+                >
+                  <div>
+                    {item.thumbUrl ? (
+                      <img src={item.thumbUrl} alt="" />
+                    ) : (
+                      <Album />
+                    )}
+                  </div>
+                  <strong>{item.title}</strong>
+                  <span>{item.type === "artists" ? "艺人" : "专辑"}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+          {isAdmin && (
+            <section className="panel">
+              <SectionHead
+                title="待修复 / 待入库"
+                note={`${groups.pending.length} 个下载候选`}
+              />
+              {groups.pending.map((item) => (
+                <div className="search-result-row" key={item.jobId}>
+                  <Download />
+                  <div>
+                    <strong>{item.title}</strong>
+                    <span>{item.downloadPath || "待确认路径"}</span>
+                  </div>
+                  <button
+                    className="secondary small"
+                    onClick={() => navigate("download")}
+                  >
+                    去处理
+                  </button>
+                </div>
+              ))}
+            </section>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MePage({ navigate }) {
+  const player = usePlayer();
+  const favorites = Object.values(player.favorites || {}).sort((a, b) =>
+    String(b.likedAt || "").localeCompare(String(a.likedAt || "")),
+  );
+  const history = player.history || [];
+  const events = player.playEvents || history;
+  const playlists = player.playlists || {};
+  const newPlaylist = () => {
+    const name = prompt("新建歌单名称");
+    if (name) player.createPlaylist(name);
+  };
+  const totalMinutes = Math.round(
+    events.reduce((sum, item) => sum + Number(item.duration || 0), 0) / 60,
+  );
+  const artistCounts = events.reduce((map, item) => {
+    const key = item.artist || "未知歌手";
+    map[key] = (map[key] || 0) + 1;
+    return map;
+  }, {});
+  const topArtists = Object.entries(artistCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+  const recentDays = Array.from({ length: 7 }, (_, offset) => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() - (6 - offset));
+    const next = new Date(date);
+    next.setDate(next.getDate() + 1);
+    return {
+      label: `${date.getMonth() + 1}/${date.getDate()}`,
+      count: events.filter((item) => {
+        const value = new Date(item.playedAt).getTime();
+        return value >= date.getTime() && value < next.getTime();
+      }).length,
+    };
+  });
+  const maxDay = Math.max(1, ...recentDays.map((item) => item.count));
+  return (
+    <div className="page me-page">
+      <section className="page-intro">
+        <span className="eyebrow">
+          <UserRound />
+          MY MUSIC
+        </span>
+        <h1>我的音乐</h1>
+        <p>收藏、最近播放、下载记录和个人偏好集中在这里。</p>
+      </section>
+      <div className="me-grid">
+        <section className="panel">
+          <SectionHead title="听歌报告" note="基于本机播放历史生成" />
+          <div className="report-cards">
+            <StatCard
+              icon={Play}
+              label="播放记录"
+              value={events.length}
+              detail="实际播放次数"
+            />
+            <StatCard
+              icon={Clock3}
+              label="累计时长"
+              value={totalMinutes}
+              detail="分钟"
+            />
+            <StatCard
+              icon={Heart}
+              label="收藏歌曲"
+              value={favorites.length}
+              detail="本地账号"
+            />
+          </div>
+          <div className="listening-insights">
+            <div>
+              <h4>近 7 天</h4>
+              <div className="listening-bars">
+                {recentDays.map((item) => (
+                  <span key={item.label}>
+                    <i
+                      style={{
+                        height: `${Math.max(4, (item.count / maxDay) * 100)}%`,
+                      }}
+                    />
+                    <b>{item.count}</b>
+                    <small>{item.label}</small>
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h4>常听歌手</h4>
+              <ol>
+                {topArtists.map(([name, count], index) => (
+                  <li key={name}>
+                    <b>{index + 1}</b>
+                    <span>{name}</span>
+                    <em>{count} 次</em>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        </section>
+        <section className="panel">
+          <SectionHead title="我喜欢" note={`${favorites.length} 首收藏`} />
+          {favorites.length ? (
+            <div className="favorite-list">
+              {favorites.slice(0, 12).map((item) => (
+                <button
+                  key={trackIdentity(item)}
+                  onClick={() => player.play(item)}
+                >
+                  <Heart />
+                  <div>
+                    <strong>{item.title}</strong>
+                    <span>
+                      {item.artist || "未知歌手"} · {item.album || "未知专辑"}
+                    </span>
+                  </div>
+                  <Play />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <Empty
+              icon={Heart}
+              title="还没有收藏"
+              text="播放时点击喜欢，歌曲会出现在这里。"
+            />
+          )}
+        </section>
+        <section className="panel">
+          <SectionHead title="最近播放" note="可一键继续播放" />
+          {history.length ? (
+            <div className="favorite-list">
+              {history.slice(0, 12).map((item) => (
+                <button
+                  key={`${trackIdentity(item)}-${item.playedAt}`}
+                  onClick={() => player.play(item)}
+                >
+                  <Clock3 />
+                  <div>
+                    <strong>{item.title}</strong>
+                    <span>
+                      {item.artist || "未知歌手"} · {timeAgo(item.playedAt)}
+                    </span>
+                  </div>
+                  <Play />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <Empty
+              icon={Play}
+              title="暂无播放记录"
+              text="从音乐库或发现页播放一首歌即可生成。"
+            />
+          )}
+        </section>
+        <section className="panel">
+          <SectionHead
+            title="我的歌单"
+            note={`${Object.keys(playlists).length} 个歌单`}
+            action={
+              <button className="secondary small" onClick={newPlaylist}>
+                <Plus />
+                新建歌单
+              </button>
+            }
+          />
+          {Object.keys(playlists).length ? (
+            <div className="playlist-library">
+              {Object.entries(playlists).map(([name, tracks]) => (
+                <article key={name}>
+                  <button
+                    onClick={() =>
+                      tracks[0] && player.play(tracks[0], tracks.slice(1))
+                    }
+                  >
+                    <ListMusic />
+                    <div>
+                      <strong>{name}</strong>
+                      <span>{tracks.length} 首歌曲</span>
+                    </div>
+                    <Play />
+                  </button>
+                  <button
+                    className="icon-button danger"
+                    onClick={() =>
+                      confirm(`删除歌单“${name}”？歌曲文件不会被删除。`) &&
+                      player.deletePlaylist(name)
+                    }
+                  >
+                    <Trash2 />
+                  </button>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <Empty
+              icon={ListMusic}
+              title="还没有歌单"
+              text="在播放器中把喜欢的歌曲加入新歌单。"
+            />
+          )}
+        </section>
+        <section className="panel">
+          <SectionHead title="我的入口" note="常用个人操作" />
+          <div className="quick-grid small">
+            <button onClick={() => navigate("library")}>
+              <Library />
+              打开音乐库
+            </button>
+            <button onClick={() => navigate("discover")}>
+              <Sparkles />
+              今日推荐
+            </button>
+            <button onClick={() => navigate("player")}>
+              <Play />
+              播放器
+            </button>
+            <button onClick={() => navigate("settings")}>
+              <Settings />
+              偏好设置
+            </button>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function ManagementHub({ navigate, stats, jobs, permissions = [] }) {
+  const waiting = jobs.filter((job) => job.status === "waiting_confirm").length;
+  const failed = jobs.filter((job) => job.status === "failed").length;
+  const can = (permission) =>
+    permissions.includes(permission) || permissions.includes("manage_users");
+  const visibleManagement = managementNav.filter((item) =>
+    item.id === "sources"
+      ? can("manage_sources")
+      : item.id === "settings"
+        ? false
+        : can("manage_library"),
+  );
+  return (
+    <div className="page manage-page">
+      <section className="page-intro">
+        <span className="eyebrow">
+          <Gauge />
+          ADMIN CENTER
+        </span>
+        <h1>管理中心</h1>
+        <p>
+          整理、刮削、下载、音乐源、任务、回滚与审计集中在这里。播放和日常使用不被管理功能打断。
+        </p>
+      </section>
+      <section className="manage-overview panel">
+        <StatCard icon={Music2} label="歌曲" value={stats?.tracks} />
+        <StatCard
+          icon={CircleAlert}
+          label="待确认"
+          value={waiting}
+          tone="amber"
+        />
+        <StatCard
+          icon={CircleAlert}
+          label="失败任务"
+          value={failed}
+          tone="pink"
+        />
+        <StatCard
+          icon={BookOpenText}
+          label="缺歌词"
+          value={stats?.missingLyrics}
+          tone="blue"
+        />
+      </section>
+      <section className="manage-grid">
+        {visibleManagement.map((item) => (
+          <button
+            className="panel manage-card"
+            key={item.id}
+            onClick={() => navigate(item.id)}
+          >
+            <item.icon />
+            <strong>{item.label}</strong>
+            <span>{item.desc}</span>
+            <ChevronRight />
+          </button>
+        ))}
+      </section>
+    </div>
+  );
+}
+
+const pageMeta = {
+  home: ["曲库总览", "Plex、本地曲库、资料完整度与待处理任务"],
+  library: ["音乐库", "浏览歌手、专辑与单曲，并直接播放"],
+  player: ["播放器", "播放本地文件、Plex 曲目与下载前试听"],
+  discover: ["发现", "每日推荐、平台歌单分类与本地冷门重听"],
+  me: ["我的", "收藏、最近播放、听歌报告与个人偏好"],
+  manage: ["管理中心", "刮削、下载、任务、回滚与日志审计"],
+  search: ["全局搜索", "歌曲、艺人、专辑、本地文件与待处理项"],
+  local: ["本地曲库", "扫描、整理并修复 NAS 上的真实音乐文件"],
+  scrape: ["刮削中心", "补齐封面、歌词、背景与中文简介"],
+  download: ["下载入库", "搜索音乐，保存到 NAS 或当前设备"],
+  sources: ["音乐源管理", "导入、检查并测试你的自定义音乐源"],
+  tasks: ["任务中心", "查看下载、整理、刮削与扫描进度"],
+  settings: ["设置", "Plex、本地路径、账号、安全与日志"],
+};
+
+function App() {
+  const [authenticated, setAuthenticated] = useState(null);
+  useEffect(() => {
+    api("/api/auth/status")
+      .then((d) => setAuthenticated(d.authenticated))
+      .catch(() => setAuthenticated(false));
+  }, []);
+  if (authenticated === null)
+    return (
+      <div className="boot">
+        <Brand />
+        <LoaderCircle className="spin" />
+      </div>
+    );
+  if (!authenticated) return <Login onLogin={() => setAuthenticated(true)} />;
+  return (
+    <PlayerProvider>
+      <AuthenticatedShell setAuthenticated={setAuthenticated} />
+      <PwaInstallPrompt />
+    </PlayerProvider>
+  );
+}
+
+function AuthenticatedShell({ setAuthenticated }) {
+  const [active, setActive] = useState("home");
+  const [menu, setMenu] = useState(false);
+  const [stats, setStats] = useState({});
+  const [jobs, setJobs] = useState([]);
+  const [sources, setSources] = useState([]);
+  const [settingsData, setSettingsData] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(null);
+  const [ambientIndex, setAmbientIndex] = useState(0);
+  const [manualBackdrop, setManualBackdrop] = useState(null);
+  const player = usePlayer();
+  const load = async () => {
+    setLoading(true);
+    try {
+      const [s, cfg, j, src] = await Promise.all([
+        api("/api/dashboard"),
+        api("/api/settings"),
+        api("/api/jobs").catch(() => []),
+        api("/api/sources").catch(() => []),
+      ]);
+      setStats(s);
+      setSettingsData(cfg);
+      setJobs(Array.isArray(j) ? j : []);
+      setSources(Array.isArray(src) ? src : []);
+    } catch (err) {
+      if (err.message.includes("登录")) setAuthenticated(false);
+      else setToast({ type: "error", message: err.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+  const refreshJobs = async () => setJobs(await api("/api/jobs"));
+  const refreshSources = async () => setSources(await api("/api/sources"));
+  useEffect(() => {
+    load();
+  }, []);
+  useEffect(() => {
+    const title = pageMeta[active]?.[0];
+    document.title = title ? `${title} - ${BRAND.fullName}` : BRAND.fullName;
+  }, [active]);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (
+        userIsAdmin(settingsData.user) ||
+        settingsData.user?.permissions?.includes("manage_library")
+      )
+        refreshJobs().catch(() => {});
+    }, 2500);
+    return () => clearInterval(timer);
+  }, [settingsData.user?.role, settingsData.user?.permissions?.join("|")]);
+  const ambientImages = stats?.heroImages || [];
+  useEffect(() => {
+    if (ambientImages.length && ambientIndex >= ambientImages.length)
+      setAmbientIndex(0);
+  }, [ambientImages.length, ambientIndex]);
+  useEffect(() => {
+    if (active === "player" || manualBackdrop || ambientImages.length < 2)
+      return;
+    const timer = setInterval(
+      () => setAmbientIndex((value) => (value + 1) % ambientImages.length),
+      20000,
+    );
+    return () => clearInterval(timer);
+  }, [active, ambientImages.length, manualBackdrop]);
+  const runJob = async (kind, payload = {}) => {
+    try {
+      await api("/api/jobs", {
+        method: "POST",
+        body: JSON.stringify({ kind, payload }),
+      });
+      setToast({ message: "任务已加入队列" });
+      refreshJobs();
+      setActive("tasks");
+    } catch (err) {
+      setToast({ type: "error", message: err.message });
+    }
+  };
+  const createDownload = async (item, sourceId, quality) => {
+    try {
+      const result = await api("/api/downloads", {
+        method: "POST",
+        body: JSON.stringify({ item, sourceId, quality }),
+      });
+      setToast({ message: `《${item.title}》已加入下载队列` });
+      refreshJobs();
+      return result;
+    } catch (err) {
+      setToast({ type: "error", message: err.message });
+      throw err;
+    }
+  };
+  const logout = async () => {
+    await api("/api/auth/logout", { method: "POST" }).catch(() => {});
+    setAuthenticated(false);
+  };
+  const playTrack = async (item) => {
+    await player.play(item);
+  };
+  const isAdmin = userIsAdmin(settingsData.user);
+  const permissions = settingsData.user?.permissions || [];
+  const canManageLibrary = isAdmin || permissions.includes("manage_library");
+  const canManageSources = isAdmin || permissions.includes("manage_sources");
+  const canOpenManagement = canManageLibrary || canManageSources;
+  const isMobile = useMediaQuery("(max-width: 780px)");
+  useEffect(() => {
+    if (!canOpenManagement && managementNav.some((item) => item.id === active))
+      setActive("home");
+  }, [canOpenManagement, active]);
+  const [title, subtitle] = pageMeta[active] || pageMeta.home;
+  const hero =
+    manualBackdrop ||
+    ambientImages[ambientIndex % Math.max(ambientImages.length, 1)] ||
+    {};
+  const playerTrack = player.currentTrack || {};
+  const shellBackdrop =
+    active === "player"
+      ? coverUrlFor(playerTrack) || VISUAL_FALLBACKS.player
+      : hero.imageUrl || VISUAL_FALLBACKS.artist;
+  const Backdrop = active === "player" ? PlayerBackdrop : ArtistBackdrop;
+  const showMiniPlayer = !!player.currentTrack && active !== "player";
+  return (
+    <div
+      className={`app-shell visual-shell route-${active} ${showMiniPlayer ? "has-mini-player" : ""}`}
+    >
+      <Backdrop imageUrl={shellBackdrop} />
+      {(!isMobile || menu) && (
+        <Sidebar
+          active={active}
+          onChange={setActive}
+          open={menu}
+          close={() => setMenu(false)}
+          logout={logout}
+          version={settingsData.version}
+          openPlayer={() => setActive("player")}
+          isAdmin={canOpenManagement}
+        />
+      )}
+      <main className="main">
+        <Topbar
+          title={title}
+          subtitle={subtitle}
+          openMenu={() => setMenu(true)}
+          onNavigate={setActive}
+          logout={logout}
+          profile={settingsData.user}
+        />
+        {active === "home" && (
+          <Dashboard
+            stats={stats}
+            jobs={jobs}
+            loading={loading}
+            navigate={setActive}
+            runJob={runJob}
+            isAdmin={canManageLibrary}
+          />
+        )}{" "}
+        {active === "library" && (
+          <MediaLibrary play={playTrack} previewBackdrop={setManualBackdrop} />
+        )}{" "}
+        {active === "search" && (
+          <GlobalSearchPage
+            play={playTrack}
+            navigate={setActive}
+            isAdmin={canManageLibrary}
+          />
+        )}{" "}
+        {active === "me" && <MePage navigate={setActive} />}{" "}
+        {active === "manage" && canOpenManagement && (
+          <ManagementHub
+            navigate={setActive}
+            stats={stats}
+            jobs={jobs}
+            permissions={
+              isAdmin
+                ? ["manage_users", "manage_library", "manage_sources"]
+                : permissions
+            }
+          />
+        )}{" "}
+        {canManageLibrary && active === "local" && (
+          <LocalLibraryPage
+            runJob={runJob}
+            play={playTrack}
+            notify={(message) => setToast({ message })}
+            navigate={setActive}
+          />
+        )}{" "}
+        {canManageLibrary && active === "scrape" && (
+          <ScrapeCenter jobs={jobs} navigate={setActive} settings={settingsData} />
+        )}{" "}
+        {canManageLibrary && active === "download" && (
+          <DownloadCenter
+            sources={sources}
+            createDownload={createDownload}
+            navigate={setActive}
+            notify={(message) => setToast({ message })}
+            playPreview={playTrack}
+          />
+        )}{" "}
+        {canManageSources && active === "sources" && (
+          <SourceManager
+            sources={sources}
+            refreshSources={refreshSources}
+            notify={(message) => setToast({ message })}
+          />
+        )}{" "}
+        {active === "discover" && (
+          <DiscoverPage
+            play={playTrack}
+            navigate={setActive}
+            isAdmin={canManageLibrary}
+          />
+        )}{" "}
+        {active === "player" && (
+          <PlayerPage
+            navigate={setActive}
+            playerSettings={settingsData.player}
+            isAdmin={canManageLibrary}
+          />
+        )}{" "}
+        {canManageLibrary && active === "tasks" && (
+          <Tasks jobs={jobs} refresh={refreshJobs} navigate={setActive} />
+        )}{" "}
+        {active === "settings" && (
+          <SettingsPage
+            settings={settingsData}
+            logout={logout}
+            navigate={setActive}
+            isAdmin={isAdmin}
+          />
+        )}{" "}
+        {isMobile && (
+          <MobileNav
+            active={active}
+            change={setActive}
+            isAdmin={canOpenManagement}
+          />
+        )}
+      </main>
+      {showMiniPlayer && (
+        <MiniPlayer
+          openPlayer={() => setActive("player")}
+          navigate={setActive}
+        />
+      )}
+      <Toast toast={toast} clear={() => setToast(null)} />
+    </div>
+  );
+}
+
+function MobileNav({ active, change, isAdmin = true }) {
+  const labels = {
+    home: "首页",
+    library: "曲库",
+    player: "播放",
+    discover: "发现",
+    me: "我的",
+    manage: "管理",
+  };
+  const items = nav
+    .filter((item) => labels[item.id] && (!item.admin || isAdmin))
+    .slice(0, 6);
+  const highlighted = activeNavId(active);
+  return (
+    <nav className="mobile-nav mobile-only">
+      {items.map((item) => (
+        <button
+          className={highlighted === item.id ? "active" : ""}
+          onClick={() => change(item.id)}
+          key={item.id}
+        >
+          <item.icon />
+          <span>{labels[item.id]}</span>
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+createRoot(document.getElementById("root")).render(<App />);

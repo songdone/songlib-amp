@@ -1,0 +1,35 @@
+services:
+  songlib-amp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: local/songlib-amp:0.8.0
+    container_name: songlib-amp
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      PORT: ${APP_PORT:-32781}
+      APP_NAME: SongLib Amp｜音屿
+      APP_PASSWORD: ${APP_PASSWORD:?请在.env中设置APP_PASSWORD}
+      SESSION_SECRET: ${SESSION_SECRET:?请在.env中设置SESSION_SECRET}
+      DATA_DIR: /data
+      MUSIC_ROOT: /music
+      PLEX_CONFIG: /plex-config
+      PLEX_URL: http://127.0.0.1:32400
+      PLEX_SECTION: "26"
+      PLEX_MEDIA_PREFIX: /media/音乐/
+      DOWNLOAD_DIR: "_downloads"
+      DOWNLOAD_ROOT: /downloads
+      MAX_DOWNLOAD_MB: "500"
+      SOURCE_MAX_SIZE_MB: "2"
+      ALLOW_PRIVATE_DOWNLOAD_URLS: "false"
+      ALLOW_PROXY_FAKE_IPS: "true"
+    volumes:
+      - "${SONGLIB_DATA_DIR:-./data}:/data"
+      - "${SONGLIB_DOWNLOADS_DIR:-./downloads}:/downloads"
+      - "${MUSIC_DIR:?请在.env中设置MUSIC_DIR}:/music"
+      - "${PLEX_CONFIG_DIR:?请在.env中设置PLEX_CONFIG_DIR}:/plex-config:ro"
+    labels:
+      com.zspace.app.name: SongLib Amp｜音屿
+      com.zspace.app.description: NAS 音乐下载、刮削、整理与 Plex 联动小系统

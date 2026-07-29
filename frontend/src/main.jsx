@@ -7652,7 +7652,7 @@ function PlaylistsPage({ play, notify }) {
                   <p>{selected.description || `${selected.itemCount} 首歌曲`}</p>
                 </div>
                 <div>
-                  <button className="primary" onClick={playAll} disabled={!selected.items.some((item) => item.file_id)}>
+                  <button className="primary" onClick={playAll} disabled={!selected.items.some(playable)}>
                     <Play />播放全部
                   </button>
                   <button className="icon-button danger" onClick={remove} aria-label="删除歌单"><Trash2 /></button>
@@ -7663,9 +7663,9 @@ function PlaylistsPage({ play, notify }) {
                   <article key={item.id} className={!playable(item) ? "unmatched" : ""}>
                     <button
                       className="track-play"
-                      disabled={!item.file_id}
+                      disabled={!playable(item)}
                       onClick={() => playable(item) && play(playable(item))}
-                      aria-label={item.file_id ? `播放 ${item.title}` : `${item.title} 尚未匹配`}
+                      aria-label={playable(item) ? `播放 ${item.title}` : `${item.title} 尚未匹配`}
                     >
                       {item.file_id ? <Play /> : <CircleAlert />}
                     </button>

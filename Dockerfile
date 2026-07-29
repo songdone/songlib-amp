@@ -1,9 +1,7 @@
-# syntax=docker/dockerfile:1.7
 FROM node:24.14.0-alpine3.23 AS frontend
 WORKDIR /build/frontend
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
-RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
-    npm install --global pnpm@11.9.0 --ignore-scripts --no-audit --no-fund \
+RUN npm install --global pnpm@11.9.0 --ignore-scripts --no-audit --no-fund \
     && pnpm install --frozen-lockfile --ignore-scripts
 COPY frontend/ ./
 RUN npm run build
@@ -27,7 +25,7 @@ RUN apt-get update \
     && useradd --uid "${APP_UID}" --gid "${APP_GID}" --home-dir /app --no-create-home --shell /usr/sbin/nologin songlib
 WORKDIR /app
 COPY backend/requirements.txt backend/requirements.lock ./
-RUN --mount=type=cache,target=/root/.cache/pip pip install -r requirements.lock
+RUN pip install -r requirements.lock
 COPY --chown=songlib:songlib backend/app ./app
 COPY --chown=songlib:songlib backend/lx_bridge.mjs backend/source_inspector.mjs ./
 COPY --from=frontend --chown=songlib:songlib /build/frontend/dist ./static

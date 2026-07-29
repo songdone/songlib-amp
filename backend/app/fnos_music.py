@@ -12,8 +12,10 @@ from .config import settings
 from .unified_catalog import normalize
 
 
-SIGNING_SEED = "NDzZTVxnRKP8Z0jXg1VAMonaG8akvh"
-CLIENT_API_KEY = "6D5602D4-A342-4799-A0F0-BB795E7167D0"
+# Public client identifiers embedded in the fnOS Music web application.
+# Authentication still requires the private FNOS_MUSIC_TOKEN from NAS config.
+PUBLIC_SIGNING_SEED = "NDzZTVxnRKP8Z0jXg1VAMonaG8akvh"
+PUBLIC_CLIENT_ID = "6D5602D4-A342-4799-A0F0-BB795E7167D0"
 
 
 class FnosMusicClient:
@@ -38,7 +40,16 @@ class FnosMusicClient:
             body_hash = hashlib.md5(canonical.encode("utf-8")).hexdigest()
         nonce = str(random.randint(100000, 999999))
         timestamp = str(int(time.time() * 1000))
-        material = "_".join((SIGNING_SEED, parsed.path, nonce, timestamp, body_hash, CLIENT_API_KEY))
+        material = "_".join(
+            (
+                PUBLIC_SIGNING_SEED,
+                parsed.path,
+                nonce,
+                timestamp,
+                body_hash,
+                PUBLIC_CLIENT_ID,
+            )
+        )
         signature = hashlib.md5(material.encode("utf-8")).hexdigest()
         return f"nonce={nonce}&timestamp={timestamp}&sign={signature}"
 

@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 os.environ.setdefault("APP_PASSWORD", "test-password-123")
-os.environ.setdefault("SESSION_SECRET", "test-session-secret-123")
+os.environ.setdefault("SESSION_SECRET", "test-session-secret-for-songlib-123456")
 os.environ.setdefault("DATA_DIR", tempfile.mkdtemp(prefix="pmm-tests-"))
 os.environ.setdefault("MUSIC_ROOT", tempfile.mkdtemp(prefix="pmm-music-"))
 os.environ.setdefault("PLEX_CONFIG", tempfile.mkdtemp(prefix="pmm-plex-"))

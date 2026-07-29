@@ -2,65 +2,89 @@
 
 > 让散落的音乐，回到自己的岛屿。
 
-面向 NAS 的音乐下载、刮削、整理与 Plex 联动小系统。音屿在本地管理歌手海报、横版背景、中文简介、专辑封面、时间轴歌词与音乐下载，不把 Plex 当作产品品牌，也不会把你的曲库数据上传到第三方服务。
+SongLib Amp 是一个本地优先、面向 NAS 的音乐管理与播放平台。它把音乐目录、Plex、元数据、歌词、歌单、后台任务和个人推荐放进一个清晰的工作流，同时让完整听歌历史留在自己的设备上。
 
-## 核心闭环
+## 能做什么
 
-- 三种音乐源导入：在线 raw URL、本地 `.js` 上传、直接粘贴源码
-- `/data/sources/` 随机安全文件名、SHA-256 去重、2 MB 默认上限
-- 对齐洛雪 `window.lx` 事件协议，真实支持混淆脚本；不再通过源码明文猜测兼容性
-- `inspect` 格式检测：LX Event、CommonJS、ESM default、全局 IIFE 探测与能力报告
-- 来源状态分层：未验证、已导入、格式已识别、搜索可用、解析可用、部分可用、不可用、已禁用
-- 短生命周期 Node VM 隔离加载；来源网络请求与重定向均执行 DNS/SSRF 检查
-- QQ 音乐/网易云目录搜索归一化、真实音频地址解析与前 4 KB 探测
-- 下载前再次预检，下载到 `/music/_incoming/` 后写标签、封面与 LRC
-- 下载完成生成入库 dry-run 预览，用户确认后才按 Plex 目录规则移动；取消则进入 `.trash`
-- 入库后触发 Plex 扫描；扫描失败只写任务警告，不删除已下载歌曲
-- 来源日志与任务逐步骤日志，失败提供明确错误码和中文原因
-- `files` 与 `plex_items` 分表：本地曲库扫描、标签编辑、缺失信息、Plex 匹配与整理预览
-- 操作日志与安全回滚、本地文件流式预览、底部轻量播放器和本地优先音乐发现
+- 扫描真实音乐目录，查看格式、码率、采样率、位深、缺失资源和重复项。
+- 连接 Plex，同步资料库与歌单，预览后刷新媒体与补齐素材。
+- 从可插拔提供方搜索元数据、封面和歌词；候选结果经过名称、艺人、专辑、时长和版本校验。
+- 管理用户有权使用的下载来源，经过预检、暂存、确认和隔离后再入库。
+- 创建歌单，导入或导出 M3U/M3U8，保持顺序并生成未匹配报告。
+- 连续播放、播放队列、歌词、随机/循环、键盘操作与响应式移动体验。
+- 根据收藏、完成、跳过和重复播放形成本地画像，给出可解释推荐，并保留库外探索能力。
+- 通过持久后台任务完成扫描、下载、刮削、补图和补歌词；服务重启后可继续、重试或人工恢复。
 
-原有 Plex 资料库总览、歌手/专辑/单曲浏览、歌手资料焕新、缺失封面与歌词补齐均保留。
+SongLib Amp 不内置第三方私钥，不绕过 DRM，也不附带受版权保护的音频。请只接入你信任且有权使用的服务和内容。
 
-## 设计参考与边界
+## 快速部署
 
-功能思路参考 [LX Music Desktop](https://github.com/lyswhut/lx-music-desktop)、[lx-music-source](https://github.com/pdone/lx-music-source) 与 [Music Tag Web](https://github.com/xhongc/music-tag-web)。本项目为独立实现，没有复制这些项目的代码，也不随镜像内置第三方音乐源。
-
-LX 自定义源主要负责为目录搜索结果解析在线地址。请只导入你信任且有权使用的来源，只下载你有权保存的内容；音屿不绕过 DRM，也不承诺第三方来源的合法性、准确性或持续可用性。
-
-## Docker 部署
-
-复制环境变量模板并设置宿主机目录：
+要求：Docker 24+、Docker Compose 2.20+，推荐至少 2 GB 可用内存。
 
 ```bash
 cp .env.example .env
+chmod 600 .env
 ```
 
-至少修改以下两项为设备上的真实路径：
+编辑 `.env`：
 
-```dotenv
-MUSIC_DIR=/path/to/your/music
-PLEX_CONFIG_DIR=/path/to/Plex Media Server
-```
+1. 用 `openssl rand -hex 32` 生成 `SESSION_SECRET`。
+2. 设置 `MUSIC_DIR`、`SONGLIB_DATA_DIR` 和 `SONGLIB_DOWNLOADS_DIR`。
+3. 选择未被占用的 `APP_PORT`。
+4. 如果通过 HTTPS 反向代理访问，设置 `COOKIE_SECURE=true` 和准确的 `TRUSTED_ORIGINS`。
 
-`SONGLIB_DATA_DIR` 和 `SONGLIB_DOWNLOADS_DIR` 默认使用项目目录内的 `data`、`downloads`。极空间用户可将项目放在 Docker 面板可识别的官方目录，再在 `.env` 中填写本机的媒体库和 Plex 配置路径。
-
-启动：
+然后启动：
 
 ```bash
 docker compose up -d --build
 ```
 
-Web UI 从 `32781` 开始选择空闲端口，写入 `.env` 的 `APP_PORT`。Compose 使用 host 网络访问本机 Plex `127.0.0.1:32400`。
+打开 `http://NAS地址:APP_PORT`。新实例不会创建默认弱密码，首次访问会引导创建主人账号。
 
-## 持久化数据
+## 服务与数据
 
-- `/data/manager.db`：设置、来源状态、来源日志、任务与任务日志
-- `/data/sources/`：用户主动导入的来源脚本
-- `/music/_incoming/`：下载与标签写入临时区
-- `/music/{歌手}/{专辑}/`：用户确认后的正式曲库
-- `/music/.trash/`：取消入库及后续安全删除的回收站
-- `/music/**.lrc`：本地时间轴歌词
-- Plex Token：保存在 NAS 本地 `/data`，也可从只读挂载的 `Preferences.xml` 读取；不会上传到第三方服务
+Compose 使用独立桥接网络和两个最小权限服务：
 
-改造前问题与迁移边界记录在 [DEVELOPMENT.md](./DEVELOPMENT.md)。
+- `web`：界面和 API。
+- `worker`：扫描、下载、刮削和整理任务。
+
+持久数据：
+
+- `/data/manager.db`：账号、配置、任务、歌单、画像与审计记录。
+- `/data/sources/`：用户主动导入的来源适配脚本。
+- `/data/backups/`：SQLite 在线备份。
+- `/music/_incoming/`：待确认内容。
+- `/music/.trash/`：可恢复隔离区。
+- `/downloads/`：独立下载暂存区。
+
+令牌和私密配置只应存在于 NAS 上权限为 `600` 的 `.env` 或受保护数据目录中。
+
+## 文档
+
+- [架构说明](docs/ARCHITECTURE.md)
+- [部署与首次安装](docs/DEPLOYMENT.md)
+- [升级、备份、恢复与故障排查](docs/OPERATIONS.md)
+- [安全边界](docs/SECURITY.md)
+- [从 0.8 升级](docs/MIGRATION-0.8.md)
+- [开发与质量门禁](DEVELOPMENT.md)
+- [变更记录](CHANGELOG.md)
+
+## 开发
+
+后端：
+
+```bash
+python -m pip install -r backend/requirements.txt
+PYTHONPATH=backend python -m unittest discover -s backend/tests -v
+```
+
+前端：
+
+```bash
+cd frontend
+pnpm install --frozen-lockfile
+pnpm test
+pnpm run build
+```
+
+所有改动通过 Pull Request 合入。默认分支受到 CI 的后端测试、前端生产构建、Compose 校验、镜像构建和敏感信息扫描保护。

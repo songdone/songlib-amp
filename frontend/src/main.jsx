@@ -73,7 +73,14 @@ import {
   Zap,
 } from "lucide-react";
 import "./styles.css";
+import "./commercial.css";
 import { BRAND } from "./config/brand";
+import {
+  csrfFromCookie,
+  playlistPlaybackInput,
+  playlistTrackPayload,
+  recommendationPlaybackInput,
+} from "./lib/contracts";
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
@@ -83,10 +90,17 @@ if ("serviceWorker" in navigator) {
 
 const api = async (path, options = {}) => {
   const isForm = options.body instanceof FormData;
+  const csrfToken = csrfFromCookie(document.cookie);
+  const unsafe = !["GET", "HEAD", "OPTIONS"].includes(
+    String(options.method || "GET").toUpperCase(),
+  );
   const response = await fetch(path, {
     credentials: "include",
     headers: {
       ...(isForm ? {} : { "Content-Type": "application/json" }),
+      ...(unsafe && csrfToken
+        ? { "X-CSRF-Token": csrfToken }
+        : {}),
       ...(options.headers || {}),
     },
     ...options,
@@ -106,11 +120,12 @@ const api = async (path, options = {}) => {
 
 const nav = [
   { id: "home", label: "首页", icon: Home },
-  { id: "manage", label: "管理中心", icon: Gauge, admin: true },
   { id: "library", label: "音乐库", icon: Library },
+  { id: "playlists", label: "歌单", icon: ListMusic },
+  { id: "discover", label: "发现与画像", icon: Sparkles },
   { id: "player", label: "播放器", icon: Play },
-  { id: "discover", label: "发现", icon: Sparkles },
   { id: "me", label: "我的", icon: UserRound },
+  { id: "manage", label: "管理中心", icon: Gauge, admin: true },
   { id: "settings", label: "设置", icon: Settings },
 ];
 
@@ -579,7 +594,6 @@ function Login({ onLogin }) {
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [remember, setRemember] = useState(true);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const submit = async (event) => {
@@ -732,22 +746,12 @@ function Login({ onLogin }) {
                     </button>
                   </div>
                   <div className="login-motion-row">
-                    <label className="login-motion-remember">
-                      <input
-                        type="checkbox"
-                        checked={remember}
-                        onChange={(e) => setRemember(e.target.checked)}
-                      />
-                      <i>
-                        <Check />
-                      </i>
-                      <span>保持登录</span>
-                    </label>
+                    <span>会话仅保存在当前浏览器</span>
                     <button
                       type="button"
                       onClick={() =>
                         setError(
-                          "请在 NAS 容器内执行：docker exec songlib-amp python -m app.cli reset-admin --from-env，使用 .env 中的 APP_PASSWORD 安全重置。",
+                          "请联系这台音屿实例的管理员，按部署文档中的“恢复管理员访问”流程重置密码。",
                         )
                       }
                     >
@@ -769,15 +773,6 @@ function Login({ onLogin }) {
                   </button>
                 </form>
 
-                <div className="login-motion-divider">
-                  <span />
-                  或使用
-                  <span />
-                </div>
-                <button className="login-motion-sso" disabled>
-                  <Fingerprint />
-                  SSO 单点登录（企业）
-                </button>
                 <footer>
                   <span className="status-dot" />
                   NAS 本地运行 · 数据不会上传云端
@@ -787,6 +782,77 @@ function Login({ onLogin }) {
           </section>
         </div>
       </div>
+    </main>
+  );
+}
+
+function SetupWizard({ onComplete }) {
+  const [form, setForm] = useState({
+    username: "admin",
+    displayName: "",
+    password: "",
+    confirmPassword: "",
+  });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const submit = async (event) => {
+    event.preventDefault();
+    if (form.password !== form.confirmPassword) {
+      setError("两次输入的密码不一致");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      await api("/api/setup/complete", {
+        method: "POST",
+        body: JSON.stringify({
+          username: form.username,
+          displayName: form.displayName,
+          password: form.password,
+        }),
+      });
+      onComplete();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <main className="setup-page">
+      <LoginMotionBackdrop />
+      <section className="setup-card panel">
+        <Brand />
+        <span className="eyebrow"><ShieldCheck />首次设置</span>
+        <h1>创建这座音乐岛的主人账号</h1>
+        <p>账号、画像和播放记录只保存在这台设备。完成后可继续连接音乐目录或 Plex。</p>
+        <form onSubmit={submit}>
+          <label>
+            <span>用户名</span>
+            <input autoFocus value={form.username} onChange={(event) => update("username", event.target.value)} />
+          </label>
+          <label>
+            <span>显示名称</span>
+            <input value={form.displayName} onChange={(event) => update("displayName", event.target.value)} placeholder="例如：我的音屿" />
+          </label>
+          <label>
+            <span>管理员密码</span>
+            <input type="password" value={form.password} onChange={(event) => update("password", event.target.value)} placeholder="至少 12 个字符" />
+          </label>
+          <label>
+            <span>确认密码</span>
+            <input type="password" value={form.confirmPassword} onChange={(event) => update("confirmPassword", event.target.value)} />
+          </label>
+          {error && <div className="form-error"><CircleAlert />{error}</div>}
+          <button className="primary" disabled={busy || form.password.length < 12}>
+            {busy ? <LoaderCircle className="spin" /> : <ChevronRight />}
+            创建账号并进入
+          </button>
+        </form>
+        <footer><ShieldCheck />不会创建默认弱密码，也不会把密码写入页面或日志。</footer>
+      </section>
     </main>
   );
 }
@@ -2524,6 +2590,9 @@ async function toPlaybackTrack(input, quality = "original") {
 function PlayerProvider({ children }) {
   const audioRef = useRef(null);
   const hydratedRef = useRef(false);
+  const progressMilestoneRef = useRef(0);
+  const playlistIdsRef = useRef({});
+  const playlistCreateRef = useRef({});
   const [state, setState] = useState({
     currentTrack: null,
     queue: [],
@@ -2549,6 +2618,23 @@ function PlayerProvider({ children }) {
     storedJson("songlib-playlists", {}),
   );
   const currentTrack = state.currentTrack;
+  const sendListeningEvent = (eventType, track, position = 0, duration = 0) => {
+    if (!track) return;
+    api("/api/listening/events", {
+      method: "POST",
+      body: JSON.stringify({
+        eventType,
+        fileId: track.localFileId || (track.sourceType === "local_file" ? track.raw?.id : null),
+        externalRef:
+          track.localFileId || track.sourceType === "local_file"
+            ? null
+            : trackIdentity(track),
+        positionMs: Math.round(Number(position || 0) * 1000),
+        durationMs: Math.round(Number(duration || track.duration || 0) * 1000),
+        context: { sourceType: track.sourceType || "unknown" },
+      }),
+    }).catch(() => {});
+  };
   useEffect(() => {
     let cancelled = false;
     api("/api/player/state")
@@ -2582,6 +2668,29 @@ function PlayerProvider({ children }) {
       .finally(() => {
         hydratedRef.current = true;
       });
+    api("/api/playlists")
+      .then(async (data) => {
+        const details = await Promise.all(
+          (data.items || []).map((item) => api(`/api/playlists/${item.id}`)),
+        );
+        const mapped = {};
+        for (const playlist of details) {
+          playlistIdsRef.current[playlist.name] = playlist.id;
+          mapped[playlist.name] = (playlist.items || []).map((item) => ({
+            id: item.file_id ? `local-${item.file_id}` : item.id,
+            sourceType: item.file_id ? "local_file" : "external",
+            localFileId: item.file_id,
+            title: item.title,
+            artist: item.artist,
+            album: item.album,
+            duration: item.duration,
+            file: item.path,
+            externalRef: item.external_ref,
+          }));
+        }
+        if (!cancelled) setPlaylists(mapped);
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -2660,6 +2769,8 @@ function PlayerProvider({ children }) {
         ),
       ].slice(0, 100);
     });
+    progressMilestoneRef.current = 0;
+    sendListeningEvent("start", track, 0, track.duration);
   };
   const play = async (input, queue = []) => {
     setState((s) => ({ ...s, loading: true, error: "" }));
@@ -2828,6 +2939,7 @@ function PlayerProvider({ children }) {
   const toggleFavorite = (track) => {
     const id = favoriteId(track);
     if (!id) return;
+    const removing = isFavorite(track);
     setFavorites((value) => {
       const next = { ...value };
       next[id]
@@ -2841,31 +2953,83 @@ function PlayerProvider({ children }) {
           });
       return next;
     });
+    sendListeningEvent(removing ? "unfavorite" : "favorite", track, state.currentTime, state.duration);
+  };
+  const ensureServerPlaylist = async (name) => {
+    if (playlistIdsRef.current[name]) return playlistIdsRef.current[name];
+    if (!playlistCreateRef.current[name]) {
+      playlistCreateRef.current[name] = api("/api/playlists", {
+        method: "POST",
+        body: JSON.stringify({ name, description: "", items: [] }),
+      })
+        .catch(async (err) => {
+          if (!err.message.includes("同名")) throw err;
+          const data = await api("/api/playlists");
+          const existing = (data.items || []).find((item) => item.name === name);
+          if (!existing) throw err;
+          return existing;
+        })
+        .then((item) => {
+          playlistIdsRef.current[name] = item.id;
+          return item.id;
+        })
+        .finally(() => {
+          delete playlistCreateRef.current[name];
+        });
+    }
+    return playlistCreateRef.current[name];
   };
   const createPlaylist = (name) => {
     const clean = String(name || "").trim();
     if (!clean) return;
     setPlaylists((value) => (value[clean] ? value : { ...value, [clean]: [] }));
+    ensureServerPlaylist(clean).catch((err) =>
+      setState((value) => ({ ...value, error: err.message })),
+    );
   };
-  const deletePlaylist = (name) =>
+  const deletePlaylist = (name) => {
+    const playlistId = playlistIdsRef.current[name];
     setPlaylists((value) => {
       const next = { ...value };
       delete next[name];
       return next;
     });
+    if (playlistId) {
+      api(`/api/playlists/${playlistId}`, { method: "DELETE" })
+        .then(() => {
+          delete playlistIdsRef.current[name];
+        })
+        .catch((err) => setState((value) => ({ ...value, error: err.message })));
+    }
+  };
   const addToPlaylist = (name, track) => {
     if (!name || !track) return;
     setPlaylists((value) => {
       const items = value[name] || [];
       if (items.some((item) => trackIdentity(item) === trackIdentity(track)))
         return value;
+      const nextItems = [...items, persistableTrack(track)].filter(Boolean);
+      const updateServer = async () => {
+        const playlistId = await ensureServerPlaylist(name);
+        await api(`/api/playlists/${playlistId}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            items: nextItems.map(playlistTrackPayload),
+          }),
+        });
+      };
+      updateServer().catch((err) =>
+        setState((current) => ({ ...current, error: err.message })),
+      );
       return {
         ...value,
-        [name]: [...items, persistableTrack(track)].filter(Boolean),
+        [name]: nextItems,
       };
     });
   };
-  const next = () => {
+  const next = (completed = false) => {
+    if (!completed && currentTrack && state.duration && state.currentTime / state.duration < 0.85)
+      sendListeningEvent("skip", currentTrack, state.currentTime, state.duration);
     const nextTrack = state.queue[0];
     if (nextTrack) {
       setState((s) => ({ ...s, queue: s.queue.slice(1) }));
@@ -2925,6 +3089,12 @@ function PlayerProvider({ children }) {
             currentTime,
             duration: duration || s.duration,
           }));
+          const ratio = duration ? currentTime / duration : 0;
+          const milestone = ratio >= 0.75 ? 75 : ratio >= 0.5 ? 50 : ratio >= 0.25 ? 25 : 0;
+          if (milestone > progressMilestoneRef.current) {
+            progressMilestoneRef.current = milestone;
+            sendListeningEvent("progress", currentTrack, currentTime, duration);
+          }
         }}
         onLoadedMetadata={(e) => {
           const duration = Number.isFinite(e.currentTarget.duration)
@@ -2944,7 +3114,14 @@ function PlayerProvider({ children }) {
         }}
         onPlay={() => setState((s) => ({ ...s, isPlaying: true, error: "" }))}
         onPause={() => setState((s) => ({ ...s, isPlaying: false }))}
-        onEnded={() => (state.playMode === "repeat_one" ? seek(0) : next())}
+        onEnded={() => {
+          sendListeningEvent("complete", currentTrack, state.duration, state.duration);
+          if (state.playMode === "repeat_one") {
+            sendListeningEvent("replay", currentTrack, 0, state.duration);
+            seek(0);
+            audioRef.current?.play().catch(() => {});
+          } else next(true);
+        }}
       />
     </PlayerContext.Provider>
   );
@@ -6298,7 +6475,7 @@ function PlexSettingsModal({ initial, onClose, onSaved }) {
               <input
                 value={draft.serverUrl}
                 onChange={(e) => setField("serverUrl", e.target.value)}
-                placeholder="http://192.168.31.185:32400"
+                placeholder="http://nas-address:32400"
               />
             </label>
             <label>
@@ -7322,6 +7499,295 @@ function MePage({ navigate }) {
   );
 }
 
+function PlaylistsPage({ play, notify }) {
+  const [items, setItems] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [newName, setNewName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const fileRef = useRef(null);
+  const load = async (preferredId) => {
+    const data = await api("/api/playlists");
+    setItems(data.items || []);
+    const id = preferredId || selected?.id || data.items?.[0]?.id;
+    if (id) {
+      const detail = await api(`/api/playlists/${id}`);
+      setSelected(detail);
+    } else {
+      setSelected(null);
+    }
+  };
+  useEffect(() => {
+    load().catch((err) => setError(err.message));
+  }, []);
+  const create = async (event) => {
+    event.preventDefault();
+    if (!newName.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      const created = await api("/api/playlists", {
+        method: "POST",
+        body: JSON.stringify({ name: newName.trim(), description: "", items: [] }),
+      });
+      setNewName("");
+      await load(created.id);
+      notify("歌单已创建");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const importFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await api("/api/playlists/import/m3u", {
+        method: "POST",
+        body: JSON.stringify({
+          name: file.name.replace(/\.(m3u8?|txt)$/i, ""),
+          content: await file.text(),
+          pathMappings: [],
+        }),
+      });
+      await load(result.playlist.id);
+      notify(`已导入 ${result.matched} 首，${result.unmatched.length} 首需要匹配`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const remove = async () => {
+    if (!selected || !window.confirm(`删除歌单“${selected.name}”？歌曲文件不会被删除。`)) return;
+    setBusy(true);
+    try {
+      await api(`/api/playlists/${selected.id}`, { method: "DELETE" });
+      setSelected(null);
+      await load();
+      notify("歌单已删除");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const move = async (index, delta) => {
+    const next = [...selected.items];
+    const target = index + delta;
+    if (target < 0 || target >= next.length) return;
+    [next[index], next[target]] = [next[target], next[index]];
+    setBusy(true);
+    try {
+      const updated = await api(`/api/playlists/${selected.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          items: next.map(playlistTrackPayload),
+        }),
+      });
+      setSelected(updated);
+      await load(updated.id);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const playable = playlistPlaybackInput;
+  const playAll = () => {
+    const queue = (selected?.items || []).map(playable).filter(Boolean);
+    if (queue.length) play(queue[0], queue.slice(1));
+  };
+  return (
+    <div className="page playlists-page">
+      <section className="page-intro playlist-intro">
+        <div>
+          <span className="eyebrow"><ListMusic />PLAYLISTS</span>
+          <h1>让歌单在不同音乐库之间保持秩序</h1>
+          <p>保留原始顺序，清楚标出未匹配歌曲，并可随时导回 M3U8。</p>
+        </div>
+        <div className="playlist-actions">
+          <button className="secondary" onClick={() => fileRef.current?.click()} disabled={busy}>
+            <FileUp />导入 M3U
+          </button>
+          <input ref={fileRef} hidden type="file" accept=".m3u,.m3u8,audio/x-mpegurl" onChange={importFile} />
+          {selected && (
+            <a className="secondary button-link" href={`/api/playlists/${selected.id}/export.m3u`}>
+              <Download />导出
+            </a>
+          )}
+        </div>
+      </section>
+      {error && <div className="form-error"><CircleAlert />{error}</div>}
+      <div className="playlist-workspace">
+        <aside className="panel playlist-list">
+          <form onSubmit={create}>
+            <input value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="新歌单名称" />
+            <button className="primary icon-button" disabled={busy || !newName.trim()} aria-label="创建歌单"><Plus /></button>
+          </form>
+          {items.length ? items.map((item) => (
+            <button
+              key={item.id}
+              className={selected?.id === item.id ? "active" : ""}
+              onClick={() => load(item.id).catch((err) => setError(err.message))}
+            >
+              <span><ListMusic /><strong>{item.name}</strong></span>
+              <small>{item.itemCount} 首</small>
+            </button>
+          )) : <Empty icon={ListMusic} title="还没有歌单" text="创建一个空歌单，或导入 M3U/M3U8 文件。" />}
+        </aside>
+        <section className="panel playlist-detail">
+          {!selected ? (
+            <Empty icon={ListMusic} title="选择一个歌单" text="歌单内容、匹配状态和顺序会显示在这里。" />
+          ) : (
+            <>
+              <header>
+                <div>
+                  <span>本地歌单</span>
+                  <h2>{selected.name}</h2>
+                  <p>{selected.description || `${selected.itemCount} 首歌曲`}</p>
+                </div>
+                <div>
+                  <button className="primary" onClick={playAll} disabled={!selected.items.some((item) => item.file_id)}>
+                    <Play />播放全部
+                  </button>
+                  <button className="icon-button danger" onClick={remove} aria-label="删除歌单"><Trash2 /></button>
+                </div>
+              </header>
+              <div className="playlist-tracks">
+                {selected.items.length ? selected.items.map((item, index) => (
+                  <article key={item.id} className={!playable(item) ? "unmatched" : ""}>
+                    <button
+                      className="track-play"
+                      disabled={!item.file_id}
+                      onClick={() => playable(item) && play(playable(item))}
+                      aria-label={item.file_id ? `播放 ${item.title}` : `${item.title} 尚未匹配`}
+                    >
+                      {item.file_id ? <Play /> : <CircleAlert />}
+                    </button>
+                    <span className="track-position">{index + 1}</span>
+                    <div><strong>{item.title || "未命名歌曲"}</strong><small>{item.artist || "未知艺人"} · {item.album || "未知专辑"}</small></div>
+                    <em>{playable(item) ? "可播放" : "待匹配"}</em>
+                    <div className="track-order">
+                      <button className="icon-button" onClick={() => move(index, -1)} disabled={busy || index === 0} aria-label="上移"><ChevronDown className="rotate-180" /></button>
+                      <button className="icon-button" onClick={() => move(index, 1)} disabled={busy || index === selected.items.length - 1} aria-label="下移"><ChevronDown /></button>
+                    </div>
+                  </article>
+                )) : <Empty icon={Music2} title="空歌单" text="可以先导入 M3U，或从播放器把歌曲加入歌单。" />}
+              </div>
+            </>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function RecommendationPage({ play, navigate, isAdmin = true }) {
+  const [data, setData] = useState({ profile: {}, items: [], eventCount: 0 });
+  const [exploration, setExploration] = useState(0.35);
+  const [busy, setBusy] = useState(true);
+  const [error, setError] = useState("");
+  const load = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const result = await api("/api/recommendations");
+      setData(result);
+      if (!result.items?.length) {
+        const refreshed = await api("/api/recommendations/refresh", {
+          method: "POST",
+          body: JSON.stringify({ exploration, discoveries: [] }),
+        });
+        setData(refreshed);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  useEffect(() => {
+    load();
+  }, []);
+  const refresh = async () => {
+    setBusy(true);
+    try {
+      setData(await api("/api/recommendations/refresh", {
+        method: "POST",
+        body: JSON.stringify({ exploration, discoveries: [] }),
+      }));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const profile = data.profile || {};
+  const playRecommendation = (item) => {
+    const target = recommendationPlaybackInput(item);
+    if (target) play(target);
+  };
+  return (
+    <div className="page recommendation-page">
+      <section className="recommendation-hero">
+        <span className="eyebrow"><Sparkles />PRIVATE DISCOVERY</span>
+        <h1>听懂你的偏好，也保留一点意外</h1>
+        <p>{profile.explanation || "播放几首歌曲后，音屿会在本机形成可解释的音乐画像。"}</p>
+        <div className="exploration-control">
+          <span>熟悉</span>
+          <input type="range" min="0" max="1" step="0.05" value={exploration} onChange={(event) => setExploration(Number(event.target.value))} />
+          <span>探索</span>
+          <strong>{Math.round(exploration * 100)}%</strong>
+          <button className="primary small" onClick={refresh} disabled={busy}><RefreshCw className={busy ? "spin" : ""} />重新生成</button>
+        </div>
+      </section>
+      {error && <div className="form-error"><CircleAlert />{error}</div>}
+      <section className="profile-grid">
+        <article className="panel"><span>完成率</span><strong>{Math.round((profile.completionRate || 0) * 100)}%</strong><small>完整播放 / 完成与跳过</small></article>
+        <article className="panel"><span>跳过率</span><strong>{Math.round((profile.skipRate || 0) * 100)}%</strong><small>用于减少不合口味的推荐</small></article>
+        <article className="panel"><span>本地事件</span><strong>{fmt(data.eventCount)}</strong><small>不会上传完整听歌历史</small></article>
+      </section>
+      <div className="profile-columns">
+        <section className="panel profile-card">
+          <SectionHead title="常听音乐人" note="收藏、重复播放和完整播放权重更高" />
+          <div className="profile-tags">
+            {(profile.topArtists || []).length ? profile.topArtists.map((item) => <span key={item.name}>{item.name}<small>{item.score}</small></span>) : <p>继续播放与收藏，画像会逐渐清晰。</p>}
+          </div>
+        </section>
+        <section className="panel profile-card">
+          <SectionHead title="偏好年代与流派" note="只从本地标签和播放行为计算" />
+          <div className="profile-tags">
+            {[...(profile.favoriteDecades || []), ...(profile.topGenres || [])].map((item) => <span key={item.name}>{item.name}<small>{item.score}</small></span>)}
+          </div>
+        </section>
+      </div>
+      <section className="panel recommendation-list">
+        <SectionHead title="为你推荐" note="版本过滤、最近播放去重，并标明每条推荐的原因" />
+        {busy && !data.items.length ? <PageLoader /> : data.items.length ? (
+          <div className="recommendation-grid">
+            {data.items.slice(0, 24).map((item) => (
+              <article key={item.id}>
+                <div className="recommendation-cover"><Disc3 /><span>{item.inLibrary ? "库内" : "库外"}</span></div>
+                <div><strong>{item.title}</strong><p>{item.artist}{item.album ? ` · ${item.album}` : ""}</p><small>{(item.reasons || []).join(" · ")}</small></div>
+                {item.inLibrary ? (
+                  <button className="icon-button" onClick={() => playRecommendation(item)} aria-label={`播放 ${item.title}`}><Play /></button>
+                ) : isAdmin ? (
+                  <button className="secondary small" onClick={() => navigate("download")}>查找授权来源</button>
+                ) : <em>可向管理员申请入库</em>}
+              </article>
+            ))}
+          </div>
+        ) : <Empty icon={Sparkles} title="还没有推荐" text="先播放、收藏或跳过一些歌曲，画像会在本机逐步形成。" />}
+      </section>
+    </div>
+  );
+}
+
 function ManagementHub({ navigate, stats, jobs, permissions = [] }) {
   const waiting = jobs.filter((job) => job.status === "waiting_confirm").length;
   const failed = jobs.filter((job) => job.status === "failed").length;
@@ -7388,8 +7854,9 @@ function ManagementHub({ navigate, stats, jobs, permissions = [] }) {
 const pageMeta = {
   home: ["曲库总览", "Plex、本地曲库、资料完整度与待处理任务"],
   library: ["音乐库", "浏览歌手、专辑与单曲，并直接播放"],
+  playlists: ["歌单", "导入、整理、播放和导出你的歌单"],
   player: ["播放器", "播放本地文件、Plex 曲目与下载前试听"],
-  discover: ["发现", "每日推荐、平台歌单分类与本地冷门重听"],
+  discover: ["发现与画像", "在熟悉与探索之间发现音乐，并了解推荐原因"],
   me: ["我的", "收藏、最近播放、听歌报告与个人偏好"],
   manage: ["管理中心", "刮削、下载、任务、回滚与日志审计"],
   search: ["全局搜索", "歌曲、艺人、专辑、本地文件与待处理项"],
@@ -7403,9 +7870,13 @@ const pageMeta = {
 
 function App() {
   const [authenticated, setAuthenticated] = useState(null);
+  const [setupRequired, setSetupRequired] = useState(false);
   useEffect(() => {
     api("/api/auth/status")
-      .then((d) => setAuthenticated(d.authenticated))
+      .then((d) => {
+        setAuthenticated(d.authenticated);
+        setSetupRequired(Boolean(d.setupRequired));
+      })
       .catch(() => setAuthenticated(false));
   }, []);
   if (authenticated === null)
@@ -7414,6 +7885,15 @@ function App() {
         <Brand />
         <LoaderCircle className="spin" />
       </div>
+    );
+  if (setupRequired)
+    return (
+      <SetupWizard
+        onComplete={() => {
+          setSetupRequired(false);
+          setAuthenticated(true);
+        }}
+      />
     );
   if (!authenticated) return <Login onLogin={() => setAuthenticated(true)} />;
   return (
@@ -7520,8 +8000,8 @@ function AuthenticatedShell({ setAuthenticated }) {
     await api("/api/auth/logout", { method: "POST" }).catch(() => {});
     setAuthenticated(false);
   };
-  const playTrack = async (item) => {
-    await player.play(item);
+  const playTrack = async (item, queue = []) => {
+    await player.play(item, queue);
   };
   const isAdmin = userIsAdmin(settingsData.user);
   const permissions = settingsData.user?.permissions || [];
@@ -7584,6 +8064,9 @@ function AuthenticatedShell({ setAuthenticated }) {
         {active === "library" && (
           <MediaLibrary play={playTrack} previewBackdrop={setManualBackdrop} />
         )}{" "}
+        {active === "playlists" && (
+          <PlaylistsPage play={playTrack} notify={(message) => setToast({ message })} />
+        )}{" "}
         {active === "search" && (
           <GlobalSearchPage
             play={playTrack}
@@ -7632,7 +8115,7 @@ function AuthenticatedShell({ setAuthenticated }) {
           />
         )}{" "}
         {active === "discover" && (
-          <DiscoverPage
+          <RecommendationPage
             play={playTrack}
             navigate={setActive}
             isAdmin={canManageLibrary}
@@ -7679,6 +8162,7 @@ function MobileNav({ active, change, isAdmin = true }) {
   const labels = {
     home: "首页",
     library: "曲库",
+    playlists: "歌单",
     player: "播放",
     discover: "发现",
     me: "我的",

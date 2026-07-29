@@ -5,7 +5,7 @@ export const BRAND = Object.freeze({
   sidebarTitle: "SongLib Amp丨音屿",
   sidebarSlogan: "让散落的音乐 回到自己的岛屿",
   slogan: "让散落的音乐，回到自己的岛屿。",
-  description: "NAS 音乐下载、刮削、整理与 Plex 联动小系统",
-  version: "0.8.0",
+  description: "本地优先的 NAS 音乐管理与播放平台",
+  version: "1.0.0-rc.1",
   mark: "/brand/songlib-amp-mark.svg",
 });

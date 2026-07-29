@@ -1,21 +1,25 @@
 {
   "name": "songlib-amp-ui",
-  "description": "SongLib Amp｜音屿：NAS 音乐下载、刮削、整理与 Plex 联动小系统",
+  "description": "SongLib Amp｜音屿：本地优先的 NAS 音乐管理与播放平台",
   "private": true,
-  "version": "0.8.0",
+  "version": "1.0.0-rc.1",
+  "packageManager": "pnpm@11.9.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0"
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "latest",
-    "lucide-react": "latest",
-    "motion": "^12.42.0",
-    "react": "latest",
-    "react-dom": "latest",
-    "typescript": "latest",
-    "vite": "latest"
+    "lucide-react": "1.27.0",
+    "motion": "12.42.2",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "6.0.4",
+    "typescript": "7.0.2",
+    "vite": "8.1.5"
   }
 }

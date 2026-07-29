@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 
 from .config import settings
+from .migrations import apply_migrations
 
 
 SCHEMA = """
@@ -232,6 +233,7 @@ def connect() -> sqlite3.Connection:
     conn = sqlite3.connect(settings.db_path, timeout=30, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
+    conn.execute("PRAGMA busy_timeout=30000")
     return conn
 
 
@@ -252,6 +254,14 @@ def init_db():
                 "failed_count": "INTEGER NOT NULL DEFAULT 0",
                 "skipped_count": "INTEGER NOT NULL DEFAULT 0",
                 "cancel_requested": "INTEGER NOT NULL DEFAULT 0",
+                "idempotency_key": "TEXT",
+                "attempt": "INTEGER NOT NULL DEFAULT 0",
+                "max_attempts": "INTEGER NOT NULL DEFAULT 3",
+                "lease_owner": "TEXT",
+                "lease_expires_at": "TEXT",
+                "checkpoint": "TEXT NOT NULL DEFAULT '{}'",
+                "next_run_at": "TEXT",
+                "updated_at": "TEXT",
             })
             _ensure_columns(conn, "files", {
                 "cover_path": "TEXT",
@@ -286,10 +296,16 @@ def init_db():
             })
             _migrate_legacy_sources(conn)
             _migrate_legacy_admin_user(conn)
+            apply_migrations(conn)
             conn.execute(
-                "UPDATE jobs SET status='failed', message='服务重启，任务已中止', finished_at=? WHERE status IN ('queued','running')",
-                (now(),),
+                """UPDATE jobs
+                   SET status='queued', lease_owner=NULL, lease_expires_at=NULL,
+                       message='服务恢复后等待继续', next_run_at=COALESCE(next_run_at, ?), updated_at=?
+                   WHERE status='running' AND (lease_expires_at IS NULL OR lease_expires_at < ?)""",
+                (now(), now(), now()),
             )
+            conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_idempotency ON jobs(idempotency_key) WHERE idempotency_key IS NOT NULL")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_runnable ON jobs(status,next_run_at,created_at)")
 
 
 def _ensure_columns(conn: sqlite3.Connection, table: str, columns: dict[str, str]):

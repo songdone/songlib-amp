@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
-import queue
 import threading
+import time
 import traceback
 import uuid
+from datetime import datetime, timedelta, timezone
 
-from .db import now, row, rows, transaction
+from .config import settings
+from .db import now, row, rows, set_kv, transaction
 from .downloader import cancel_download, confirm_download, download_song
 from .local_library import local_library, organizer
 from .lyrics import fill_missing_lyrics
@@ -20,9 +22,10 @@ class JobCancelled(RuntimeError):
 
 class JobManager:
     def __init__(self):
-        self.queue = queue.Queue()
-        self.thread = threading.Thread(target=self._worker, name="songlib-jobs", daemon=True)
+        self.worker_id = f"worker-{uuid.uuid4().hex[:12]}"
+        self.thread: threading.Thread | None = None
         self.started = False
+        self.stop_event = threading.Event()
         self.handlers = {
             "scrape_artists": scrape_artists,
             "scrape_plex_metadata": self._scrape_plex_metadata,
@@ -40,55 +43,136 @@ class JobManager:
         }
 
     def start(self):
-        if not self.started:
-            self.started = True
-            self.thread.start()
+        if self.started:
+            return
+        self.started = True
+        self.stop_event.clear()
+        self.thread = threading.Thread(target=self.run_forever, name="songlib-worker", daemon=True)
+        self.thread.start()
 
-    def create(self, kind: str, title: str, payload: dict):
+    def stop(self):
+        self.stop_event.set()
+        if self.thread and self.thread.is_alive():
+            self.thread.join(timeout=max(3, settings.worker_poll_seconds + 1))
+        self.started = False
+
+    def run_forever(self):
+        while not self.stop_event.is_set():
+            set_kv("worker_heartbeat", {"workerId": self.worker_id, "at": now()})
+            job_id = self._claim_next()
+            if job_id is None:
+                self.stop_event.wait(settings.worker_poll_seconds)
+                continue
+            self._run(job_id)
+
+    def create(self, kind: str, title: str, payload: dict, idempotency_key: str | None = None):
         if kind not in self.handlers:
             raise ValueError("未知任务类型")
-        with transaction() as conn:
-            cursor = conn.execute(
-                "INSERT INTO jobs(kind,title,status,payload,input,source_id,created_at) VALUES(?,?,?,?,?,?,?)",
-                (kind, title, "queued", json.dumps(payload, ensure_ascii=False), json.dumps(payload, ensure_ascii=False),
-                 str(payload.get("sourceId")) if payload.get("sourceId") else None, now()),
-            )
-            job_id = cursor.lastrowid
-        add_job_log(job_id, "info", "任务已加入安全串行队列。")
-        self.queue.put(job_id)
+        clean_key = (idempotency_key or payload.get("idempotencyKey") or "").strip()[:160] or None
+        if clean_key:
+            existing = row("SELECT id FROM jobs WHERE idempotency_key=?", (clean_key,))
+            if existing:
+                return get_job(existing["id"])
+        stamp = now()
+        try:
+            with transaction() as conn:
+                cursor = conn.execute(
+                    """INSERT INTO jobs(
+                         kind,title,status,payload,input,source_id,idempotency_key,max_attempts,
+                         next_run_at,created_at,updated_at
+                       ) VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+                    (
+                        kind,
+                        title,
+                        "queued",
+                        json.dumps(payload, ensure_ascii=False),
+                        json.dumps(payload, ensure_ascii=False),
+                        str(payload.get("sourceId")) if payload.get("sourceId") else None,
+                        clean_key,
+                        settings.worker_max_attempts,
+                        stamp,
+                        stamp,
+                        stamp,
+                    ),
+                )
+                job_id = cursor.lastrowid
+        except Exception as exc:
+            if clean_key and "UNIQUE" in str(exc).upper():
+                existing = row("SELECT id FROM jobs WHERE idempotency_key=?", (clean_key,))
+                if existing:
+                    return get_job(existing["id"])
+            raise
+        add_job_log(job_id, "info", "任务已进入持久队列，可在服务重启后继续。")
         return get_job(job_id)
 
-    def _worker(self):
-        while True:
-            job_id = self.queue.get()
-            try:
-                self._run(job_id)
-            finally:
-                self.queue.task_done()
+    def _claim_next(self) -> int | None:
+        stamp = now()
+        expires = (datetime.now(timezone.utc) + timedelta(seconds=settings.worker_lease_seconds)).isoformat()
+        with transaction() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            item = conn.execute(
+                """SELECT id FROM jobs
+                   WHERE cancel_requested=0
+                     AND (
+                       (status IN ('queued','retrying') AND (next_run_at IS NULL OR next_run_at<=?))
+                       OR (status='running' AND (lease_expires_at IS NULL OR lease_expires_at<=?))
+                     )
+                   ORDER BY created_at,id
+                   LIMIT 1""",
+                (stamp, stamp),
+            ).fetchone()
+            if not item:
+                return None
+            cursor = conn.execute(
+                """UPDATE jobs
+                   SET status='running', started_at=COALESCE(started_at,?), message='任务启动',
+                       lease_owner=?, lease_expires_at=?, attempt=attempt+1, updated_at=?
+                   WHERE id=? AND cancel_requested=0
+                     AND (
+                       status IN ('queued','retrying')
+                       OR (status='running' AND (lease_expires_at IS NULL OR lease_expires_at<=?))
+                     )""",
+                (stamp, self.worker_id, expires, stamp, item["id"], stamp),
+            )
+            return int(item["id"]) if cursor.rowcount == 1 else None
 
     def _run(self, job_id: int):
         job = get_job(job_id)
         if not job or job.get("status") == "cancelled" or job.get("cancel_requested"):
             return
         payload = job["payload"] if isinstance(job.get("payload"), dict) else json.loads(job["payload"] or "{}")
-        with transaction() as conn:
-            conn.execute("UPDATE jobs SET status='running',started_at=?,message='任务启动' WHERE id=?", (now(), job_id))
-        add_job_log(job_id, "info", "任务开始执行。")
-
+        add_job_log(job_id, "info", f"任务由 {self.worker_id} 开始执行。")
         last_log = {"progress": -10, "message": ""}
 
         def progress(value, message="", current=None, total=None):
-            state = row("SELECT cancel_requested FROM jobs WHERE id=?", (job_id,))
+            state = row("SELECT cancel_requested,lease_owner FROM jobs WHERE id=?", (job_id,))
             if state and state.get("cancel_requested"):
                 raise JobCancelled("任务已由用户取消")
-            fields = ["progress=?", "message=?"]
-            values = [max(0, min(99, int(value))), message]
+            if not state or state.get("lease_owner") != self.worker_id:
+                raise JobCancelled("任务租约已失效，停止本次执行")
+            fields = ["progress=?", "message=?", "checkpoint=?", "lease_expires_at=?", "updated_at=?"]
+            checkpoint = {
+                "progress": max(0, min(99, int(value))),
+                "message": str(message or "")[:500],
+                "current": current,
+                "total": total,
+            }
+            values = [
+                checkpoint["progress"],
+                checkpoint["message"],
+                json.dumps(checkpoint, ensure_ascii=False),
+                (datetime.now(timezone.utc) + timedelta(seconds=settings.worker_lease_seconds)).isoformat(),
+                now(),
+            ]
             if total is not None:
                 fields.append("total=?")
                 values.append(int(total))
             values.append(job_id)
             with transaction() as conn:
-                conn.execute(f"UPDATE jobs SET {','.join(fields)} WHERE id=?", tuple(values))
+                conn.execute(
+                    f"UPDATE jobs SET {','.join(fields)} WHERE id=? AND lease_owner=?",
+                    tuple(values[:-1] + [job_id, self.worker_id]),
+                )
             if message and (message != last_log["message"] or int(value) - last_log["progress"] >= 10):
                 add_job_log(job_id, "info", message, {"progress": int(value)})
                 last_log.update(progress=int(value), message=message)
@@ -99,28 +183,71 @@ class JobManager:
             success, failed, skipped = _result_counts(result)
             with transaction() as conn:
                 conn.execute(
-                    "UPDATE jobs SET status=?,progress=?,message=?,result=?,output=?,success_count=?,failed_count=?,skipped_count=?,finished_at=? WHERE id=?",
-                    (("waiting_confirm" if waiting else "completed"), (95 if waiting else 100),
-                     ("等待确认入库" if waiting else "完成"), json.dumps(result, ensure_ascii=False),
-                     json.dumps(result, ensure_ascii=False), success, failed, skipped, (None if waiting else now()), job_id),
+                    """UPDATE jobs SET status=?,progress=?,message=?,result=?,output=?,success_count=?,
+                       failed_count=?,skipped_count=?,finished_at=?,lease_owner=NULL,lease_expires_at=NULL,
+                       checkpoint='{}',updated_at=? WHERE id=? AND lease_owner=?""",
+                    (
+                        ("waiting_confirm" if waiting else "completed"),
+                        (95 if waiting else 100),
+                        ("等待确认入库" if waiting else "完成"),
+                        json.dumps(result, ensure_ascii=False),
+                        json.dumps(result, ensure_ascii=False),
+                        success,
+                        failed,
+                        skipped,
+                        (None if waiting else now()),
+                        now(),
+                        job_id,
+                        self.worker_id,
+                    ),
                 )
             warning = (result or {}).get("plexWarning") if isinstance(result, dict) else ""
             message = "下载完成，等待用户确认入库预览。" if waiting else (warning or "任务全部步骤执行完成。")
             add_job_log(job_id, "info" if waiting else ("warning" if warning else "success"), message)
         except JobCancelled as exc:
             with transaction() as conn:
-                conn.execute("UPDATE jobs SET status='cancelled',message=?,finished_at=? WHERE id=?", (str(exc), now(), job_id))
+                conn.execute(
+                    """UPDATE jobs SET status='cancelled',message=?,finished_at=?,lease_owner=NULL,
+                       lease_expires_at=NULL,updated_at=? WHERE id=?""",
+                    (str(exc), now(), now(), job_id),
+                )
             add_job_log(job_id, "warning", str(exc))
         except Exception as exc:
-            result = {"error": str(exc), "trace": traceback.format_exc(limit=8)}
-            error_code = getattr(exc, "code", "JOB_EXECUTION_FAILED")
-            with transaction() as conn:
-                conn.execute(
-                    """UPDATE jobs SET status='failed',message=?,result=?,output=?,failed_count=1,error_code=?,error_message=?,finished_at=? WHERE id=?""",
-                    (str(exc)[:500], json.dumps(result, ensure_ascii=False), json.dumps(result, ensure_ascii=False),
-                     error_code, str(exc)[:500], now(), job_id),
-                )
-            add_job_log(job_id, "error", str(exc)[:500], {"error_code": error_code})
+            self._handle_failure(job_id, exc)
+
+    def _handle_failure(self, job_id: int, exc: Exception):
+        current = row("SELECT attempt,max_attempts FROM jobs WHERE id=?", (job_id,)) or {}
+        attempt = int(current.get("attempt") or 1)
+        max_attempts = int(current.get("max_attempts") or settings.worker_max_attempts)
+        retrying = attempt < max_attempts
+        trace = traceback.format_exc(limit=8)
+        result = {"error": str(exc), "trace": trace}
+        error_code = getattr(exc, "code", "JOB_EXECUTION_FAILED")
+        next_run = (datetime.now(timezone.utc) + timedelta(seconds=min(300, 5 * (2 ** (attempt - 1))))).isoformat()
+        with transaction() as conn:
+            conn.execute(
+                """UPDATE jobs SET status=?,message=?,result=?,output=?,failed_count=1,error_code=?,
+                   error_message=?,finished_at=?,next_run_at=?,lease_owner=NULL,lease_expires_at=NULL,updated_at=?
+                   WHERE id=?""",
+                (
+                    "retrying" if retrying else "failed",
+                    (f"执行失败，将进行第 {attempt + 1} 次尝试" if retrying else str(exc)[:500]),
+                    json.dumps(result, ensure_ascii=False),
+                    json.dumps(result, ensure_ascii=False),
+                    error_code,
+                    str(exc)[:500],
+                    None if retrying else now(),
+                    next_run if retrying else None,
+                    now(),
+                    job_id,
+                ),
+            )
+        add_job_log(
+            job_id,
+            "warning" if retrying else "error",
+            (f"执行失败，已安排自动重试（{attempt}/{max_attempts}）" if retrying else str(exc)[:500]),
+            {"error_code": error_code},
+        )
 
     @staticmethod
     def _plex_scan(payload, progress):
@@ -158,13 +285,19 @@ class JobManager:
         job = get_job(job_id)
         if not job:
             raise KeyError("任务不存在")
-        if job["status"] not in ("queued", "running"):
-            raise ValueError("只有排队或执行中的任务可以取消")
+        if job["status"] not in ("queued", "retrying", "running"):
+            raise ValueError("只有排队、重试或执行中的任务可以取消")
         with transaction() as conn:
-            if job["status"] == "queued":
-                conn.execute("UPDATE jobs SET status='cancelled',message='任务已取消',cancel_requested=1,finished_at=? WHERE id=?", (now(), job_id))
+            if job["status"] in ("queued", "retrying"):
+                conn.execute(
+                    "UPDATE jobs SET status='cancelled',message='任务已取消',cancel_requested=1,finished_at=?,updated_at=? WHERE id=?",
+                    (now(), now(), job_id),
+                )
             else:
-                conn.execute("UPDATE jobs SET cancel_requested=1,message='正在安全取消' WHERE id=?", (job_id,))
+                conn.execute(
+                    "UPDATE jobs SET cancel_requested=1,message='正在安全取消',updated_at=? WHERE id=?",
+                    (now(), job_id),
+                )
         add_job_log(job_id, "warning", "用户请求取消任务。")
         return get_job(job_id)
 
@@ -180,9 +313,9 @@ class JobManager:
 def _decode(item):
     if not item:
         return None
-    for field in ("payload", "result"):
+    for field in ("payload", "result", "checkpoint"):
         try:
-            item[field] = json.loads(item[field] or "{}")
+            item[field] = json.loads(item.get(field) or "{}")
         except json.JSONDecodeError:
             item[field] = {}
     return item
@@ -201,8 +334,14 @@ def add_job_log(job_id: int, level: str, message: str, detail=None):
     with transaction() as conn:
         conn.execute(
             "INSERT INTO job_logs(id,job_id,level,message,detail,created_at) VALUES(?,?,?,?,?,?)",
-            (uuid.uuid4().hex, job_id, level, message,
-             json.dumps(detail, ensure_ascii=False) if detail is not None else None, now()),
+            (
+                uuid.uuid4().hex,
+                job_id,
+                level,
+                message,
+                json.dumps(detail, ensure_ascii=False) if detail is not None else None,
+                now(),
+            ),
         )
 
 

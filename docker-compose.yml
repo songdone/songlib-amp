@@ -1,35 +1,84 @@
+name: ${COMPOSE_PROJECT_NAME:-songlib-amp}
+
+x-songlib-common: &songlib-common
+  image: ${SONGLIB_IMAGE:-songlib-amp:1.0.0-rc.1}
+  restart: unless-stopped
+  env_file:
+    - ${SONGLIB_ENV_FILE:-.env}
+  environment:
+    TZ: ${TZ:-Asia/Shanghai}
+    APP_ENV: production
+    APP_VERSION: 1.0.0-rc.1
+    DATA_DIR: /data
+    MUSIC_ROOT: /music
+    DOWNLOAD_ROOT: /downloads
+    PLEX_CONFIG: /plex-config
+    NODE_BINARY: /usr/bin/node
+  volumes:
+    - ${SONGLIB_DATA_DIR:-./volumes/data}:/data
+    - ${SONGLIB_DOWNLOADS_DIR:-./volumes/downloads}:/downloads
+    - ${MUSIC_DIR:-./volumes/music}:/music
+    - ${READ_ONLY_LIBRARY_DIR:-./volumes/library}:/music/library:ro
+    - ${PLEX_CONFIG_DIR:-./volumes/plex-config}:/plex-config:ro
+  networks:
+    - songlib-internal
+  read_only: true
+  tmpfs:
+    - /tmp:size=256m,mode=1777
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+
 services:
-  songlib-amp:
+  web:
+    <<: *songlib-common
     build:
       context: .
       dockerfile: Dockerfile
-    image: local/songlib-amp:0.8.0
-    container_name: songlib-amp
-    network_mode: host
-    restart: unless-stopped
+      args:
+        APP_UID: ${APP_UID:-10001}
+        APP_GID: ${APP_GID:-10001}
     environment:
-      TZ: Asia/Shanghai
-      PORT: ${APP_PORT:-32781}
-      APP_NAME: SongLib Amp｜音屿
-      APP_PASSWORD: ${APP_PASSWORD:?请在.env中设置APP_PASSWORD}
-      SESSION_SECRET: ${SESSION_SECRET:?请在.env中设置SESSION_SECRET}
+      TZ: ${TZ:-Asia/Shanghai}
+      APP_ENV: production
+      APP_VERSION: 1.0.0-rc.1
       DATA_DIR: /data
       MUSIC_ROOT: /music
-      PLEX_CONFIG: /plex-config
-      PLEX_URL: http://127.0.0.1:32400
-      PLEX_SECTION: "26"
-      PLEX_MEDIA_PREFIX: /media/音乐/
-      DOWNLOAD_DIR: "_downloads"
       DOWNLOAD_ROOT: /downloads
-      MAX_DOWNLOAD_MB: "500"
-      SOURCE_MAX_SIZE_MB: "2"
-      ALLOW_PRIVATE_DOWNLOAD_URLS: "false"
-      ALLOW_PROXY_FAKE_IPS: "true"
-    volumes:
-      - "${SONGLIB_DATA_DIR:-./data}:/data"
-      - "${SONGLIB_DOWNLOADS_DIR:-./downloads}:/downloads"
-      - "${MUSIC_DIR:?请在.env中设置MUSIC_DIR}:/music"
-      - "${PLEX_CONFIG_DIR:?请在.env中设置PLEX_CONFIG_DIR}:/plex-config:ro"
-    labels:
-      com.zspace.app.name: SongLib Amp｜音屿
-      com.zspace.app.description: NAS 音乐下载、刮削、整理与 Plex 联动小系统
+      PLEX_CONFIG: /plex-config
+      NODE_BINARY: /usr/bin/node
+      PORT: 8080
+      WORKER_MODE: web
+    ports:
+      - ${APP_BIND_ADDRESS:-0.0.0.0}:${APP_PORT:-32782}:8080
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/api/health/ready',timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 25s
+      retries: 3
+
+  worker:
+    <<: *songlib-common
+    command: ["python", "-m", "app.worker"]
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      APP_ENV: production
+      APP_VERSION: 1.0.0-rc.1
+      DATA_DIR: /data
+      MUSIC_ROOT: /music
+      DOWNLOAD_ROOT: /downloads
+      PLEX_CONFIG: /plex-config
+      NODE_BINARY: /usr/bin/node
+      WORKER_MODE: worker
+    depends_on:
+      web:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+
+networks:
+  songlib-internal:
+    name: ${COMPOSE_PROJECT_NAME:-songlib-amp}-internal
+    driver: bridge

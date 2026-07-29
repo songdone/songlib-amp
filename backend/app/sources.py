@@ -3,9 +3,9 @@ from __future__ import annotations
 import hashlib
 import json
 import mimetypes
+import os
 import re
 import secrets
-import shutil
 import subprocess
 import urllib.parse
 import uuid
@@ -239,13 +239,14 @@ def _as_source_error(exc: Exception) -> SourceError:
 
 def _inspect_path(path: Path) -> dict:
     inspector = Path(__file__).resolve().parents[1] / "source_inspector.mjs"
-    node_binary = shutil.which("node", path="/usr/local/bin:/usr/bin:/bin") or shutil.which("node")
+    node_binary = settings.resolved_node_binary
     if not node_binary:
         raise SourceError("SOURCE_RUNTIME_MISSING", "容器内没有 Node.js，无法检查音乐源格式。", 500)
     try:
         completed = subprocess.run(
             [node_binary, "--max-old-space-size=128", str(inspector), str(path)], stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=15, check=False, env={"PATH": "/usr/local/bin:/usr/bin:/bin"},
+            stderr=subprocess.PIPE, timeout=15, check=False,
+            env={**os.environ, "PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin")},
         )
     except subprocess.TimeoutExpired as exc:
         raise SourceError("SOURCE_INSPECT_TIMEOUT", "音乐源格式检查超时，脚本可能包含死循环。") from exc
@@ -504,7 +505,7 @@ def validate_source(script_path: Path):
 
 def _bridge(script_path: Path, payload: dict):
     bridge = Path(__file__).resolve().parents[1] / "lx_bridge.mjs"
-    node_binary = shutil.which("node", path="/usr/local/bin:/usr/bin:/bin") or shutil.which("node")
+    node_binary = settings.resolved_node_binary
     if not node_binary:
         raise SourceError("SOURCE_RUNTIME_MISSING", "容器内没有 Node.js，无法运行音乐源。", 500)
     try:
@@ -512,7 +513,11 @@ def _bridge(script_path: Path, payload: dict):
             [node_binary, "--max-old-space-size=128", str(bridge), str(script_path)],
             input=json.dumps(payload, ensure_ascii=False).encode(), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             timeout=settings.source_timeout_seconds, check=False,
-            env={"PATH": "/usr/local/bin:/usr/bin:/bin", "ALLOW_PROXY_FAKE_IPS": "true" if settings.allow_proxy_fake_ips else "false"},
+            env={
+                **os.environ,
+                "PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"),
+                "ALLOW_PROXY_FAKE_IPS": "true" if settings.allow_proxy_fake_ips else "false",
+            },
         )
     except subprocess.TimeoutExpired as exc:
         raise SourceError("SOURCE_LOAD_TIMEOUT", "音乐源脚本执行超时。") from exc

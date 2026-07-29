@@ -22,6 +22,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, HttpUrl
 
 from . import auth
+from . import audit
 from .catalog import search as catalog_search
 from .config import settings
 from .db import get_kv, init_db, now, row, rows, set_kv
@@ -29,6 +30,9 @@ from .jobs import get_job, list_job_logs, list_jobs, manager
 from .local_library import local_library, organizer
 from .plex import dashboard_stats, local_artist_background_file, plex
 from .scraper import build_diff_preview
+from .security import SecurityMiddleware, client_key, issue_csrf, rate_limiter
+from . import playlists as playlist_service
+from . import recommendations as recommendation_service
 from .unified_catalog import match_external_tracks, normalize as normalize_catalog_text, unified_tracks
 from .sources import (
     SourceError, delete_source, get_source, import_code, import_file, import_url, list_sources,
@@ -40,6 +44,44 @@ from mutagen import File as MutagenFile
 class LoginBody(BaseModel):
     username: str = "admin"
     password: str
+
+
+class SetupBody(BaseModel):
+    username: str = Field(default="admin", min_length=2, max_length=40)
+    displayName: str = Field(default="", max_length=80)
+    password: str = Field(min_length=12, max_length=200)
+
+
+class PlaylistBody(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    description: str = Field(default="", max_length=500)
+    items: list[dict] = Field(default_factory=list, max_length=20_000)
+
+
+class PlaylistPatchBody(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    description: str | None = Field(default=None, max_length=500)
+    items: list[dict] | None = Field(default=None, max_length=20_000)
+
+
+class M3UImportBody(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    content: str = Field(max_length=2_100_000)
+    pathMappings: list[dict] = Field(default_factory=list, max_length=100)
+
+
+class ListeningEventBody(BaseModel):
+    eventType: str
+    fileId: str | None = None
+    externalRef: str | None = None
+    positionMs: int = Field(default=0, ge=0)
+    durationMs: int = Field(default=0, ge=0)
+    context: dict = Field(default_factory=dict)
+
+
+class RecommendationRefreshBody(BaseModel):
+    exploration: float = Field(default=0.35, ge=0, le=1)
+    discoveries: list[dict] = Field(default_factory=list, max_length=500)
 
 
 class ChangePasswordBody(BaseModel):
@@ -164,13 +206,22 @@ class DiscoveryDownloadBody(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    errors = settings.validate()
+    if errors:
+        raise RuntimeError("；".join(errors))
     init_db()
     auth.ensure_bootstrap_password()
-    manager.start()
-    yield
+    if settings.worker_mode == "embedded":
+        manager.start()
+    try:
+        yield
+    finally:
+        if settings.worker_mode == "embedded":
+            manager.stop()
 
 
 app = FastAPI(title=settings.app_name, version=settings.app_version, lifespan=lifespan)
+app.add_middleware(SecurityMiddleware)
 
 
 @app.exception_handler(SourceError)
@@ -180,29 +231,116 @@ def source_error_handler(request: Request, exc: SourceError):
 
 @app.get("/api/health")
 def health():
+    checks = _health_checks()
+    return {
+        "status": "ok" if checks["database"]["ok"] and checks["storage"]["ok"] else "error",
+        "version": settings.app_version,
+        "checks": checks,
+    }
+
+
+@app.get("/api/health/live")
+def health_live():
+    return {"status": "ok", "version": settings.app_version}
+
+
+@app.get("/api/health/ready")
+def health_ready():
+    checks = _health_checks()
+    ready = checks["database"]["ok"] and checks["storage"]["ok"]
+    return JSONResponse(
+        status_code=200 if ready else 503,
+        content={"status": "ready" if ready else "not_ready", "version": settings.app_version, "checks": checks},
+    )
+
+
+def _health_checks():
+    database = {"ok": False, "message": "数据库不可用"}
+    storage = {"ok": False, "message": "数据目录不可写"}
     try:
-        plex.xml("/identity")
-        plex_status = "connected"
-    except Exception as exc:
-        plex_status = f"error: {exc}"
-    return {"status": "ok", "version": settings.app_version, "plex": plex_status}
+        database = {"ok": bool(row("SELECT 1 AS value")), "message": "数据库可用"}
+    except Exception:
+        pass
+    try:
+        settings.data_dir.mkdir(parents=True, exist_ok=True)
+        storage = {"ok": settings.data_dir.exists() and os.access(settings.data_dir, os.W_OK), "message": "数据目录可用"}
+    except Exception:
+        pass
+    if not settings.plex_url:
+        plex_status = {"ok": True, "status": "not_configured", "message": "尚未连接 Plex"}
+    else:
+        try:
+            plex.xml("/identity")
+            plex_status = {"ok": True, "status": "connected", "message": "Plex 已连接"}
+        except Exception:
+            plex_status = {"ok": False, "status": "unavailable", "message": "Plex 暂时不可用"}
+    heartbeat = get_kv("worker_heartbeat", {}) or {}
+    heartbeat_at = heartbeat.get("at")
+    heartbeat_fresh = False
+    if heartbeat_at:
+        try:
+            heartbeat_fresh = (datetime.now().astimezone() - datetime.fromisoformat(heartbeat_at)).total_seconds() < max(15, settings.worker_poll_seconds * 4)
+        except (TypeError, ValueError):
+            pass
+    embedded_running = settings.worker_mode == "embedded" and manager.started
+    worker_ok = embedded_running or heartbeat_fresh
+    return {
+        "database": database,
+        "storage": storage,
+        "worker": {
+            "ok": worker_ok,
+            "mode": settings.worker_mode,
+            "message": "后台任务服务在线" if worker_ok else "后台任务服务尚未上报状态",
+            "lastSeenAt": heartbeat_at,
+        },
+        "plex": plex_status,
+    }
+
+
+@app.get("/api/setup/status")
+def setup_status():
+    return {
+        "required": auth.setup_required(),
+        "version": settings.app_version,
+        "checks": _health_checks(),
+    }
+
+
+@app.post("/api/setup/complete")
+def complete_setup(body: SetupBody, request: Request, response: Response):
+    rate_limiter.check(client_key(request, "setup"), limit=5, window_seconds=900)
+    user = auth.complete_setup(body.username, body.password, body.displayName)
+    auth.login(response, body.password, body.username)
+    audit.record(user["id"], request.state.request_id, "setup.complete", "installation", None, "success")
+    return {"ok": True, "user": user}
 
 
 @app.get("/api/auth/status")
-def auth_status(request: Request):
+def auth_status(request: Request, response: Response):
     try:
         user = auth.current_user(request)
         authenticated = True
+        if not request.cookies.get("songlib_csrf"):
+            issue_csrf(response)
     except HTTPException:
         user = None
         authenticated = False
-    return {"authenticated": authenticated, "user": user}
+    return {"authenticated": authenticated, "setupRequired": auth.setup_required(), "user": user}
 
 
 @app.post("/api/auth/login")
-def login(body: LoginBody, response: Response):
-    auth.login(response, body.password, body.username)
-    return {"ok": True}
+def login(body: LoginBody, request: Request, response: Response):
+    if auth.setup_required():
+        raise HTTPException(status_code=409, detail="请先完成初始设置")
+    key = client_key(request, "login")
+    rate_limiter.check(key, limit=8, window_seconds=900)
+    try:
+        user = auth.login(response, body.password, body.username)
+    except HTTPException:
+        audit.record(None, request.state.request_id, "auth.login", "session", None, "denied", {"username": body.username})
+        raise
+    audit.record(user["id"], request.state.request_id, "auth.login", "session", None, "success")
+    return {"ok": True, "user": user}
 
 
 @app.post("/api/auth/logout")
@@ -1443,6 +1581,109 @@ def update_settings(body: SettingsPatchBody):
     current.update(body.values)
     set_kv("ui_settings", current)
     return {"ok": True, "settings": current}
+
+
+@app.get("/api/playlists")
+def playlists(user=Depends(auth.current_user)):
+    return {"items": playlist_service.list_playlists(user["id"])}
+
+
+@app.post("/api/playlists")
+def create_playlist(body: PlaylistBody, request: Request, user=Depends(auth.current_user)):
+    item = playlist_service.create_playlist(user["id"], body.name, body.description, body.items)
+    audit.record(user["id"], request.state.request_id, "playlist.create", "playlist", item["id"], "success", {"itemCount": item["itemCount"]})
+    return item
+
+
+@app.get("/api/playlists/{playlist_id}")
+def get_playlist(playlist_id: str, user=Depends(auth.current_user)):
+    return playlist_service.get_playlist(playlist_id, user["id"], user["role"] in ("owner", "admin"))
+
+
+@app.patch("/api/playlists/{playlist_id}")
+def update_playlist(playlist_id: str, body: PlaylistPatchBody, request: Request, user=Depends(auth.current_user)):
+    item = playlist_service.update_playlist(
+        playlist_id,
+        user["id"],
+        name=body.name,
+        description=body.description,
+        items=body.items,
+    )
+    audit.record(user["id"], request.state.request_id, "playlist.update", "playlist", playlist_id, "success", {"itemCount": item["itemCount"]})
+    return item
+
+
+@app.delete("/api/playlists/{playlist_id}")
+def delete_playlist(playlist_id: str, request: Request, user=Depends(auth.current_user)):
+    playlist_service.delete_playlist(playlist_id, user["id"])
+    audit.record(user["id"], request.state.request_id, "playlist.delete", "playlist", playlist_id, "success")
+    return {"ok": True}
+
+
+@app.post("/api/playlists/import/m3u")
+def import_playlist_m3u(body: M3UImportBody, request: Request, user=Depends(auth.current_user)):
+    result = playlist_service.import_m3u(user["id"], body.name, body.content, body.pathMappings)
+    audit.record(
+        user["id"],
+        request.state.request_id,
+        "playlist.import",
+        "playlist",
+        result["playlist"]["id"],
+        "success",
+        {"matched": result["matched"], "unmatched": len(result["unmatched"])},
+    )
+    return result
+
+
+@app.get("/api/playlists/{playlist_id}/export.m3u")
+def export_playlist_m3u(playlist_id: str, user=Depends(auth.current_user)):
+    name, content = playlist_service.export_m3u(playlist_id, user["id"])
+    filename = re.sub(r"[^\w\u4e00-\u9fff.-]+", "_", name)[:100] or "playlist"
+    return Response(
+        content=content,
+        media_type="audio/x-mpegurl; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{quote(filename)}.m3u8"'},
+    )
+
+
+@app.post("/api/listening/events")
+def listening_event(body: ListeningEventBody, user=Depends(auth.current_user)):
+    return recommendation_service.record_event(
+        user["id"],
+        body.eventType,
+        body.fileId,
+        body.externalRef,
+        body.positionMs,
+        body.durationMs,
+        body.context,
+    )
+
+
+@app.get("/api/recommendations")
+def recommendations(user=Depends(auth.current_user)):
+    return recommendation_service.list_recommendations(user["id"])
+
+
+@app.post("/api/recommendations/refresh")
+def refresh_recommendations(body: RecommendationRefreshBody, request: Request, user=Depends(auth.current_user)):
+    result = recommendation_service.refresh(user["id"], body.discoveries, body.exploration)
+    audit.record(
+        user["id"],
+        request.state.request_id,
+        "recommendation.refresh",
+        "profile",
+        user["id"],
+        "success",
+        {"candidateCount": len(result["items"]), "exploration": body.exploration},
+    )
+    return result
+
+
+@app.get("/api/audit/events")
+def audit_events(limit: int = Query(default=100, ge=1, le=500), user=Depends(auth.current_user)):
+    if user["role"] not in ("owner", "admin"):
+        raise HTTPException(status_code=403, detail="只有管理员可以查看审计记录")
+    return {"items": audit.list_events(limit)}
 
 
 def _backup_dir() -> Path:

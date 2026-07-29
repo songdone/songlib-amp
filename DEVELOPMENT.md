@@ -1,20 +1,51 @@
-# SongLib Amp｜音屿开发审计
+# 开发与质量门禁
 
-## 改造前现状
+## 本地环境
 
-- 音乐源导入入口位于“音乐下载”页面弹窗，只支持在线 URL。
-- 后端 `POST /api/sources` 下载脚本后直接执行初始化校验；错误只以一段字符串返回，前端没有错误码、状态层级或来源日志。
-- 旧 `sources` 表只有 `enabled`，没有区分“已导入、搜索可用、地址解析可用、不可用”。
-- 下载页使用 QQ/网易云目录 API 搜索，然后直接创建下载任务；加入队列前没有测试解析与音频探测。
-- Node VM 已隔离 `require`/文件系统入口，但旧 `lx.request` 没有 DNS/内网地址校验。
-- 下载写入正式目录后才补标签、封面、歌词，不符合 `_incoming` 原子入库流程。
-- 现有 `jobs` 表和串行 worker 可复用，但没有 `job_logs`、错误码和逐步骤日志。
-- 品牌入口硬编码在 `main.jsx`、`index.html`、Compose、后端默认配置、README 与 mock 数据中；没有 manifest。
+- Python 3.12
+- Node.js 24.14
+- Docker 24+ 与 Compose 2.20+
 
-## 本轮重构边界
+后端模块从 `backend` 目录加载。测试使用临时数据目录，不访问生产音乐库。
 
-- 保留 Plex 总览、资料库、刮削、任务和设置功能。
-- 新建 `source_plugins` / `source_logs`，旧来源增量迁移为“已导入、待验证”，不删除旧表与文件。
-- 三种导入统一进入同一校验与持久化流程；来源脚本继续在短生命周期 Node VM 子进程执行。
-- 搜索由统一适配层将 QQ/网易云目录结果归一化，LX 自定义源负责下载地址解析；不假设 LX 脚本自身提供搜索 API。
-- 不内置第三方源、不绕过 DRM；只下载用户有权保存的内容。
+```bash
+python -m pip install -r backend/requirements.lock
+PYTHONPATH=backend python -m unittest discover -s backend/tests -v
+python -m compileall -q backend/app
+```
+
+```bash
+cd frontend
+pnpm install --frozen-lockfile --ignore-scripts
+pnpm test
+pnpm run build
+```
+
+## 分层约束
+
+- 路由只负责协议、鉴权和输入输出，不在页面路由内编写媒体匹配算法。
+- 领域服务不依赖浏览器状态，也不读取 Cookie。
+- 媒体库、元数据和授权下载来源通过 `adapters.py` 中的接口接入。
+- 后台任务只通过持久队列运行；处理器必须支持幂等调用或使用任务幂等键。
+- 数据库结构只通过版本化迁移演进，不得在请求处理中临时修改 schema。
+- Token、密码、Cookie 和完整来源代码不得进入普通日志或审计详情。
+
+## 完成定义
+
+每个用户可见入口必须满足：
+
+1. 有真实 API 或本地播放动作。
+2. 成功后可观察到状态变化。
+3. 失败时显示可行动的反馈。
+4. 需要写入或移动文件时，有预览、审计或恢复路径。
+5. 桌面和窄屏布局可用。
+
+合并前执行：
+
+```bash
+python scripts/secret_scan.py
+docker compose --env-file .env.example config --quiet
+docker build -t songlib-amp:check .
+```
+
+CI 定义位于 `.github/workflows/ci.yml`。

@@ -1,4 +1,4 @@
-FROM node:24.14.0-alpine3.23 AS frontend
+FROM --platform=$BUILDPLATFORM node:24.14.0-alpine3.23 AS frontend
 WORKDIR /build/frontend
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
 RUN npm install --global pnpm@11.9.0 --ignore-scripts --no-audit --no-fund \
@@ -18,8 +18,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PLEX_CONFIG=/plex-config \
     STATIC_DIR=/app/static \
     PORT=8080
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends nodejs tini ca-certificates \
+RUN apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=5 -o Acquire::http::Timeout=20 update \
+    && apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=5 -o Acquire::http::Timeout=20 install -y --no-install-recommends nodejs tini ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --gid "${APP_GID}" songlib \
     && useradd --uid "${APP_UID}" --gid "${APP_GID}" --home-dir /app --no-create-home --shell /usr/sbin/nologin songlib

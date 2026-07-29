@@ -20,7 +20,7 @@ SongLib Amp 不内置第三方私钥，不绕过 DRM，也不附带受版权保�
 
 ## 快速部署
 
-要求：Docker 24+、Docker Compose 2.20+，推荐至少 2 GB 可用内存。默认从 Docker Hub 拉取固定版本镜像，不需要在 NAS 上编译源码。
+要求：Docker 24+、Docker Compose 2.20+，推荐至少 2 GB 可用内存。Docker Hub 固定版本镜像同时提供 `linux/amd64` 与 `linux/arm64`，NAS 不需要编译源码。
 
 ```bash
 mkdir -p songlib-amp/volumes/{data,downloads,music}

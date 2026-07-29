@@ -29,7 +29,9 @@ RUN pip install -r requirements.lock
 COPY --chown=songlib:songlib backend/app ./app
 COPY --chown=songlib:songlib backend/lx_bridge.mjs backend/source_inspector.mjs ./
 COPY --from=frontend --chown=songlib:songlib /build/frontend/dist ./static
-RUN mkdir -p /data /music /downloads /plex-config \
+RUN find /app -type d -exec chmod 755 {} + \
+    && find /app -type f -exec chmod 644 {} + \
+    && mkdir -p /data /music /downloads /plex-config \
     && chown -R songlib:songlib /data /music /downloads /plex-config /app
 USER songlib
 EXPOSE 8080

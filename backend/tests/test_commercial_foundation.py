@@ -12,6 +12,7 @@ os.environ.setdefault("WORKER_MODE", "web")
 from fastapi.testclient import TestClient
 
 from app import auth
+from app.config import settings
 from app.db import init_db, row, rows, transaction
 from app.jobs import manager
 from app.main import app
@@ -136,6 +137,27 @@ class CommercialFoundationTests(unittest.TestCase):
                 headers={"X-CSRF-Token": token},
             )
             self.assertEqual(allowed.status_code, 200)
+
+    def test_backup_file_is_owner_only(self):
+        with TestClient(app) as client:
+            login = client.post(
+                "/api/auth/login",
+                json={"username": "admin", "password": "test-password-123"},
+            )
+            self.assertEqual(login.status_code, 200)
+            token = client.cookies.get("songlib_csrf")
+            created = client.post(
+                "/api/backups",
+                json={},
+                headers={"X-CSRF-Token": token},
+            )
+            self.assertEqual(created.status_code, 200)
+            path = settings.data_dir / "backups" / created.json()["item"]["name"]
+            if os.name == "posix":
+                self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+            else:
+                self.assertTrue(path.is_file())
+            path.unlink()
 
     def test_health_contract(self):
         with TestClient(app) as client:

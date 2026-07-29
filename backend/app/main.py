@@ -1721,6 +1721,7 @@ def create_backup():
     finally:
         destination.close()
         source.close()
+    target.chmod(0o600)
     return {"ok": True, "item": {"name": name, "size": target.stat().st_size, "createdAt": datetime.now().isoformat()}}
 
 

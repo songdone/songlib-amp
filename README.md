@@ -11,10 +11,10 @@ SongLib Amp 是一个本地优先、面向 NAS 的音乐管理与播放平台。
 - 从可插拔提供方搜索元数据、封面和歌词；候选结果经过名称、艺人、专辑、时长和版本校验。
 - 管理用户有权使用的下载来源，经过预检、暂存、确认和隔离后再入库。
 - 创建歌单，导入或导出 M3U/M3U8；也可从 QQ 音乐、网易云音乐公开分享链接预览并迁移到 Plex 或已配置的飞牛音乐。
-- 在歌单页直接汇总当前 Plex 与飞牛音乐中的真实歌单和曲目数量，连接失败时分别给出可恢复提示。
+- 在歌单页汇总当前 Plex 与飞牛音乐中的真实歌单；Plex 歌单可按原顺序整单加入播放队列，连接失败时分别给出可恢复提示。
 - 将独立下载目录中的音频按标签和路径预览后规范入库，保留冲突、失败与回滚记录。
 - 导入的授权音乐源通过格式识别后立即启用并出现在“下载与入库”，首次下载时再自动完成解析地址与音频探测。
-- 连续播放、播放队列、歌词、随机/循环、键盘操作与响应式移动体验。
+- 连续播放、播放队列、随机/循环、键盘操作与响应式移动体验；本地或 Plex 曲目缺少随附歌词时会按歌曲、艺人和时长重新核验并获取。
 - 深色高透玻璃界面会从 Plex 中按曲目数排序的歌手背景取最多 80 张组成随机轮播池；移动端 PWA 使用单行五项主导航。
 - 根据收藏、完成、跳过和重复播放形成本地画像，给出可解释推荐，并保留库外探索能力。
 - 通过持久后台任务完成扫描、下载、刮削、补图和补歌词；服务重启后可继续、重试或人工恢复。
@@ -23,66 +23,37 @@ SongLib Amp 不内置第三方私钥，不绕过 DRM，也不附带受版权保�
 
 ## 快速部署
 
-要求：Docker 24+、Docker Compose 2.20+，推荐至少 2 GB 可用内存。[Docker Hub 镜像](https://hub.docker.com/r/666uos/songlib-amp)的固定版本标签同时提供 `linux/amd64` 与 `linux/arm64`，NAS 不需要编译源码。
+要求：Docker 24+、Docker Compose 2.20+，推荐至少 2 GB 可用内存。[Docker Hub 镜像](https://hub.docker.com/r/666uos/songlib-amp/tags)的 `latest` 与固定版本标签同时提供 `linux/amd64`、`linux/arm64`，NAS 不需要编译源码。
 
 ```bash
-mkdir -p songlib-amp/volumes/{data,downloads,music,library,plex-config}
+mkdir -p songlib-amp/{data,downloads,music}
 cd songlib-amp
-touch .env
-chmod 600 .env
-```
-
-在 `.env` 中填写：
-
-```dotenv
-COMPOSE_PROJECT_NAME=songlib-amp
-SONGLIB_IMAGE=666uos/songlib-amp:1.0.0-rc.4
-APP_PORT=32782
-APP_BIND_ADDRESS=0.0.0.0
-TZ=Asia/Shanghai
-PUID=1000
-PGID=1000
-
-# 使用 openssl rand -hex 32 生成，至少 32 个字符
-SESSION_SECRET=replace-with-a-long-random-value
-COOKIE_SECURE=false
-TRUSTED_ORIGINS=http://NAS地址:32782
-
-SONGLIB_DATA_DIR=./volumes/data
-SONGLIB_DOWNLOADS_DIR=./volumes/downloads
-MUSIC_DIR=./volumes/music
-READ_ONLY_LIBRARY_DIR=./volumes/library
-PLEX_CONFIG_DIR=./volumes/plex-config
-
-# 可选：也可以在设置页面用飞牛音乐账号连接
-FNOS_MUSIC_URL=
-FNOS_MUSIC_TOKEN=
 ```
 
 将下面内容保存为 `docker-compose.yml`。音乐库与下载暂存是两个独立挂载，不能指向同一目录：
 
 ```yaml
-name: ${COMPOSE_PROJECT_NAME:-songlib-amp}
-
 services:
   songlib:
-    image: ${SONGLIB_IMAGE:-666uos/songlib-amp:1.0.0-rc.4}
-    pull_policy: always
+    image: 666uos/songlib-amp:latest
+    container_name: songlib-amp
     restart: unless-stopped
-    user: "${PUID:-1000}:${PGID:-1000}"
-    env_file: .env
+    user: "1000:1000"
     environment:
-      APP_ENV: production
-      APP_VERSION: 1.0.0-rc.4
-      WORKER_MODE: embedded
+      - TZ=Asia/Shanghai
+      - APP_ENV=production
+      - WORKER_MODE=embedded
     ports:
-      - "${APP_BIND_ADDRESS:-0.0.0.0}:${APP_PORT:-32782}:8080"
+      - "32782:8080"
     volumes:
-      - ${SONGLIB_DATA_DIR:-./volumes/data}:/data
-      - ${SONGLIB_DOWNLOADS_DIR:-./volumes/downloads}:/downloads
-      - ${MUSIC_DIR:-./volumes/music}:/music
-      - ${READ_ONLY_LIBRARY_DIR:-./volumes/library}:/music/library:ro
-      - ${PLEX_CONFIG_DIR:-./volumes/plex-config}:/plex-config:ro
+      # 程序数据和配置
+      - ./data:/data
+      # 下载暂存目录，必须与音乐库分开
+      - ./downloads:/downloads
+      # 正式音乐库
+      - ./music:/music
+      # 可选：如需从 Preferences.xml 读取 Plex Token，取消下一行注释。
+      # - ./plex-config:/plex-config:ro
     security_opt:
       - no-new-privileges:true
     healthcheck:
@@ -93,6 +64,15 @@ services:
       retries: 3
 ```
 
+飞牛 NAS 只需把上面三条挂载的左侧改成自己的绝对路径，例如：
+
+```yaml
+volumes:
+  - /vol1/1000/Docker/songlib-amp/data:/data
+  - /vol1/1000/Docker/songlib-amp/downloads:/downloads
+  - /vol1/1000/Music:/music
+```
+
 然后启动：
 
 ```bash
@@ -101,18 +81,18 @@ docker compose up -d
 docker compose ps
 ```
 
-`PUID` 与 `PGID` 必须是拥有 `volumes` 目录的 NAS 普通账号数字 ID，可用 `id -u` 与 `id -g` 查看。容器仍以非 root 身份运行，同时能够写入数据、下载暂存和正式曲库挂载。
+`user: "1000:1000"` 要改成拥有这些目录的 NAS 普通账号数字 ID，可用 `id -u` 与 `id -g` 查看。容器仍以非 root 身份运行，同时能够写入数据、下载暂存和正式曲库挂载。
 
-打开 `http://NAS地址:APP_PORT`。新实例不会创建默认弱密码，首次访问会引导创建主人账号。
+打开 `http://NAS地址:32782`。不需要预先创建 `.env`：程序会把随机会话密钥保存在 `/data`，首次访问会引导创建主人账号；Plex、飞牛音乐、目录与播放器偏好都在网页设置中完成。
 
-升级时先备份 `SONGLIB_DATA_DIR`，再把 `.env` 中的镜像标签改为目标版本并执行：
+升级时先备份 `data` 目录，再执行：
 
 ```bash
 docker compose pull
 docker compose up -d
 ```
 
-需要回滚时把 `SONGLIB_IMAGE` 改回上一个固定标签，再次执行相同命令。仓库内的 [`docker-compose.yml`](docker-compose.yml) 与上面模板一致；只有参与开发时才使用 `docker-compose.build.yml` 在本机编译。
+`latest` 适合直接获取当前发布版；需要严格锁定或回滚时，把 Compose 的 `image` 改为 `666uos/songlib-amp:1.0.0-rc.4` 等固定标签，再次执行相同命令。仓库内的 [`docker-compose.yml`](docker-compose.yml) 与上面模板一致；只有参与开发时才使用 `docker-compose.build.yml` 在本机编译。
 
 默认模板已经包含非 root 用户和 `no-new-privileges`，Compose 会自动创建项目隔离网络。需要只读根文件系统和全部 Linux capability 裁剪时，再叠加可选文件：
 
@@ -133,7 +113,7 @@ docker compose -f docker-compose.yml -f docker-compose.hardened.yml up -d
 - `/music/.trash/`：可恢复隔离区。
 - `/downloads/`：独立下载暂存区与手工整理入口，不能与 `/music/` 指向同一目录。
 
-令牌和私密配置只应存在于 NAS 上权限为 `600` 的 `.env` 或受保护数据目录中。
+令牌和私密配置应通过设置页面写入 NAS 的受保护数据目录，不得提交仓库、写入前端或普通日志；`.env.example` 仅供需要环境变量覆盖的高级部署参考。
 
 ## 文档
 

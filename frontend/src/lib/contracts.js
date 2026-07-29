@@ -53,6 +53,26 @@ export const playlistPlaybackInput = (item = {}) => {
   };
 };
 
+export const servicePlaylistPlaybackItems = (service, items = []) => {
+  if (service !== "plex") return [];
+  return items
+    .map((item) => {
+      const ratingKey = item.ratingKey || item.plexRatingKey || item.id;
+      if (!ratingKey) return null;
+      return {
+        ...item,
+        source: "plex_item",
+        sourceType: "plex_item",
+        ratingKey: String(ratingKey),
+        title: item.title || "",
+        artist: item.artist || item.grandparentTitle || "",
+        album: item.album || item.parentTitle || "",
+        coverUrl: item.coverUrl || item.thumbUrl || "",
+      };
+    })
+    .filter(Boolean);
+};
+
 export const recommendationPlaybackInput = (item = {}) => {
   const reference = String(item.external_ref || item.externalRef || "");
   if (!item.inLibrary || !reference.startsWith("local:")) return null;

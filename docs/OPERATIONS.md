@@ -30,13 +30,13 @@
 
 ### 恢复管理员访问
 
-在受权限保护的 `.env` 中临时增加 `APP_PASSWORD`，值必须至少 10 位且不能是常见弱密码。然后在 Compose 项目目录运行：
+在受权限保护的 `.reset.env` 中临时写入 `APP_PASSWORD`，值必须至少 10 位且不能是常见弱密码。然后在 Compose 项目目录运行：
 
 ```bash
-docker compose --env-file .env run --rm songlib python -m app.cli reset-admin --from-env
+docker compose run --rm --env-file .reset.env songlib python -m app.cli reset-admin --from-env
 ```
 
-命令会重置最早创建的主人账号并使该账号的现有会话失效。确认新密码可以登录后，从 `.env` 删除 `APP_PASSWORD`，避免把长期登录密码留在环境配置中。不要把密码直接写进命令行、工单或普通日志。
+命令会重置最早创建的主人账号并使该账号的现有会话失效。确认新密码可以登录后删除 `.reset.env`，避免把长期登录密码留在环境配置中。不要把密码直接写进命令行、工单或普通日志。
 
 ### 页面健康但任务不运行
 
@@ -51,7 +51,7 @@ docker compose logs --tail=100 songlib
 
 ### 音乐目录无权限
 
-确认宿主机目录对 `.env` 中 `PUID:PGID` 可读写。不要把容器改成特权模式；应修正具体绑定目录的权限。
+确认宿主机目录对 Compose 中 `user` 指定的 UID:GID 可读写。不要把容器改成特权模式；应修正具体绑定目录的权限。
 
 ### Plex 无法连接
 

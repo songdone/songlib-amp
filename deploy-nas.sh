@@ -5,24 +5,10 @@ APP_DIR=${APP_DIR:-"$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"}
 cd "$APP_DIR"
 umask 077
 
-if [ ! -f .env ]; then
-  cp .env.example .env
-  if command -v openssl >/dev/null 2>&1; then
-    SESSION_VALUE=$(openssl rand -hex 32)
-  else
-    SESSION_VALUE=$(python3 -c 'import secrets; print(secrets.token_hex(32))')
-  fi
-  python3 -c 'from pathlib import Path; import sys; p=Path(".env"); p.write_text(p.read_text().replace("replace-with-at-least-32-random-characters",sys.argv[1]))' "$SESSION_VALUE"
-  chmod 600 .env
-  echo "已创建受保护的 .env。首次访问时请在安装向导中创建管理员。"
-fi
-
-APP_UID=$(sed -n 's/^PUID=//p' .env | tail -1)
-APP_GID=$(sed -n 's/^PGID=//p' .env | tail -1)
 APP_UID=${APP_UID:-1000}
 APP_GID=${APP_GID:-1000}
-mkdir -p volumes/data volumes/downloads volumes/music volumes/library volumes/plex-config
-chown -R "$APP_UID:$APP_GID" volumes/data volumes/downloads volumes/music 2>/dev/null || true
+mkdir -p data downloads music
+chown -R "$APP_UID:$APP_GID" data downloads music 2>/dev/null || true
 
 if docker compose version >/dev/null 2>&1; then
   COMPOSE="docker compose"
@@ -33,7 +19,7 @@ else
   exit 1
 fi
 
-if [ -f volumes/data/manager.db ] && $COMPOSE ps -q songlib 2>/dev/null | grep -q .; then
+if [ -f data/manager.db ] && $COMPOSE ps -q songlib 2>/dev/null | grep -q .; then
   ./scripts/backup.sh
 fi
 
@@ -41,7 +27,6 @@ $COMPOSE config --quiet
 $COMPOSE pull
 $COMPOSE up -d --remove-orphans
 
-APP_PORT=$(sed -n 's/^APP_PORT=//p' .env | tail -1)
 APP_PORT=${APP_PORT:-32782}
 ready=0
 attempt=1

@@ -203,6 +203,30 @@ class PlexClient:
         root = self.xml("/playlists/all", {"playlistType": "audio"})
         return [dict(item.attrib) for item in root if item.attrib.get("ratingKey")]
 
+    def playlist_items(self, rating_key: str):
+        start = 0
+        size = 500
+        items = []
+        while True:
+            root = self.xml(
+                f"/playlists/{rating_key}/items",
+                {
+                    "X-Plex-Container-Start": start,
+                    "X-Plex-Container-Size": size,
+                    "includeFields": 1,
+                },
+            )
+            page = [
+                self._element(item)
+                for item in root
+                if item.attrib.get("ratingKey")
+            ]
+            items.extend(page)
+            if len(page) < size:
+                break
+            start += len(page)
+        return items
+
     def replace_playlist(self, title: str, rating_keys: list[str]):
         keys = list(dict.fromkeys(str(key) for key in rating_keys if str(key)))
         if not keys:
@@ -318,8 +342,8 @@ class PlexClient:
         for bitrate in ("320k", "256k", "192k", "128k"):
             transcode_urls[bitrate] = f"/api/player/plex/{urllib.parse.quote(str(rating_key), safe='')}/stream?bitrate={bitrate}"
         lyrics = ""
-        file_path = Path(info.get("file") or "")
-        if file_path.exists():
+        file_path = local_media_path(info.get("file") or "")
+        if file_path and file_path.exists():
             lyric_path = file_path.with_suffix(".lrc")
             if lyric_path.exists():
                 lyrics = lyric_path.read_text(encoding="utf-8", errors="ignore")

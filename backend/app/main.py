@@ -30,7 +30,8 @@ from .download_inbox import download_inbox
 from .fnos_music import fnos_music
 from .jobs import get_job, list_job_logs, list_jobs, manager
 from .local_library import local_library, organizer
-from .plex import dashboard_stats, local_artist_background_file, plex
+from .lyrics import find_lyrics
+from .plex import dashboard_stats, local_artist_background_file, local_media_path, plex
 from .scraper import build_diff_preview
 from .security import SecurityMiddleware, client_key, issue_csrf, rate_limiter
 from . import playlists as playlist_service
@@ -1417,9 +1418,14 @@ def local_lyrics(file_id: str):
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     lyric_path = Path(item["path"]).with_suffix(".lrc")
-    if not lyric_path.exists():
-        return {"lyrics": "", "format": "lrc"}
-    return {"lyrics": lyric_path.read_text(encoding="utf-8", errors="ignore"), "format": "lrc"}
+    if lyric_path.exists():
+        return {
+            "lyrics": lyric_path.read_text(encoding="utf-8", errors="ignore"),
+            "format": "lrc",
+            "source": "sidecar",
+        }
+    lyrics, source = find_lyrics(item)
+    return {"lyrics": lyrics, "format": "lrc", "source": source or ""}
 
 
 @app.get("/api/player/plex/{rating_key}", dependencies=[Depends(auth.current_user)])
@@ -1476,14 +1482,17 @@ def plex_lyrics(rating_key: str):
         info = plex.playback(rating_key, "original")
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"读取 Plex 曲目失败：{exc}") from exc
-    file_path = info.get("file") or ""
-    path = Path(file_path)
-    if not path.exists():
-        return {"lyrics": "", "format": "lrc"}
-    lyric_path = path.with_suffix(".lrc")
-    if not lyric_path.exists():
-        return {"lyrics": "", "format": "lrc"}
-    return {"lyrics": lyric_path.read_text(encoding="utf-8", errors="ignore"), "format": "lrc"}
+    path = local_media_path(info.get("file") or "")
+    if path and path.exists():
+        lyric_path = path.with_suffix(".lrc")
+        if lyric_path.exists():
+            return {
+                "lyrics": lyric_path.read_text(encoding="utf-8", errors="ignore"),
+                "format": "lrc",
+                "source": "sidecar",
+            }
+    lyrics, source = find_lyrics(info)
+    return {"lyrics": lyrics, "format": "lrc", "source": source or ""}
 
 
 @app.post("/api/player/source-preview", dependencies=[Depends(auth.current_user)])
@@ -1778,6 +1787,35 @@ def connected_service_playlists(user=Depends(auth.current_user)):
         except (RuntimeError, ValueError, httpx.HTTPError):
             result["fnos"]["error"] = "暂时无法读取飞牛音乐歌单，请在设置中测试连接。"
     return result
+
+
+@app.get("/api/playlists/services/plex/{playlist_id}")
+def connected_plex_playlist(playlist_id: str, user=Depends(auth.current_user)):
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", playlist_id):
+        raise HTTPException(status_code=400, detail="Plex 歌单标识无效")
+    plex_settings = plex.saved_settings()
+    if not plex_settings.get("enabled") or not plex_settings.get("serverUrl"):
+        raise HTTPException(status_code=409, detail="Plex 尚未连接")
+    try:
+        items = _decorate(plex.playlist_items(playlist_id))
+    except (RuntimeError, ValueError, httpx.HTTPError) as exc:
+        raise HTTPException(status_code=502, detail="暂时无法读取该 Plex 歌单") from exc
+    return {
+        "service": "plex",
+        "id": playlist_id,
+        "items": [
+            {
+                **item,
+                "source": "plex_item",
+                "artist": item.get("grandparentTitle") or item.get("originalTitle") or "",
+                "album": item.get("parentTitle") or "",
+                "coverUrl": item.get("thumbUrl") or "",
+            }
+            for item in items
+            if item.get("ratingKey")
+        ],
+        "itemCount": len(items),
+    }
 
 
 @app.post("/api/playlists")

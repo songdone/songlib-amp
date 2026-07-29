@@ -6,6 +6,7 @@ import {
   playlistPlaybackInput,
   playlistTrackPayload,
   recommendationPlaybackInput,
+  servicePlaylistPlaybackItems,
 } from "../src/lib/contracts.js";
 import {
   libraryDetailFromPath,
@@ -77,6 +78,31 @@ test("Plex playlist items keep a portable reference and remain playable", () => 
     album: "25",
     duration: 290,
   });
+});
+
+test("a connected Plex playlist becomes one ordered playback queue", () => {
+  const queue = servicePlaylistPlaybackItems("plex", [
+    {
+      ratingKey: "11",
+      title: "晴天",
+      grandparentTitle: "周杰伦",
+      parentTitle: "叶惠美",
+    },
+    {
+      ratingKey: "12",
+      title: "夜曲",
+      artist: "周杰伦",
+      album: "十一月的萧邦",
+    },
+  ]);
+  assert.equal(queue.length, 2);
+  assert.deepEqual(
+    queue.map((item) => item.ratingKey),
+    ["11", "12"],
+  );
+  assert.equal(queue[0].source, "plex_item");
+  assert.equal(queue[0].artist, "周杰伦");
+  assert.deepEqual(servicePlaylistPlaybackItems("fnos", queue), []);
 });
 
 test("only library recommendations become direct playback actions", () => {

@@ -11,33 +11,20 @@
 ## 2. 准备目录与配置
 
 ```bash
-cp .env.example .env
-chmod 600 .env
-mkdir -p volumes/data volumes/downloads volumes/music volumes/library volumes/plex-config
+mkdir -p data downloads music
 ```
 
 `SONGLIB_DOWNLOADS_DIR` 与 `MUSIC_DIR` 必须指向不同目录或数据集。容器内下载文件只出现在 `/downloads`，正式曲库只出现在 `/music`。
 
-在 `.env` 中把 `PUID`、`PGID` 设置为拥有这些挂载目录的 NAS 普通账号数字 ID（运行 `id -u`、`id -g` 查看）。这样容器保持非 root 运行，又不会因绑定目录权限导致数据库或音乐文件无法写入。
+把 Compose 的 `user` 改为拥有这些挂载目录的 NAS 普通账号数字 ID（运行 `id -u`、`id -g` 查看）。这样容器保持非 root 运行，又不会因绑定目录权限导致数据库或音乐文件无法写入。
 
-如需把歌单写入飞牛音乐，可在“设置 → Plex 连接 → 飞牛音乐”中使用飞牛音乐账号连接；密码只用于换取服务会话，不会保存。也可以在 NAS 的 `.env` 中预置专用令牌：
-
-```dotenv
-FNOS_MUSIC_URL=http://nas-address:5666
-FNOS_MUSIC_TOKEN=replace-with-dedicated-token
-```
+如需把歌单写入飞牛音乐，可在“设置 → Plex 连接 → 飞牛音乐”中使用飞牛音乐账号连接；密码只用于换取服务会话，不会保存。
 
 不要从浏览器会话中提取令牌。建议为歌单同步创建权限最小的专用账号或令牌。界面生成的派生令牌保存在 `/data/secrets/fnos-music.json`，目录与文件权限分别收紧为 `700` 和 `600`。
 
-生成会话密钥：
+默认不需要 `.env`。程序首次启动时自动生成会话密钥并保存在 `/data`；`/data` 必须持久挂载且只允许 NAS 管理账号访问。正式音乐目录必须与下载目录分开。需要读取 Plex 本机配置时，再取消 Compose 中 `/plex-config:ro` 挂载的注释；通常直接在设置页面连接 Plex 即可。
 
-```bash
-openssl rand -hex 32
-```
-
-把结果写入 `.env` 的 `SESSION_SECRET`，不要贴到 Issue、聊天记录或普通日志。`MUSIC_DIR` 是音屿自己的可写入库目录；已有媒体库可通过 `READ_ONLY_LIBRARY_DIR` 只读挂载到 `/music/library`，避免修改其他音乐服务正在管理的文件。Plex 未启用时可保留默认只读空目录。
-
-Compose 默认使用 `.env` 中的 `PUID:PGID`（示例为 `1000:1000`）运行容器。绑定目录需要由这个 NAS 普通账号拥有或允许其写入。镜像内置用户 `10001:10001` 只在没有 Compose 用户映射时使用。正式音乐目录如需完全只读，可单独部署仅浏览实例；扫描和整理功能需要写权限。
+Compose 默认使用 `1000:1000` 运行容器。绑定目录需要由这个 NAS 普通账号拥有或允许其写入；账号不同就直接修改 Compose 的 `user`。镜像内置用户 `10001:10001` 只在没有 Compose 用户映射时使用。正式音乐目录如需完全只读，可单独部署仅浏览实例；扫描和整理功能需要写权限。
 
 ## 3. 启动
 
@@ -76,8 +63,11 @@ docker compose -f docker-compose.yml -f docker-compose.hardened.yml up -d
 
 ## 多架构
 
-Docker Hub 固定标签同时发布 `linux/amd64` 与 `linux/arm64`。NAS 只需执行 `docker compose pull`，不需要本地编译。维护者跨架构发布时使用：
+Docker Hub 的 `latest` 与固定标签同时发布 `linux/amd64`、`linux/arm64`。NAS 只需执行 `docker compose pull`，不需要本地编译。维护者跨架构发布时使用：
 
 ```bash
-docker buildx build --platform linux/amd64,linux/arm64 -t 666uos/songlib-amp:1.0.0-rc.4 --push .
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t 666uos/songlib-amp:1.0.0-rc.4 \
+  -t 666uos/songlib-amp:latest \
+  --push .
 ```

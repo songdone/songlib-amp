@@ -1,24 +1,24 @@
-name: ${COMPOSE_PROJECT_NAME:-songlib-amp}
-
 services:
   songlib:
-    image: ${SONGLIB_IMAGE:-666uos/songlib-amp:1.0.0-rc.4}
-    pull_policy: always
+    image: 666uos/songlib-amp:latest
+    container_name: songlib-amp
     restart: unless-stopped
-    user: "${PUID:-1000}:${PGID:-1000}"
-    env_file: .env
+    user: "1000:1000"
     environment:
-      APP_ENV: production
-      APP_VERSION: 1.0.0-rc.4
-      WORKER_MODE: embedded
+      - TZ=Asia/Shanghai
+      - APP_ENV=production
+      - WORKER_MODE=embedded
     ports:
-      - "${APP_BIND_ADDRESS:-0.0.0.0}:${APP_PORT:-32782}:8080"
+      - "32782:8080"
     volumes:
-      - ${SONGLIB_DATA_DIR:-./volumes/data}:/data
-      - ${SONGLIB_DOWNLOADS_DIR:-./volumes/downloads}:/downloads
-      - ${MUSIC_DIR:-./volumes/music}:/music
-      - ${READ_ONLY_LIBRARY_DIR:-./volumes/library}:/music/library:ro
-      - ${PLEX_CONFIG_DIR:-./volumes/plex-config}:/plex-config:ro
+      # 程序数据和配置
+      - ./data:/data
+      # 下载暂存目录，必须与音乐库分开
+      - ./downloads:/downloads
+      # 正式音乐库
+      - ./music:/music
+      # 可选：如需从 Preferences.xml 读取 Plex Token，取消下一行注释。
+      # - ./plex-config:/plex-config:ro
     security_opt:
       - no-new-privileges:true
     healthcheck:

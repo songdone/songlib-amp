@@ -78,7 +78,12 @@ def fill_missing_lyrics(payload, progress):
     result = {"missing": len(pending), "written": 0, "notFound": 0, "errors": []}
     for index, track in enumerate(pending, 1):
         title = track.get("title", "")
-        progress(int(index / max(1, len(missing)) * 95), f"正在查找歌词：{title} ({index}/{len(missing)})", index, len(missing))
+        progress(
+            int(index / max(1, len(pending)) * 95),
+            f"正在查找歌词：{title} ({index}/{len(pending)})",
+            index,
+            len(pending),
+        )
         try:
             lyric, source = find_lyrics(track)
             if not lyric:

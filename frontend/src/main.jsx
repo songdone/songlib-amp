@@ -82,6 +82,7 @@ import {
   playlistPlaybackInput,
   playlistTrackPayload,
   recommendationPlaybackInput,
+  servicePlaylistPlaybackItems,
 } from "./lib/contracts";
 import {
   knownPage,
@@ -941,7 +942,6 @@ function Sidebar({
             <X />
           </button>
         </div>
-        <div className="side-version">v{version || BRAND.version}</div>
         <nav aria-label="主导航">
           {groups.map((group) => (
             <div className="nav-group" key={group}>
@@ -965,11 +965,14 @@ function Sidebar({
             </div>
           ))}
         </nav>
-        <SidebarMiniPlayer openPlayer={openPlayer} />
-        <button className="logout" onClick={logout}>
-          <LogOut size={18} />
-          退出登录
-        </button>
+        <div className="sidebar-footer">
+          <SidebarMiniPlayer openPlayer={openPlayer} />
+          <div className="side-version">v{version || BRAND.version}</div>
+          <button className="logout" onClick={logout}>
+            <LogOut size={18} />
+            退出登录
+          </button>
+        </div>
       </aside>
       {open && <button className="backdrop mobile-only" onClick={close} />}
     </>
@@ -1168,11 +1171,7 @@ function Dashboard({ stats, jobs, loading, navigate, runJob, isAdmin = true }) {
     playItems(result.items || []);
   };
   const heroAlbum = home.albums[0];
-  const heroArt =
-    heroAlbum?.artUrl ||
-    heroAlbum?.thumbUrl ||
-    stats?.heroImages?.[0]?.imageUrl ||
-    "";
+  const heroCover = heroAlbum?.thumbUrl || "";
   return (
     <div className="page dashboard-page home-v2">
       <header className="home-heading">
@@ -1187,17 +1186,18 @@ function Dashboard({ stats, jobs, loading, navigate, runJob, isAdmin = true }) {
         </button>
       </header>
 
-      <section className="home-feature">
-        <div
-          className="home-feature-art"
-          style={heroArt ? { backgroundImage: `url(${heroArt})` } : undefined}
-        />
-        <div className="home-feature-shade" />
-        <div className="home-feature-copy">
-          <span className="home-feature-label">最近加入</span>
+      <section className="home-focus">
+        <div className="home-focus-copy">
+          <span className="home-focus-label">最近加入</span>
           <h2>{heroAlbum?.title || "你的私人音乐库"}</h2>
-          <p>{heroAlbum?.parentTitle || "随时从自己的 NAS 继续播放"}</p>
-          <div>
+          <p>
+            {heroAlbum?.parentTitle || "随时从自己的 NAS 继续播放"}
+            <span>
+              {fmt(stats?.tracks || home.tracks.length)} 首歌曲 ·{" "}
+              {fmt(stats?.albums || home.albums.length)} 张专辑
+            </span>
+          </p>
+          <div className="home-focus-actions">
             <button
               className="primary home-play-button"
               disabled={!heroAlbum && !home.tracks.length}
@@ -1210,6 +1210,13 @@ function Dashboard({ stats, jobs, loading, navigate, runJob, isAdmin = true }) {
               查看音乐库
             </button>
           </div>
+        </div>
+        <div className="home-focus-visual" aria-hidden="true">
+          <span className="home-focus-disc" />
+          <span className="home-focus-cover">
+            {heroCover ? <img src={heroCover} alt="" /> : <Disc3 />}
+          </span>
+          <i />
         </div>
       </section>
 
@@ -1654,6 +1661,10 @@ function MediaCard({
 }
 
 function LibraryDetailPage({ type, data, back, play, openDetail }) {
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
+  const detailKey =
+    data?.artist?.ratingKey || data?.album?.ratingKey || "";
+  useEffect(() => setSummaryExpanded(false), [detailKey]);
   if (!data) return <PageLoader />;
   if (data.error)
     return (
@@ -1698,7 +1709,11 @@ function LibraryDetailPage({ type, data, back, play, openDetail }) {
         <ArrowLeft />
         返回{isArtist ? "歌手" : "专辑"}
       </button>
-      <section className="library-detail-hero">
+      <section
+        className={`library-detail-hero ${
+          isArtist ? "artist-detail-hero" : "album-detail-hero"
+        }`}
+      >
         <div
           className="library-detail-background"
           style={{ backgroundImage: `url(${background})` }}
@@ -1749,7 +1764,27 @@ function LibraryDetailPage({ type, data, back, play, openDetail }) {
               )}
             </div>
             {subject?.summary && (
-              <p className="library-detail-summary">{subject.summary}</p>
+              <div className="library-detail-biography">
+                <p
+                  className={`library-detail-summary ${
+                    summaryExpanded ? "expanded" : ""
+                  }`}
+                >
+                  {subject.summary}
+                </p>
+                {isArtist && subject.summary.length > 120 && (
+                  <button
+                    className="summary-toggle"
+                    onClick={() => setSummaryExpanded((value) => !value)}
+                    aria-expanded={summaryExpanded}
+                  >
+                    {summaryExpanded ? "收起介绍" : "查看全部"}
+                    <ChevronDown
+                      className={summaryExpanded ? "rotate-180" : ""}
+                    />
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -3384,6 +3419,10 @@ function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
   const player = usePlayer(),
     current = player.currentTrack;
   const [lyricsFull, setLyricsFull] = useState(false);
+  const [resolvedLyrics, setResolvedLyrics] = useState("");
+  const [lyricsLoading, setLyricsLoading] = useState(false);
+  const [lyricsError, setLyricsError] = useState("");
+  const [lyricsRequest, setLyricsRequest] = useState(0);
   const [seeds, setSeeds] = useState([]),
     [seedLoading, setSeedLoading] = useState(false);
   useEffect(() => {
@@ -3406,8 +3445,48 @@ function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
       })
       .finally(() => setSeedLoading(false));
   }, [current, seeds.length, seedLoading]);
-  const parsedLyrics = parseLrc(current?.lyrics || "");
-  const displayLyrics = displayLyricsFor(current, parsedLyrics);
+  useEffect(() => {
+    setResolvedLyrics("");
+    setLyricsError("");
+    if (!current || current.lyrics) {
+      setLyricsLoading(false);
+      return;
+    }
+    const key =
+      current.sourceType === "plex_item"
+        ? current.plexRatingKey || current.raw?.ratingKey
+        : current.sourceType === "local_file"
+          ? current.localFileId || current.raw?.id
+          : "";
+    if (!key) {
+      setLyricsLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLyricsLoading(true);
+    api(
+      current.sourceType === "plex_item"
+        ? `/api/player/plex/${encodeURIComponent(key)}/lyrics`
+        : `/api/player/local/${encodeURIComponent(key)}/lyrics`,
+    )
+      .then((data) => {
+        if (!cancelled) setResolvedLyrics(data.lyrics || "");
+      })
+      .catch((error) => {
+        if (!cancelled)
+          setLyricsError(error.message || "暂时无法获取歌词");
+      })
+      .finally(() => {
+        if (!cancelled) setLyricsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [current?.id, current?.lyrics, lyricsRequest]);
+  const lyricsText = current?.lyrics || resolvedLyrics;
+  const lyricsTrack = current ? { ...current, lyrics: lyricsText } : current;
+  const parsedLyrics = parseLrc(lyricsText);
+  const displayLyrics = displayLyricsFor(lyricsTrack, parsedLyrics);
   const activeLine = displayLyrics.reduce(
     (acc, line, index) => (line.time <= player.currentTime ? index : acc),
     0,
@@ -3810,15 +3889,20 @@ function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
                       <Maximize2 />
                       全屏歌词
                     </button>
-                  ) : isAdmin ? (
+                  ) : lyricsLoading ? (
+                    <span className="lyrics-fetching">
+                      <LoaderCircle className="spin" />
+                      正在匹配
+                    </span>
+                  ) : (
                     <button
                       className="lyrics-fullscreen-button"
-                      onClick={() => navigate?.("scrape")}
+                      onClick={() => setLyricsRequest((value) => value + 1)}
                     >
-                      <WandSparkles />
-                      补歌词
+                      <RefreshCw />
+                      重新获取
                     </button>
-                  ) : null}
+                  )}
                 </div>
               </div>
               {displayLyrics.length ? (
@@ -3833,11 +3917,20 @@ function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
               ) : (
                 <Empty
                   icon={Mic2}
-                  title="这首歌还没有可用歌词"
+                  title={
+                    lyricsLoading
+                      ? "正在匹配歌词"
+                      : lyricsError
+                        ? "歌词获取失败"
+                        : "这首歌还没有可用歌词"
+                  }
                   text={
-                    isAdmin
-                      ? "可去刮削中心补齐时间轴歌词。"
-                      : "管理员补齐歌词后会自动显示。"
+                    lyricsLoading
+                      ? "正在按歌曲、艺人和时长核验可用歌词。"
+                      : lyricsError ||
+                        (isAdmin
+                          ? "没有找到通过校验的版本，可在资料补全中继续处理。"
+                          : "暂时没有找到通过校验的歌词。")
                   }
                 />
               )}
@@ -3855,7 +3948,7 @@ function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
       </section>
       {lyricsFull && showLyrics && (
         <LyricsFullscreenOverlay
-          current={current}
+          current={lyricsTrack}
           cover={cover}
           bg={bg}
           lines={displayLyrics}
@@ -8082,6 +8175,7 @@ function PlaylistsPage({
     fnos: { configured: false, items: [], error: null },
   });
   const [serviceBusy, setServiceBusy] = useState(false);
+  const [servicePlaying, setServicePlaying] = useState("");
   const [selected, setSelected] = useState(null);
   const [newName, setNewName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -8210,6 +8304,28 @@ function PlaylistsPage({
   const playAll = () => {
     const queue = (selected?.items || []).map(playable).filter(Boolean);
     if (queue.length) play(queue[0], queue.slice(1));
+  };
+  const playServicePlaylist = async (serviceId, item) => {
+    if (serviceId !== "plex") {
+      setError("飞牛音乐歌单播放需要服务返回可播放曲目；当前连接可用于歌单同步。");
+      return;
+    }
+    const busyKey = `${serviceId}:${item.id}`;
+    setServicePlaying(busyKey);
+    setError("");
+    try {
+      const detail = await api(
+        `/api/playlists/services/${serviceId}/${encodeURIComponent(item.id)}`,
+      );
+      const queue = servicePlaylistPlaybackItems(serviceId, detail.items);
+      if (!queue.length) throw new Error("这个歌单里没有可播放曲目");
+      await play(queue[0], queue.slice(1));
+      notify(`正在播放“${item.name}”，共 ${queue.length} 首`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setServicePlaying("");
+    }
   };
   const syncSelected = async (target) => {
     if (!selected) return;
@@ -8467,7 +8583,21 @@ function PlaylistsPage({
                 ) : service.items?.length ? (
                   <div className="service-playlist-list">
                     {service.items.map((item, index) => (
-                      <div key={`${id}-${item.id}`}>
+                      <button
+                        type="button"
+                        key={`${id}-${item.id}`}
+                        className={id !== "plex" ? "sync-only" : ""}
+                        disabled={
+                          id !== "plex" ||
+                          servicePlaying === `${id}:${item.id}`
+                        }
+                        onClick={() => playServicePlaylist(id, item)}
+                        aria-label={
+                          id === "plex"
+                            ? `播放歌单 ${item.name}`
+                            : `查看飞牛音乐歌单 ${item.name} 的播放能力`
+                        }
+                      >
                         <span className={`playlist-tile tone-${index % 4}`}>
                           {item.coverUrl ? (
                             <img src={item.coverUrl} alt="" />
@@ -8479,8 +8609,16 @@ function PlaylistsPage({
                           <strong>{item.name}</strong>
                           <small>{item.itemCount || 0} 首歌曲</small>
                         </div>
-                        <em>{label}</em>
-                      </div>
+                        <em>
+                          {servicePlaying === `${id}:${item.id}` ? (
+                            <LoaderCircle className="spin" />
+                          ) : id === "plex" ? (
+                            <Play fill="currentColor" />
+                          ) : (
+                            label
+                          )}
+                        </em>
+                      </button>
                     ))}
                   </div>
                 ) : (

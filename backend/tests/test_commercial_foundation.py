@@ -257,6 +257,88 @@ class CommercialFoundationTests(unittest.TestCase):
                 self.assertEqual(payload["plex"]["items"][0]["itemCount"], 23)
                 self.assertFalse(payload["fnos"]["configured"])
 
+    def test_connected_plex_playlist_returns_ordered_playable_tracks(self):
+        with (
+            patch.object(
+                plex,
+                "saved_settings",
+                return_value={"enabled": True, "serverUrl": "http://plex.test"},
+            ),
+            patch.object(
+                plex,
+                "playlist_items",
+                return_value=[
+                    {
+                        "ratingKey": "track-7",
+                        "title": "晴天",
+                        "grandparentTitle": "周杰伦",
+                        "parentTitle": "叶惠美",
+                        "duration": "269000",
+                        "thumb": "/library/metadata/track-7/thumb",
+                    },
+                    {
+                        "ratingKey": "track-8",
+                        "title": "夜曲",
+                        "grandparentTitle": "周杰伦",
+                        "parentTitle": "十一月的萧邦",
+                        "duration": "226000",
+                    },
+                ],
+            ),
+        ):
+            with TestClient(app) as client:
+                client.post(
+                    "/api/auth/login",
+                    json={
+                        "username": "admin",
+                        "password": "test-password-123",
+                    },
+                )
+                response = client.get(
+                    "/api/playlists/services/plex/playlist-1"
+                )
+                self.assertEqual(response.status_code, 200)
+                payload = response.json()
+                self.assertEqual(payload["itemCount"], 2)
+                self.assertEqual(
+                    [item["ratingKey"] for item in payload["items"]],
+                    ["track-7", "track-8"],
+                )
+                self.assertEqual(payload["items"][0]["source"], "plex_item")
+                self.assertEqual(payload["items"][0]["artist"], "周杰伦")
+
+    def test_plex_player_fetches_verified_lyrics_when_sidecar_is_missing(self):
+        with (
+            patch.object(
+                plex,
+                "playback",
+                return_value={
+                    "ratingKey": "track-7",
+                    "title": "晴天",
+                    "artist": "周杰伦",
+                    "album": "叶惠美",
+                    "duration": 269000,
+                    "file": "/unmapped/晴天.flac",
+                },
+            ),
+            patch(
+                "app.main.find_lyrics",
+                return_value=("[00:01.00]故事的小黄花\n[00:04.00]从出生那年就飘着\n[00:08.00]童年的荡秋千\n", "qq"),
+            ),
+        ):
+            with TestClient(app) as client:
+                client.post(
+                    "/api/auth/login",
+                    json={
+                        "username": "admin",
+                        "password": "test-password-123",
+                    },
+                )
+                response = client.get("/api/player/plex/track-7/lyrics")
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json()["source"], "qq")
+                self.assertIn("[00:01.00]", response.json()["lyrics"])
+
     def test_dashboard_prefers_plex_backgrounds_for_artists_with_more_tracks(self):
         music_root = Path(settings.music_root)
         for name in ("Background Priority A", "Background Priority B"):

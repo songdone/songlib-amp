@@ -39,7 +39,8 @@ from . import recommendations as recommendation_service
 from .unified_catalog import match_external_tracks, normalize as normalize_catalog_text, unified_tracks
 from .sources import (
     SourceError, delete_source, get_source, import_code, import_file, import_url, list_sources,
-    inspect_source, preflight_download, resolve_track, set_enabled, source_logs, test_resolve, test_search,
+    inspect_source, preflight_download, resolve_track, set_enabled, source_catalog_ready,
+    source_logs, test_resolve, test_search,
 )
 from mutagen import File as MutagenFile
 
@@ -559,7 +560,7 @@ def discovery_playlist_detail(playlist_id: str, user=Depends(auth.current_user))
                 "coverUrl": album.get("picUrl") or "",
             })
         tracks = match_external_tracks(raw_tracks, scopes=user.get("libraryScopes"))
-        enabled_sources = [item for item in list_sources() if item.get("enabled") and item.get("searchOk")]
+        enabled_sources = [item for item in list_sources() if source_catalog_ready(item)]
         for item in tracks:
             item["canDownload"] = item.get("matchStatus") != "matched" and bool(enabled_sources)
         return {
@@ -582,8 +583,8 @@ def discovery_playlist_detail(playlist_id: str, user=Depends(auth.current_user))
 @app.post("/api/discovery/download-missing", dependencies=[Depends(auth.current_user)])
 def discovery_download_missing(body: DiscoveryDownloadBody):
     source = get_source(body.sourceId)
-    if not source.get("enabled") or not source.get("searchOk"):
-        raise HTTPException(status_code=409, detail="所选音乐源尚未启用或搜索测试未通过")
+    if not source_catalog_ready(source):
+        raise HTTPException(status_code=409, detail="所选音乐源尚未启用或未识别到搜索能力")
     created, errors = [], []
     platform = "wy" if "wy" in (source.get("supportedPlatforms") or []) else None
     for track in body.tracks[:50]:
@@ -1739,6 +1740,46 @@ def playlists(user=Depends(auth.current_user)):
     return {"items": playlist_service.list_playlists(user["id"])}
 
 
+@app.get("/api/playlists/services")
+def connected_service_playlists(user=Depends(auth.current_user)):
+    result = {
+        "plex": {"configured": False, "items": [], "error": None},
+        "fnos": {"configured": False, "items": [], "error": None},
+    }
+    plex_settings = plex.saved_settings()
+    result["plex"]["configured"] = bool(
+        plex_settings.get("enabled") and plex_settings.get("serverUrl")
+    )
+    if result["plex"]["configured"]:
+        try:
+            result["plex"]["items"] = [
+                {
+                    "id": str(item.get("ratingKey") or ""),
+                    "name": item.get("title") or "未命名歌单",
+                    "itemCount": int(item.get("leafCount") or 0),
+                    "duration": int(item.get("duration") or 0),
+                    "updatedAt": item.get("updatedAt"),
+                    "coverUrl": (
+                        "/api/plex/image?path="
+                        + quote(item.get("composite") or "", safe="")
+                        if item.get("composite")
+                        else ""
+                    ),
+                }
+                for item in plex.playlists()
+                if item.get("ratingKey")
+            ]
+        except (RuntimeError, ValueError, httpx.HTTPError):
+            result["plex"]["error"] = "暂时无法读取 Plex 歌单，请在设置中测试连接。"
+    result["fnos"]["configured"] = fnos_music.configured
+    if result["fnos"]["configured"]:
+        try:
+            result["fnos"]["items"] = fnos_music.playlists()
+        except (RuntimeError, ValueError, httpx.HTTPError):
+            result["fnos"]["error"] = "暂时无法读取飞牛音乐歌单，请在设置中测试连接。"
+    return result
+
+
 @app.post("/api/playlists")
 def create_playlist(body: PlaylistBody, request: Request, user=Depends(auth.current_user)):
     item = playlist_service.create_playlist(user["id"], body.name, body.description, body.items)
@@ -1753,7 +1794,7 @@ def playlist_migration_preview(body: PlaylistSharePreviewBody, user=Depends(auth
         sources = [
             {"id": item["id"], "name": item.get("displayName") or item.get("name")}
             for item in list_sources()
-            if item.get("enabled") and item.get("searchOk")
+            if source_catalog_ready(item)
         ]
         result["downloadSources"] = sources
         result["targets"] = {
@@ -1806,10 +1847,10 @@ def playlist_migration_execute(
             result["fnos"] = {"ok": False, "error": str(exc)}
     if body.downloadMissing:
         if not body.sourceId:
-            raise HTTPException(status_code=400, detail="请选择已通过测试的授权音乐源")
+            raise HTTPException(status_code=400, detail="请选择已启用的授权音乐源")
         source = get_source(body.sourceId)
-        if not source.get("enabled") or not source.get("searchOk"):
-            raise HTTPException(status_code=409, detail="所选音乐源尚未启用或未通过搜索测试")
+        if not source_catalog_ready(source):
+            raise HTTPException(status_code=409, detail="所选音乐源尚未启用或未识别到搜索能力")
         platform = "wy" if "wy" in (source.get("supportedPlatforms") or []) else ("tx" if "tx" in (source.get("supportedPlatforms") or []) else None)
         for track in [item for item in verified_preview.get("tracks") or [] if item.get("matchStatus") != "matched"][:200]:
             try:

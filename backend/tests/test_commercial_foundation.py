@@ -1,7 +1,8 @@
 import os
 import tempfile
 import unittest
-from unittest.mock import patch
+from pathlib import Path
+from unittest.mock import PropertyMock, patch
 
 os.environ.setdefault("APP_PASSWORD", "test-password-123")
 os.environ.setdefault("SESSION_SECRET", "test-session-secret-for-songlib-123456")
@@ -17,8 +18,9 @@ from app.config import settings
 from app.db import init_db, row, rows, set_kv, transaction
 from app.download_inbox import _repair_mojibake
 from app.jobs import manager
-from app.main import app, plex
+from app.main import app, fnos_music, plex
 from app.fnos_music import FnosMusicClient
+from app.plex import dashboard_stats
 from app.playlist_migration import detect_share_link, strict_candidate
 from app.playlists import create_playlist, import_m3u
 from app.recommendations import list_recommendations, refresh
@@ -181,6 +183,130 @@ class CommercialFoundationTests(unittest.TestCase):
             FnosMusicClient._api_base("http://nas.example:5666/music/"),
             "http://nas.example:5666/music/api/v1",
         )
+
+    def test_fnos_playlist_listing_is_normalized(self):
+        client = FnosMusicClient()
+        with patch.object(
+            client,
+            "request",
+            return_value={
+                "list": [
+                    {"guid": "fnos-1", "name": "通勤", "trackCount": "12"},
+                    {"guid": "fnos-2", "name": "夜晚", "songCount": 8},
+                ]
+            },
+        ):
+            self.assertEqual(
+                client.playlists(),
+                [
+                    {
+                        "id": "fnos-1",
+                        "name": "通勤",
+                        "itemCount": 12,
+                        "updatedAt": None,
+                    },
+                    {
+                        "id": "fnos-2",
+                        "name": "夜晚",
+                        "itemCount": 8,
+                        "updatedAt": None,
+                    },
+                ],
+            )
+
+    def test_connected_plex_playlists_are_exposed_to_the_playlist_page(self):
+        with (
+            patch.object(
+                plex,
+                "saved_settings",
+                return_value={"enabled": True, "serverUrl": "http://plex.test"},
+            ),
+            patch.object(
+                plex,
+                "playlists",
+                return_value=[
+                    {
+                        "ratingKey": "playlist-1",
+                        "title": "常听精选",
+                        "leafCount": "23",
+                        "duration": "1000",
+                        "composite": "/playlists/playlist-1/composite",
+                    }
+                ],
+            ),
+            patch.object(
+                type(fnos_music),
+                "configured",
+                new_callable=PropertyMock,
+                return_value=False,
+            ),
+        ):
+            with TestClient(app) as client:
+                login = client.post(
+                    "/api/auth/login",
+                    json={
+                        "username": "admin",
+                        "password": "test-password-123",
+                    },
+                )
+                self.assertEqual(login.status_code, 200)
+                response = client.get("/api/playlists/services")
+                self.assertEqual(response.status_code, 200)
+                payload = response.json()
+                self.assertTrue(payload["plex"]["configured"])
+                self.assertEqual(payload["plex"]["items"][0]["itemCount"], 23)
+                self.assertFalse(payload["fnos"]["configured"])
+
+    def test_dashboard_prefers_plex_backgrounds_for_artists_with_more_tracks(self):
+        music_root = Path(settings.music_root)
+        for name in ("Background Priority A", "Background Priority B"):
+            artist_dir = music_root / name
+            artist_dir.mkdir(parents=True, exist_ok=True)
+            (artist_dir / "artist-background.jpg").write_bytes(b"image")
+        artists = [
+            {
+                "ratingKey": "artist-a",
+                "title": "Background Priority A",
+                "leafCount": "12",
+                "art": "/plex/a",
+            },
+            {
+                "ratingKey": "artist-b",
+                "title": "Background Priority B",
+                "leafCount": "3",
+                "art": "/plex/b",
+            },
+        ]
+        tracks = [
+            {
+                "ratingKey": f"track-{index}",
+                "grandparentRatingKey": "artist-a",
+                "grandparentTitle": "Background Priority A",
+            }
+            for index in range(12)
+        ]
+        tracks.extend(
+            [
+                {
+                    "ratingKey": f"track-b-{index}",
+                    "grandparentRatingKey": "artist-b",
+                    "grandparentTitle": "Background Priority B",
+                }
+                for index in range(3)
+            ]
+        )
+        with (
+            patch.object(plex, "artists", return_value=artists),
+            patch.object(plex, "albums", return_value=[]),
+            patch.object(plex, "tracks", return_value=tracks),
+        ):
+            result = dashboard_stats()
+        self.assertEqual(
+            [item["title"] for item in result["heroImages"][:2]],
+            ["Background Priority A", "Background Priority B"],
+        )
+        self.assertEqual(result["heroImages"][0]["type"], "plex_artist_background")
+        self.assertEqual(result["heroImages"][0]["trackCount"], 12)
 
     def test_artist_and_album_detail_contracts(self):
         artist = {

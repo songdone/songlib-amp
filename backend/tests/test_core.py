@@ -21,7 +21,9 @@ from app.sources import (
     _validate_script_bytes,
     delete_source,
     import_file,
+    list_sources,
     set_enabled,
+    source_catalog_ready,
     source_metadata,
     validate_source,
 )
@@ -82,7 +84,22 @@ class CoreTests(unittest.TestCase):
             self.assertTrue(result["ok"])
             self.assertTrue(source["enabled"])
             self.assertFalse(source["searchOk"])
+            self.assertTrue(source["catalogReady"])
+            self.assertTrue(source_catalog_ready(source))
             set_enabled(source["id"], False)
+            manually_disabled = next(
+                item for item in list_sources() if item["id"] == source["id"]
+            )
+            self.assertFalse(manually_disabled["enabled"])
+            with transaction() as conn:
+                conn.execute(
+                    "DELETE FROM source_logs WHERE source_id=? AND action='disable'",
+                    (source["id"],),
+                )
+            migrated = next(
+                item for item in list_sources() if item["id"] == source["id"]
+            )
+            self.assertTrue(migrated["enabled"])
             enabled = set_enabled(source["id"], True)
             self.assertTrue(enabled["enabled"])
         finally:

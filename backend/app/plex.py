@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import urllib.parse
 import xml.etree.ElementTree as ET
+from collections import Counter
 from pathlib import Path
 
 import httpx
@@ -437,22 +438,88 @@ def local_artist_background_file(artist_name: str) -> Path | None:
     safe = (artist_name or "").replace("/", "_").replace("\\", "_").strip()
     if not safe:
         return None
-    artist_dir = settings.music_root / safe
-    if not artist_dir.exists() or not artist_dir.is_dir():
-        return None
-    for name in BACKGROUND_FILENAMES:
-        candidate = artist_dir / name
-        if candidate.exists() and candidate.is_file():
-            return candidate
+    roots = (settings.music_root, settings.music_root / "library")
+    for root in roots:
+        artist_dir = root / safe
+        if not artist_dir.exists() or not artist_dir.is_dir():
+            continue
+        for name in BACKGROUND_FILENAMES:
+            candidate = artist_dir / name
+            if candidate.exists() and candidate.is_file():
+                return candidate
     return None
 
 
-def _local_background_items(limit: int, seen_titles: set[str]):
+def _track_count(value) -> int:
+    try:
+        return max(0, int(value or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _artist_track_counts(tracks: list[dict]) -> tuple[Counter, Counter]:
+    by_key: Counter = Counter()
+    by_title: Counter = Counter()
+    for track in tracks:
+        rating_key = str(track.get("grandparentRatingKey") or "").strip()
+        title = str(
+            track.get("grandparentTitle")
+            or track.get("artist")
+            or ""
+        ).strip()
+        if rating_key:
+            by_key[rating_key] += 1
+        if title:
+            by_title[title.casefold()] += 1
+    return by_key, by_title
+
+
+def _ranked_artists(artists: list[dict], tracks: list[dict]) -> list[tuple[dict, int]]:
+    by_key, by_title = _artist_track_counts(tracks)
+    ranked = []
+    for artist in artists:
+        title = str(artist.get("title") or "").strip()
+        rating_key = str(artist.get("ratingKey") or "").strip()
+        count = max(
+            _track_count(artist.get("leafCount")),
+            by_key.get(rating_key, 0),
+            by_title.get(title.casefold(), 0),
+        )
+        ranked.append((artist, count))
+    return sorted(
+        ranked,
+        key=lambda item: (
+            -item[1],
+            str(item[0].get("title") or "").casefold(),
+        ),
+    )
+
+
+def _local_background_items(
+    limit: int,
+    seen_titles: set[str],
+    track_counts: Counter | None = None,
+):
     items = []
     root = settings.music_root
     if not root.exists():
         return items
-    for artist_dir in sorted(path for path in root.iterdir() if path.is_dir()):
+    track_counts = track_counts or Counter()
+    roots = [root]
+    read_only_root = root / "library"
+    if read_only_root.exists() and read_only_root.is_dir():
+        roots.append(read_only_root)
+    directories = {
+        path.name.casefold(): path
+        for candidate_root in roots
+        for path in candidate_root.iterdir()
+        if path.is_dir() and path != read_only_root
+    }
+    artist_dirs = sorted(
+        directories.values(),
+        key=lambda path: (-track_counts.get(path.name.casefold(), 0), path.name.casefold()),
+    )
+    for artist_dir in artist_dirs:
         if len(items) >= limit:
             break
         title = artist_dir.name
@@ -469,6 +536,7 @@ def _local_background_items(limit: int, seen_titles: set[str]):
             "subtitle": "本地 artist-background",
             "imageUrl": "/api/local/artists/" + urllib.parse.quote(title, safe="") + "/background",
             "coverUrl": "",
+            "trackCount": track_counts.get(key, 0),
         })
     return items
 
@@ -485,10 +553,16 @@ def dashboard_stats():
     lrc_count = sum(path.with_suffix(".lrc").exists() for path in audio_paths)
     hero_images = []
     seen_titles = set()
-    for item in artists:
+    ranked = _ranked_artists(artists, tracks)
+    _, title_counts = _artist_track_counts(tracks)
+
+    # Plex is the source of truth for the ambient artist-background deck.
+    # Rank by the number of tracks in the connected Plex library and keep a
+    # broad pool so the slideshow does not loop over the same handful.
+    for item, count in ranked:
+        title = item.get("title") or "未知歌手"
         image_path = item.get("art")
         if image_path:
-            title = item.get("title") or "未知歌手"
             seen_titles.add(title.casefold())
             hero_images.append({
                 "type": "plex_artist_background",
@@ -496,11 +570,21 @@ def dashboard_stats():
                 "subtitle": "Plex 歌手背景",
                 "imageUrl": "/api/plex/image?path=" + urllib.parse.quote(image_path, safe=""),
                 "coverUrl": "/api/plex/image?path=" + urllib.parse.quote(item.get("thumb") or image_path, safe=""),
+                "trackCount": count,
             })
-        if len(hero_images) >= 6:
+        if len(hero_images) >= 80:
             break
-    if len(hero_images) < 10:
-        hero_images.extend(_local_background_items(10 - len(hero_images), seen_titles))
+
+    # A mounted file is a fallback only when Plex exposes fewer than 80 artist
+    # backgrounds.
+    if len(hero_images) < 80:
+        hero_images.extend(
+            _local_background_items(
+                80 - len(hero_images),
+                seen_titles,
+                title_counts,
+            )
+        )
     return {
         "artists": len(artists),
         "artistPosters": sum(bool(item.get("thumb")) for item in artists),

@@ -16,7 +16,7 @@
 ./scripts/restore.sh songlib-YYYYMMDD-HHMMSS.db
 ```
 
-恢复前会停止 Web 和 Worker，并先创建 `pre-restore-*` 安全副本。脚本先做 SQLite 完整性检查，成功后重新启动服务。恢复不会自动移动或覆盖音乐文件。
+恢复前会停止 `songlib` 服务，并先创建 `pre-restore-*` 安全副本。脚本先做 SQLite 完整性检查，成功后重新启动服务。恢复不会自动移动或覆盖音乐文件。
 
 ## 升级
 
@@ -24,7 +24,7 @@
 ./scripts/upgrade.sh
 ```
 
-流程为在线备份、拉取基础镜像、重新构建、滚动重建。数据库迁移是只向前的；大版本升级前阅读 `CHANGELOG.md` 和迁移说明。
+流程为在线备份、从 Docker Hub 拉取固定版本镜像并重建容器。NAS 不编译源码。数据库迁移是只向前的；大版本升级前阅读 `CHANGELOG.md` 和迁移说明。
 
 ## 常见问题
 
@@ -33,25 +33,25 @@
 在受权限保护的 `.env` 中临时增加 `APP_PASSWORD`，值必须至少 10 位且不能是常见弱密码。然后在 Compose 项目目录运行：
 
 ```bash
-docker compose --env-file .env run --rm web python -m app.cli reset-admin --from-env
+docker compose --env-file .env run --rm songlib python -m app.cli reset-admin --from-env
 ```
 
 命令会重置最早创建的主人账号并使该账号的现有会话失效。确认新密码可以登录后，从 `.env` 删除 `APP_PASSWORD`，避免把长期登录密码留在环境配置中。不要把密码直接写进命令行、工单或普通日志。
 
-### Web 健康但任务不运行
+### 页面健康但任务不运行
 
 检查：
 
 ```bash
 docker compose ps
-docker compose logs --tail=100 worker
+docker compose logs --tail=100 songlib
 ```
 
 健康接口的 `checks.worker.lastSeenAt` 应持续更新。过期任务租约会自动恢复；达到最大尝试次数的任务需要在任务中心查看失败详情后重试。
 
 ### 音乐目录无权限
 
-确认宿主机目录对 `.env` 中 `APP_UID:APP_GID` 可读写。不要把容器改成特权模式；应修正具体绑定目录的权限。
+确认宿主机目录对 `.env` 中 `PUID:PGID` 可读写。不要把容器改成特权模式；应修正具体绑定目录的权限。
 
 ### Plex 无法连接
 

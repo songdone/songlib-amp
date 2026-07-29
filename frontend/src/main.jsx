@@ -94,6 +94,12 @@ import {
   pathForPlaylist,
   playlistIdFromPath,
 } from "./lib/routes";
+import {
+  mobileNavigationIds,
+  mobileNavigationTarget,
+} from "./lib/navigation";
+import { sourceCatalogReady } from "./lib/sources";
+import { buildAmbientDeck } from "./lib/ambient";
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
@@ -1002,13 +1008,15 @@ function Topbar({ title, subtitle, openMenu, onNavigate, logout, profile }) {
           />
           <kbd>↵</kbd>
         </form>
-        <button
+        <div
           className="brand-status"
           title={`${BRAND.fullName} · 音屿正在本地运行`}
+          role="status"
+          aria-label="音屿正在本地运行"
         >
           <img src={BRAND.mark} alt="" />
           <span />
-        </button>
+        </div>
         <button
           className="icon-button notification"
           onClick={() => onNavigate("tasks")}
@@ -3735,7 +3743,7 @@ function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
                 )
               }
             />
-            <button className="queue-item active" onClick={() => {}}>
+            <div className="queue-item active" aria-current="true">
               <div className="queue-thumb">
                 {cover ? <img src={cover} alt="" /> : <Music2 />}
               </div>
@@ -3749,7 +3757,7 @@ function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
                 <i />
               </span>
               <em>{formatTime(player.duration)}</em>
-            </button>
+            </div>
             {queue.length ? (
               queue.map((item, index) => (
                 <button
@@ -5017,12 +5025,13 @@ function DownloadInboxPanel({ notify, navigate }) {
 
 function DownloadCenter({
   sources,
+  refreshSources,
   createDownload,
   navigate,
   playPreview,
   notify,
 }) {
-  const ready = sources.filter((source) => source.enabled && source.searchOk);
+  const ready = sources.filter(sourceCatalogReady);
   const [query, setQuery] = useState(
       () => localStorage.getItem("songlib-download-query") || "",
     ),
@@ -5051,6 +5060,19 @@ function DownloadCenter({
     loadPending();
     localStorage.removeItem("songlib-download-query");
   }, []);
+  useEffect(() => {
+    const refresh = () => refreshSources?.().catch(() => {});
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    refresh();
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [refreshSources]);
   const submit = async (event) => {
     event.preventDefault();
     if (!query.trim() || !sourceId) return;
@@ -5065,6 +5087,7 @@ function DownloadCenter({
         }),
       });
       setResults(data.results || []);
+      await refreshSources?.();
     } catch (err) {
       setError(`搜索失败：${err.message}`);
     } finally {
@@ -5161,7 +5184,7 @@ function DownloadCenter({
           <Empty
             icon={Wifi}
             title="暂无可用音乐源"
-            text="请在“音乐源管理”中完成格式检查、搜索测试与解析测试。"
+            text="导入或启用一个已通过格式检查、并声明搜索能力的音乐源后即可使用；不要求先完成测试搜索。"
           />
           <button className="primary" onClick={() => navigate("sources")}>
             <Wifi />
@@ -5210,7 +5233,7 @@ function DownloadCenter({
             <span>
               {selected?.resolveOk
                 ? "下载地址解析可用"
-                : "该来源尚未通过解析测试"}
+                : "首次下载时会自动验证解析地址"}
             </span>
           </div>
         </div>
@@ -8054,6 +8077,11 @@ function PlaylistsPage({
   onPlaylistChange,
 }) {
   const [items, setItems] = useState([]);
+  const [servicePlaylists, setServicePlaylists] = useState({
+    plex: { configured: false, items: [], error: null },
+    fnos: { configured: false, items: [], error: null },
+  });
+  const [serviceBusy, setServiceBusy] = useState(false);
   const [selected, setSelected] = useState(null);
   const [newName, setNewName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -8066,8 +8094,25 @@ function PlaylistsPage({
   const [migrationSource, setMigrationSource] = useState("");
   const [migrationQuality, setMigrationQuality] = useState("320k");
   const fileRef = useRef(null);
+  const loadServices = async () => {
+    setServiceBusy(true);
+    try {
+      const connected = await api("/api/playlists/services");
+      setServicePlaylists(connected);
+    } catch (err) {
+      setServicePlaylists({
+        plex: { configured: false, items: [], error: err.message },
+        fnos: { configured: false, items: [], error: err.message },
+      });
+    } finally {
+      setServiceBusy(false);
+    }
+  };
   const load = async (preferredId, { replace = false } = {}) => {
-    const data = await api("/api/playlists");
+    const [data] = await Promise.all([
+      api("/api/playlists"),
+      loadServices(),
+    ]);
     setItems(data.items || []);
     const id = preferredId || selected?.id || data.items?.[0]?.id;
     if (id) {
@@ -8374,6 +8419,81 @@ function PlaylistsPage({
         </section>
       )}
       {error && <div className="form-error"><CircleAlert />{error}</div>}
+      <section className="connected-playlists panel">
+        <header>
+          <div>
+            <span>已连接的音乐服务</span>
+            <h2>服务歌单</h2>
+            <p>Plex 与飞牛音乐中的歌单会在这里汇总显示。</p>
+          </div>
+          <button
+            className="secondary small"
+            onClick={loadServices}
+            disabled={serviceBusy}
+          >
+            <RefreshCw className={serviceBusy ? "spin" : ""} />
+            刷新
+          </button>
+        </header>
+        <div className="service-playlist-grid">
+          {[
+            ["plex", "Plex", Server],
+            ["fnos", "飞牛音乐", Radio],
+          ].map(([id, label, Icon]) => {
+            const service = servicePlaylists[id] || {};
+            return (
+              <article className="service-playlist-column" key={id}>
+                <header>
+                  <span><Icon /></span>
+                  <div>
+                    <strong>{label}</strong>
+                    <small>
+                      {service.configured
+                        ? `${service.items?.length || 0} 个歌单`
+                        : "尚未连接"}
+                    </small>
+                  </div>
+                </header>
+                {service.error ? (
+                  <div className="service-playlist-message error">
+                    <CircleAlert />
+                    <span>{service.error}</span>
+                  </div>
+                ) : !service.configured ? (
+                  <div className="service-playlist-message">
+                    <Link2 />
+                    <span>在设置中完成连接后，歌单会自动出现在这里。</span>
+                  </div>
+                ) : service.items?.length ? (
+                  <div className="service-playlist-list">
+                    {service.items.map((item, index) => (
+                      <div key={`${id}-${item.id}`}>
+                        <span className={`playlist-tile tone-${index % 4}`}>
+                          {item.coverUrl ? (
+                            <img src={item.coverUrl} alt="" />
+                          ) : (
+                            <ListMusic />
+                          )}
+                        </span>
+                        <div>
+                          <strong>{item.name}</strong>
+                          <small>{item.itemCount || 0} 首歌曲</small>
+                        </div>
+                        <em>{label}</em>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="service-playlist-message">
+                    <ListMusic />
+                    <span>服务已连接，暂时没有歌单。</span>
+                  </div>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      </section>
       <div className="playlist-workspace">
         <aside className="panel playlist-list">
           <form onSubmit={create}>
@@ -8800,6 +8920,7 @@ function AuthenticatedShell({ setAuthenticated }) {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
   const [ambientIndex, setAmbientIndex] = useState(0);
+  const [ambientDeck, setAmbientDeck] = useState([]);
   const [manualBackdrop, setManualBackdrop] = useState(null);
   const player = usePlayer();
   const updatePath = useCallback((path, { replace = false } = {}) => {
@@ -8836,7 +8957,10 @@ function AuthenticatedShell({ setAuthenticated }) {
     }
   };
   const refreshJobs = async () => setJobs(await api("/api/jobs"));
-  const refreshSources = async () => setSources(await api("/api/sources"));
+  const refreshSources = useCallback(
+    async () => setSources(await api("/api/sources")),
+    [],
+  );
   useEffect(() => {
     load();
   }, []);
@@ -8863,20 +8987,33 @@ function AuthenticatedShell({ setAuthenticated }) {
     }, 2500);
     return () => clearInterval(timer);
   }, [settingsData.user?.role, settingsData.user?.permissions?.join("|")]);
-  const ambientImages = stats?.heroImages || [];
+  const ambientImages = useMemo(
+    () => (Array.isArray(stats?.heroImages) ? stats.heroImages : []),
+    [stats?.heroImages],
+  );
   useEffect(() => {
-    if (ambientImages.length && ambientIndex >= ambientImages.length)
-      setAmbientIndex(0);
-  }, [ambientImages.length, ambientIndex]);
+    setAmbientDeck(buildAmbientDeck(ambientImages));
+    setAmbientIndex(0);
+  }, [ambientImages]);
   useEffect(() => {
-    if (active === "player" || manualBackdrop || ambientImages.length < 2)
+    if (active === "player" || manualBackdrop || ambientDeck.length < 2)
       return;
-    const timer = setInterval(
-      () => setAmbientIndex((value) => (value + 1) % ambientImages.length),
-      20000,
-    );
+    const timer = setInterval(() => {
+      if (ambientIndex + 1 < ambientDeck.length) {
+        setAmbientIndex(ambientIndex + 1);
+      } else {
+        setAmbientDeck(buildAmbientDeck(ambientImages));
+        setAmbientIndex(0);
+      }
+    }, 14000);
     return () => clearInterval(timer);
-  }, [active, ambientImages.length, manualBackdrop]);
+  }, [
+    active,
+    ambientDeck,
+    ambientImages,
+    ambientIndex,
+    manualBackdrop,
+  ]);
   const runJob = async (kind, payload = {}) => {
     try {
       await api("/api/jobs", {
@@ -8928,7 +9065,7 @@ function AuthenticatedShell({ setAuthenticated }) {
   const [title, subtitle] = pageMeta[active] || pageMeta.home;
   const hero =
     manualBackdrop ||
-    ambientImages[ambientIndex % Math.max(ambientImages.length, 1)] ||
+    ambientDeck[ambientIndex % Math.max(ambientDeck.length, 1)] ||
     {};
   const playerTrack = player.currentTrack || {};
   const shellBackdrop =
@@ -9045,6 +9182,7 @@ function AuthenticatedShell({ setAuthenticated }) {
         {canManageLibrary && active === "download" && (
           <DownloadCenter
             sources={sources}
+            refreshSources={refreshSources}
             createDownload={createDownload}
             navigate={navigate}
             notify={(message) => setToast({ message })}
@@ -9108,17 +9246,18 @@ function MobileNav({ active, change, isAdmin = true }) {
     home: "首页",
     library: "曲库",
     playlists: "歌单",
-    player: "播放",
-    discover: "发现",
+    discover: "推荐",
     me: "我的",
-    manage: "管理",
   };
-  const items = nav
-    .filter((item) => labels[item.id] && (!item.admin || isAdmin))
-    .slice(0, 6);
-  const highlighted = active === "settings" ? "me" : activeNavId(active);
+  const items = mobileNavigationIds
+    .map((id) => nav.find((item) => item.id === id))
+    .filter(Boolean);
+  const highlighted = mobileNavigationTarget(
+    active,
+    managementNav.map((item) => item.id),
+  );
   return (
-    <nav className="mobile-nav mobile-only">
+    <nav className="mobile-nav mobile-only" aria-label="移动端主导航">
       {items.map((item) => (
         <button
           className={highlighted === item.id ? "active" : ""}

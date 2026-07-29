@@ -258,6 +258,44 @@ class FnosMusicClient:
             "playlistCount": len((data or {}).get("list") or []),
         }
 
+    def playlists(self) -> list[dict]:
+        data = self.request("GET", "/playlist/list") or {}
+        result = []
+        for item in data.get("list") or []:
+            if not isinstance(item, dict):
+                continue
+            guid = str(item.get("guid") or item.get("id") or "").strip()
+            name = str(item.get("name") or item.get("title") or "").strip()
+            if not guid or not name:
+                continue
+            count = next(
+                (
+                    item.get(key)
+                    for key in (
+                        "trackCount",
+                        "songCount",
+                        "itemCount",
+                        "count",
+                        "total",
+                    )
+                    if item.get(key) is not None
+                ),
+                0,
+            )
+            try:
+                count = max(0, int(count or 0))
+            except (TypeError, ValueError):
+                count = 0
+            result.append(
+                {
+                    "id": guid,
+                    "name": name,
+                    "itemCount": count,
+                    "updatedAt": item.get("updatedAt") or item.get("updateTime"),
+                }
+            )
+        return result
+
     def _strict_track_guid(self, track: dict) -> str | None:
         data = self.request(
             "GET",

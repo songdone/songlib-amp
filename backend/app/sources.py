@@ -52,6 +52,28 @@ def _json(value, fallback):
         return fallback
 
 
+def source_catalog_ready(source: dict) -> bool:
+    if not source.get("enabled"):
+        return False
+    if source.get("searchOk") or source.get("search_ok"):
+        return True
+    inspection = source.get("inspectResult") or source.get("inspect_result") or {}
+    methods = inspection.get("methods") or {}
+    return bool(
+        inspection.get("ok")
+        and (inspection.get("catalog_search_adapter") or methods.get("search"))
+    )
+
+
+def source_download_capable(source: dict) -> bool:
+    if not source.get("enabled"):
+        return False
+    if source.get("resolveOk") or source.get("resolve_ok"):
+        return True
+    inspection = source.get("inspectResult") or source.get("inspect_result") or {}
+    return bool(inspection.get("ok") and (inspection.get("methods") or {}).get("resolve"))
+
+
 def _decode(item: dict | None):
     if not item:
         return None
@@ -71,11 +93,40 @@ def _decode(item: dict | None):
     item["detectedFormat"] = item.get("detected_format")
     item["inspectResult"] = item.get("inspect_result")
     item["successRate"] = item.get("success_rate") or 0
+    item["catalogReady"] = source_catalog_ready(item)
+    item["downloadCapable"] = source_download_capable(item)
     item.pop("stored_path", None)
     return item
 
 
+def _auto_enable_legacy_validated_sources():
+    candidates = rows("SELECT * FROM source_plugins WHERE enabled=0")
+    for raw in candidates:
+        source = _decode(raw)
+        if not (source.get("inspectResult") or {}).get("ok"):
+            continue
+        explicitly_disabled = row(
+            "SELECT 1 AS found FROM source_logs WHERE source_id=? AND action='disable' LIMIT 1",
+            (source["id"],),
+        )
+        if explicitly_disabled:
+            continue
+        status = "inspect_ok" if source.get("detectedFormat") == "lx-event" else "partial"
+        with transaction() as conn:
+            conn.execute(
+                "UPDATE source_plugins SET enabled=1,status=?,updated_at=? WHERE id=?",
+                (status, now(), source["id"]),
+            )
+        add_log(
+            source["id"],
+            "info",
+            "auto_enable",
+            "升级后已将通过格式校验且未被手动禁用的音乐源设为启用。",
+        )
+
+
 def list_sources():
+    _auto_enable_legacy_validated_sources()
     return [_decode(item) for item in rows("SELECT * FROM source_plugins ORDER BY created_at DESC")]
 
 
@@ -491,20 +542,41 @@ def _probe_audio(resolved: dict):
         raise SourceError("SOURCE_RESOLVE_URL_UNREACHABLE", f"源返回的下载地址无法访问：{exc}") from exc
 
 
+def _record_resolve_success(source_id: str, quality: str, probe: dict, action: str):
+    stamp = now()
+    source = get_source(source_id)
+    qualities = sorted(
+        set(source["supportedQualities"] + [quality]),
+        key=lambda value: QUALITY_ORDER.index(value)
+        if value in QUALITY_ORDER
+        else 99,
+    )
+    with transaction() as conn:
+        conn.execute(
+            """UPDATE source_plugins SET resolve_ok=1,search_ok=1,status='resolve_ok',success_rate=100,supported_qualities=?,
+            last_test_at=?,last_success_at=?,last_error_code=NULL,last_error_message=NULL,updated_at=? WHERE id=?""",
+            (
+                json.dumps(qualities, ensure_ascii=False),
+                stamp,
+                stamp,
+                stamp,
+                str(source_id),
+            ),
+        )
+    add_log(
+        source_id,
+        "success",
+        action,
+        f"{quality} 下载地址解析与音频探测成功。",
+        probe,
+    )
+
+
 def test_resolve(source_id: str, track: dict, quality: str):
     try:
         resolved = resolve_track(source_id, track, quality)
         probe = _probe_audio(resolved)
-        stamp = now()
-        source = get_source(source_id)
-        qualities = sorted(set(source["supportedQualities"] + [quality]), key=lambda value: QUALITY_ORDER.index(value) if value in QUALITY_ORDER else 99)
-        with transaction() as conn:
-            conn.execute(
-                """UPDATE source_plugins SET resolve_ok=1,search_ok=1,status='resolve_ok',success_rate=100,supported_qualities=?,
-                last_test_at=?,last_success_at=?,last_error_code=NULL,last_error_message=NULL,updated_at=? WHERE id=?""",
-                (json.dumps(qualities, ensure_ascii=False), stamp, stamp, stamp, str(source_id)),
-            )
-        add_log(source_id, "success", "test_resolve", f"{quality} 下载地址解析与音频探测成功。", probe)
+        _record_resolve_success(source_id, quality, probe, "test_resolve")
         safe_result = {key: value for key, value in resolved.items() if key != "url"}
         safe_result.update(probe)
         return {"ok": True, "message": "下载地址解析可用。", "resolved": safe_result, "source": get_source(source_id)}
@@ -516,10 +588,14 @@ def test_resolve(source_id: str, track: dict, quality: str):
 
 def preflight_download(source_id: str, track: dict, quality: str):
     source = get_source(source_id)
-    if not source["enabled"] or not source["resolveOk"]:
-        raise SourceError("SOURCE_NOT_DOWNLOAD_READY", "该音乐源尚未启用或没有通过下载地址解析测试。")
+    if not source_download_capable(source):
+        raise SourceError(
+            "SOURCE_NOT_DOWNLOAD_READY",
+            "该音乐源尚未启用，或格式检查未识别到下载地址解析能力。",
+        )
     resolved = resolve_track(source_id, track, quality, require_enabled=True)
     probe = _probe_audio(resolved)
+    _record_resolve_success(source_id, quality, probe, "download_preflight")
     return {"contentType": probe["contentType"], "size": probe["size"], "sampleBytes": probe["sampleBytes"]}
 
 

@@ -17,10 +17,10 @@ if [ ! -f .env ]; then
   echo "已创建受保护的 .env。首次访问时请在安装向导中创建管理员。"
 fi
 
-APP_UID=$(sed -n 's/^APP_UID=//p' .env | tail -1)
-APP_GID=$(sed -n 's/^APP_GID=//p' .env | tail -1)
-APP_UID=${APP_UID:-10001}
-APP_GID=${APP_GID:-10001}
+APP_UID=$(sed -n 's/^PUID=//p' .env | tail -1)
+APP_GID=$(sed -n 's/^PGID=//p' .env | tail -1)
+APP_UID=${APP_UID:-1000}
+APP_GID=${APP_GID:-1000}
 mkdir -p volumes/data volumes/downloads volumes/music volumes/library volumes/plex-config
 chown -R "$APP_UID:$APP_GID" volumes/data volumes/downloads volumes/music 2>/dev/null || true
 
@@ -33,11 +33,12 @@ else
   exit 1
 fi
 
-if [ -f volumes/data/manager.db ] && $COMPOSE ps -q web 2>/dev/null | grep -q .; then
+if [ -f volumes/data/manager.db ] && $COMPOSE ps -q songlib 2>/dev/null | grep -q .; then
   ./scripts/backup.sh
 fi
 
-$COMPOSE build --pull
+$COMPOSE config --quiet
+$COMPOSE pull
 $COMPOSE up -d --remove-orphans
 
 APP_PORT=$(sed -n 's/^APP_PORT=//p' .env | tail -1)
@@ -56,7 +57,7 @@ done
 if [ "$ready" -ne 1 ]; then
   echo "健康检查未通过。"
   $COMPOSE ps
-  $COMPOSE logs --tail=120 web worker
+  $COMPOSE logs --tail=120 songlib
   exit 1
 fi
 

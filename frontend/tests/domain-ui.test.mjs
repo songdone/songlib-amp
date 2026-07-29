@@ -17,6 +17,12 @@ import {
   pathForPlaylist,
   playlistIdFromPath,
 } from "../src/lib/routes.js";
+import {
+  mobileNavigationIds,
+  mobileNavigationTarget,
+} from "../src/lib/navigation.js";
+import { sourceCatalogReady } from "../src/lib/sources.js";
+import { buildAmbientDeck } from "../src/lib/ambient.js";
 
 test("unsafe requests can recover the encoded CSRF cookie", () => {
   assert.equal(
@@ -126,4 +132,47 @@ test("library tabs and playlist details keep their secondary URL", () => {
     "list/with space",
   );
   assert.equal(pageFromPath("/playlists/abc123"), "playlists");
+});
+
+test("mobile navigation stays on one five-item row", () => {
+  assert.deepEqual(mobileNavigationIds, [
+    "home",
+    "discover",
+    "library",
+    "playlists",
+    "me",
+  ]);
+  assert.equal(mobileNavigationTarget("settings"), "me");
+  assert.equal(mobileNavigationTarget("sources", ["sources", "tasks"]), "me");
+  assert.equal(mobileNavigationTarget("library"), "library");
+});
+
+test("an inspected source is immediately available without a search-test gate", () => {
+  const source = {
+    enabled: true,
+    searchOk: false,
+    inspectResult: {
+      ok: true,
+      catalog_search_adapter: true,
+      methods: { resolve: true },
+    },
+  };
+  assert.equal(sourceCatalogReady(source), true);
+  assert.equal(sourceCatalogReady({ ...source, enabled: false }), false);
+});
+
+test("ambient deck keeps every unique artist image and prioritizes larger libraries", () => {
+  const items = Array.from({ length: 20 }, (_, index) => ({
+    imageUrl: `/artists/${index}.jpg`,
+    trackCount: 20 - index,
+  }));
+  items.push({ imageUrl: "/artists/0.jpg", trackCount: 999 });
+  const deck = buildAmbientDeck(items, () => 0.5);
+  assert.equal(deck.length, 20);
+  assert.equal(new Set(deck.map((item) => item.imageUrl)).size, 20);
+  assert.ok(
+    deck
+      .slice(0, 8)
+      .every((item) => Number(item.trackCount) >= 13),
+  );
 });

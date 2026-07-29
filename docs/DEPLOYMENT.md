@@ -37,7 +37,7 @@ openssl rand -hex 32
 
 把结果写入 `.env` 的 `SESSION_SECRET`，不要贴到 Issue、聊天记录或普通日志。`MUSIC_DIR` 是音屿自己的可写入库目录；已有媒体库可通过 `READ_ONLY_LIBRARY_DIR` 只读挂载到 `/music/library`，避免修改其他音乐服务正在管理的文件。Plex 未启用时可保留默认只读空目录。
 
-默认容器用户是 `10001:10001`。绑定目录需要允许该 UID 写入数据、下载和音乐暂存目录。正式音乐目录如需完全只读，可单独部署仅浏览实例；扫描和整理功能需要写权限。
+Compose 默认使用 `.env` 中的 `PUID:PGID`（示例为 `1000:1000`）运行容器。绑定目录需要由这个 NAS 普通账号拥有或允许其写入。镜像内置用户 `10001:10001` 只在没有 Compose 用户映射时使用。正式音乐目录如需完全只读，可单独部署仅浏览实例；扫描和整理功能需要写权限。
 
 ## 3. 启动
 
@@ -48,6 +48,12 @@ docker compose up -d
 docker compose ps
 ```
 
+默认 `docker-compose.yml` 只有一个 `songlib` 服务；Web、API 与后台任务队列在同一容器中运行，Compose 自动建立项目隔离网络。普通 NAS 不需要阅读锚点、共享配置或手工网络定义。如需进一步启用只读根文件系统和 capability 裁剪：
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.hardened.yml up -d
+```
+
 访问 `/api/health/ready` 应返回 `ready`。Plex 未配置时显示 `not_configured`，不会阻止首装。
 
 ## 4. 首次安装向导
@@ -56,7 +62,7 @@ docker compose ps
 2. 检查音乐根目录。
 3. 可选连接 Plex 并测试连接。
 4. 先执行扫描预览，再确认后续整理或刮削任务。
-5. 新部署默认不允许私有下载 URL，也不会启用任何导入来源。
+5. 新部署默认不允许私有下载 URL；用户导入且通过格式识别的授权音乐源会立即启用，首次下载时自动校验真实解析地址。
 
 ## 5. HTTPS
 
@@ -70,7 +76,7 @@ docker compose ps
 
 ## 多架构
 
-镜像使用官方 Python 和 Node 多架构基础镜像，可为 linux/amd64 与 linux/arm64 构建。跨架构发布时可使用：
+Docker Hub 固定标签同时发布 `linux/amd64` 与 `linux/arm64`。NAS 只需执行 `docker compose pull`，不需要本地编译。维护者跨架构发布时使用：
 
 ```bash
 docker buildx build --platform linux/amd64,linux/arm64 -t 666uos/songlib-amp:1.0.0-rc.4 --push .

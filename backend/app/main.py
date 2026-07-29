@@ -266,7 +266,10 @@ def _health_checks():
         storage = {"ok": settings.data_dir.exists() and os.access(settings.data_dir, os.W_OK), "message": "数据目录可用"}
     except Exception:
         pass
-    if not settings.plex_url:
+    plex_config = plex.saved_settings()
+    if not plex_config["enabled"]:
+        plex_status = {"ok": True, "status": "disabled", "message": "Plex 已停用"}
+    elif not plex_config["serverUrl"]:
         plex_status = {"ok": True, "status": "not_configured", "message": "尚未连接 Plex"}
     else:
         try:

@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 
 os.environ.setdefault("APP_PASSWORD", "test-password-123")
 os.environ.setdefault("SESSION_SECRET", "test-session-secret-for-songlib-123456")
@@ -13,9 +14,9 @@ from fastapi.testclient import TestClient
 
 from app import auth
 from app.config import settings
-from app.db import init_db, row, rows, transaction
+from app.db import init_db, row, rows, set_kv, transaction
 from app.jobs import manager
-from app.main import app
+from app.main import app, plex
 from app.playlists import create_playlist, import_m3u
 from app.recommendations import list_recommendations, refresh
 
@@ -167,6 +168,23 @@ class CommercialFoundationTests(unittest.TestCase):
             self.assertEqual(payload["status"], "ready")
             self.assertIn("database", payload["checks"])
             self.assertIn("storage", payload["checks"])
+
+    def test_health_uses_saved_plex_settings(self):
+        set_kv(
+            "plex_settings",
+            {
+                "enabled": True,
+                "serverUrl": "http://plex.test",
+                "token": "test-token",
+            },
+        )
+        try:
+            with patch.object(plex, "xml", return_value=None), TestClient(app) as client:
+                response = client.get("/api/health")
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json()["checks"]["plex"]["status"], "connected")
+        finally:
+            set_kv("plex_settings", {})
 
 
 if __name__ == "__main__":

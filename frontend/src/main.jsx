@@ -12,6 +12,7 @@ import { motion } from "motion/react";
 import {
   Activity,
   Album,
+  ArrowLeft,
   ArrowDownToLine,
   BookOpenText,
   Check,
@@ -84,8 +85,10 @@ import {
 } from "./lib/contracts";
 import {
   knownPage,
+  libraryDetailFromPath,
   libraryTabFromPath,
   pageFromPath,
+  pathForLibraryDetail,
   pathForLibraryTab,
   pathForPage,
   pathForPlaylist,
@@ -182,6 +185,13 @@ const managementNav = [
 
 const fmt = (value) => new Intl.NumberFormat("zh-CN").format(value || 0);
 const pct = (value, total) => (total ? Math.round((value / total) * 100) : 0);
+const durationLabel = (value) => {
+  const seconds = Math.floor(Number(value || 0) / 1000);
+  if (!seconds) return "";
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return hours ? `${hours} 小时 ${minutes} 分钟` : `${minutes} 分钟`;
+};
 const timeAgo = (value) => {
   if (!value) return "刚刚";
   const seconds = Math.floor((Date.now() - new Date(value).getTime()) / 1000);
@@ -283,7 +293,9 @@ const storedJson = (key, fallback) => {
 
 const userIsAdmin = (user) => ["admin", "owner"].includes(user?.role);
 const activeNavId = (active) =>
-  managementNav.some((item) => item.id === active) ? "manage" : active;
+  active !== "settings" && managementNav.some((item) => item.id === active)
+    ? "manage"
+    : active;
 
 function Brand({ compact = false }) {
   return (
@@ -1357,30 +1369,49 @@ function JobRow({ job }) {
 
 function MediaLibrary({
   initialTab = "artists",
+  initialDetail = null,
   play,
   previewBackdrop,
   onTabChange,
+  onDetailChange,
 }) {
   const [tab, setTab] = useState(initialTab);
+  const [detail, setDetail] = useState(initialDetail);
+  const [detailData, setDetailData] = useState(null);
   const [search, setSearch] = useState(
     () => localStorage.getItem("songlib-global-search") || "",
   );
   const [data, setData] = useState({ items: [], total: 0 });
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   useEffect(() => {
     if (search) localStorage.removeItem("songlib-global-search");
   }, []);
   useEffect(() => {
     if (initialTab !== tab) setTab(initialTab);
   }, [initialTab]);
+  useEffect(() => {
+    setDetail(initialDetail);
+  }, [initialDetail?.type, initialDetail?.ratingKey]);
   const load = async () => {
     setLoading(true);
     try {
-      setData(
-        await api(
-          `/api/library/${tab}?pageSize=100&search=${encodeURIComponent(search)}`,
-        ),
+      const first = await api(
+        `/api/library/${tab}?page=1&pageSize=200&search=${encodeURIComponent(search)}`,
       );
+      if (tab === "tracks" || first.items.length >= first.total) {
+        setData(first);
+        return;
+      }
+      const pages = Math.ceil(first.total / first.pageSize);
+      const rest = [];
+      for (let page = 2; page <= pages; page += 1) {
+        const result = await api(
+          `/api/library/${tab}?page=${page}&pageSize=200&search=${encodeURIComponent(search)}`,
+        );
+        rest.push(...(result.items || []));
+      }
+      setData({ ...first, items: [...first.items, ...rest] });
     } finally {
       setLoading(false);
     }
@@ -1389,17 +1420,80 @@ function MediaLibrary({
     const timer = setTimeout(load, 180);
     return () => clearTimeout(timer);
   }, [tab, search]);
+  useEffect(() => {
+    if (!detail?.ratingKey) {
+      setDetailData(null);
+      return;
+    }
+    let cancelled = false;
+    setDetailData(null);
+    api(
+      `/api/library/${detail.type}/${encodeURIComponent(detail.ratingKey)}`,
+    )
+      .then((result) => {
+        if (!cancelled) setDetailData(result);
+      })
+      .catch(() => {
+        if (!cancelled) setDetailData({ error: "无法读取这项资料，请稍后重试。" });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [detail?.type, detail?.ratingKey]);
+  const openDetail = (type, item) => {
+    const next = { type, ratingKey: item.ratingKey };
+    setDetail(next);
+    onDetailChange?.(next);
+  };
+  const closeDetail = () => {
+    setDetail(null);
+    setDetailData(null);
+    onDetailChange?.(null, tab);
+  };
+  const loadMore = async () => {
+    if (loadingMore || data.items.length >= data.total) return;
+    setLoadingMore(true);
+    try {
+      const page = Math.floor(data.items.length / 200) + 1;
+      const next = await api(
+        `/api/library/${tab}?page=${page}&pageSize=200&search=${encodeURIComponent(search)}`,
+      );
+      setData((value) => ({
+        ...next,
+        items: [...value.items, ...(next.items || [])],
+      }));
+    } finally {
+      setLoadingMore(false);
+    }
+  };
   const showTracks = (item) => {
     setTab("tracks");
     setSearch(item.title || "");
     onTabChange?.("tracks");
   };
   const playFirst = async (item) => {
-    const query = encodeURIComponent(item.title || "");
-    const result = await api(`/api/library/tracks?pageSize=8&search=${query}`);
-    const first = result.items?.[0];
-    if (first) play?.({ ...first, source: "plex_item" });
+    const type = item.type === "artist" ? "artists" : "albums";
+    const result = await api(
+      `/api/library/${type}/${encodeURIComponent(item.ratingKey)}`,
+    );
+    const items = result.popularTracks || result.tracks || [];
+    if (items[0])
+      play?.(
+        { ...items[0], source: "plex_item" },
+        items.slice(1).map((track) => ({ ...track, source: "plex_item" })),
+      );
   };
+  if (detail) {
+    return (
+      <LibraryDetailPage
+        type={detail.type}
+        data={detailData}
+        back={closeDetail}
+        play={play}
+        openDetail={openDetail}
+      />
+    );
+  }
   return (
     <div className="page library-page">
       <div className="library-toolbar">
@@ -1413,6 +1507,7 @@ function MediaLibrary({
               className={tab === id ? "active" : ""}
               onClick={() => {
                 setTab(id);
+                setDetail(null);
                 onTabChange?.(id);
               }}
               key={id}
@@ -1429,7 +1524,9 @@ function MediaLibrary({
             placeholder={`搜索${tab === "artists" ? "歌手" : tab === "albums" ? "专辑" : "单曲"}…`}
           />
         </div>
-        <span className="result-count">{fmt(data.total)} 项</span>
+        <span className="result-count">
+          {fmt(data.items.length)} / {fmt(data.total)} 项
+        </span>
       </div>
       {loading ? (
         <PageLoader />
@@ -1444,24 +1541,51 @@ function MediaLibrary({
               key={item.ratingKey}
               showTracks={showTracks}
               playFirst={playFirst}
+              openDetail={openDetail}
               previewBackdrop={previewBackdrop}
             />
           ))}
+        </div>
+      )}
+      {!loading && data.items.length < data.total && (
+        <div className="library-load-more">
+          <button className="secondary" onClick={loadMore} disabled={loadingMore}>
+            {loadingMore ? <LoaderCircle className="spin" /> : <Plus />}
+            继续载入剩余 {fmt(data.total - data.items.length)} 项
+          </button>
         </div>
       )}
     </div>
   );
 }
 
-function MediaCard({ item, type, showTracks, playFirst, previewBackdrop }) {
+function MediaCard({
+  item,
+  type,
+  showTracks,
+  playFirst,
+  openDetail,
+  previewBackdrop,
+}) {
   const isArtist = type === "artists";
   const isAlbum = type === "albums";
   const canBackdrop = isArtist && item.artUrl;
   return (
-    <article className="media-card">
+    <article
+      className="media-card"
+      role="button"
+      tabIndex={0}
+      onClick={() => openDetail?.(type, item)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openDetail?.(type, item);
+        }
+      }}
+    >
       <div className="media-art">
         {item.thumbUrl ? (
-          <img src={item.thumbUrl} loading="lazy" />
+          <img src={item.thumbUrl} alt="" loading="lazy" />
         ) : (
           <div className="art-placeholder">
             {isArtist ? <UserRound /> : <Disc3 />}
@@ -1469,27 +1593,34 @@ function MediaCard({ item, type, showTracks, playFirst, previewBackdrop }) {
         )}
         <div className="media-overlay media-actions">
           <button
-            onClick={() => playFirst?.(item)}
+            onClick={(event) => {
+              event.stopPropagation();
+              playFirst?.(item);
+            }}
             title={isArtist ? "播放这个歌手的曲目" : "播放这张专辑"}
           >
             <Play fill="currentColor" />
           </button>
           <button
-            onClick={() => showTracks?.(item)}
+            onClick={(event) => {
+              event.stopPropagation();
+              showTracks?.(item);
+            }}
             title={isArtist ? "查看歌手曲目" : "查看专辑曲目"}
           >
             <ListMusic />
           </button>
           {canBackdrop && (
             <button
-              onClick={() =>
+              onClick={(event) => {
+                event.stopPropagation();
                 previewBackdrop?.({
                   imageUrl: item.artUrl,
                   coverUrl: item.thumbUrl || item.artUrl,
                   title: item.title,
                   subtitle: "手动选择的歌手背景",
-                })
-              }
+                });
+              }}
               title="用作当前背景"
             >
               <Image />
@@ -1514,6 +1645,137 @@ function MediaCard({ item, type, showTracks, playFirst, previewBackdrop }) {
   );
 }
 
+function LibraryDetailPage({ type, data, back, play, openDetail }) {
+  if (!data) return <PageLoader />;
+  if (data.error)
+    return (
+      <div className="page library-detail-page">
+        <button className="detail-back" onClick={back}>
+          <ArrowLeft />
+          返回音乐库
+        </button>
+        <Empty icon={CircleAlert} title="资料暂时不可用" text={data.error} />
+      </div>
+    );
+  const isArtist = type === "artists";
+  const subject = isArtist ? data.artist : data.album;
+  const tracks = isArtist ? data.popularTracks || [] : data.tracks || [];
+  const albums = isArtist ? data.albums || [] : [];
+  const background =
+    subject?.artUrl ||
+    subject?.thumbUrl ||
+    data.artist?.artUrl ||
+    VISUAL_FALLBACKS.artist;
+  const playAll = () => {
+    if (!tracks.length) return;
+    play?.(
+      { ...tracks[0], source: "plex_item" },
+      tracks.slice(1).map((item) => ({ ...item, source: "plex_item" })),
+    );
+  };
+  const playAlbum = async (album) => {
+    const result = await api(
+      `/api/library/albums/${encodeURIComponent(album.ratingKey)}`,
+    );
+    const items = result.tracks || [];
+    if (!items.length) return;
+    play?.(
+      { ...items[0], source: "plex_item" },
+      items.slice(1).map((item) => ({ ...item, source: "plex_item" })),
+    );
+  };
+  return (
+    <div className="page library-detail-page">
+      <button className="detail-back" onClick={back}>
+        <ArrowLeft />
+        返回{isArtist ? "歌手" : "专辑"}
+      </button>
+      <section className="library-detail-hero">
+        <div
+          className="library-detail-background"
+          style={{ backgroundImage: `url(${background})` }}
+        />
+        <div className="library-detail-gradient" />
+        <div className="library-detail-content">
+          <div className="library-detail-cover">
+            {subject?.thumbUrl ? (
+              <img src={subject.thumbUrl} alt="" />
+            ) : isArtist ? (
+              <UserRound />
+            ) : (
+              <Disc3 />
+            )}
+          </div>
+          <div className="library-detail-copy">
+            <span>{isArtist ? "艺人" : "专辑"}</span>
+            <h1>{subject?.title || "未命名"}</h1>
+            <p className="library-detail-meta">
+              {isArtist
+                ? [
+                    ...(subject?.tags?.genre || []).slice(0, 3),
+                    `${data.albumCount || albums.length} 张专辑`,
+                    `${data.trackCount || tracks.length} 首歌曲`,
+                  ].join(" · ")
+                : [
+                    subject?.parentTitle || data.artist?.title,
+                    subject?.year,
+                    `${data.trackCount || tracks.length} 首歌曲`,
+                    durationLabel(data.duration),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+            </p>
+            <div className="library-detail-actions">
+              <button className="primary" onClick={playAll} disabled={!tracks.length}>
+                <Play fill="currentColor" />
+                播放
+              </button>
+              {!isArtist && data.artist?.ratingKey && (
+                <button
+                  className="secondary"
+                  onClick={() => openDetail?.("artists", data.artist)}
+                >
+                  <UserRound />
+                  查看艺人
+                </button>
+              )}
+            </div>
+            {subject?.summary && (
+              <p className="library-detail-summary">{subject.summary}</p>
+            )}
+          </div>
+        </div>
+      </section>
+      <SectionHead
+        title={isArtist ? "热门曲目" : "曲目"}
+        note={
+          isArtist
+            ? "根据 Plex 播放数据排列"
+            : `${data.trackCount || tracks.length} 首 · ${durationLabel(data.duration)}`
+        }
+      />
+      <TrackTable items={tracks} play={play} />
+      {isArtist && (
+        <>
+          <SectionHead title={`${data.albumCount || albums.length} 张专辑`} />
+          <div className="media-grid detail-album-grid">
+            {albums.map((item) => (
+              <MediaCard
+                item={item}
+                type="albums"
+                key={item.ratingKey}
+                openDetail={openDetail}
+                playFirst={playAlbum}
+                showTracks={(album) => openDetail?.("albums", album)}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function TrackTable({ items, play }) {
   return (
     <div className="track-table panel">
@@ -1528,7 +1790,14 @@ function TrackTable({ items, play }) {
         <button
           className="track-row track-button"
           key={item.ratingKey}
-          onClick={() => play?.({ ...item, source: "plex_item" })}
+          onClick={() =>
+            play?.(
+              { ...item, source: "plex_item" },
+              items
+                .slice(index + 1)
+                .map((track) => ({ ...track, source: "plex_item" })),
+            )
+          }
         >
           <span>{String(index + 1).padStart(2, "0")}</span>
           <span className="track-title">
@@ -4113,6 +4382,7 @@ const SOURCE_STATES = {
   search_ok: ["搜索可用", "blue"],
   inspect_ok: ["格式已识别", "amber"],
   partial: ["部分可用", "amber"],
+  degraded: ["已启用 · 连接异常", "amber"],
   resolve_ok: ["解析可用", "green"],
   unavailable: ["不可用", "red"],
   disabled: ["已禁用", "muted"],
@@ -4342,22 +4612,22 @@ function SourceManager({ sources, refreshSources, notify }) {
             <TestTube2 />
             SOURCE CHECK
           </span>
-          <h3>验证通过后再启用。</h3>
+          <h3>识别通过，立即可用。</h3>
           <p>
-            音屿会依次检查格式、搜索能力与真实音频地址解析，状态清晰后再用于下载。
+            导入时完成结构与安全校验，通过后默认启用；搜索和音频解析测试用于确认具体能力，不会阻止你启用音乐源。
           </p>
           <ol>
             <li>
               <b>01</b> 导入并检查脚本结构
             </li>
             <li>
-              <b>02</b> 测试目录搜索
+              <b>02</b> 校验通过后自动启用
             </li>
             <li>
               <b>03</b> 测试播放地址解析
             </li>
             <li>
-              <b>04</b> 启用后进入下载页
+              <b>04</b> 已验证能力用于搜索与下载
             </li>
           </ol>
         </section>
@@ -5521,7 +5791,13 @@ function Tasks({ jobs, refresh, navigate }) {
   );
 }
 
-function SettingsPage({ settings, logout, navigate, isAdmin = true }) {
+function SettingsPage({
+  settings,
+  logout,
+  navigate,
+  isAdmin = true,
+  onSettingsChange,
+}) {
   const [current, setCurrent] = useState(""),
     [next, setNext] = useState(""),
     [message, setMessage] = useState("");
@@ -5532,6 +5808,13 @@ function SettingsPage({ settings, logout, navigate, isAdmin = true }) {
   const [profile, setProfile] = useState(settings.user || {}),
     [logs, setLogs] = useState(null),
     [logsLoading, setLogsLoading] = useState(false);
+  const [fnosDraft, setFnosDraft] = useState({
+    serverUrl: settings.fnosMusic?.serverUrl || "",
+    authMode: settings.fnosMusic?.authMode || "password",
+    username: settings.fnosMusic?.accountLabel || "",
+    password: "",
+    token: "",
+  });
   const [backups, setBackups] = useState([]),
     [backupBusy, setBackupBusy] = useState("");
   const defaultPlayerPrefs = {
@@ -5550,6 +5833,14 @@ function SettingsPage({ settings, logout, navigate, isAdmin = true }) {
     setDraft(settings || {});
     setPlex(settings.plex || {});
     setProfile(settings.user || {});
+    setFnosDraft((value) => ({
+      ...value,
+      serverUrl: settings.fnosMusic?.serverUrl || "",
+      authMode: settings.fnosMusic?.authMode || "password",
+      username: settings.fnosMusic?.accountLabel || "",
+      password: "",
+      token: "",
+    }));
     setPlayerPrefs({ ...defaultPlayerPrefs, ...(settings.player || {}) });
   }, [settings]);
   useEffect(() => {
@@ -5595,6 +5886,7 @@ function SettingsPage({ settings, logout, navigate, isAdmin = true }) {
       body: JSON.stringify({ values }),
     });
     setProfile(result.profile);
+    onSettingsChange?.((value) => ({ ...value, user: result.profile }));
     setMessage("个人资料已保存");
   };
   const uploadAvatar = async (event) => {
@@ -5695,6 +5987,29 @@ function SettingsPage({ settings, logout, navigate, isAdmin = true }) {
     try {
       const result = await api("/api/settings/fnos/test", { method: "POST" });
       setMessage(result.message || "飞牛音乐连接成功");
+    } catch (err) {
+      setMessage(err.message);
+    }
+  };
+  const saveFnosMusic = async () => {
+    if (!isAdmin) return setMessage("当前账号没有修改连接的权限");
+    try {
+      const result = await api("/api/settings/fnos", {
+        method: "POST",
+        body: JSON.stringify(fnosDraft),
+      });
+      setFnosDraft((value) => ({
+        ...value,
+        password: "",
+        token: "",
+        ...result.fnosMusic,
+        username: result.fnosMusic?.accountLabel || value.username,
+      }));
+      onSettingsChange?.((value) => ({
+        ...value,
+        fnosMusic: result.fnosMusic,
+      }));
+      setMessage(result.message || "飞牛音乐连接已保存");
     } catch (err) {
       setMessage(err.message);
     }
@@ -5871,17 +6186,110 @@ function SettingsPage({ settings, logout, navigate, isAdmin = true }) {
                   <dt>认证方式</dt>
                   <dd>
                     {settings.fnosMusic?.configured
-                      ? "服务会话令牌"
-                      : "飞牛账号授权或服务令牌"}
+                      ? settings.fnosMusic?.authMode === "password"
+                        ? "飞牛音乐账号"
+                        : "服务令牌"
+                      : "飞牛音乐账号或服务令牌"}
                   </dd>
                 </div>
               </dl>
+              <div className="fnos-config-form">
+                <label>
+                  服务地址
+                  <input
+                    value={fnosDraft.serverUrl}
+                    placeholder="http://NAS地址:5666"
+                    onChange={(event) =>
+                      setFnosDraft((value) => ({
+                        ...value,
+                        serverUrl: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label>
+                  认证方式
+                  <select
+                    value={fnosDraft.authMode}
+                    onChange={(event) =>
+                      setFnosDraft((value) => ({
+                        ...value,
+                        authMode: event.target.value,
+                        password: "",
+                        token: "",
+                      }))
+                    }
+                  >
+                    <option value="password">飞牛音乐账号</option>
+                    <option value="token">服务令牌</option>
+                  </select>
+                </label>
+                {fnosDraft.authMode === "password" ? (
+                  <>
+                    <label>
+                      飞牛音乐账号
+                      <input
+                        autoComplete="username"
+                        value={fnosDraft.username}
+                        onChange={(event) =>
+                          setFnosDraft((value) => ({
+                            ...value,
+                            username: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                    <label>
+                      飞牛音乐密码
+                      <input
+                        type="password"
+                        autoComplete="current-password"
+                        value={fnosDraft.password}
+                        placeholder={
+                          settings.fnosMusic?.configured
+                            ? "重新连接时输入"
+                            : "仅用于换取服务会话"
+                        }
+                        onChange={(event) =>
+                          setFnosDraft((value) => ({
+                            ...value,
+                            password: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                  </>
+                ) : (
+                  <label className="fnos-token-field">
+                    服务令牌
+                    <input
+                      type="password"
+                      autoComplete="off"
+                      value={fnosDraft.token}
+                      placeholder={
+                        settings.fnosMusic?.configured
+                          ? "如需替换请输入新令牌"
+                          : "music-token"
+                      }
+                      onChange={(event) =>
+                        setFnosDraft((value) => ({
+                          ...value,
+                          token: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                )}
+              </div>
               <p className="setting-explainer">
-                飞牛音乐支持飞牛账号密码与 NAS 账号授权。NAS 授权需要官方
-                OAuth 客户端；当前连接不会读取浏览器会话，也不会在页面保存
-                NAS 密码。
+                账号密码只用于向飞牛音乐换取服务会话，密码不会保存。派生令牌保存在
+                NAS 的受保护数据目录中，也不会回显到页面。
               </p>
               <div className="setting-actions">
+                <button className="primary small" onClick={saveFnosMusic}>
+                  <Check />
+                  保存并连接
+                </button>
                 <button
                   className="secondary small"
                   onClick={testFnosMusic}
@@ -6257,6 +6665,22 @@ function SettingsPage({ settings, logout, navigate, isAdmin = true }) {
                     <option value="320k">320K</option>
                     <option value="flac">FLAC</option>
                     <option value="flac24bit">Hi-Res</option>
+                  </select>
+                </label>
+                <label>
+                  界面字号
+                  <select
+                    value={profile?.fontSize || "standard"}
+                    onChange={(e) =>
+                      setProfile((value) => ({
+                        ...value,
+                        fontSize: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value="compact">紧凑</option>
+                    <option value="standard">标准</option>
+                    <option value="large">大号</option>
                   </select>
                 </label>
                 <button
@@ -8516,6 +8940,7 @@ function AuthenticatedShell({ setAuthenticated }) {
   return (
     <div
       className={`app-shell visual-shell route-${active} ${showMiniPlayer ? "has-mini-player" : ""}`}
+      data-font-size={settingsData.user?.fontSize || "standard"}
     >
       <Backdrop imageUrl={shellBackdrop} />
       {(!isMobile || menu) && (
@@ -8562,9 +8987,17 @@ function AuthenticatedShell({ setAuthenticated }) {
           <MediaLibrary
             key={`library-${routeRevision}`}
             initialTab={libraryTabFromPath(window.location.pathname)}
+            initialDetail={libraryDetailFromPath(window.location.pathname)}
             play={playTrack}
             previewBackdrop={setManualBackdrop}
             onTabChange={(tab) => updatePath(pathForLibraryTab(tab))}
+            onDetailChange={(detail, fallbackTab) =>
+              updatePath(
+                detail
+                  ? pathForLibraryDetail(detail.type, detail.ratingKey)
+                  : pathForLibraryTab(fallbackTab || "artists"),
+              )
+            }
           />
         )}{" "}
         {active === "playlists" && (
@@ -8648,6 +9081,7 @@ function AuthenticatedShell({ setAuthenticated }) {
             logout={logout}
             navigate={navigate}
             isAdmin={isAdmin}
+            onSettingsChange={setSettingsData}
           />
         )}{" "}
         {isMobile && (
@@ -8682,7 +9116,7 @@ function MobileNav({ active, change, isAdmin = true }) {
   const items = nav
     .filter((item) => labels[item.id] && (!item.admin || isAdmin))
     .slice(0, 6);
-  const highlighted = activeNavId(active);
+  const highlighted = active === "settings" ? "me" : activeNavId(active);
   return (
     <nav className="mobile-nav mobile-only">
       {items.map((item) => (

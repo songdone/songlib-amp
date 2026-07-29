@@ -232,6 +232,38 @@ class PlexClient:
             raise RuntimeError("Plex 条目不存在")
         return self._element(element)
 
+    def hierarchy(self, rating_key: str, suffix: str = "children"):
+        if suffix not in ("children", "allLeaves"):
+            raise ValueError("不支持的 Plex 层级查询")
+        start = 0
+        size = 500
+        items = []
+        while True:
+            root = self.xml(
+                f"/library/metadata/{rating_key}/{suffix}",
+                {
+                    "X-Plex-Container-Start": start,
+                    "X-Plex-Container-Size": size,
+                    "includeFields": 1,
+                },
+            )
+            page = [
+                self._element(item)
+                for item in root
+                if item.attrib.get("ratingKey")
+            ]
+            items.extend(page)
+            if len(page) < size:
+                break
+            start += len(page)
+        return items
+
+    def children(self, rating_key: str):
+        return self.hierarchy(rating_key, "children")
+
+    def all_leaves(self, rating_key: str):
+        return self.hierarchy(rating_key, "allLeaves")
+
     def playback(self, rating_key: str, bitrate: str = "original"):
         root = self.xml(f"/library/metadata/{rating_key}", {"includeFields": 1})
         element = next((child for child in root if child.attrib.get("ratingKey")), None)

@@ -8,8 +8,10 @@ import {
   recommendationPlaybackInput,
 } from "../src/lib/contracts.js";
 import {
+  libraryDetailFromPath,
   libraryTabFromPath,
   pageFromPath,
+  pathForLibraryDetail,
   pathForLibraryTab,
   pathForPage,
   pathForPlaylist,
@@ -109,6 +111,15 @@ test("library tabs and playlist details keep their secondary URL", () => {
   assert.equal(pathForLibraryTab("albums"), "/library/albums");
   assert.equal(libraryTabFromPath("/library/tracks"), "tracks");
   assert.equal(pageFromPath("/library/tracks"), "library");
+  assert.equal(
+    pathForLibraryDetail("artists", "artist/42"),
+    "/library/artists/artist%2F42",
+  );
+  assert.deepEqual(
+    libraryDetailFromPath("/library/albums/album%2F88"),
+    { type: "albums", ratingKey: "album/88" },
+  );
+  assert.equal(pageFromPath("/library/artists/42"), "library");
   assert.equal(pathForPlaylist("list/with space"), "/playlists/list%2Fwith%20space");
   assert.equal(
     playlistIdFromPath("/playlists/list%2Fwith%20space"),

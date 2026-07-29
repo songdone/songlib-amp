@@ -18,14 +18,14 @@ mkdir -p volumes/data volumes/downloads volumes/music volumes/library volumes/pl
 
 `SONGLIB_DOWNLOADS_DIR` 与 `MUSIC_DIR` 必须指向不同目录或数据集。容器内下载文件只出现在 `/downloads`，正式曲库只出现在 `/music`。
 
-如需把歌单写入飞牛音乐，在 NAS 的 `.env` 中增加：
+如需把歌单写入飞牛音乐，可在“设置 → Plex 连接 → 飞牛音乐”中使用飞牛音乐账号连接；密码只用于换取服务会话，不会保存。也可以在 NAS 的 `.env` 中预置专用令牌：
 
 ```dotenv
 FNOS_MUSIC_URL=http://nas-address:5666
 FNOS_MUSIC_TOKEN=replace-with-dedicated-token
 ```
 
-不要从浏览器会话中提取令牌。建议为歌单同步创建权限最小的专用账号或令牌。
+不要从浏览器会话中提取令牌。建议为歌单同步创建权限最小的专用账号或令牌。界面生成的派生令牌保存在 `/data/secrets/fnos-music.json`，目录与文件权限分别收紧为 `700` 和 `600`。
 
 生成会话密钥：
 
@@ -41,7 +41,8 @@ openssl rand -hex 32
 
 ```bash
 docker compose config --quiet
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 docker compose ps
 ```
 
@@ -70,5 +71,5 @@ docker compose ps
 镜像使用官方 Python 和 Node 多架构基础镜像，可为 linux/amd64 与 linux/arm64 构建。跨架构发布时可使用：
 
 ```bash
-docker buildx build --platform linux/amd64,linux/arm64 -t your-registry/songlib-amp:1.0.0-rc.3 --push .
+docker buildx build --platform linux/amd64,linux/arm64 -t 666uos/songlib-amp:1.0.0-rc.4 --push .
 ```

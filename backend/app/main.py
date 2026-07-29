@@ -193,6 +193,14 @@ class PlexTestBody(BaseModel):
     token: str | None = None
 
 
+class FnosSettingsBody(BaseModel):
+    serverUrl: str
+    authMode: str = Field(default="password", pattern="^(password|token)$")
+    username: str = Field(default="", max_length=120)
+    password: str = Field(default="", max_length=300)
+    token: str = Field(default="", max_length=2_000)
+
+
 class TagUpdateBody(BaseModel):
     changes: dict
 
@@ -749,6 +757,31 @@ def artists(page: int = 1, pageSize: int = Query(48, ge=1, le=200), search: str 
         return {**_page(_decorate(items), page, pageSize), "warning": f"Plex 暂不可用，显示最近同步数据：{exc}"}
 
 
+@app.get("/api/library/artists/{rating_key}", dependencies=[Depends(auth.current_user)])
+def artist_detail(rating_key: str):
+    try:
+        artist = _decorate([plex.metadata(rating_key)])[0]
+        albums = _decorate(plex.children(rating_key))
+        tracks = _decorate(plex.all_leaves(rating_key))
+        tracks.sort(
+            key=lambda item: (
+                int(item.get("viewCount") or 0),
+                int(item.get("lastViewedAt") or 0),
+                int(item.get("ratingCount") or 0),
+            ),
+            reverse=True,
+        )
+        return {
+            "artist": artist,
+            "albums": albums,
+            "popularTracks": tracks[:10],
+            "trackCount": len(tracks),
+            "albumCount": len(albums),
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"无法读取该歌手资料：{exc}") from exc
+
+
 @app.get("/api/library/albums", dependencies=[Depends(auth.current_user)])
 def albums(page: int = 1, pageSize: int = Query(48, ge=1, le=200), search: str = ""):
     try:
@@ -756,6 +789,35 @@ def albums(page: int = 1, pageSize: int = Query(48, ge=1, le=200), search: str =
     except Exception as exc:
         items = rows("SELECT rating_key AS ratingKey,title,artist AS parentTitle,year,thumb,art,summary FROM plex_items WHERE type='album' AND (title LIKE ? OR artist LIKE ?) ORDER BY artist,title", (f"%{search}%", f"%{search}%"))
         return {**_page(_decorate(items), page, pageSize), "warning": f"Plex 暂不可用，显示最近同步数据：{exc}"}
+
+
+@app.get("/api/library/albums/{rating_key}", dependencies=[Depends(auth.current_user)])
+def album_detail(rating_key: str):
+    try:
+        album = _decorate([plex.metadata(rating_key)])[0]
+        tracks = _decorate(plex.children(rating_key))
+        tracks.sort(
+            key=lambda item: (
+                int(item.get("parentIndex") or item.get("disc") or 0),
+                int(item.get("index") or item.get("track") or 0),
+                item.get("title") or "",
+            )
+        )
+        artist_key = str(album.get("parentRatingKey") or "")
+        artist = (
+            _decorate([plex.metadata(artist_key)])[0]
+            if artist_key
+            else None
+        )
+        return {
+            "album": album,
+            "artist": artist,
+            "tracks": tracks,
+            "trackCount": len(tracks),
+            "duration": sum(int(item.get("duration") or 0) for item in tracks),
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"无法读取该专辑资料：{exc}") from exc
 
 
 @app.get("/api/library/tracks", dependencies=[Depends(auth.current_user)])
@@ -1475,6 +1537,7 @@ def _profile_payload(user: dict):
         "permissions": user.get("permissions") or ["listen"],
         "avatarUrl": profile.get("avatarUrl") or "",
         "theme": profile.get("theme") or "dark",
+        "fontSize": profile.get("fontSize") or "standard",
         "defaultSource": profile.get("defaultSource") or "tx",
         "defaultQuality": profile.get("defaultQuality") or "320k",
     }
@@ -1489,9 +1552,17 @@ def get_profile(user=Depends(auth.current_user)):
 def update_profile(body: SettingsPatchBody, user=Depends(auth.current_user)):
     profiles = get_kv("user_profiles", {}) or {}
     current = profiles.get(user.get("id"), {})
-    allowed = {"displayName", "theme", "defaultSource", "defaultQuality"}
+    allowed = {
+        "displayName",
+        "theme",
+        "fontSize",
+        "defaultSource",
+        "defaultQuality",
+    }
     for key, value in body.values.items():
         if key in allowed:
+            if key == "fontSize" and value not in ("compact", "standard", "large"):
+                continue
             current[key] = value
     profiles[user.get("id")] = current
     set_kv("user_profiles", profiles)
@@ -1615,10 +1686,7 @@ def get_settings(user=Depends(auth.current_user)):
         "maxDownloadMb": settings.max_download_mb,
         "sourceMaxSizeMb": settings.source_max_size_mb,
         "privateDownloadUrlsAllowed": settings.allow_private_download_urls,
-        "fnosMusic": {
-            "configured": fnos_music.configured,
-            "serverUrl": settings.fnos_music_url,
-        },
+        "fnosMusic": fnos_music.public_settings(),
     }
 
 
@@ -1628,6 +1696,33 @@ def update_settings(body: SettingsPatchBody):
     current.update(body.values)
     set_kv("ui_settings", current)
     return {"ok": True, "settings": current}
+
+
+@app.post("/api/settings/fnos", dependencies=[Depends(auth.current_user)])
+def save_fnos_music(
+    body: FnosSettingsBody, user=Depends(auth.current_user)
+):
+    if user["role"] not in ("owner", "admin"):
+        raise HTTPException(
+            status_code=403,
+            detail="只有所有者或管理员可以修改飞牛音乐连接",
+        )
+    server_url = _clean_base_url(body.serverUrl, "飞牛音乐地址")
+    try:
+        public = fnos_music.configure(
+            server_url=server_url,
+            auth_mode=body.authMode,
+            username=body.username,
+            password=body.password,
+            token=body.token,
+        )
+        return {
+            "ok": True,
+            "message": "飞牛音乐已连接，账号密码未保存",
+            "fnosMusic": public,
+        }
+    except (ValueError, RuntimeError, httpx.HTTPError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @app.post("/api/settings/fnos/test", dependencies=[Depends(auth.current_user)])

@@ -33,20 +33,36 @@ export const pageFromPath = (pathname) => {
   const path = normalizePath(pathname);
   if (PATH_PAGES[path]) return PATH_PAGES[path];
   if (path === "/library") return "library";
-  if (/^\/library\/(?:artists|albums|tracks)$/.test(path)) return "library";
+  if (
+    /^\/library\/(?:artists|albums|tracks)(?:\/[^/]+)?$/.test(path)
+  )
+    return "library";
   if (/^\/playlists\/[^/]+$/.test(path)) return "playlists";
   return "home";
 };
 
 export const libraryTabFromPath = (pathname) => {
   const tab = normalizePath(pathname).match(
-    /^\/library\/(artists|albums|tracks)$/,
+    /^\/library\/(artists|albums|tracks)(?:\/[^/]+)?$/,
   )?.[1];
   return tab || "artists";
 };
 
 export const pathForLibraryTab = (tab) =>
   `/library/${["artists", "albums", "tracks"].includes(tab) ? tab : "artists"}`;
+
+export const libraryDetailFromPath = (pathname) => {
+  const match = normalizePath(pathname).match(
+    /^\/library\/(artists|albums)\/([^/]+)$/,
+  );
+  if (!match) return null;
+  return { type: match[1], ratingKey: decodeURIComponent(match[2]) };
+};
+
+export const pathForLibraryDetail = (type, ratingKey) =>
+  ["artists", "albums"].includes(type) && ratingKey
+    ? `/library/${type}/${encodeURIComponent(String(ratingKey))}`
+    : pathForLibraryTab(type);
 
 export const playlistIdFromPath = (pathname) => {
   const value = normalizePath(pathname).match(/^\/playlists\/([^/]+)$/)?.[1];

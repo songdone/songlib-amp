@@ -20,27 +20,131 @@ SongLib Amp 不内置第三方私钥，不绕过 DRM，也不附带受版权保�
 
 ## 快速部署
 
-要求：Docker 24+、Docker Compose 2.20+，推荐至少 2 GB 可用内存。
+要求：Docker 24+、Docker Compose 2.20+，推荐至少 2 GB 可用内存。默认从 Docker Hub 拉取固定版本镜像，不需要在 NAS 上编译源码。
 
 ```bash
-cp .env.example .env
+mkdir -p songlib-amp/volumes/{data,downloads,music}
+cd songlib-amp
+touch .env
 chmod 600 .env
 ```
 
-编辑 `.env`：
+在 `.env` 中填写：
 
-1. 用 `openssl rand -hex 32` 生成 `SESSION_SECRET`。
-2. 设置 `MUSIC_DIR`、`SONGLIB_DATA_DIR` 和 `SONGLIB_DOWNLOADS_DIR`。
-3. 选择未被占用的 `APP_PORT`。
-4. 如果通过 HTTPS 反向代理访问，设置 `COOKIE_SECURE=true` 和准确的 `TRUSTED_ORIGINS`。
+```dotenv
+COMPOSE_PROJECT_NAME=songlib-amp
+SONGLIB_IMAGE=666uos/songlib-amp:1.0.0-rc.4
+APP_PORT=32782
+APP_BIND_ADDRESS=0.0.0.0
+TZ=Asia/Shanghai
+
+# 使用 openssl rand -hex 32 生成，至少 32 个字符
+SESSION_SECRET=replace-with-a-long-random-value
+COOKIE_SECURE=false
+TRUSTED_ORIGINS=http://NAS地址:32782
+
+SONGLIB_DATA_DIR=./volumes/data
+SONGLIB_DOWNLOADS_DIR=./volumes/downloads
+MUSIC_DIR=./volumes/music
+```
+
+将下面内容保存为 `docker-compose.yml`。音乐库与下载暂存是两个独立挂载，不能指向同一目录：
+
+```yaml
+name: ${COMPOSE_PROJECT_NAME:-songlib-amp}
+
+x-songlib-common: &songlib-common
+  image: ${SONGLIB_IMAGE:-666uos/songlib-amp:1.0.0-rc.4}
+  pull_policy: always
+  restart: unless-stopped
+  env_file:
+    - .env
+  environment:
+    TZ: ${TZ:-Asia/Shanghai}
+    APP_ENV: production
+    APP_VERSION: 1.0.0-rc.4
+    DATA_DIR: /data
+    MUSIC_ROOT: /music
+    DOWNLOAD_ROOT: /downloads
+    NODE_BINARY: /usr/bin/node
+  volumes:
+    - ${SONGLIB_DATA_DIR:-./volumes/data}:/data
+    - ${SONGLIB_DOWNLOADS_DIR:-./volumes/downloads}:/downloads
+    - ${MUSIC_DIR:-./volumes/music}:/music
+  networks:
+    - songlib-internal
+  read_only: true
+  tmpfs:
+    - /tmp:size=256m,mode=1777
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  web:
+    <<: *songlib-common
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      APP_ENV: production
+      APP_VERSION: 1.0.0-rc.4
+      DATA_DIR: /data
+      MUSIC_ROOT: /music
+      DOWNLOAD_ROOT: /downloads
+      NODE_BINARY: /usr/bin/node
+      PORT: 8080
+      WORKER_MODE: web
+    ports:
+      - ${APP_BIND_ADDRESS:-0.0.0.0}:${APP_PORT:-32782}:8080
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/api/health/ready',timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 25s
+      retries: 3
+
+  worker:
+    <<: *songlib-common
+    command: ["python", "-m", "app.worker"]
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      APP_ENV: production
+      APP_VERSION: 1.0.0-rc.4
+      DATA_DIR: /data
+      MUSIC_ROOT: /music
+      DOWNLOAD_ROOT: /downloads
+      NODE_BINARY: /usr/bin/node
+      WORKER_MODE: worker
+    depends_on:
+      web:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+
+networks:
+  songlib-internal:
+    name: ${COMPOSE_PROJECT_NAME:-songlib-amp}-internal
+    driver: bridge
+```
 
 然后启动：
 
 ```bash
-docker compose up -d --build
+docker compose pull
+docker compose up -d
+docker compose ps
 ```
 
 打开 `http://NAS地址:APP_PORT`。新实例不会创建默认弱密码，首次访问会引导创建主人账号。
+
+升级时先备份 `SONGLIB_DATA_DIR`，再把 `.env` 中的镜像标签改为目标版本并执行：
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+需要回滚时把 `SONGLIB_IMAGE` 改回上一个固定标签，再次执行相同命令。仓库内的 [`docker-compose.yml`](docker-compose.yml) 与上面模板一致；只有参与开发时才使用 `docker-compose.build.yml` 在本机编译。
 
 ## 服务与数据
 

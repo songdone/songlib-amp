@@ -216,7 +216,12 @@ def _persist_source(data: bytes, *, name: str, source_type: str, original_url=No
         inspection = inspect_source(source_id)
         if not inspection["ok"]:
             return {"ok": False, "source": get_source(source_id), "error_code": "SOURCE_FORMAT_UNKNOWN", "message": inspection["message"]}
-        return {"ok": True, "source": get_source(source_id), "inspection": inspection, "message": "音乐源已导入，格式已通过真实 sandbox 检测。"}
+        return {
+            "ok": True,
+            "source": get_source(source_id),
+            "inspection": inspection,
+            "message": "音乐源已导入并默认启用，格式已通过隔离校验。",
+        }
     except Exception as exc:
         error = _as_source_error(exc)
         _mark_error(source_id, error, action="validate")
@@ -310,9 +315,9 @@ def inspect_source(source_id: str):
     stamp = now()
     with transaction() as conn:
         conn.execute(
-            """UPDATE source_plugins SET status=?,detected_format=?,compatibility=?,inspect_result=?,
+            """UPDATE source_plugins SET enabled=?,status=?,detected_format=?,compatibility=?,inspect_result=?,
             supported_platforms=?,supported_qualities=?,last_test_at=?,last_error_code=?,last_error_message=?,updated_at=? WHERE id=?""",
-            (status, detected, compatibility, json.dumps(result, ensure_ascii=False), json.dumps(platforms, ensure_ascii=False),
+            (1 if ok else 0, status, detected, compatibility, json.dumps(result, ensure_ascii=False), json.dumps(platforms, ensure_ascii=False),
              json.dumps(qualities, ensure_ascii=False), stamp, None if ok else "SOURCE_FORMAT_UNKNOWN",
              None if ok else message, stamp, str(source_id)),
         )
@@ -324,24 +329,42 @@ def inspect_source(source_id: str):
             "debug": {"export_type": result.get("export_type"), "global_keys": result.get("global_keys"), "load_error": result.get("load_error")}}
 
 
-def _mark_error(source_id: str, error: SourceError, *, action: str):
+def _mark_error(
+    source_id: str,
+    error: SourceError,
+    *,
+    action: str,
+    preserve_validation: bool = False,
+):
     with transaction() as conn:
+        status = "degraded" if preserve_validation else "unavailable"
         conn.execute(
-            """UPDATE source_plugins SET status='unavailable',success_rate=MAX(0,success_rate*0.8),last_test_at=?,last_error_code=?,last_error_message=?,updated_at=? WHERE id=?""",
-            (now(), error.code, error.message, now(), str(source_id)),
+            """UPDATE source_plugins SET status=?,success_rate=MAX(0,success_rate*0.8),last_test_at=?,
+            last_error_code=?,last_error_message=?,updated_at=? WHERE id=?""",
+            (status, now(), error.code, error.message, now(), str(source_id)),
         )
     add_log(source_id, "error", action, error.message, {"error_code": error.code})
 
 
 def set_enabled(source_id: str, enabled: bool):
     source = get_source(source_id)
-    if enabled and source["status"] not in ("search_ok", "resolve_ok"):
-        raise SourceError("SOURCE_NOT_TESTED", "请先完成测试搜索，再启用该音乐源。")
+    inspected = bool((source.get("inspectResult") or {}).get("ok"))
+    if enabled and not inspected:
+        raise SourceError(
+            "SOURCE_NOT_VALIDATED",
+            "该音乐源尚未通过格式与安全校验，不能启用。",
+        )
     status = source["status"] if enabled else "disabled"
     if enabled and source["resolve_ok"]:
         status = "resolve_ok"
     elif enabled and source["search_ok"]:
         status = "search_ok"
+    elif enabled:
+        status = (
+            "inspect_ok"
+            if source.get("detectedFormat") == "lx-event"
+            else "partial"
+        )
     with transaction() as conn:
         conn.execute("UPDATE source_plugins SET enabled=?,status=?,updated_at=? WHERE id=?", (1 if enabled else 0, status, now(), str(source_id)))
     add_log(source_id, "info", "enable" if enabled else "disable", "音乐源已启用。" if enabled else "音乐源已禁用。")
@@ -376,7 +399,12 @@ def test_search(source_id: str, keyword: str, platform: str | None = None):
     selected = platform if platform in supported else next((value for value in ("tx", "wy") if value in supported), None)
     if not selected:
         error = SourceError("SOURCE_PLATFORM_UNSUPPORTED", "该音乐源没有声明 QQ 音乐或网易云平台支持。")
-        _mark_error(source_id, error, action="test_search")
+        _mark_error(
+            source_id,
+            error,
+            action="test_search",
+            preserve_validation=True,
+        )
         raise error
     try:
         results = [normalize_result(item, source) for item in catalog_search(keyword, selected)]

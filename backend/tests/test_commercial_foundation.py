@@ -18,6 +18,7 @@ from app.db import init_db, row, rows, set_kv, transaction
 from app.download_inbox import _repair_mojibake
 from app.jobs import manager
 from app.main import app, plex
+from app.fnos_music import FnosMusicClient
 from app.playlist_migration import detect_share_link, strict_candidate
 from app.playlists import create_playlist, import_m3u
 from app.recommendations import list_recommendations, refresh
@@ -170,6 +171,64 @@ class CommercialFoundationTests(unittest.TestCase):
             self.assertEqual(payload["status"], "ready")
             self.assertIn("database", payload["checks"])
             self.assertIn("storage", payload["checks"])
+
+    def test_fnos_music_uses_the_public_music_api_prefix(self):
+        self.assertEqual(
+            FnosMusicClient._api_base("http://nas.example:5666"),
+            "http://nas.example:5666/music/api/v1",
+        )
+        self.assertEqual(
+            FnosMusicClient._api_base("http://nas.example:5666/music/"),
+            "http://nas.example:5666/music/api/v1",
+        )
+
+    def test_artist_and_album_detail_contracts(self):
+        artist = {
+            "ratingKey": "artist-1",
+            "type": "artist",
+            "title": "周杰伦",
+            "summary": "艺人简介",
+        }
+        album = {
+            "ratingKey": "album-1",
+            "type": "album",
+            "title": "叶惠美",
+            "parentRatingKey": "artist-1",
+            "parentTitle": "周杰伦",
+        }
+        track = {
+            "ratingKey": "track-1",
+            "type": "track",
+            "title": "晴天",
+            "duration": "269000",
+            "index": "3",
+            "viewCount": "12",
+        }
+        with TestClient(app) as client:
+            login = client.post(
+                "/api/auth/login",
+                json={"username": "admin", "password": "test-password-123"},
+            )
+            self.assertEqual(login.status_code, 200)
+            with (
+                patch.object(
+                    plex,
+                    "metadata",
+                    side_effect=lambda key: artist if key == "artist-1" else album,
+                ),
+                patch.object(
+                    plex,
+                    "children",
+                    side_effect=lambda key: [album] if key == "artist-1" else [track],
+                ),
+                patch.object(plex, "all_leaves", return_value=[track]),
+            ):
+                artist_response = client.get("/api/library/artists/artist-1")
+                album_response = client.get("/api/library/albums/album-1")
+        self.assertEqual(artist_response.status_code, 200)
+        self.assertEqual(artist_response.json()["albumCount"], 1)
+        self.assertEqual(album_response.status_code, 200)
+        self.assertEqual(album_response.json()["trackCount"], 1)
 
     def test_health_uses_saved_plex_settings(self):
         set_kv(

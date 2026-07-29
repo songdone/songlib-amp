@@ -15,7 +15,16 @@ from app.db import init_db, rows, transaction
 from app.downloader import safe_name, validate_public_url
 from app.local_library import local_library
 from app.lyrics import artist_match, norm
-from app.sources import SourceError, _inspect_path, _validate_script_bytes, source_metadata, validate_source
+from app.sources import (
+    SourceError,
+    _inspect_path,
+    _validate_script_bytes,
+    delete_source,
+    import_file,
+    set_enabled,
+    source_metadata,
+    validate_source,
+)
 
 
 class CoreTests(unittest.TestCase):
@@ -53,6 +62,31 @@ class CoreTests(unittest.TestCase):
         self.assertIn("tx", info["sources"])
         inspected = _inspect_path(fixture)
         self.assertEqual(inspected["detected_format"], "lx-event")
+
+    def test_valid_source_is_enabled_without_search_gate(self):
+        fixture = Path(__file__).parent / "fixtures" / "test-source.js"
+        script = fixture.read_bytes() + b"\n// default-enable-contract\n"
+        with transaction() as conn:
+            conn.execute(
+                "DELETE FROM source_plugins WHERE file_sha256=?",
+                (__import__("hashlib").sha256(script).hexdigest(),),
+            )
+        result = import_file(
+            "Default enabled source",
+            "default-enabled.js",
+            "application/javascript",
+            script,
+        )
+        source = result["source"]
+        try:
+            self.assertTrue(result["ok"])
+            self.assertTrue(source["enabled"])
+            self.assertFalse(source["searchOk"])
+            set_enabled(source["id"], False)
+            enabled = set_enabled(source["id"], True)
+            self.assertTrue(enabled["enabled"])
+        finally:
+            delete_source(source["id"])
 
     def test_obfuscated_javascript_is_not_rejected_by_text_guessing(self):
         script = "/*! @name 混淆源 */;(function(a){return a^42})(7)".encode()

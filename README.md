@@ -24,9 +24,9 @@
 
 ## 设计参考与边界
 
-功能思路参考 [LX Music Desktop](https://github.com/lyswhut/lx-music-desktop)、[lx-music-source](https://github.com/pdone/lx-music-source) 与 [Music Tag Web](https://github.com/xhongc/music-tag-web)。本项目为独立实现，没有复制这些项目的代码，也不随镜像内置第三方音乐源。
+本项目没有随镜像内置第三方音乐源。
 
-LX 自定义源主要负责为目录搜索结果解析在线地址。请只导入你信任且有权使用的来源，只下载你有权保存的内容；音屿不绕过 DRM，也不承诺第三方来源的合法性、准确性或持续可用性。
+自定义源主要负责为目录搜索结果解析在线地址。请只导入你信任且有权使用的来源，只下载你有权保存的内容；音屿不绕过 DRM，也不承诺第三方来源的合法性、准确性或持续可用性。
 
 ## Docker 部署
 

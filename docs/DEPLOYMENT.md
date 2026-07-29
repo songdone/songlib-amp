@@ -18,6 +18,8 @@ mkdir -p volumes/data volumes/downloads volumes/music volumes/library volumes/pl
 
 `SONGLIB_DOWNLOADS_DIR` 与 `MUSIC_DIR` 必须指向不同目录或数据集。容器内下载文件只出现在 `/downloads`，正式曲库只出现在 `/music`。
 
+在 `.env` 中把 `PUID`、`PGID` 设置为拥有这些挂载目录的 NAS 普通账号数字 ID（运行 `id -u`、`id -g` 查看）。这样容器保持非 root 运行，又不会因绑定目录权限导致数据库或音乐文件无法写入。
+
 如需把歌单写入飞牛音乐，可在“设置 → Plex 连接 → 飞牛音乐”中使用飞牛音乐账号连接；密码只用于换取服务会话，不会保存。也可以在 NAS 的 `.env` 中预置专用令牌：
 
 ```dotenv

@@ -37,6 +37,8 @@ SONGLIB_IMAGE=666uos/songlib-amp:1.0.0-rc.4
 APP_PORT=32782
 APP_BIND_ADDRESS=0.0.0.0
 TZ=Asia/Shanghai
+PUID=1000
+PGID=1000
 
 # 使用 openssl rand -hex 32 生成，至少 32 个字符
 SESSION_SECRET=replace-with-a-long-random-value
@@ -56,6 +58,7 @@ name: ${COMPOSE_PROJECT_NAME:-songlib-amp}
 x-songlib-common: &songlib-common
   image: ${SONGLIB_IMAGE:-666uos/songlib-amp:1.0.0-rc.4}
   pull_policy: always
+  user: "${PUID:-1000}:${PGID:-1000}"
   restart: unless-stopped
   env_file:
     - .env
@@ -134,6 +137,8 @@ docker compose pull
 docker compose up -d
 docker compose ps
 ```
+
+`PUID` 与 `PGID` 必须是拥有 `volumes` 目录的 NAS 普通账号数字 ID，可用 `id -u` 与 `id -g` 查看。容器仍以非 root 身份运行，同时能够写入数据、下载暂存和正式曲库挂载。
 
 打开 `http://NAS地址:APP_PORT`。新实例不会创建默认弱密码，首次访问会引导创建主人账号。
 

@@ -3,6 +3,7 @@ name: ${COMPOSE_PROJECT_NAME:-songlib-amp}
 x-songlib-common: &songlib-common
   image: ${SONGLIB_IMAGE:-666uos/songlib-amp:1.0.0-rc.4}
   pull_policy: always
+  user: "${PUID:-1000}:${PGID:-1000}"
   restart: unless-stopped
   env_file:
     - ${SONGLIB_ENV_FILE:-.env}

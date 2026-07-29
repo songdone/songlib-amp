@@ -7,6 +7,14 @@ import {
   playlistTrackPayload,
   recommendationPlaybackInput,
 } from "../src/lib/contracts.js";
+import {
+  libraryTabFromPath,
+  pageFromPath,
+  pathForLibraryTab,
+  pathForPage,
+  pathForPlaylist,
+  playlistIdFromPath,
+} from "../src/lib/routes.js";
 
 test("unsafe requests can recover the encoded CSRF cookie", () => {
   assert.equal(
@@ -87,4 +95,24 @@ test("only library recommendations become direct playback actions", () => {
     }),
     null,
   );
+});
+
+test("every primary and management page has a durable URL", () => {
+  assert.equal(pathForPage("discover"), "/discover");
+  assert.equal(pathForPage("local"), "/manage/library");
+  assert.equal(pathForPage("download"), "/manage/downloads");
+  assert.equal(pageFromPath("/manage/metadata"), "scrape");
+  assert.equal(pageFromPath("/discover/"), "discover");
+});
+
+test("library tabs and playlist details keep their secondary URL", () => {
+  assert.equal(pathForLibraryTab("albums"), "/library/albums");
+  assert.equal(libraryTabFromPath("/library/tracks"), "tracks");
+  assert.equal(pageFromPath("/library/tracks"), "library");
+  assert.equal(pathForPlaylist("list/with space"), "/playlists/list%2Fwith%20space");
+  assert.equal(
+    playlistIdFromPath("/playlists/list%2Fwith%20space"),
+    "list/with space",
+  );
+  assert.equal(pageFromPath("/playlists/abc123"), "playlists");
 });

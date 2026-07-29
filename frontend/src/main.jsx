@@ -1,4 +1,5 @@
 import React, {
+  useCallback,
   createContext,
   useContext,
   useEffect,
@@ -81,6 +82,15 @@ import {
   playlistTrackPayload,
   recommendationPlaybackInput,
 } from "./lib/contracts";
+import {
+  knownPage,
+  libraryTabFromPath,
+  pageFromPath,
+  pathForLibraryTab,
+  pathForPage,
+  pathForPlaylist,
+  playlistIdFromPath,
+} from "./lib/routes";
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
@@ -307,9 +317,19 @@ function AppBackdrop({
   return (
     <div className={`app-backdrop ${variant}`} aria-hidden="true">
       {previous && (
-        <img className="backdrop-image previous" src={previous} alt="" />
+        <img
+          key={`previous-${previous}`}
+          className="backdrop-image previous"
+          src={previous}
+          alt=""
+        />
       )}
-      <img className="backdrop-image current" src={current} alt="" />
+      <img
+        key={`current-${current}`}
+        className="backdrop-image current"
+        src={current}
+        alt=""
+      />
       <i className="backdrop-vignette" />
       <i className="backdrop-aurora" />
     </div>
@@ -1048,14 +1068,6 @@ function StatCard({
         <strong>{fmt(value)}</strong>
         <small>{detail}</small>
       </div>
-      <svg
-        className={`sparkline ${tone}`}
-        viewBox="0 0 120 36"
-        preserveAspectRatio="none"
-        aria-hidden="true"
-      >
-        <path d="M2 27 C14 20 20 24 30 16 S48 22 58 12 S76 18 86 9 S104 18 118 11" />
-      </svg>
       {progress !== undefined && (
         <div className="mini-progress">
           <i style={{ width: `${progress}%` }} />
@@ -1343,7 +1355,12 @@ function JobRow({ job }) {
   );
 }
 
-function MediaLibrary({ initialTab = "artists", play, previewBackdrop }) {
+function MediaLibrary({
+  initialTab = "artists",
+  play,
+  previewBackdrop,
+  onTabChange,
+}) {
   const [tab, setTab] = useState(initialTab);
   const [search, setSearch] = useState(
     () => localStorage.getItem("songlib-global-search") || "",
@@ -1353,6 +1370,9 @@ function MediaLibrary({ initialTab = "artists", play, previewBackdrop }) {
   useEffect(() => {
     if (search) localStorage.removeItem("songlib-global-search");
   }, []);
+  useEffect(() => {
+    if (initialTab !== tab) setTab(initialTab);
+  }, [initialTab]);
   const load = async () => {
     setLoading(true);
     try {
@@ -1372,6 +1392,7 @@ function MediaLibrary({ initialTab = "artists", play, previewBackdrop }) {
   const showTracks = (item) => {
     setTab("tracks");
     setSearch(item.title || "");
+    onTabChange?.("tracks");
   };
   const playFirst = async (item) => {
     const query = encodeURIComponent(item.title || "");
@@ -1390,7 +1411,10 @@ function MediaLibrary({ initialTab = "artists", play, previewBackdrop }) {
           ].map(([id, label]) => (
             <button
               className={tab === id ? "active" : ""}
-              onClick={() => setTab(id)}
+              onClick={() => {
+                setTab(id);
+                onTabChange?.(id);
+              }}
               key={id}
             >
               {label}
@@ -5831,8 +5855,8 @@ function SettingsPage({ settings, logout, navigate, isAdmin = true }) {
             </SettingBlock>
             <SettingBlock
               icon={Radio}
-              title="飞牛音乐歌单"
-              note="连接后可将歌单保留原顺序同步到飞牛音乐。"
+              title="飞牛音乐"
+              note="连接后可将歌单按原顺序同步到飞牛音乐。"
             >
               <dl>
                 <div>
@@ -5840,10 +5864,23 @@ function SettingsPage({ settings, logout, navigate, isAdmin = true }) {
                   <dd>{settings.fnosMusic?.serverUrl || "未配置"}</dd>
                 </div>
                 <div>
-                  <dt>服务令牌</dt>
-                  <dd>{settings.fnosMusic?.configured ? "已配置" : "未配置"}</dd>
+                  <dt>连接状态</dt>
+                  <dd>{settings.fnosMusic?.configured ? "已连接" : "待配置"}</dd>
+                </div>
+                <div>
+                  <dt>认证方式</dt>
+                  <dd>
+                    {settings.fnosMusic?.configured
+                      ? "服务会话令牌"
+                      : "飞牛账号授权或服务令牌"}
+                  </dd>
                 </div>
               </dl>
+              <p className="setting-explainer">
+                飞牛音乐支持飞牛账号密码与 NAS 账号授权。NAS 授权需要官方
+                OAuth 客户端；当前连接不会读取浏览器会话，也不会在页面保存
+                NAS 密码。
+              </p>
               <div className="setting-actions">
                 <button
                   className="secondary small"
@@ -7389,41 +7426,42 @@ function MePage({ navigate }) {
   });
   const maxDay = Math.max(1, ...recentDays.map((item) => item.count));
   return (
-    <div className="page me-page">
+    <div className="page me-page refined-me-page">
       <section className="page-intro">
         <span className="eyebrow">
           <UserRound />
           MY MUSIC
         </span>
         <h1>我的音乐</h1>
-        <p>收藏、最近播放、下载记录和个人偏好集中在这里。</p>
+        <p>收藏、回听与个人歌单，按你的聆听习惯自然汇集。</p>
       </section>
-      <div className="me-grid">
-        <section className="panel">
-          <SectionHead title="听歌报告" note="基于本机播放历史生成" />
-          <div className="report-cards">
-            <StatCard
-              icon={Play}
-              label="播放记录"
-              value={events.length}
-              detail="实际播放次数"
-            />
-            <StatCard
-              icon={Clock3}
-              label="累计时长"
-              value={totalMinutes}
-              detail="分钟"
-            />
-            <StatCard
-              icon={Heart}
-              label="收藏歌曲"
-              value={favorites.length}
-              detail="本地账号"
-            />
-          </div>
-          <div className="listening-insights">
+      <div className="me-dashboard">
+        <section className="me-listening-surface">
+          <header className="me-section-head">
             <div>
-              <h4>近 7 天</h4>
+              <span>本地聆听报告</span>
+              <h2>最近的音乐足迹</h2>
+            </div>
+            <small>仅根据本机记录生成</small>
+          </header>
+          <div className="me-metric-strip">
+            {[
+              [Play, "播放", events.length, "次"],
+              [Clock3, "时长", totalMinutes, "分钟"],
+              [Heart, "收藏", favorites.length, "首"],
+            ].map(([Icon, label, value, unit]) => (
+              <div className="me-metric" key={label}>
+                <span><Icon /></span>
+                <div>
+                  <small>{label}</small>
+                  <strong>{fmt(value)} <em>{unit}</em></strong>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="me-insights">
+            <div className="me-weekly">
+              <h3>近 7 天</h3>
               <div className="listening-bars">
                 {recentDays.map((item) => (
                   <span key={item.label}>
@@ -7438,25 +7476,35 @@ function MePage({ navigate }) {
                 ))}
               </div>
             </div>
-            <div>
-              <h4>常听歌手</h4>
-              <ol>
-                {topArtists.map(([name, count], index) => (
-                  <li key={name}>
-                    <b>{index + 1}</b>
-                    <span>{name}</span>
-                    <em>{count} 次</em>
-                  </li>
-                ))}
-              </ol>
+            <div className="me-artists">
+              <h3>常听音乐人</h3>
+              {topArtists.length ? (
+                <ol>
+                  {topArtists.map(([name, count], index) => (
+                    <li key={name}>
+                      <b>{String(index + 1).padStart(2, "0")}</b>
+                      <span>{name}</span>
+                      <em>{count} 次</em>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p>播放几首歌曲后，这里会出现你的常听音乐人。</p>
+              )}
             </div>
           </div>
         </section>
-        <section className="panel">
-          <SectionHead title="我喜欢" note={`${favorites.length} 首收藏`} />
+        <section className="me-collection-surface">
+          <header className="me-section-head">
+            <div>
+              <span>收藏</span>
+              <h2>我喜欢</h2>
+            </div>
+            <small>{favorites.length} 首</small>
+          </header>
           {favorites.length ? (
-            <div className="favorite-list">
-              {favorites.slice(0, 12).map((item) => (
+            <div className="favorite-list me-track-list">
+              {favorites.slice(0, 8).map((item) => (
                 <button
                   key={trackIdentity(item)}
                   onClick={() => player.play(item)}
@@ -7473,18 +7521,28 @@ function MePage({ navigate }) {
               ))}
             </div>
           ) : (
-            <Empty
-              icon={Heart}
-              title="还没有收藏"
-              text="播放时点击喜欢，歌曲会出现在这里。"
-            />
+            <div className="me-empty-inline">
+              <span><Heart /></span>
+              <div>
+                <strong>还没有收藏</strong>
+                <p>播放歌曲时点亮喜欢，它就会留在这里。</p>
+              </div>
+            </div>
           )}
         </section>
-        <section className="panel">
-          <SectionHead title="最近播放" note="可一键继续播放" />
+      </div>
+      <div className="me-lower-grid">
+        <section className="me-list-surface">
+          <header className="me-section-head">
+            <div>
+              <span>继续聆听</span>
+              <h2>最近播放</h2>
+            </div>
+            <small>{history.length} 条</small>
+          </header>
           {history.length ? (
-            <div className="favorite-list">
-              {history.slice(0, 12).map((item) => (
+            <div className="favorite-list me-track-list">
+              {history.slice(0, 10).map((item) => (
                 <button
                   key={`${trackIdentity(item)}-${item.playedAt}`}
                   onClick={() => player.play(item)}
@@ -7501,26 +7559,28 @@ function MePage({ navigate }) {
               ))}
             </div>
           ) : (
-            <Empty
-              icon={Play}
-              title="暂无播放记录"
-              text="从音乐库或发现页播放一首歌即可生成。"
-            />
+            <div className="me-empty-inline">
+              <span><Play /></span>
+              <div>
+                <strong>暂无播放记录</strong>
+                <p>从音乐库开始播放，最近听过的内容会保留在这里。</p>
+              </div>
+            </div>
           )}
         </section>
-        <section className="panel">
-          <SectionHead
-            title="我的歌单"
-            note={`${Object.keys(playlists).length} 个歌单`}
-            action={
-              <button className="secondary small" onClick={newPlaylist}>
-                <Plus />
-                新建歌单
-              </button>
-            }
-          />
+        <section className="me-list-surface">
+          <header className="me-section-head">
+            <div>
+              <span>我的收藏夹</span>
+              <h2>歌单</h2>
+            </div>
+            <button className="secondary small" onClick={newPlaylist}>
+              <Plus />
+              新建歌单
+            </button>
+          </header>
           {Object.keys(playlists).length ? (
-            <div className="playlist-library">
+            <div className="playlist-library me-playlist-list">
               {Object.entries(playlists).map(([name, tracks]) => (
                 <article key={name}>
                   <button
@@ -7541,6 +7601,7 @@ function MePage({ navigate }) {
                       confirm(`删除歌单“${name}”？歌曲文件不会被删除。`) &&
                       player.deletePlaylist(name)
                     }
+                    aria-label={`删除歌单 ${name}`}
                   >
                     <Trash2 />
                   </button>
@@ -7548,40 +7609,26 @@ function MePage({ navigate }) {
               ))}
             </div>
           ) : (
-            <Empty
-              icon={ListMusic}
-              title="还没有歌单"
-              text="在播放器中把喜欢的歌曲加入新歌单。"
-            />
+            <div className="me-empty-inline">
+              <span><ListMusic /></span>
+              <div>
+                <strong>还没有歌单</strong>
+                <p>新建歌单，把想反复听的歌曲放在一起。</p>
+              </div>
+            </div>
           )}
-        </section>
-        <section className="panel">
-          <SectionHead title="我的入口" note="常用个人操作" />
-          <div className="quick-grid small">
-            <button onClick={() => navigate("library")}>
-              <Library />
-              打开音乐库
-            </button>
-            <button onClick={() => navigate("discover")}>
-              <Sparkles />
-              今日推荐
-            </button>
-            <button onClick={() => navigate("player")}>
-              <Play />
-              播放器
-            </button>
-            <button onClick={() => navigate("settings")}>
-              <Settings />
-              偏好设置
-            </button>
-          </div>
         </section>
       </div>
     </div>
   );
 }
 
-function PlaylistsPage({ play, notify }) {
+function PlaylistsPage({
+  play,
+  notify,
+  initialPlaylistId = "",
+  onPlaylistChange,
+}) {
   const [items, setItems] = useState([]);
   const [selected, setSelected] = useState(null);
   const [newName, setNewName] = useState("");
@@ -7595,19 +7642,23 @@ function PlaylistsPage({ play, notify }) {
   const [migrationSource, setMigrationSource] = useState("");
   const [migrationQuality, setMigrationQuality] = useState("320k");
   const fileRef = useRef(null);
-  const load = async (preferredId) => {
+  const load = async (preferredId, { replace = false } = {}) => {
     const data = await api("/api/playlists");
     setItems(data.items || []);
     const id = preferredId || selected?.id || data.items?.[0]?.id;
     if (id) {
       const detail = await api(`/api/playlists/${id}`);
       setSelected(detail);
+      onPlaylistChange?.(id, { replace });
     } else {
       setSelected(null);
+      onPlaylistChange?.("", { replace: true });
     }
   };
   useEffect(() => {
-    load().catch((err) => setError(err.message));
+    load(initialPlaylistId, { replace: !initialPlaylistId }).catch((err) =>
+      setError(err.message),
+    );
   }, []);
   const create = async (event) => {
     event.preventDefault();
@@ -7974,18 +8025,27 @@ function RecommendationPage({ play, navigate, isAdmin = true }) {
   const [exploration, setExploration] = useState(0.35);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
+  const applyRecommendationData = (value = {}) => {
+    const normalized = {
+      profile: value.profile || {},
+      items: Array.isArray(value.items) ? value.items : [],
+      eventCount: Number(value.eventCount || 0),
+    };
+    setData(normalized);
+    return normalized;
+  };
   const load = async () => {
     setBusy(true);
     setError("");
     try {
       const result = await api("/api/recommendations");
-      setData(result);
-      if (!result.items?.length) {
+      const normalized = applyRecommendationData(result);
+      if (!normalized.items.length) {
         const refreshed = await api("/api/recommendations/refresh", {
           method: "POST",
           body: JSON.stringify({ exploration, discoveries: [] }),
         });
-        setData(refreshed);
+        applyRecommendationData(refreshed);
       }
     } catch (err) {
       setError(err.message);
@@ -7999,10 +8059,12 @@ function RecommendationPage({ play, navigate, isAdmin = true }) {
   const refresh = async () => {
     setBusy(true);
     try {
-      setData(await api("/api/recommendations/refresh", {
-        method: "POST",
-        body: JSON.stringify({ exploration, discoveries: [] }),
-      }));
+      applyRecommendationData(
+        await api("/api/recommendations/refresh", {
+          method: "POST",
+          body: JSON.stringify({ exploration, discoveries: [] }),
+        }),
+      );
     } catch (err) {
       setError(err.message);
     } finally {
@@ -8015,42 +8077,122 @@ function RecommendationPage({ play, navigate, isAdmin = true }) {
     if (target) play(target);
   };
   return (
-    <div className="page recommendation-page">
-      <section className="recommendation-hero">
-        <span className="eyebrow"><Sparkles />PRIVATE DISCOVERY</span>
-        <h1>听懂你的偏好，也保留一点意外</h1>
-        <p>{profile.explanation || "播放几首歌曲后，音屿会在本机形成可解释的音乐画像。"}</p>
+    <div className="page recommendation-page refined-recommendation-page">
+      <section className="recommendation-intro">
+        <div>
+          <span className="eyebrow"><Sparkles />FOR YOU</span>
+          <h1>为你推荐</h1>
+          <p>
+            {profile.explanation ||
+              "从你的收藏与播放习惯中挑选熟悉的声音，也留出发现新音乐的空间。"}
+          </p>
+        </div>
         <div className="exploration-control">
-          <span>熟悉</span>
-          <input type="range" min="0" max="1" step="0.05" value={exploration} onChange={(event) => setExploration(Number(event.target.value))} />
-          <span>探索</span>
-          <strong>{Math.round(exploration * 100)}%</strong>
-          <button className="primary small" onClick={refresh} disabled={busy}><RefreshCw className={busy ? "spin" : ""} />重新生成</button>
+          <div>
+            <span>熟悉度</span>
+            <strong>{100 - Math.round(exploration * 100)}%</strong>
+          </div>
+          <input
+            aria-label="推荐探索比例"
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={exploration}
+            onChange={(event) => setExploration(Number(event.target.value))}
+          />
+          <div>
+            <span>探索度</span>
+            <strong>{Math.round(exploration * 100)}%</strong>
+          </div>
+          <button className="secondary small" onClick={refresh} disabled={busy}>
+            <RefreshCw className={busy ? "spin" : ""} />
+            换一批
+          </button>
         </div>
       </section>
-      {error && <div className="form-error"><CircleAlert />{error}</div>}
-      <section className="profile-grid">
-        <article className="panel"><span>完成率</span><strong>{Math.round((profile.completionRate || 0) * 100)}%</strong><small>完整播放 / 完成与跳过</small></article>
-        <article className="panel"><span>跳过率</span><strong>{Math.round((profile.skipRate || 0) * 100)}%</strong><small>用于减少不合口味的推荐</small></article>
-        <article className="panel"><span>本地事件</span><strong>{fmt(data.eventCount)}</strong><small>不会上传完整听歌历史</small></article>
+      {error && (
+        <div className="recommendation-error">
+          <CircleAlert />
+          <div>
+            <strong>推荐暂时没有加载成功</strong>
+            <span>{error}</span>
+          </div>
+          <button className="secondary small" onClick={load}>重试</button>
+        </div>
+      )}
+      <section className="recommendation-signals" aria-label="推荐画像摘要">
+        <div>
+          <span>完整听完</span>
+          <strong>{Math.round((profile.completionRate || 0) * 100)}%</strong>
+          <small>完成率</small>
+        </div>
+        <i />
+        <div>
+          <span>快速跳过</span>
+          <strong>{Math.round((profile.skipRate || 0) * 100)}%</strong>
+          <small>跳过率</small>
+        </div>
+        <i />
+        <div>
+          <span>本地行为</span>
+          <strong>{fmt(data.eventCount)}</strong>
+          <small>不会上传完整历史</small>
+        </div>
       </section>
-      <div className="profile-columns">
-        <section className="panel profile-card">
-          <SectionHead title="常听音乐人" note="收藏、重复播放和完整播放权重更高" />
+      <section className="recommendation-profile">
+        <article>
+          <header>
+            <h2>常听音乐人</h2>
+            <span>收藏与完整播放的权重更高</span>
+          </header>
           <div className="profile-tags">
-            {(profile.topArtists || []).length ? profile.topArtists.map((item) => <span key={item.name}>{item.name}<small>{item.score}</small></span>) : <p>继续播放与收藏，画像会逐渐清晰。</p>}
+            {(profile.topArtists || []).length ? (
+              profile.topArtists.map((item) => (
+                <span key={item.name}>
+                  {item.name}
+                  <small>{item.score}</small>
+                </span>
+              ))
+            ) : (
+              <p>继续播放与收藏，常听音乐人会逐渐浮现。</p>
+            )}
           </div>
-        </section>
-        <section className="panel profile-card">
-          <SectionHead title="偏好年代与流派" note="只从本地标签和播放行为计算" />
+        </article>
+        <article>
+          <header>
+            <h2>偏好年代与流派</h2>
+            <span>只根据本地标签与播放行为计算</span>
+          </header>
           <div className="profile-tags">
-            {[...(profile.favoriteDecades || []), ...(profile.topGenres || [])].map((item) => <span key={item.name}>{item.name}<small>{item.score}</small></span>)}
+            {[...(profile.favoriteDecades || []), ...(profile.topGenres || [])]
+              .length ? (
+              [
+                ...(profile.favoriteDecades || []),
+                ...(profile.topGenres || []),
+              ].map((item) => (
+                <span key={item.name}>
+                  {item.name}
+                  <small>{item.score}</small>
+                </span>
+              ))
+            ) : (
+              <p>曲库标签越完整，推荐理由会越准确。</p>
+            )}
           </div>
-        </section>
-      </div>
-      <section className="panel recommendation-list">
-        <SectionHead title="为你推荐" note="版本过滤、最近播放去重，并标明每条推荐的原因" />
-        {busy && !data.items.length ? <PageLoader /> : data.items.length ? (
+        </article>
+      </section>
+      <section className="recommendation-feed">
+        <header className="recommendation-feed-head">
+          <div>
+            <span>今日发现</span>
+            <h2>根据你的口味挑选</h2>
+          </div>
+          <small>已过滤 Live、伴奏、DJ 与重复版本</small>
+        </header>
+        {busy && !data.items.length ? (
+          <PageLoader />
+        ) : data.items.length ? (
           <div className="recommendation-grid">
             {data.items.slice(0, 24).map((item) => (
               <article key={item.id}>
@@ -8059,14 +8201,24 @@ function RecommendationPage({ play, navigate, isAdmin = true }) {
                 {item.inLibrary ? (
                   <button className="icon-button" onClick={() => playRecommendation(item)} aria-label={`播放 ${item.title}`}><Play /></button>
                 ) : isAdmin ? (
-                  <button className="secondary small" onClick={() => navigate("download")}>查找授权来源</button>
+                  <button className="text-button recommendation-source-link" onClick={() => navigate("download")}>查找授权来源<ChevronRight /></button>
                 ) : <em>可向管理员申请入库</em>}
               </article>
             ))}
           </div>
-        ) : <Empty icon={Sparkles} title="还没有推荐" text="先播放、收藏或跳过一些歌曲，画像会在本机逐步形成。" />}
+        ) : (
+          <div className="recommendation-empty">
+            <span><Sparkles /></span>
+            <div>
+              <strong>推荐正在认识你的口味</strong>
+              <p>先从曲库播放或收藏几首歌曲，下一次刷新就会有更贴合的结果。</p>
+            </div>
+            <button className="secondary" onClick={() => navigate("library")}>
+              打开音乐库
+            </button>
+          </div>
+        )}
       </section>
-      <DownloadInboxPanel notify={notify} navigate={navigate} />
     </div>
   );
 }
@@ -8083,49 +8235,75 @@ function ManagementHub({ navigate, stats, jobs, permissions = [] }) {
         ? false
         : can("manage_library"),
   );
+  const managementGroups = [
+    {
+      id: "catalog",
+      eyebrow: "曲库与内容",
+      title: "整理、补全与入库",
+      items: visibleManagement.filter((item) =>
+        ["local", "scrape", "download"].includes(item.id),
+      ),
+    },
+    {
+      id: "operations",
+      eyebrow: "连接与运行",
+      title: "服务、队列与故障",
+      items: visibleManagement.filter((item) =>
+        ["sources", "tasks"].includes(item.id),
+      ),
+    },
+  ].filter((group) => group.items.length);
+  const metrics = [
+    [Music2, "歌曲", stats?.tracks, "catalog"],
+    [CircleAlert, "待确认", waiting, waiting ? "warning" : "quiet"],
+    [CircleAlert, "失败任务", failed, failed ? "danger" : "quiet"],
+    [BookOpenText, "缺歌词", stats?.missingLyrics, "info"],
+  ];
   return (
-    <div className="page manage-page">
+    <div className="page manage-page refined-manage-page">
       <section className="page-intro">
         <span className="eyebrow">
           <Gauge />
           ADMIN CENTER
         </span>
         <h1>管理中心</h1>
-        <p>查看曲库状态，并处理文件、资料与后台任务。</p>
+        <p>扫描、整理、连接与任务状态集中在一处。</p>
       </section>
-      <section className="manage-overview panel">
-        <StatCard icon={Music2} label="歌曲" value={stats?.tracks} />
-        <StatCard
-          icon={CircleAlert}
-          label="待确认"
-          value={waiting}
-          tone="amber"
-        />
-        <StatCard
-          icon={CircleAlert}
-          label="失败任务"
-          value={failed}
-          tone="pink"
-        />
-        <StatCard
-          icon={BookOpenText}
-          label="缺歌词"
-          value={stats?.missingLyrics}
-          tone="blue"
-        />
+      <section className="manage-metrics" aria-label="曲库状态摘要">
+        {metrics.map(([Icon, label, value, tone]) => (
+          <article className={`manage-metric ${tone}`} key={label}>
+            <span className="manage-metric-icon"><Icon /></span>
+            <div>
+              <small>{label}</small>
+              <strong>{fmt(value)}</strong>
+            </div>
+          </article>
+        ))}
       </section>
-      <section className="manage-grid">
-        {visibleManagement.map((item) => (
-          <button
-            className="panel manage-card"
-            key={item.id}
-            onClick={() => navigate(item.id)}
-          >
-            <item.icon />
-            <strong>{item.label}</strong>
-            <span>{item.desc}</span>
-            <ChevronRight />
-          </button>
+      <section className="manage-workspace">
+        {managementGroups.map((group) => (
+          <article className="manage-section" key={group.id}>
+            <header>
+              <span>{group.eyebrow}</span>
+              <h2>{group.title}</h2>
+            </header>
+            <div className="manage-menu">
+              {group.items.map((item) => (
+                <button
+                  className="manage-menu-row"
+                  key={item.id}
+                  onClick={() => navigate(item.id)}
+                >
+                  <span className="manage-menu-icon"><item.icon /></span>
+                  <span className="manage-menu-copy">
+                    <strong>{item.label}</strong>
+                    <small>{item.desc}</small>
+                  </span>
+                  <ChevronRight />
+                </button>
+              ))}
+            </div>
+          </article>
         ))}
       </section>
     </div>
@@ -8186,7 +8364,10 @@ function App() {
 }
 
 function AuthenticatedShell({ setAuthenticated }) {
-  const [active, setActive] = useState("home");
+  const [active, setActive] = useState(() =>
+    pageFromPath(window.location.pathname),
+  );
+  const [routeRevision, setRouteRevision] = useState(0);
   const [menu, setMenu] = useState(false);
   const [stats, setStats] = useState({});
   const [jobs, setJobs] = useState([]);
@@ -8197,6 +8378,19 @@ function AuthenticatedShell({ setAuthenticated }) {
   const [ambientIndex, setAmbientIndex] = useState(0);
   const [manualBackdrop, setManualBackdrop] = useState(null);
   const player = usePlayer();
+  const updatePath = useCallback((path, { replace = false } = {}) => {
+    if (window.location.pathname === path) return;
+    window.history[replace ? "replaceState" : "pushState"]({}, "", path);
+  }, []);
+  const navigate = useCallback(
+    (page, { replace = false } = {}) => {
+      const target = knownPage(page) ? page : "home";
+      setManualBackdrop(null);
+      setActive(target);
+      updatePath(pathForPage(target), { replace });
+    },
+    [updatePath],
+  );
   const load = async () => {
     setLoading(true);
     try {
@@ -8221,6 +8415,15 @@ function AuthenticatedShell({ setAuthenticated }) {
   const refreshSources = async () => setSources(await api("/api/sources"));
   useEffect(() => {
     load();
+  }, []);
+  useEffect(() => {
+    const onPopState = () => {
+      setManualBackdrop(null);
+      setActive(pageFromPath(window.location.pathname));
+      setRouteRevision((value) => value + 1);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
   }, []);
   useEffect(() => {
     const title = pageMeta[active]?.[0];
@@ -8258,7 +8461,7 @@ function AuthenticatedShell({ setAuthenticated }) {
       });
       setToast({ message: "任务已加入队列" });
       refreshJobs();
-      setActive("tasks");
+      navigate("tasks");
     } catch (err) {
       setToast({ type: "error", message: err.message });
     }
@@ -8291,9 +8494,13 @@ function AuthenticatedShell({ setAuthenticated }) {
   const canOpenManagement = canManageLibrary || canManageSources;
   const isMobile = useMediaQuery("(max-width: 780px)");
   useEffect(() => {
-    if (!canOpenManagement && managementNav.some((item) => item.id === active))
-      setActive("home");
-  }, [canOpenManagement, active]);
+    if (
+      !loading &&
+      !canOpenManagement &&
+      managementNav.some((item) => item.id === active)
+    )
+      navigate("home", { replace: true });
+  }, [loading, canOpenManagement, active, navigate]);
   const [title, subtitle] = pageMeta[active] || pageMeta.home;
   const hero =
     manualBackdrop ||
@@ -8314,12 +8521,12 @@ function AuthenticatedShell({ setAuthenticated }) {
       {(!isMobile || menu) && (
         <Sidebar
           active={active}
-          onChange={setActive}
+          onChange={navigate}
           open={menu}
           close={() => setMenu(false)}
           logout={logout}
           version={settingsData.version}
-          openPlayer={() => setActive("player")}
+          openPlayer={() => navigate("player")}
           isAdmin={canOpenManagement}
         />
       )}
@@ -8328,7 +8535,7 @@ function AuthenticatedShell({ setAuthenticated }) {
           title={title}
           subtitle={subtitle}
           openMenu={() => setMenu(true)}
-          onNavigate={setActive}
+          onNavigate={navigate}
           logout={logout}
           profile={settingsData.user}
         />
@@ -8337,28 +8544,42 @@ function AuthenticatedShell({ setAuthenticated }) {
             stats={stats}
             jobs={jobs}
             loading={loading}
-            navigate={setActive}
+            navigate={navigate}
             runJob={runJob}
             isAdmin={canManageLibrary}
           />
         )}{" "}
         {active === "library" && (
-          <MediaLibrary play={playTrack} previewBackdrop={setManualBackdrop} />
+          <MediaLibrary
+            key={`library-${routeRevision}`}
+            initialTab={libraryTabFromPath(window.location.pathname)}
+            play={playTrack}
+            previewBackdrop={setManualBackdrop}
+            onTabChange={(tab) => updatePath(pathForLibraryTab(tab))}
+          />
         )}{" "}
         {active === "playlists" && (
-          <PlaylistsPage play={playTrack} notify={(message) => setToast({ message })} />
+          <PlaylistsPage
+            key={`playlists-${routeRevision}`}
+            play={playTrack}
+            notify={(message) => setToast({ message })}
+            initialPlaylistId={playlistIdFromPath(window.location.pathname)}
+            onPlaylistChange={(id, options) =>
+              updatePath(pathForPlaylist(id), options)
+            }
+          />
         )}{" "}
         {active === "search" && (
           <GlobalSearchPage
             play={playTrack}
-            navigate={setActive}
+            navigate={navigate}
             isAdmin={canManageLibrary}
           />
         )}{" "}
-        {active === "me" && <MePage navigate={setActive} />}{" "}
+        {active === "me" && <MePage navigate={navigate} />}{" "}
         {active === "manage" && canOpenManagement && (
           <ManagementHub
-            navigate={setActive}
+            navigate={navigate}
             stats={stats}
             jobs={jobs}
             permissions={
@@ -8373,17 +8594,17 @@ function AuthenticatedShell({ setAuthenticated }) {
             runJob={runJob}
             play={playTrack}
             notify={(message) => setToast({ message })}
-            navigate={setActive}
+            navigate={navigate}
           />
         )}{" "}
         {canManageLibrary && active === "scrape" && (
-          <ScrapeCenter jobs={jobs} navigate={setActive} settings={settingsData} />
+          <ScrapeCenter jobs={jobs} navigate={navigate} settings={settingsData} />
         )}{" "}
         {canManageLibrary && active === "download" && (
           <DownloadCenter
             sources={sources}
             createDownload={createDownload}
-            navigate={setActive}
+            navigate={navigate}
             notify={(message) => setToast({ message })}
             playPreview={playTrack}
           />
@@ -8398,40 +8619,40 @@ function AuthenticatedShell({ setAuthenticated }) {
         {active === "discover" && (
           <RecommendationPage
             play={playTrack}
-            navigate={setActive}
+            navigate={navigate}
             isAdmin={canManageLibrary}
           />
         )}{" "}
         {active === "player" && (
           <PlayerPage
-            navigate={setActive}
+            navigate={navigate}
             playerSettings={settingsData.player}
             isAdmin={canManageLibrary}
           />
         )}{" "}
         {canManageLibrary && active === "tasks" && (
-          <Tasks jobs={jobs} refresh={refreshJobs} navigate={setActive} />
+          <Tasks jobs={jobs} refresh={refreshJobs} navigate={navigate} />
         )}{" "}
         {active === "settings" && (
           <SettingsPage
             settings={settingsData}
             logout={logout}
-            navigate={setActive}
+            navigate={navigate}
             isAdmin={isAdmin}
           />
         )}{" "}
         {isMobile && (
           <MobileNav
             active={active}
-            change={setActive}
+            change={navigate}
             isAdmin={canOpenManagement}
           />
         )}
       </main>
       {showMiniPlayer && (
         <MiniPlayer
-          openPlayer={() => setActive("player")}
-          navigate={setActive}
+          openPlayer={() => navigate("player")}
+          navigate={navigate}
         />
       )}
       <Toast toast={toast} clear={() => setToast(null)} />

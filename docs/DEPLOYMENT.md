@@ -70,5 +70,5 @@ docker compose ps
 镜像使用官方 Python 和 Node 多架构基础镜像，可为 linux/amd64 与 linux/arm64 构建。跨架构发布时可使用：
 
 ```bash
-docker buildx build --platform linux/amd64,linux/arm64 -t your-registry/songlib-amp:1.0.0-rc.2 --push .
+docker buildx build --platform linux/amd64,linux/arm64 -t your-registry/songlib-amp:1.0.0-rc.3 --push .
 ```

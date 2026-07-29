@@ -8539,6 +8539,11 @@ function AuthenticatedShell({ setAuthenticated }) {
           logout={logout}
           profile={settingsData.user}
         />
+        {loading && managementNav.some((item) => item.id === active) && (
+          <div className="management-route-loading" aria-label="正在载入管理数据">
+            <PageLoader />
+          </div>
+        )}
         {active === "home" && (
           <Dashboard
             stats={stats}

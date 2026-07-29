@@ -520,6 +520,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
   height:16px;
   color:#666a73;
 }
+.management-route-loading{
+  min-height:420px;
+  display:grid;
+  place-items:center;
+}
 
 /* My music: fewer containers, continuous rows and compact empty states */
 .refined-me-page{

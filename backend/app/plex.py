@@ -198,6 +198,33 @@ class PlexClient:
     def tracks(self, **kwargs):
         return self.paged(10, **kwargs)
 
+    def playlists(self):
+        root = self.xml("/playlists/all", {"playlistType": "audio"})
+        return [dict(item.attrib) for item in root if item.attrib.get("ratingKey")]
+
+    def replace_playlist(self, title: str, rating_keys: list[str]):
+        keys = list(dict.fromkeys(str(key) for key in rating_keys if str(key)))
+        if not keys:
+            raise ValueError("没有可写入 Plex 的匹配歌曲")
+        for item in self.playlists():
+            if (item.get("title") or "").strip().casefold() == title.strip().casefold():
+                self.request("DELETE", f"/playlists/{item['ratingKey']}")
+        machine = self.saved_settings().get("machineIdentifier")
+        if not machine:
+            identity = self.xml("/identity")
+            machine = identity.attrib.get("machineIdentifier")
+        if not machine:
+            raise RuntimeError("Plex 未返回服务器标识")
+        uri = f"server://{machine}/com.plexapp.plugins.library/library/metadata/{','.join(keys)}"
+        response = self.request(
+            "POST",
+            "/playlists",
+            params={"type": "audio", "title": title, "smart": 0, "uri": uri},
+        )
+        root = ET.fromstring(response.content)
+        created = next((dict(item.attrib) for item in root if item.attrib.get("ratingKey")), {})
+        return {"title": title, "itemCount": len(keys), "ratingKey": created.get("ratingKey")}
+
     def metadata(self, rating_key: str):
         root = self.xml(f"/library/metadata/{rating_key}", {"includeFields": 1})
         element = next((child for child in root if child.attrib.get("ratingKey")), None)

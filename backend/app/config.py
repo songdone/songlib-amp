@@ -28,7 +28,7 @@ def _csv_env(name: str) -> tuple[str, ...]:
 @dataclass(frozen=True)
 class Settings:
     app_name: str = os.getenv("APP_NAME", "SongLib Amp｜音屿")
-    app_version: str = os.getenv("APP_VERSION", "1.0.0-rc.1")
+    app_version: str = os.getenv("APP_VERSION", "1.0.0-rc.2")
     environment: str = os.getenv("APP_ENV", "production").strip().lower()
     data_dir: Path = Path(os.getenv("DATA_DIR", "/data"))
     music_root: Path = Path(os.getenv("MUSIC_ROOT", "/music"))
@@ -46,13 +46,15 @@ class Settings:
     worker_lease_seconds: int = _int_env("WORKER_LEASE_SECONDS", 180, 30, 3600)
     worker_max_attempts: int = _int_env("WORKER_MAX_ATTEMPTS", 3, 1, 10)
     node_binary: str = os.getenv("NODE_BINARY", "").strip()
-    download_dir: str = os.getenv("DOWNLOAD_DIR", "_downloads")
+    download_dir: str = os.getenv("DOWNLOAD_DIR", "authorized")
     download_mount: Path = Path(os.getenv("DOWNLOAD_ROOT", "/downloads"))
     max_download_mb: int = _int_env("MAX_DOWNLOAD_MB", 500, 1, 10_000)
     source_max_size_mb: int = _int_env("SOURCE_MAX_SIZE_MB", 2, 1, 50)
     source_timeout_seconds: int = _int_env("SOURCE_TIMEOUT_SECONDS", 55, 5, 600)
     allow_private_download_urls: bool = _bool_env("ALLOW_PRIVATE_DOWNLOAD_URLS", False)
     allow_proxy_fake_ips: bool = _bool_env("ALLOW_PROXY_FAKE_IPS", False)
+    fnos_music_url: str = os.getenv("FNOS_MUSIC_URL", "").strip().rstrip("/")
+    fnos_music_token: str = os.getenv("FNOS_MUSIC_TOKEN", "").strip()
 
     def validate(self) -> list[str]:
         errors: list[str] = []
@@ -62,6 +64,10 @@ class Settings:
             parsed = urlparse(origin)
             if parsed.scheme not in {"http", "https"} or not parsed.netloc:
                 errors.append(f"TRUSTED_ORIGINS 中的地址无效：{origin}")
+        if self.fnos_music_url:
+            parsed = urlparse(self.fnos_music_url)
+            if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+                errors.append("FNOS_MUSIC_URL 必须是有效的 HTTP(S) 地址")
         if self.environment == "production" and self.session_secret and len(self.session_secret) < 32:
             errors.append("生产环境的 SESSION_SECRET 至少需要 32 个字符")
         return errors
@@ -80,12 +86,12 @@ class Settings:
 
     @property
     def incoming_dir(self) -> Path:
-        return self.music_root / "_incoming"
+        return self.download_mount / "_incoming"
 
     @property
     def download_root(self) -> Path:
         value = self.download_dir.strip()
-        return self.music_root if value in ("", ".", "/") else self.music_root / value
+        return self.download_mount if value in ("", ".", "/") else self.download_mount / value
 
     @property
     def trash_dir(self) -> Path:
@@ -94,6 +100,10 @@ class Settings:
     @property
     def manual_download_dir(self) -> Path:
         return self.download_mount
+
+    @property
+    def download_trash_dir(self) -> Path:
+        return self.download_mount / ".trash"
 
     @property
     def preferences_path(self) -> Path:

@@ -84,7 +84,10 @@ import {
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {});
+    navigator.serviceWorker
+      .register("/sw.js", { updateViaCache: "none" })
+      .then((registration) => registration.update())
+      .catch(() => {});
   });
 }
 
@@ -119,14 +122,13 @@ const api = async (path, options = {}) => {
 };
 
 const nav = [
-  { id: "home", label: "首页", icon: Home },
-  { id: "library", label: "音乐库", icon: Library },
-  { id: "playlists", label: "歌单", icon: ListMusic },
-  { id: "discover", label: "发现与画像", icon: Sparkles },
-  { id: "player", label: "播放器", icon: Play },
-  { id: "me", label: "我的", icon: UserRound },
-  { id: "manage", label: "管理中心", icon: Gauge, admin: true },
-  { id: "settings", label: "设置", icon: Settings },
+  { id: "home", label: "首页", icon: Home, group: "发现" },
+  { id: "discover", label: "为你推荐", icon: Sparkles, group: "发现" },
+  { id: "library", label: "音乐库", icon: Library, group: "资料库" },
+  { id: "playlists", label: "歌单", icon: ListMusic, group: "资料库" },
+  { id: "me", label: "收藏与历史", icon: Heart, group: "资料库" },
+  { id: "manage", label: "管理中心", icon: Gauge, admin: true, group: "系统" },
+  { id: "settings", label: "设置", icon: Settings, group: "系统" },
 ];
 
 const managementNav = [
@@ -134,7 +136,7 @@ const managementNav = [
     id: "local",
     label: "本地曲库",
     icon: FolderTree,
-    desc: "真实 NAS 文件、分类、标签与回滚",
+    desc: "浏览文件、编辑标签并撤销整理操作",
   },
   {
     id: "scrape",
@@ -152,7 +154,7 @@ const managementNav = [
     id: "sources",
     label: "音乐源管理",
     icon: Wifi,
-    desc: "导入、隔离校验、启停与日志",
+    desc: "添加授权来源并检查连接状态",
   },
   {
     id: "tasks",
@@ -177,39 +179,6 @@ const timeAgo = (value) => {
   if (seconds < 3600) return `${Math.floor(seconds / 60)} 分钟前`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)} 小时前`;
   return new Date(value).toLocaleDateString("zh-CN");
-};
-
-const dashboardGreeting = () => {
-  const hour = new Date().getHours();
-  if (hour >= 5 && hour < 11)
-    return [
-      "早上好，",
-      "今天想听点什么？",
-      "今天适合先扫描曲库，再补齐缺失的封面和歌词。",
-    ];
-  if (hour >= 11 && hour < 14)
-    return [
-      "中午好，",
-      "看看最近入库的音乐。",
-      "午间整理一下下载和待入库内容，曲库会更清爽。",
-    ];
-  if (hour >= 14 && hour < 18)
-    return [
-      "下午好，",
-      "让曲库保持完整。",
-      "适合处理缺失歌词、封面和目录规范这些细活。",
-    ];
-  if (hour >= 18 && hour < 23)
-    return [
-      "晚上好，",
-      "让音乐库保持漂亮而完整。",
-      "今晚可以从待入库、最近任务和缺失信息开始收尾。",
-    ];
-  return [
-    "夜深了，",
-    "适合整理一些安静的歌。",
-    "轻一点地整理封面、歌词和最近下载的音乐。",
-  ];
 };
 
 const VISUAL_FALLBACKS = Object.freeze({
@@ -646,7 +615,7 @@ function Login({ onLogin }) {
               >
                 <h3>
                   <span />
-                  PRIVATE MUSIC OPERATIONS
+                  YOUR MUSIC, AT HOME
                 </h3>
                 <h2>
                   让散落的音乐,
@@ -654,8 +623,8 @@ function Login({ onLogin }) {
                   回到自己的<span>岛屿。</span>
                 </h2>
                 <p>
-                  连接 NAS、Plex
-                  与本地音乐库，建立属于你的私有音乐运营中枢，掌控每一刻旋律。
+                  一处收藏、整理和播放 NAS
+                  里的音乐，也能与 Plex 保持同步。
                 </p>
               </motion.div>
               <motion.div
@@ -667,26 +636,26 @@ function Login({ onLogin }) {
                 <LoginFeatureCard
                   delay={0.3}
                   icon={Server}
-                  title="连接 NAS"
-                  desc="集中管理音乐资料"
+                  title="私人曲库"
+                  desc="音乐始终留在家中"
                 />
                 <LoginFeatureCard
                   delay={0.4}
                   icon={Play}
-                  title="连接 Plex"
-                  desc="同步媒体与播放"
+                  title="连续播放"
+                  desc="歌曲、队列与歌词相伴"
                 />
                 <LoginFeatureCard
                   delay={0.5}
                   icon={ShieldCheck}
-                  title="私有安全"
-                  desc="您的数据，您掌控"
+                  title="本地优先"
+                  desc="听歌记录由你掌控"
                 />
                 <LoginFeatureCard
                   delay={0.6}
                   icon={Activity}
-                  title="运营洞察"
-                  desc="深度分析音乐资产"
+                  title="为你发现"
+                  desc="从熟悉走向新的旋律"
                 />
               </motion.div>
             </div>
@@ -924,6 +893,7 @@ function Sidebar({
 }) {
   const visibleNav = nav.filter((item) => !item.admin || isAdmin);
   const highlighted = activeNavId(active);
+  const groups = ["发现", "资料库", "系统"];
   return (
     <>
       <aside className={`sidebar ${open ? "open" : ""}`}>
@@ -934,31 +904,30 @@ function Sidebar({
           </button>
         </div>
         <div className="side-version">v{version || BRAND.version}</div>
-        <nav>
-          {visibleNav.map((item) => (
-            <button
-              key={item.id}
-              className={highlighted === item.id ? "active" : ""}
-              onClick={() => {
-                onChange(item.id);
-                close();
-              }}
-            >
-              <item.icon />
-              <span>{item.label}</span>
-              {highlighted === item.id && <i />}
-            </button>
+        <nav aria-label="主导航">
+          {groups.map((group) => (
+            <div className="nav-group" key={group}>
+              <span className="nav-group-label">{group}</span>
+              {visibleNav
+                .filter((item) => item.group === group)
+                .map((item) => (
+                  <button
+                    key={item.id}
+                    className={highlighted === item.id ? "active" : ""}
+                    onClick={() => {
+                      onChange(item.id);
+                      close();
+                    }}
+                  >
+                    <item.icon />
+                    <span>{item.label}</span>
+                    {highlighted === item.id && <i />}
+                  </button>
+                ))}
+            </div>
           ))}
         </nav>
-        <div className="side-health">
-          <div className="health-icon">
-            <Wifi size={17} />
-          </div>
-          <div>
-            <strong>本地运行中</strong>
-            <span>NAS 曲库 · Plex 联动</span>
-          </div>
-        </div>
+        <SidebarMiniPlayer openPlayer={openPlayer} />
         <button className="logout" onClick={logout}>
           <LogOut size={18} />
           退出登录
@@ -1121,231 +1090,214 @@ function Empty({ icon: Icon = Music2, title, text }) {
 }
 
 function Dashboard({ stats, jobs, loading, navigate, runJob, isAdmin = true }) {
-  const heroImages = stats?.heroImages || [];
-  const [heroIndex, setHeroIndex] = useState(0);
+  const player = usePlayer();
+  const [home, setHome] = useState({
+    albums: [],
+    tracks: [],
+    playlists: [],
+    recommendations: [],
+  });
+  const [contentLoading, setContentLoading] = useState(true);
   useEffect(() => {
-    if (heroImages.length < 2) return;
-    const timer = setInterval(
-      () => setHeroIndex((value) => (value + 1) % heroImages.length),
-      18000,
-    );
-    return () => clearInterval(timer);
-  }, [heroImages.length]);
+    Promise.all([
+      api("/api/library/albums?pageSize=12").catch(() => ({ items: [] })),
+      api("/api/library/tracks?pageSize=12").catch(() => ({ items: [] })),
+      api("/api/playlists").catch(() => ({ items: [] })),
+      api("/api/recommendations").catch(() => ({ items: [] })),
+    ])
+      .then(([albums, tracks, playlists, recommendations]) =>
+        setHome({
+          albums: albums.items || [],
+          tracks: tracks.items || [],
+          playlists: playlists.items || [],
+          recommendations: recommendations.items || [],
+        }),
+      )
+      .finally(() => setContentLoading(false));
+  }, []);
   if (loading) return <PageLoader />;
-  const artistCoverage = pct(stats.artistPosters, stats.artists);
-  const albumCoverage = pct(stats.albumCovers, stats.albums);
-  const lyricCoverage = pct(stats.localLyrics, stats.tracks);
-  const [greeting, greetingAccent] = dashboardGreeting();
-  const hero = heroImages[heroIndex % Math.max(heroImages.length, 1)];
+  const hour = new Date().getHours();
+  const greeting = hour < 6 ? "夜深了" : hour < 12 ? "早上好" : hour < 18 ? "下午好" : "晚上好";
+  const history = (player.history || []).slice(0, 6);
+  const continueItems = history.length ? history : home.tracks.slice(0, 6);
+  const playItems = (items, index = 0) => {
+    const playable = items
+      .map((item) => ({
+        ...item,
+        source: item.source || (item.ratingKey ? "plex_item" : item.source),
+      }))
+      .filter((item) => item.ratingKey || item.audioUrl || item.path || item.file);
+    if (playable[index]) player.play(playable[index], playable.slice(index + 1));
+  };
+  const openAlbum = async (album) => {
+    const result = await api(
+      `/api/library/tracks?pageSize=100&search=${encodeURIComponent(album.title || "")}`,
+    );
+    playItems(result.items || []);
+  };
+  const heroAlbum = home.albums[0];
+  const heroArt =
+    heroAlbum?.artUrl ||
+    heroAlbum?.thumbUrl ||
+    stats?.heroImages?.[0]?.imageUrl ||
+    "";
   return (
-    <div className="page dashboard-page">
-      <section className="hero-panel">
-        <div className="hero-glow" />
-        <div className="hero-content">
-          <span className="eyebrow">
-            <Sparkles size={14} />
-            PRIVATE MUSIC UNIVERSE
-          </span>
-          <small className="hero-kicker">
-            {greeting}
-            {greetingAccent}
-          </small>
-          <h1>
-            先把<span>曲库健康</span>做完整
-          </h1>
-          <p>
-            Plex {stats.plexConnected ? "已连接" : "暂不可用"}，已读取 {fmt(stats.tracks)} 首曲目；
-            先处理缺失资料、失败任务和待入库内容。
-          </p>
-          <div className="hero-actions">
-            <button
-              className="primary"
-              onClick={() => runJob("plex_sync")}
-            >
-              <RefreshCw />
-              同步 Plex
-            </button>
-            <button className="secondary" onClick={() => runJob("local_scan")}>
-              <FolderTree />
-              扫描本地曲库
-            </button>
-          </div>
+    <div className="page dashboard-page home-v2">
+      <header className="home-heading">
+        <div>
+          <span>{greeting}</span>
+          <h1>听点喜欢的</h1>
         </div>
-        <div className="hero-disc hero-artist-card">
-          <div
-            className={`vinyl ${hero?.coverUrl || hero?.imageUrl ? "with-cover" : ""}`}
-          >
-            {hero?.coverUrl || hero?.imageUrl ? (
-              <img src={hero.coverUrl || hero.imageUrl} alt="" />
-            ) : (
-              <span>
-                <Music2 />
-              </span>
-            )}
-          </div>
-          <div className="now-playing">
-            <i />
-            <div>
-              <small>Plex 连接状态</small>
-              <b>{stats.plexConnected ? "已连接" : "需要检查"}</b>
-            </div>
-            <button onClick={() => navigate("settings")}>
-              <Settings />
+        <button className="home-search-shortcut" onClick={() => navigate("search")}>
+          <Search />
+          <span>搜索歌曲、艺人或专辑</span>
+          <kbd>↵</kbd>
+        </button>
+      </header>
+
+      <section className="home-feature">
+        <div
+          className="home-feature-art"
+          style={heroArt ? { backgroundImage: `url(${heroArt})` } : undefined}
+        />
+        <div className="home-feature-shade" />
+        <div className="home-feature-copy">
+          <span className="home-feature-label">最近加入</span>
+          <h2>{heroAlbum?.title || "你的私人音乐库"}</h2>
+          <p>{heroAlbum?.parentTitle || "随时从自己的 NAS 继续播放"}</p>
+          <div>
+            <button
+              className="primary home-play-button"
+              disabled={!heroAlbum && !home.tracks.length}
+              onClick={() => (heroAlbum ? openAlbum(heroAlbum) : playItems(home.tracks))}
+            >
+              <Play fill="currentColor" />
+              播放
+            </button>
+            <button className="secondary" onClick={() => navigate("library")}>
+              查看音乐库
             </button>
           </div>
         </div>
       </section>
-      {isAdmin && (
-        <section className="task-summary dashboard-status-summary">
-          <button onClick={() => navigate("settings")}>
-            <Server /><strong>{stats.plexConnected ? "正常" : "异常"}</strong><span>Plex 连接</span>
-          </button>
-          <button onClick={() => navigate("local")}>
-            <FolderTree /><strong>{fmt(stats.localTracks)}</strong><span>{stats.localLastScanAt ? `本地扫描 ${timeAgo(stats.localLastScanAt)}` : "尚未本地扫描"}</span>
-          </button>
-          <button onClick={() => navigate("download")}>
-            <ArrowDownToLine /><strong>{stats.waitingIngest || 0}</strong><span>待入库</span>
-          </button>
-          <button onClick={() => navigate("tasks")}>
-            <CircleAlert /><strong>{stats.failedTasks || 0}</strong><span>失败任务</span>
-          </button>
-        </section>
-      )}
+
       <SectionHead
-        title="曲库健康"
-        note="封面、歌词和本地文件完整度"
+        title="继续播放"
         action={
-          isAdmin ? (
-            <button className="text-button" onClick={() => navigate("manage")}>
-              进入管理中心
-              <ChevronRight />
-            </button>
-          ) : null
+          <button className="text-button" onClick={() => navigate("me")}>
+            播放记录
+            <ChevronRight />
+          </button>
         }
       />
-      <section className="stats-grid">
-        <StatCard
-          icon={UsersRound}
-          label="歌手"
-          value={stats.artists}
-          detail={`${stats.artistPosters} 位已有海报`}
-          tone="amber"
-          progress={artistCoverage}
-        />
-        <StatCard
-          icon={Album}
-          label="专辑"
-          value={stats.albums}
-          detail={`${albumCoverage}% 封面完整`}
-          tone="violet"
-          progress={albumCoverage}
-        />
-        <StatCard
-          icon={Music2}
-          label="单曲"
-          value={stats.tracks}
-          detail={
-            stats.plexConnected || stats.plexAvailable !== false
-              ? "Plex 已收录"
-              : "本地文件已索引"
-          }
-          tone="blue"
-        />
-        <StatCard
-          icon={BookOpenText}
-          label="本地歌词"
-          value={stats.localLyrics}
-          detail={`${stats.missingLyrics} 首待补`}
-          tone="green"
-          progress={lyricCoverage}
-        />
+      <section className="home-listening-grid">
+        {continueItems.length ? (
+          continueItems.map((item, index) => (
+            <button
+              className="continue-card"
+              key={`${item.id || item.ratingKey || item.title}-${index}`}
+              onClick={() => playItems(continueItems, index)}
+            >
+              <span className="continue-art">
+                {coverUrlFor(item) ? <img src={coverUrlFor(item)} alt="" /> : <Music2 />}
+                <i><Play fill="currentColor" /></i>
+              </span>
+              <span className="continue-copy">
+                <strong>{item.title || "未命名歌曲"}</strong>
+                <small>{item.artist || item.grandparentTitle || "未知艺人"}</small>
+              </span>
+              <span className="continue-time">{item.playedAt ? timeAgo(item.playedAt) : "播放"}</span>
+            </button>
+          ))
+        ) : contentLoading ? (
+          <PageLoader />
+        ) : (
+          <Empty icon={Music2} title="还没有播放记录" text="从音乐库挑一首开始吧。" />
+        )}
       </section>
-      {isAdmin && (
-        <section className="dashboard-quick panel">
-          <SectionHead title="管理快捷操作" note="选择要处理的内容" />
-          <div>
-            {[
-              ["同步 Plex", RefreshCw, () => runJob("plex_sync")],
-              ["扫描本地曲库", FolderTree, () => runJob("local_scan")],
-              ["补齐缺失资料", WandSparkles, () => navigate("scrape")],
-              ["查看待入库", ArrowDownToLine, () => navigate("download")],
-              ["失败任务", CircleAlert, () => navigate("tasks")],
-              ["备份与日志", ShieldCheck, () => navigate("settings")],
-            ].map(([label, Icon, action]) => (
-              <button key={label} onClick={action}>
-                <Icon />
-                <span>{label}</span>
+
+      <SectionHead
+        title="最近加入"
+        action={<button className="text-button" onClick={() => navigate("library")}>查看全部<ChevronRight /></button>}
+      />
+      <section className="home-album-grid">
+        {home.albums.slice(0, 8).map((item) => (
+          <button className="home-album-card" key={item.ratingKey} onClick={() => openAlbum(item)}>
+            <span>
+              {item.thumbUrl ? <img src={item.thumbUrl} alt="" /> : <Disc3 />}
+              <i><Play fill="currentColor" /></i>
+            </span>
+            <strong>{item.title || "未命名专辑"}</strong>
+            <small>{item.parentTitle || item.year || "未知艺人"}</small>
+          </button>
+        ))}
+      </section>
+
+      <div className="home-two-column">
+        <section>
+          <SectionHead
+            title="你的歌单"
+            action={<button className="text-button" onClick={() => navigate("playlists")}>全部歌单<ChevronRight /></button>}
+          />
+          <div className="home-playlist-stack">
+            {home.playlists.slice(0, 4).map((item, index) => (
+              <button key={item.id} onClick={() => navigate("playlists")}>
+                <span className={`playlist-tile tone-${index % 4}`}><ListMusic /></span>
+                <span><strong>{item.name}</strong><small>{item.itemCount || 0} 首歌曲</small></span>
+                <ChevronRight />
               </button>
             ))}
+            {!home.playlists.length && !contentLoading && (
+              <button onClick={() => navigate("playlists")}>
+                <span className="playlist-tile"><Plus /></span>
+                <span><strong>创建第一张歌单</strong><small>也可导入 M3U 或平台分享链接</small></span>
+                <ChevronRight />
+              </button>
+            )}
           </div>
         </section>
-      )}
-      {isAdmin && (
-        <div className="dashboard-columns">
-          <section className="panel coverage-panel">
-            <SectionHead title="完整度雷达" note="当前音乐库的关键资料覆盖率" />
-            <div className="coverage-list">
-              {[
-                ["歌手海报", artistCoverage, Image, "amber"],
-                [
-                  "歌手背景",
-                  pct(stats.artistBackgrounds, stats.artists),
-                  Palette,
-                  "violet",
-                ],
-                [
-                  "中文简介",
-                  pct(stats.chineseBios, stats.artists),
-                  FileAudio,
-                  "blue",
-                ],
-                ["专辑封面", albumCoverage, Album, "green"],
-                ["时间轴歌词", lyricCoverage, BookOpenText, "pink"],
-              ].map(([label, value, Icon, tone]) => (
-                <div className="coverage-row" key={label}>
-                  <div className={`tiny-icon ${tone}`}>
-                    <Icon />
-                  </div>
-                  <div className="coverage-main">
-                    <div>
-                      <span>{label}</span>
-                      <b>{value}%</b>
-                    </div>
-                    <div className="bar">
-                      <i className={tone} style={{ width: `${value}%` }} />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-          <section className="panel recent-panel">
-            <SectionHead
-              title="最近任务"
-              note="下载、整理、刮削与扫描记录"
-              action={
-                <button
-                  className="text-button"
-                  onClick={() => navigate("tasks")}
-                >
-                  查看全部
-                  <ChevronRight />
-                </button>
-              }
-            />
-            <div className="job-list">
-              {jobs.length ? (
-                jobs.slice(0, 5).map((job) => <JobRow job={job} key={job.id} />)
-              ) : (
-                <Empty
-                  icon={Clock3}
-                  title="暂无任务记录"
-                  text="扫描曲库或补齐资料后，会生成可追踪的任务记录。"
-                />
-              )}
-            </div>
-          </section>
-        </div>
+        <section>
+          <SectionHead
+            title="为你发现"
+            action={<button className="text-button" onClick={() => navigate("discover")}>更多推荐<ChevronRight /></button>}
+          />
+          <div className="home-discovery-list">
+            {home.recommendations.slice(0, 4).map((item, index) => (
+              <button
+                key={item.id || `${item.title}-${index}`}
+                onClick={() => {
+                  const target = recommendationPlaybackInput(item);
+                  if (target) player.play(target);
+                  else navigate("discover");
+                }}
+              >
+                <span className="discovery-number">{String(index + 1).padStart(2, "0")}</span>
+                <span><strong>{item.title}</strong><small>{item.artist || "未知艺人"}</small></span>
+                <span className="discovery-reason">{(item.reasons || [item.inLibrary ? "曲库精选" : "新发现"])[0]}</span>
+              </button>
+            ))}
+            {!home.recommendations.length && !contentLoading && (
+              <button onClick={() => navigate("discover")}>
+                <span className="discovery-number"><Sparkles /></span>
+                <span><strong>开始形成你的推荐</strong><small>播放、收藏或跳过几首歌曲</small></span>
+                <ChevronRight />
+              </button>
+            )}
+          </div>
+        </section>
+      </div>
+
+      {isAdmin && (stats.failedTasks > 0 || stats.waitingIngest > 0) && (
+        <button className="home-admin-notice" onClick={() => navigate("manage")}>
+          <CircleAlert />
+          <span>
+            <strong>有内容需要确认</strong>
+            <small>
+              {stats.waitingIngest || 0} 个待入库，{stats.failedTasks || 0} 个任务失败
+            </small>
+          </span>
+          <ChevronRight />
+        </button>
       )}
     </div>
   );
@@ -1717,8 +1669,8 @@ function LocalLibraryPage({ runJob, play, notify, navigate }) {
             <FolderTree />
             NAS MUSIC LIBRARY
           </span>
-          <h1>管理 NAS 上的真实音乐文件。</h1>
-          <p>扫描、检查和整理正式音乐库；Plex 用于展示、播放与同步。</p>
+          <h1>让每一首歌都有清晰的位置。</h1>
+          <p>浏览曲库，校对标签和目录，需要时可安全撤销。</p>
         </div>
         <div>
           <button className="secondary" onClick={() => runJob("plex_sync")}>
@@ -2205,7 +2157,7 @@ function DiscoverPage({ play, navigate, isAdmin = true }) {
         <h1>
           从歌单发现，<span>在自己的曲库里播放。</span>
         </h1>
-        <p>歌单只作为发现来源；歌曲会先与本地文件和 Plex 合并匹配。</p>
+        <p>浏览热门歌单，已经收藏在曲库里的歌曲可以直接播放。</p>
       </section>
       {error && (
         <div className="inline-error">
@@ -4679,6 +4631,96 @@ function SourceManager({ sources, refreshSources, notify }) {
   );
 }
 
+function DownloadInboxPanel({ notify, navigate }) {
+  const [data, setData] = useState({ items: [], errors: [], summary: {} });
+  const [selected, setSelected] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const load = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const result = await api("/api/local/download-inbox");
+      setData(result);
+      setSelected(
+        (result.items || [])
+          .filter((item) => !item.conflict && !item.needsReview)
+          .map((item) => item.sourcePath),
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  useEffect(() => {
+    load();
+  }, []);
+  const toggle = (path) =>
+    setSelected((value) =>
+      value.includes(path) ? value.filter((item) => item !== path) : [...value, path],
+    );
+  const ingest = async () => {
+    const items = data.items.filter((item) => selected.includes(item.sourcePath));
+    if (!items.length) return;
+    if (!confirm(`确认整理并入库 ${items.length} 首歌曲？\n\n文件会从独立下载目录移动到正式音乐库，原路径会写入回滚记录。`)) return;
+    setBusy(true);
+    try {
+      await api("/api/local/download-inbox/ingest", {
+        method: "POST",
+        body: JSON.stringify({ items }),
+      });
+      notify?.(`${items.length} 首歌曲已进入整理队列`);
+      navigate?.("tasks");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="panel download-inbox-panel">
+      <SectionHead
+        title="下载目录"
+        note="先预览规范命名与目标层级，再移动到正式音乐库"
+        action={
+          <div className="pending-actions">
+            <button className="secondary small" onClick={load} disabled={busy}><RefreshCw className={busy ? "spin" : ""} />重新扫描</button>
+            <button className="primary small" onClick={ingest} disabled={busy || !selected.length}><FolderTree />整理入库 ({selected.length})</button>
+          </div>
+        }
+      />
+      <div className="inbox-roots">
+        <span><Download />下载目录 <code>{data.downloadRoot || "/downloads"}</code></span>
+        <ChevronRight />
+        <span><Library />音乐库 <code>{data.musicRoot || "/music"}</code></span>
+      </div>
+      {error && <div className="inline-error"><CircleAlert />{error}</div>}
+      {data.items?.length ? (
+        <div className="inbox-table">
+          {data.items.map((item) => (
+            <label className={item.conflict ? "conflict" : item.needsReview ? "review" : ""} key={item.sourcePath}>
+              <input type="checkbox" checked={selected.includes(item.sourcePath)} disabled={item.conflict} onChange={() => toggle(item.sourcePath)} />
+              <div>
+                <strong>{item.title}</strong>
+                <small>{item.artist} · {item.album}</small>
+              </div>
+              <div className="inbox-paths">
+                <code>{item.sourcePath}</code>
+                <ChevronRight />
+                <code>{item.targetPath}</code>
+              </div>
+              <em>{item.conflict ? "目标冲突" : item.needsReview ? "请核对信息" : "可入库"}</em>
+            </label>
+          ))}
+        </div>
+      ) : busy ? <PageLoader /> : (
+        <Empty icon={Download} title="下载目录是空的" text="放入这里的音频会先经过标签、命名和路径预览。" />
+      )}
+    </section>
+  );
+}
+
 function DownloadCenter({
   sources,
   createDownload,
@@ -4796,7 +4838,7 @@ function DownloadCenter({
     const verb = action === "confirm" ? "确认入库" : "删除下载文件";
     if (
       !confirm(
-        `${verb} ${ids.length} 首待入库歌曲？\n\n音屿会创建任务并写入操作记录，确认入库后会触发 Plex 扫描；删除会移入曲库回收区。`,
+        `${verb} ${ids.length} 首待入库歌曲？\n\n音屿会创建任务并写入操作记录，确认入库后会触发 Plex 扫描；删除会移入下载回收区。`,
       )
     )
       return;
@@ -4832,6 +4874,7 @@ function DownloadCenter({
             去音乐源管理
           </button>
         </section>
+        <DownloadInboxPanel notify={notify} navigate={navigate} />
       </div>
     );
   return (
@@ -5624,6 +5667,14 @@ function SettingsPage({ settings, logout, navigate, isAdmin = true }) {
       setMessage(err.message);
     }
   };
+  const testFnosMusic = async () => {
+    try {
+      const result = await api("/api/settings/fnos/test", { method: "POST" });
+      setMessage(result.message || "飞牛音乐连接成功");
+    } catch (err) {
+      setMessage(err.message);
+    }
+  };
   const tabs = isAdmin
     ? [
         ["plex", "Plex 连接", Server],
@@ -5779,6 +5830,36 @@ function SettingsPage({ settings, logout, navigate, isAdmin = true }) {
               )}
             </SettingBlock>
             <SettingBlock
+              icon={Radio}
+              title="飞牛音乐歌单"
+              note="连接后可将歌单保留原顺序同步到飞牛音乐。"
+            >
+              <dl>
+                <div>
+                  <dt>服务地址</dt>
+                  <dd>{settings.fnosMusic?.serverUrl || "未配置"}</dd>
+                </div>
+                <div>
+                  <dt>服务令牌</dt>
+                  <dd>{settings.fnosMusic?.configured ? "已配置" : "未配置"}</dd>
+                </div>
+              </dl>
+              <div className="setting-actions">
+                <button
+                  className="secondary small"
+                  onClick={testFnosMusic}
+                  disabled={!settings.fnosMusic?.configured}
+                >
+                  <TestTube2 />
+                  测试连接
+                </button>
+                <button className="secondary small" onClick={() => navigate?.("playlists")}>
+                  <ListMusic />
+                  打开歌单
+                </button>
+              </div>
+            </SettingBlock>
+            <SettingBlock
               icon={Activity}
               title="系统信息"
               note="当前部署版本与运行限制。"
@@ -5809,7 +5890,7 @@ function SettingsPage({ settings, logout, navigate, isAdmin = true }) {
             <SettingBlock
               icon={FolderTree}
               title="本地路径"
-              note="NAS 本地音乐文件是源数据层。"
+              note="这里显示音屿可以读取和整理的音乐目录。"
             >
               <dl>
                 <div>
@@ -5817,20 +5898,24 @@ function SettingsPage({ settings, logout, navigate, isAdmin = true }) {
                   <dd>{settings.musicRoot}</dd>
                 </div>
                 <div>
-                  <dt>下载临时目录</dt>
+                  <dt>授权下载暂存区</dt>
                   <dd>{settings.downloadTempDir}</dd>
                 </div>
                 <div>
-                  <dt>入库临时区</dt>
+                  <dt>下载处理中转区</dt>
                   <dd>{settings.incomingDir}</dd>
                 </div>
                 <div>
-                  <dt>手动下载目录</dt>
+                  <dt>下载接收目录</dt>
                   <dd>{settings.manualDownloadDir}</dd>
                 </div>
                 <div>
-                  <dt>回收站</dt>
+                  <dt>音乐库回收站</dt>
                   <dd>{settings.trashDir}</dd>
+                </div>
+                <div>
+                  <dt>下载回收站</dt>
+                  <dd>{settings.downloadTrashDir}</dd>
                 </div>
               </dl>
             </SettingBlock>
@@ -7502,6 +7587,13 @@ function PlaylistsPage({ play, notify }) {
   const [newName, setNewName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [shareUrl, setShareUrl] = useState("");
+  const [migration, setMigration] = useState(null);
+  const [migrationBusy, setMigrationBusy] = useState("");
+  const [migrationTargets, setMigrationTargets] = useState(["songlib"]);
+  const [downloadMissing, setDownloadMissing] = useState(false);
+  const [migrationSource, setMigrationSource] = useState("");
+  const [migrationQuality, setMigrationQuality] = useState("320k");
   const fileRef = useRef(null);
   const load = async (preferredId) => {
     const data = await api("/api/playlists");
@@ -7599,13 +7691,96 @@ function PlaylistsPage({ play, notify }) {
     const queue = (selected?.items || []).map(playable).filter(Boolean);
     if (queue.length) play(queue[0], queue.slice(1));
   };
+  const syncSelected = async (target) => {
+    if (!selected) return;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await api(`/api/playlists/${selected.id}/sync`, {
+        method: "POST",
+        body: JSON.stringify({ targets: [target] }),
+      });
+      const synced = result[target];
+      if (synced?.ok === false) throw new Error(synced.error || "同步失败");
+      notify(
+        target === "plex"
+          ? `已同步到 Plex，共 ${synced?.itemCount || 0} 首`
+          : `已同步到飞牛音乐，共 ${synced?.matched || 0} 首`,
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const previewMigration = async (event) => {
+    event.preventDefault();
+    if (!shareUrl.trim()) return;
+    setMigrationBusy("preview");
+    setError("");
+    try {
+      const result = await api("/api/playlists/migrate/preview", {
+        method: "POST",
+        body: JSON.stringify({ shareUrl: shareUrl.trim() }),
+      });
+      setMigration(result);
+      setMigrationTargets(["songlib"]);
+      setDownloadMissing(false);
+      setMigrationSource(result.downloadSources?.[0]?.id || "");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setMigrationBusy("");
+    }
+  };
+  const toggleMigrationTarget = (target) => {
+    setMigrationTargets((value) =>
+      value.includes(target)
+        ? value.filter((item) => item !== target)
+        : [...value, target],
+    );
+  };
+  const executeMigration = async () => {
+    if (!migrationTargets.length) {
+      setError("请至少选择一个迁移目标");
+      return;
+    }
+    setMigrationBusy("execute");
+    setError("");
+    try {
+      const result = await api("/api/playlists/migrate/execute", {
+        method: "POST",
+        body: JSON.stringify({
+          sourceUrl: migration.sourceUrl,
+          targets: migrationTargets,
+          downloadMissing,
+          sourceId: downloadMissing ? migrationSource : null,
+          quality: migrationQuality,
+        }),
+      });
+      if (result.songlib?.id) await load(result.songlib.id);
+      const details = [
+        result.songlib ? `音屿 ${result.songlib.itemCount} 首` : "",
+        result.plex?.ratingKey ? `Plex ${result.plex.itemCount} 首` : "",
+        result.fnos?.ok ? `飞牛音乐 ${result.fnos.matched} 首` : "",
+        result.downloads?.created ? `${result.downloads.created} 首进入下载队列` : "",
+      ].filter(Boolean);
+      notify(details.length ? `迁移完成：${details.join("，")}` : "迁移任务已处理");
+      setMigration(null);
+      setShareUrl("");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setMigrationBusy("");
+    }
+  };
   return (
     <div className="page playlists-page">
       <section className="page-intro playlist-intro">
         <div>
-          <span className="eyebrow"><ListMusic />PLAYLISTS</span>
-          <h1>让歌单在不同音乐库之间保持秩序</h1>
-          <p>保留原始顺序，清楚标出未匹配歌曲，并可随时导回 M3U8。</p>
+          <span className="eyebrow"><ListMusic />我的歌单</span>
+          <h1>把喜欢的歌带回来</h1>
+          <p>创建歌单，导入文件，或从常用音乐平台迁移。</p>
         </div>
         <div className="playlist-actions">
           <button className="secondary" onClick={() => fileRef.current?.click()} disabled={busy}>
@@ -7619,6 +7794,110 @@ function PlaylistsPage({ play, notify }) {
           )}
         </div>
       </section>
+      <section className="playlist-migration panel">
+        <div className="migration-heading">
+          <span><Link2 /></span>
+          <div>
+            <strong>从分享链接迁移</strong>
+            <small>支持 QQ 音乐、网易云音乐公开歌单</small>
+          </div>
+        </div>
+        <form onSubmit={previewMigration}>
+          <input
+            type="url"
+            value={shareUrl}
+            onChange={(event) => setShareUrl(event.target.value)}
+            placeholder="粘贴歌单分享链接"
+          />
+          <button className="primary" disabled={!shareUrl.trim() || migrationBusy === "preview"}>
+            {migrationBusy === "preview" ? <LoaderCircle className="spin" /> : <Search />}
+            读取歌单
+          </button>
+        </form>
+        <p className="migration-privacy">只读取公开歌单信息，不需要第三方账号密码。</p>
+      </section>
+      {migration && (
+        <section className="migration-preview panel">
+          <header>
+            <div className="migration-cover">
+              {migration.coverUrl ? <img src={migration.coverUrl} alt="" /> : <ListMusic />}
+            </div>
+            <div>
+              <span>{migration.platformLabel}</span>
+              <h2>{migration.name}</h2>
+              <p>
+                {migration.summary.total} 首 · {migration.summary.matched} 首已匹配 ·{" "}
+                {migration.summary.missing} 首待补全
+              </p>
+            </div>
+            <button className="icon-button" onClick={() => setMigration(null)} aria-label="关闭迁移预览"><X /></button>
+          </header>
+          <div className="migration-targets">
+            {[
+              ["songlib", "音屿歌单", Music2],
+              ["plex", "Plex", Server],
+              ["fnos", "飞牛音乐", Radio],
+            ].map(([id, label, Icon]) => {
+              const available = migration.targets?.[id]?.available !== false;
+              const selectedTarget = migrationTargets.includes(id);
+              return (
+                <button
+                  key={id}
+                  className={selectedTarget ? "active" : ""}
+                  disabled={!available}
+                  onClick={() => toggleMigrationTarget(id)}
+                >
+                  <Icon />
+                  <span><strong>{label}</strong><small>{available ? (selectedTarget ? "已选择" : "可迁移") : "需要先配置连接"}</small></span>
+                  <i>{selectedTarget ? <Check /> : <Plus />}</i>
+                </button>
+              );
+            })}
+          </div>
+          {migration.summary.missing > 0 && (
+            <div className="migration-download-option">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={downloadMissing}
+                  disabled={!migration.downloadSources?.length}
+                  onChange={(event) => setDownloadMissing(event.target.checked)}
+                />
+                <span><strong>补全缺失歌曲</strong><small>只采用标题、主要艺人和时长全部通过校验的版本</small></span>
+              </label>
+              {downloadMissing && (
+                <div>
+                  <select value={migrationSource} onChange={(event) => setMigrationSource(event.target.value)}>
+                    {(migration.downloadSources || []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                  </select>
+                  <select value={migrationQuality} onChange={(event) => setMigrationQuality(event.target.value)}>
+                    <option value="flac">优先无损</option>
+                    <option value="320k">高品质 320K</option>
+                    <option value="128k">标准 128K</option>
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+          <div className="migration-track-preview">
+            {(migration.tracks || []).slice(0, 12).map((item, index) => (
+              <div key={`${item.externalRef}-${index}`} className={item.matchStatus === "matched" ? "matched" : "missing"}>
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                <div><strong>{item.title}</strong><small>{item.artist || "未知艺人"} · {item.album || "未知专辑"}</small></div>
+                <em>{item.matchStatus === "matched" ? "已匹配" : "待补全"}</em>
+              </div>
+            ))}
+            {migration.summary.total > 12 && <p>另有 {migration.summary.total - 12} 首，将按原顺序处理</p>}
+          </div>
+          <footer>
+            <span>执行前只显示预览；迁移结果和未匹配项会保留记录。</span>
+            <button className="primary" disabled={migrationBusy === "execute" || !migrationTargets.length || (downloadMissing && !migrationSource)} onClick={executeMigration}>
+              {migrationBusy === "execute" ? <LoaderCircle className="spin" /> : <ArrowDownToLine />}
+              开始迁移
+            </button>
+          </footer>
+        </section>
+      )}
       {error && <div className="form-error"><CircleAlert />{error}</div>}
       <div className="playlist-workspace">
         <aside className="panel playlist-list">
@@ -7649,6 +7928,12 @@ function PlaylistsPage({ play, notify }) {
                   <p>{selected.description || `${selected.itemCount} 首歌曲`}</p>
                 </div>
                 <div>
+                  <button className="secondary" onClick={() => syncSelected("plex")} disabled={busy || !selected.items.length}>
+                    <Server />同步 Plex
+                  </button>
+                  <button className="secondary" onClick={() => syncSelected("fnos")} disabled={busy || !selected.items.length}>
+                    <Radio />同步飞牛音乐
+                  </button>
                   <button className="primary" onClick={playAll} disabled={!selected.items.some(playable)}>
                     <Play />播放全部
                   </button>
@@ -7781,6 +8066,7 @@ function RecommendationPage({ play, navigate, isAdmin = true }) {
           </div>
         ) : <Empty icon={Sparkles} title="还没有推荐" text="先播放、收藏或跳过一些歌曲，画像会在本机逐步形成。" />}
       </section>
+      <DownloadInboxPanel notify={notify} navigate={navigate} />
     </div>
   );
 }
@@ -7805,9 +8091,7 @@ function ManagementHub({ navigate, stats, jobs, permissions = [] }) {
           ADMIN CENTER
         </span>
         <h1>管理中心</h1>
-        <p>
-          整理、刮削、下载、音乐源、任务、回滚与审计集中在这里。播放和日常使用不被管理功能打断。
-        </p>
+        <p>查看曲库状态，并处理文件、资料与后台任务。</p>
       </section>
       <section className="manage-overview panel">
         <StatCard icon={Music2} label="歌曲" value={stats?.tracks} />
@@ -7849,20 +8133,20 @@ function ManagementHub({ navigate, stats, jobs, permissions = [] }) {
 }
 
 const pageMeta = {
-  home: ["曲库总览", "Plex、本地曲库、资料完整度与待处理任务"],
-  library: ["音乐库", "浏览歌手、专辑与单曲，并直接播放"],
-  playlists: ["歌单", "导入、整理、播放和导出你的歌单"],
-  player: ["播放器", "播放本地文件、Plex 曲目与下载前试听"],
-  discover: ["发现与画像", "在熟悉与探索之间发现音乐，并了解推荐原因"],
-  me: ["我的", "收藏、最近播放、听歌报告与个人偏好"],
-  manage: ["管理中心", "刮削、下载、任务、回滚与日志审计"],
-  search: ["全局搜索", "歌曲、艺人、专辑、本地文件与待处理项"],
-  local: ["本地曲库", "扫描、整理并修复 NAS 上的真实音乐文件"],
-  scrape: ["刮削中心", "补齐封面、歌词、背景与中文简介"],
-  download: ["下载入库", "搜索音乐，保存到 NAS 或当前设备"],
-  sources: ["音乐源管理", "导入、检查并测试你的自定义音乐源"],
-  tasks: ["任务中心", "查看下载、整理、刮削与扫描进度"],
-  settings: ["设置", "Plex、本地路径、账号、安全与日志"],
+  home: ["首页", ""],
+  library: ["音乐库", "歌手、专辑与单曲"],
+  playlists: ["歌单", "收藏、导入与迁移"],
+  player: ["正在播放", ""],
+  discover: ["为你推荐", "熟悉的旋律，也有新的发现"],
+  me: ["收藏与历史", "你的音乐足迹"],
+  manage: ["管理中心", "曲库、任务与服务"],
+  search: ["搜索", "歌曲、艺人、专辑与歌单"],
+  local: ["本地曲库", "文件与目录"],
+  scrape: ["资料补全", "封面、歌词与简介"],
+  download: ["下载与入库", "授权来源与待整理文件"],
+  sources: ["音乐源", "连接与可用性"],
+  tasks: ["任务", "进度与历史"],
+  settings: ["设置", "账号、连接与存储"],
 };
 
 function App() {

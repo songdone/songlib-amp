@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 from .config import settings
 from .db import now, row, rows, set_kv, transaction
 from .downloader import cancel_download, confirm_download, download_song
+from .download_inbox import download_inbox
 from .local_library import local_library, organizer
 from .lyrics import fill_missing_lyrics
 from .plex import plex
@@ -40,6 +41,7 @@ class JobManager:
             "local_scan": local_library.scan,
             "plex_sync": local_library.sync_plex,
             "local_organize": self._local_organize,
+            "download_inbox_ingest": download_inbox.ingest,
         }
 
     def start(self):

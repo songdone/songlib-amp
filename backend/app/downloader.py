@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import urllib.parse
 import uuid
 from pathlib import Path
@@ -260,16 +261,16 @@ def confirm_download(payload: dict, progress):
     if target.exists():
         raise ValueError(f"目标文件已存在，请返回预览重新选择：{target}")
     target.parent.mkdir(parents=True, exist_ok=True)
-    os.replace(incoming, target)
+    shutil.move(str(incoming), str(target))
     lyric_in = Path(preview["lyricIncomingPath"]) if preview.get("lyricIncomingPath") else None
     cover_in = Path(preview["coverIncomingPath"]) if preview.get("coverIncomingPath") else None
     if lyric_in and lyric_in.exists():
         if settings.incoming_dir.resolve() not in lyric_in.resolve().parents: raise ValueError("歌词临时路径不安全")
-        os.replace(lyric_in, target.with_suffix(".lrc"))
+        shutil.move(str(lyric_in), str(target.with_suffix(".lrc")))
     if cover_in and cover_in.exists():
         if settings.incoming_dir.resolve() not in cover_in.resolve().parents: raise ValueError("封面临时路径不安全")
         cover_target = target.parent / "cover.jpg"
-        if not cover_target.exists(): os.replace(cover_in, cover_target)
+        if not cover_target.exists(): shutil.move(str(cover_in), str(cover_target))
         else: cover_in.unlink(missing_ok=True)
     with transaction() as conn:
         conn.execute("INSERT INTO operation_logs(id,job_id,action,target_type,before_state,after_state,rollback_data,rollbackable,status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
@@ -287,7 +288,7 @@ def confirm_download(payload: dict, progress):
 
 def cancel_download(payload: dict, progress):
     preview, incoming, target = _validated_preview(payload)
-    trash = settings.music_root / ".trash" / f"download-{payload.get('downloadJobId') or uuid.uuid4().hex}"
+    trash = settings.download_trash_dir / f"download-{payload.get('downloadJobId') or uuid.uuid4().hex}"
     trash.mkdir(parents=True, exist_ok=True)
     moved=[]
     for key in ("incomingPath","lyricIncomingPath","coverIncomingPath"):
@@ -295,7 +296,7 @@ def cancel_download(payload: dict, progress):
         if not value: continue
         path=Path(value).resolve()
         if path.exists() and settings.incoming_dir.resolve() in path.parents:
-            destination=trash/path.name;os.replace(path,destination);moved.append(str(destination))
+            destination=trash/path.name;shutil.move(str(path),str(destination));moved.append(str(destination))
     progress(90,"待入库文件已移入音屿回收站")
     if payload.get("downloadJobId"):
         with transaction() as conn:

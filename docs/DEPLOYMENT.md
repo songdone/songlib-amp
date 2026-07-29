@@ -16,6 +16,17 @@ chmod 600 .env
 mkdir -p volumes/data volumes/downloads volumes/music volumes/library volumes/plex-config
 ```
 
+`SONGLIB_DOWNLOADS_DIR` 与 `MUSIC_DIR` 必须指向不同目录或数据集。容器内下载文件只出现在 `/downloads`，正式曲库只出现在 `/music`。
+
+如需把歌单写入飞牛音乐，在 NAS 的 `.env` 中增加：
+
+```dotenv
+FNOS_MUSIC_URL=http://nas-address:5666
+FNOS_MUSIC_TOKEN=replace-with-dedicated-token
+```
+
+不要从浏览器会话中提取令牌。建议为歌单同步创建权限最小的专用账号或令牌。
+
 生成会话密钥：
 
 ```bash
@@ -59,5 +70,5 @@ docker compose ps
 镜像使用官方 Python 和 Node 多架构基础镜像，可为 linux/amd64 与 linux/arm64 构建。跨架构发布时可使用：
 
 ```bash
-docker buildx build --platform linux/amd64,linux/arm64 -t your-registry/songlib-amp:1.0.0-rc.1 --push .
+docker buildx build --platform linux/amd64,linux/arm64 -t your-registry/songlib-amp:1.0.0-rc.2 --push .
 ```

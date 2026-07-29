@@ -15,8 +15,10 @@ from fastapi.testclient import TestClient
 from app import auth
 from app.config import settings
 from app.db import init_db, row, rows, set_kv, transaction
+from app.download_inbox import _repair_mojibake
 from app.jobs import manager
 from app.main import app, plex
+from app.playlist_migration import detect_share_link, strict_candidate
 from app.playlists import create_playlist, import_m3u
 from app.recommendations import list_recommendations, refresh
 
@@ -185,6 +187,48 @@ class CommercialFoundationTests(unittest.TestCase):
                 self.assertEqual(response.json()["checks"]["plex"]["status"], "connected")
         finally:
             set_kv("plex_settings", {})
+
+    def test_download_staging_is_outside_music_library(self):
+        self.assertEqual(settings.incoming_dir.parent, settings.download_mount)
+        self.assertNotEqual(settings.incoming_dir.parent, settings.music_root)
+        self.assertEqual(settings.download_trash_dir.parent, settings.download_mount)
+
+    def test_share_link_detection_supports_netease_and_qq(self):
+        with patch(
+            "app.playlist_migration._resolve_share_url",
+            side_effect=lambda value: value,
+        ):
+            netease = detect_share_link("https://music.163.com/#/playlist?id=123456")
+            qq = detect_share_link("https://y.qq.com/n/ryqq/playlist/987654")
+        self.assertEqual((netease["platform"], netease["playlistId"]), ("netease", "123456"))
+        self.assertEqual((qq["platform"], qq["playlistId"]), ("qq", "987654"))
+
+    def test_direct_share_link_does_not_wait_for_redirect_resolution(self):
+        with (
+            patch("app.playlist_migration.validate_public_url"),
+            patch("app.playlist_migration.httpx.Client") as client,
+        ):
+            result = detect_share_link("https://music.163.com/#/playlist?id=123456")
+        client.assert_not_called()
+        self.assertEqual(result["playlistId"], "123456")
+
+    def test_download_inbox_repairs_mojibake_without_simplifying_chinese(self):
+        self.assertEqual(_repair_mojibake("æ­Œæ›²"), "歌曲")
+        self.assertEqual(_repair_mojibake("我們的歌"), "我們的歌")
+
+    def test_playlist_download_candidate_requires_title_artist_and_duration(self):
+        wanted = {"title": "晴天", "artist": "周杰伦", "duration": 269}
+        candidates = [
+            {"title": "晴天 Live", "artist": "周杰伦", "duration": 269},
+            {"title": "晴天", "artist": "翻唱歌手", "duration": 269},
+            {"title": "晴天", "artist": "周杰伦", "duration": 310},
+        ]
+        self.assertIsNone(strict_candidate(wanted, candidates))
+        accepted = strict_candidate(
+            wanted,
+            candidates + [{"title": "晴天", "artist": "周杰伦", "duration": 271}],
+        )
+        self.assertEqual(accepted["duration"], 271)
 
 
 if __name__ == "__main__":

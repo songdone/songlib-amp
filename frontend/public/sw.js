@@ -1,4 +1,4 @@
-const CACHE_NAME = 'songlib-amp-static-v13'
+const CACHE_NAME = 'songlib-amp-static-v14'
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -44,7 +44,7 @@ self.addEventListener('fetch', event => {
     return
   }
   if (isAppShell) {
-    event.respondWith(fetch(request).then(response => {
+    event.respondWith(fetch(request, { cache: 'no-store' }).then(response => {
       const copy = response.clone()
       caches.open(CACHE_NAME).then(cache => cache.put(request, copy))
       return response

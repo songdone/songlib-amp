@@ -25,6 +25,9 @@ flowchart LR
 - `adapters.py`：媒体库、元数据和授权下载提供方的稳定接口。
 - `local_library.py` / `plex.py`：首批媒体后端实现。
 - `playlists.py`：歌单顺序、M3U 路径映射、幂等更新与未匹配报告。
+- `playlist_migration.py`：QQ 音乐/网易云音乐公开分享链接解析、严格曲目匹配、迁移预览与 Plex 输出。
+- `fnos_music.py`：飞牛音乐 API 签名、曲目检索与歌单写入；令牌只从 NAS 环境变量读取。
+- `download_inbox.py`：独立下载挂载扫描、Unicode 规范化、冲突预览、正式曲库入库与回滚记录。
 - `recommendations.py`：本地播放事件、可解释画像、版本过滤、熟悉/探索平衡和候选池。
 - `jobs.py` / `worker.py`：租约、检查点、指数退避、取消和失败恢复。
 - `migrations.py` / `db.py`：向前迁移和兼容旧数据库。

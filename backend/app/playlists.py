@@ -43,7 +43,16 @@ def get_playlist(playlist_id: str, user_id: str, can_manage_all: bool = False):
     return item
 
 
-def create_playlist(user_id: str, name: str, description: str = "", items: list[dict] | None = None):
+def create_playlist(
+    user_id: str,
+    name: str,
+    description: str = "",
+    items: list[dict] | None = None,
+    *,
+    source_kind: str = "local",
+    source_ref: str | None = None,
+    cover_ref: str | None = None,
+):
     name = (name or "").strip()
     if not name or len(name) > 120:
         raise HTTPException(status_code=400, detail="歌单名称需要 1-120 个字符")
@@ -52,9 +61,20 @@ def create_playlist(user_id: str, name: str, description: str = "", items: list[
     try:
         with transaction() as conn:
             conn.execute(
-                """INSERT INTO playlists(id,owner_id,name,description,created_at,updated_at)
-                   VALUES(?,?,?,?,?,?)""",
-                (playlist_id, user_id, name, (description or "").strip()[:500], stamp, stamp),
+                """INSERT INTO playlists(
+                     id,owner_id,name,description,source_kind,source_ref,cover_ref,created_at,updated_at
+                   ) VALUES(?,?,?,?,?,?,?,?,?)""",
+                (
+                    playlist_id,
+                    user_id,
+                    name,
+                    (description or "").strip()[:500],
+                    (source_kind or "local")[:40],
+                    (source_ref or "")[:2000] or None,
+                    (cover_ref or "")[:2000] or None,
+                    stamp,
+                    stamp,
+                ),
             )
             _replace_items(conn, playlist_id, items or [])
     except Exception as exc:

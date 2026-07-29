@@ -26,12 +26,15 @@ from . import audit
 from .catalog import search as catalog_search
 from .config import settings
 from .db import get_kv, init_db, now, row, rows, set_kv
+from .download_inbox import download_inbox
+from .fnos_music import fnos_music
 from .jobs import get_job, list_job_logs, list_jobs, manager
 from .local_library import local_library, organizer
 from .plex import dashboard_stats, local_artist_background_file, plex
 from .scraper import build_diff_preview
 from .security import SecurityMiddleware, client_key, issue_csrf, rate_limiter
 from . import playlists as playlist_service
+from .playlist_migration import export_to_plex, import_to_songlib, preview_share_link, strict_candidate
 from . import recommendations as recommendation_service
 from .unified_catalog import match_external_tracks, normalize as normalize_catalog_text, unified_tracks
 from .sources import (
@@ -68,6 +71,22 @@ class M3UImportBody(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     content: str = Field(max_length=2_100_000)
     pathMappings: list[dict] = Field(default_factory=list, max_length=100)
+
+
+class PlaylistSharePreviewBody(BaseModel):
+    shareUrl: str = Field(min_length=10, max_length=2_000)
+
+
+class PlaylistMigrationBody(BaseModel):
+    sourceUrl: str = Field(min_length=10, max_length=2_000)
+    targets: list[str] = Field(default_factory=lambda: ["songlib"], max_length=3)
+    downloadMissing: bool = False
+    sourceId: str | None = None
+    quality: str = "320k"
+
+
+class PlaylistSyncBody(BaseModel):
+    targets: list[str] = Field(min_length=1, max_length=2)
 
 
 class ListeningEventBody(BaseModel):
@@ -184,6 +203,10 @@ class OrganizePreviewBody(BaseModel):
 
 class OrganizeApplyBody(BaseModel):
     previews: list[dict]
+
+
+class DownloadInboxApplyBody(BaseModel):
+    items: list[dict] = Field(min_length=1, max_length=2_000)
 
 
 class ScrapePreviewBody(BaseModel):
@@ -1250,6 +1273,22 @@ def organize_apply(body: OrganizeApplyBody):
     return manager.create("local_organize", "确认执行本地曲库整理", {"previews": body.previews})
 
 
+@app.get("/api/local/download-inbox", dependencies=[Depends(auth.current_user)])
+def download_inbox_preview(limit: int = Query(default=500, ge=1, le=2_000)):
+    return download_inbox.preview(limit)
+
+
+@app.post("/api/local/download-inbox/ingest", dependencies=[Depends(auth.current_user)])
+def download_inbox_ingest(body: DownloadInboxApplyBody):
+    source_paths = "|".join(sorted(str(item.get("sourcePath") or "") for item in body.items))
+    return manager.create(
+        "download_inbox_ingest",
+        f"整理并入库 {len(body.items)} 首歌曲",
+        {"items": body.items},
+        idempotency_key=f"download-inbox:{uuid.uuid5(uuid.NAMESPACE_URL, source_paths).hex}",
+    )
+
+
 @app.get("/api/local/operations", dependencies=[Depends(auth.current_user)])
 def operation_logs(limit: int = Query(100, ge=1, le=500)):
     from .db import rows
@@ -1549,6 +1588,7 @@ def get_settings(user=Depends(auth.current_user)):
         "downloadTempDir": str(settings.download_root),
         "incomingDir": str(settings.incoming_dir),
         "manualDownloadDir": str(settings.manual_download_dir),
+        "downloadTrashDir": str(settings.download_trash_dir),
         "trashDir": str(settings.trash_dir),
         "lyricRule": overrides.get("lyricRule", "同名 .lrc"),
         "coverRule": overrides.get("coverRule", "专辑目录 cover.jpg + 音频内嵌封面"),
@@ -1575,6 +1615,10 @@ def get_settings(user=Depends(auth.current_user)):
         "maxDownloadMb": settings.max_download_mb,
         "sourceMaxSizeMb": settings.source_max_size_mb,
         "privateDownloadUrlsAllowed": settings.allow_private_download_urls,
+        "fnosMusic": {
+            "configured": fnos_music.configured,
+            "serverUrl": settings.fnos_music_url,
+        },
     }
 
 
@@ -1584,6 +1628,15 @@ def update_settings(body: SettingsPatchBody):
     current.update(body.values)
     set_kv("ui_settings", current)
     return {"ok": True, "settings": current}
+
+
+@app.post("/api/settings/fnos/test", dependencies=[Depends(auth.current_user)])
+def test_fnos_music():
+    try:
+        result = fnos_music.test()
+        return {"ok": True, "message": f"飞牛音乐连接成功，已读取 {result['playlistCount']} 个歌单"}
+    except (RuntimeError, httpx.HTTPError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @app.get("/api/playlists")
@@ -1598,9 +1651,177 @@ def create_playlist(body: PlaylistBody, request: Request, user=Depends(auth.curr
     return item
 
 
+@app.post("/api/playlists/migrate/preview")
+def playlist_migration_preview(body: PlaylistSharePreviewBody, user=Depends(auth.current_user)):
+    try:
+        result = preview_share_link(body.shareUrl, scopes=user.get("libraryScopes"))
+        sources = [
+            {"id": item["id"], "name": item.get("displayName") or item.get("name")}
+            for item in list_sources()
+            if item.get("enabled") and item.get("searchOk")
+        ]
+        result["downloadSources"] = sources
+        result["targets"] = {
+            "songlib": {"available": True},
+            "plex": {"available": bool(plex.saved_settings().get("serverUrl"))},
+            "fnos": {"available": fnos_music.configured},
+        }
+        return result
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail=f"暂时无法读取这个歌单：{exc}") from exc
+
+
+@app.post("/api/playlists/migrate/execute")
+def playlist_migration_execute(
+    body: PlaylistMigrationBody,
+    request: Request,
+    user=Depends(auth.current_user),
+):
+    allowed_targets = {"songlib", "plex", "fnos"}
+    targets = list(dict.fromkeys(body.targets))
+    if not targets or any(target not in allowed_targets for target in targets):
+        raise HTTPException(status_code=400, detail="迁移目标无效")
+    can_manage = user["role"] in ("owner", "admin") or "manage_library" in (user.get("permissions") or [])
+    if ({"plex", "fnos"} & set(targets) or body.downloadMissing) and not can_manage:
+        raise HTTPException(status_code=403, detail="同步媒体服务或下载缺失歌曲需要曲库管理权限")
+    try:
+        verified_preview = preview_share_link(
+            body.sourceUrl,
+            scopes=user.get("libraryScopes"),
+        )
+    except (ValueError, httpx.HTTPError) as exc:
+        raise HTTPException(status_code=409, detail=f"歌单已无法重新验证：{exc}") from exc
+    result = {"songlib": None, "plex": None, "fnos": None, "downloads": {"created": 0, "errors": []}}
+    if "songlib" in targets:
+        result["songlib"] = import_to_songlib(user["id"], verified_preview)
+    if "plex" in targets:
+        try:
+            result["plex"] = export_to_plex(verified_preview)
+        except (ValueError, RuntimeError, httpx.HTTPError) as exc:
+            result["plex"] = {"ok": False, "error": str(exc)}
+    if "fnos" in targets:
+        try:
+            result["fnos"] = fnos_music.replace_playlist(
+                verified_preview.get("name") or "SongLib 歌单",
+                verified_preview.get("tracks") or [],
+            )
+        except (ValueError, RuntimeError, httpx.HTTPError) as exc:
+            result["fnos"] = {"ok": False, "error": str(exc)}
+    if body.downloadMissing:
+        if not body.sourceId:
+            raise HTTPException(status_code=400, detail="请选择已通过测试的授权音乐源")
+        source = get_source(body.sourceId)
+        if not source.get("enabled") or not source.get("searchOk"):
+            raise HTTPException(status_code=409, detail="所选音乐源尚未启用或未通过搜索测试")
+        platform = "wy" if "wy" in (source.get("supportedPlatforms") or []) else ("tx" if "tx" in (source.get("supportedPlatforms") or []) else None)
+        for track in [item for item in verified_preview.get("tracks") or [] if item.get("matchStatus") != "matched"][:200]:
+            try:
+                search = test_search(body.sourceId, f"{track.get('title', '')} {track.get('artist', '')}".strip(), platform)
+                candidate = strict_candidate(track, search.get("results") or [])
+                if not candidate:
+                    raise ValueError("没有通过标题、艺人和时长校验的版本")
+                payload = {"sourceId": body.sourceId, "quality": body.quality, "item": candidate}
+                payload["preflight"] = preflight_download(body.sourceId, candidate, body.quality)
+                manager.create(
+                    "download",
+                    f"下载 {candidate.get('artist', '')} - {candidate.get('title', '')}",
+                    payload,
+                    idempotency_key=f"playlist-download:{verified_preview.get('platform')}:{track.get('platformTrackId')}:{body.quality}",
+                )
+                result["downloads"]["created"] += 1
+            except Exception as exc:
+                result["downloads"]["errors"].append({
+                    "title": track.get("title"),
+                    "artist": track.get("artist"),
+                    "error": str(exc),
+                })
+    audit.record(
+        user["id"],
+        request.state.request_id,
+        "playlist.migrate",
+        "playlist",
+        (result.get("songlib") or {}).get("id"),
+        "success",
+        {
+            "platform": verified_preview.get("platform"),
+            "targets": targets,
+            "downloads": result["downloads"]["created"],
+        },
+    )
+    return result
+
+
 @app.get("/api/playlists/{playlist_id}")
 def get_playlist(playlist_id: str, user=Depends(auth.current_user)):
     return playlist_service.get_playlist(playlist_id, user["id"], user["role"] in ("owner", "admin"))
+
+
+@app.post("/api/playlists/{playlist_id}/sync")
+def sync_playlist_to_services(
+    playlist_id: str,
+    body: PlaylistSyncBody,
+    request: Request,
+    user=Depends(auth.current_user),
+):
+    can_manage = user["role"] in ("owner", "admin") or "manage_library" in (user.get("permissions") or [])
+    if not can_manage:
+        raise HTTPException(status_code=403, detail="同步媒体服务歌单需要曲库管理权限")
+    targets = list(dict.fromkeys(body.targets))
+    if any(target not in {"plex", "fnos"} for target in targets):
+        raise HTTPException(status_code=400, detail="同步目标无效")
+    playlist = playlist_service.get_playlist(playlist_id, user["id"], user["role"] in ("owner", "admin"))
+    matched = match_external_tracks(
+        [
+            {
+                "title": item.get("title"),
+                "artist": item.get("artist"),
+                "album": item.get("album"),
+                "duration": item.get("duration"),
+                "externalRef": item.get("external_ref"),
+            }
+            for item in playlist.get("items") or []
+        ],
+        scopes=user.get("libraryScopes"),
+    )
+    tracks = []
+    for source, item in zip(playlist.get("items") or [], matched):
+        entity = item.get("localTrack") or {}
+        resources = entity.get("resources") or []
+        plex_key = next((resource.get("plexRatingKey") for resource in resources if resource.get("plexRatingKey")), None)
+        external = str(source.get("external_ref") or "")
+        if not plex_key and external.startswith("plex:"):
+            plex_key = external.split(":", 1)[1]
+        tracks.append({
+            "title": source.get("title"),
+            "artist": source.get("artist"),
+            "album": source.get("album"),
+            "duration": source.get("duration"),
+            "plexRatingKey": plex_key,
+        })
+    preview = {"name": playlist["name"], "tracks": tracks}
+    result = {}
+    if "plex" in targets:
+        try:
+            result["plex"] = export_to_plex(preview)
+        except (ValueError, RuntimeError, httpx.HTTPError) as exc:
+            result["plex"] = {"ok": False, "error": str(exc)}
+    if "fnos" in targets:
+        try:
+            result["fnos"] = fnos_music.replace_playlist(playlist["name"], tracks)
+        except (ValueError, RuntimeError, httpx.HTTPError) as exc:
+            result["fnos"] = {"ok": False, "error": str(exc)}
+    audit.record(
+        user["id"],
+        request.state.request_id,
+        "playlist.sync",
+        "playlist",
+        playlist_id,
+        "success",
+        {"targets": targets},
+    )
+    return result
 
 
 @app.patch("/api/playlists/{playlist_id}")
@@ -1762,5 +1983,13 @@ if STATIC_DIR.exists():
     def spa(full_path: str):
         target = STATIC_DIR / full_path
         if full_path and target.is_file() and STATIC_DIR in target.resolve().parents:
-            return FileResponse(target)
-        return FileResponse(STATIC_DIR / "index.html")
+            headers = (
+                {"Cache-Control": "no-store"}
+                if target.name in {"sw.js", "manifest.json"}
+                else None
+            )
+            return FileResponse(target, headers=headers)
+        return FileResponse(
+            STATIC_DIR / "index.html",
+            headers={"Cache-Control": "no-store"},
+        )

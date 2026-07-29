@@ -6958,11 +6958,8 @@ function UserAccounts() {
         </button>
       </form>
       <p className="setting-copy">
-        安全重置命令：
-        <code>
-          docker exec songlib-amp python -m app.cli reset-admin --from-env
-        </code>
-        。这会把 admin 密码恢复为 NAS `.env` 里的 APP_PASSWORD。
+        忘记主人账号密码时，请由设备管理员按照部署文档中的“恢复管理员访问”
+        流程操作；恢复会使现有会话失效。
       </p>
       {resetting && (
         <div className="modal-wrap">

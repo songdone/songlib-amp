@@ -6,6 +6,21 @@ RUN npm install --global pnpm@11.9.0 --ignore-scripts --no-audit --no-fund \
 COPY frontend/ ./
 RUN npm run build
 
+FROM node:24.14.0-bookworm-slim AS node-runtime
+
+FROM --platform=$BUILDPLATFORM alpine:3.23 AS tini-fetch
+ARG TARGETARCH
+ARG TINI_VERSION=v0.19.0
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+      amd64) TINI_SHA256="c5b0666b4cb676901f90dfcb37106783c5fe2077b04590973b885950611b30ee" ;; \
+      arm64) TINI_SHA256="eae1d3aa50c48fb23b8cbdf4e369d0910dfc538566bfd09df89a774aa84a48b9" ;; \
+      *) echo "Unsupported target architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    wget -q -O /tini "https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini-static-${TARGETARCH}"; \
+    echo "${TINI_SHA256}  /tini" | sha256sum -c -; \
+    chmod 755 /tini
+
 FROM python:3.12.10-slim-bookworm AS runtime
 ARG APP_UID=10001
 ARG APP_GID=10001
@@ -18,9 +33,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PLEX_CONFIG=/plex-config \
     STATIC_DIR=/app/static \
     PORT=8080
-RUN apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=5 -o Acquire::http::Timeout=20 update \
-    && apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=5 -o Acquire::http::Timeout=20 install -y --no-install-recommends nodejs tini ca-certificates \
-    && rm -rf /var/lib/apt/lists/* \
+COPY --from=node-runtime /usr/local/bin/node /usr/bin/node
+COPY --from=tini-fetch /tini /usr/bin/tini
+RUN node --version \
+    && tini --version \
     && groupadd --gid "${APP_GID}" songlib \
     && useradd --uid "${APP_UID}" --gid "${APP_GID}" --home-dir /app --no-create-home --shell /usr/sbin/nologin songlib
 WORKDIR /app

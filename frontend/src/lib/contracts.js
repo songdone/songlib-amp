@@ -13,6 +13,12 @@ const plexReference = (item = {}) => {
   return ratingKey ? `plex:${ratingKey}` : null;
 };
 
+export const playbackDurationSeconds = (value) => {
+  const duration = Number(value || 0);
+  if (!Number.isFinite(duration) || duration <= 0) return 0;
+  return duration > 60 * 60 * 6 ? duration / 1000 : duration;
+};
+
 export const playlistTrackPayload = (item = {}) => ({
   fileId: item.file_id || item.fileId || item.localFileId || null,
   externalRef:
@@ -24,7 +30,7 @@ export const playlistTrackPayload = (item = {}) => ({
   title: item.title || "",
   artist: item.artist || "",
   album: item.album || "",
-  duration: Number(item.duration || 0),
+  duration: playbackDurationSeconds(item.duration),
   path: item.path || item.file || null,
 });
 
@@ -37,7 +43,7 @@ export const playlistPlaybackInput = (item = {}) => {
       title: item.title || "",
       artist: item.artist || "",
       album: item.album || "",
-      duration: Number(item.duration || 0),
+      duration: playbackDurationSeconds(item.duration),
     };
   }
   const reference = String(item.external_ref || item.externalRef || "");
@@ -49,7 +55,7 @@ export const playlistPlaybackInput = (item = {}) => {
     title: item.title || "",
     artist: item.artist || "",
     album: item.album || "",
-    duration: Number(item.duration || 0),
+    duration: playbackDurationSeconds(item.duration),
   };
 };
 
@@ -68,6 +74,7 @@ export const servicePlaylistPlaybackItems = (service, items = []) => {
         artist: item.artist || item.grandparentTitle || "",
         album: item.album || item.parentTitle || "",
         coverUrl: item.coverUrl || item.thumbUrl || "",
+        duration: playbackDurationSeconds(item.duration),
       };
     })
     .filter(Boolean);

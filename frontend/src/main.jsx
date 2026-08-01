@@ -547,5 +547,8961 @@ function PwaInstallPrompt() {
       setEvent(null);
       localStorage.setItem("songlib-pwa-dismissed", "1");
     };
-    window.addEventListener("before÷İuæÚ$z{-®éÜj×ãÂ÷7ãà¢ÆF—cà¢Ç6ÖÆÃç¶Æ&VÇÓÂ÷6ÖÆÃà¢Ç7G&öæsç¶f×B‡fÇVR—ÓÂ÷7G&öæsà¢ÂöF—cà¢Âö'F–6ÆSà¢’—Ğ¢Â÷6V7F–öãà¢Ç6V7F–öâ6Æ74æÖSÒ&ÖævR×v÷&·76R#à¢¶ÖævVÖVçDw&÷W2æÖ‚†w&÷W’Óâ€¢Æ'F–6ÆR6Æ74æÖSÒ&ÖævR×6V7F–öâ"¶W“×¶w&÷Wæ–GÓà¢Æ†VFW#à¢Ç7ãç¶w&÷WæW–V'&÷wÓÂ÷7ãà¢Æƒ#ç¶w&÷WçF—FÆWÓÂöƒ#à¢Âö†VFW#à¢ÆF—b6Æ74æÖSÒ&ÖævRÖÖVçR#à¢¶w&÷Wæ—FV×2æÖ‚†—FVÒ’Óâ€¢Æ'WGFöà¢6Æ74æÖSÒ&ÖævRÖÖVçR×&÷r ¢¶W“×¶—FVÒæ–GĞ¢öä6Æ–6³×²‚’Óâæf–vFR†—FVÒæ–B—Ğ¢à¢Ç7â6Æ74æÖSÒ&ÖævRÖÖVçRÖ–6öâ#ãÆ—FVÒæ–6öâóãÂ÷7ãà¢Ç7â6Æ74æÖSÒ&ÖævRÖÖVçRÖ6÷’#à¢Ç7G&öæsç¶—FVÒæÆ&VÇÓÂ÷7G&öæsà¢Ç6ÖÆÃç¶—FVÒæFW67ÓÂ÷6ÖÆÃà¢Â÷7ãà¢Ä6†Wg&öå&–v‡Bóà¢Âö'WGFöãà¢’—Ğ¢ÂöF—cà¢Âö'F–6ÆSà¢’—Ğ¢Â÷6V7F–öãà¢ÂöF—cà¢“°§ĞĞ Ğ¦6öç7BvTÖWFÒ°¢†öÖS¢².šinšR"Â"%ÒÀ¢Æ–'&'“¢².™û>K™[©2"Â.jØÎh˜¾8K‰>‹éKˆîXÙ^i»"%ÒÀ¢Æ–Æ—7G3¢².jØÎXÙR"Â.iKn‰xş8ZûÎXZ^Kˆî‹øz{²%ÒÀ¢Æ–W#¢².jÚ>YÊi*ŞiKâ"Â"%ÒÀ¢F—66÷fW#¢².K‹®KÚhêˆÙ"Â.xişh(y¨Nix¾[è¾ûÈÎK™şiÈiky¨NXùxë%ÒÀ¢ÖS¢².iKn‰xşKˆîXènXû""Â.KÚy¨N™û>K™‹k>‹û’%ÒÀ¢ÖævS¢².zêynKŠŞ[ø2"Â.i».[©>8K»¾XªKˆîiÈŞXª%ÒÀ¢6V&6ƒ¢².i	Î{J""Â.jØÎi».8ˆ›®K«®8K‰>‹éKˆîjØÎXÙR%ÒÀ¢Æö6Ã¢².iÊÎYËi».[©2"Â.ih~K»nKˆîyºî[ÙR%ÒÀ¢67&S¢².‹XNiiŠ^XZ‚"Â.[™Ú.8jØÎŠøŞKˆîzèK¸²%ÒÀ¢F÷væÆöC¢².Kˆ¾‹ÛŞKˆîXZ^[©2"Â.hèiØ>iÚ^k©Kˆî[è^i[Nynih~K»b%ÒÀ¢6÷W&6W3¢².™û>K™k©"Â.‹ùîhê^KˆîXúşyJh
-r%ÒÀ¢F6·3¢².K»¾Xª"Â.‹ù¾[ªnKˆîXènXû"%ÒÀ¢6WGF–æw3¢².Šëî{Úâ"Â.‹JnXû~8‹ùîhê^KˆîZÙX*‚%ÒÀ§Ó° Ğ¦gVæ7F–öâ‚’°¢6öç7B¶WF†VçF–6FVBÂ6WDWF†VçF–6FVEÒÒW6U7FFR†çVÆÂ“°¢6öç7B·6WGW&WV—&VBÂ6WE6WGW&WV—&VEÒÒW6U7FFR†fÇ6R“°¢W6TVffV7B‚‚’Óâ°¢’‚"ö’öWF‚÷7FGW2"¢çF†Vâ‚†B’Óâ°¢6WDWF†VçF–6FVB†BæWF†VçF–6FVB“°¢6WE6WGW&WV—&VB„&ööÆVâ†Bç6WGW&WV—&VB’“°¢Ò¢æ6F6‚‚‚’Óâ6WDWF†VçF–6FVB†fÇ6R’“°¢ÒÂµÒ“°¢–b†WF†VçF–6FVBÓÓÒçVÆÂĞ¢&WGW&â€Ğ¢ÆF—b6Æ74æÖSÒ&&ö÷B#àĞ¢Ä'&æBóàĞ¢ÄÆöFW$6—&6ÆR6Æ74æÖSÒ'7–â"óàĞ¢ÂöF—càĞ¢“°Ğ¢–b‡6WGW&WV—&VB¢&WGW&â€¢Å6WGWv—¦&@¢öä6ö×ÆWFS×²‚’Óâ°¢6WE6WGW&WV—&VB†fÇ6R“°¢6WDWF†VçF–6FVB‡G'VR“°¢×Ğ¢óà¢“°¢–b‚WF†VçF–6FVB’&WGW&âÄÆöv–âöäÆöv–ã×²‚’Óâ6WDWF†VçF–6FVB‡G'VR—Òóã°¢&WGW&â€Ğ¢ÅÆ–W%&÷f–FW#àĞ¢ÄWF†VçF–6FVE6†VÆÂ6WDWF†VçF–6FVC×·6WDWF†VçF–6FVGÒóàĞ¢Åv–ç7FÆÅ&ö×BóàĞ¢ÂõÆ–W%&÷f–FW#àĞ¢“°Ğ§ĞĞ Ğ¦gVæ7F–öâWF†VçF–6FVE6†VÆÂ‡²6WDWF†VçF–6FVBÒ’°¢6öç7B¶7F—fRÂ6WD7F—fUÒÒW6U7FFR‚‚’Óà¢vTg&öÕF‚‡v–æF÷ræÆö6F–öâçF†æÖR’À¢“°¢6öç7B·&÷WFU&Wf—6–öâÂ6WE&÷WFU&Wf—6–öåÒÒW6U7FFRƒ“°¢6öç7B¶ÖVçRÂ6WDÖVçUÒÒW6U7FFR†fÇ6R“°¢6öç7B·7FG2Â6WE7FG5ÒÒW6U7FFR‡·Ò“°Ğ¢6öç7B¶¦ö'2Â6WD¦ö'5ÒÒW6U7FFR…µÒ“°Ğ¢6öç7B·6÷W&6W2Â6WE6÷W&6W5ÒÒW6U7FFR…µÒ“°Ğ¢6öç7B·6WGF–æw4FFÂ6WE6WGF–æw4FFÒÒW6U7FFR‡·Ò“°Ğ¢6öç7B¶ÆöF–ærÂ6WDÆöF–æuÒÒW6U7FFR‡G'VR“°Ğ¢6öç7B·Fö7BÂ6WEFö7EÒÒW6U7FFR†çVÆÂ“°¢6öç7B¶Ö&–VçD–æFW‚Â6WDÖ&–VçD–æFW…ÒÒW6U7FFRƒ“°¢6öç7B¶Ö&–VçDFV6²Â6WDÖ&–VçDFV6µÒÒW6U7FFR…µÒ“°¢6öç7B¶ÖçVÄ&6¶G&÷Â6WDÖçVÄ&6¶G&÷ÒÒW6U7FFR†çVÆÂ“°¢6öç7BÆ–W"ÒW6UÆ–W"‚“°¢6öç7BWFFUF‚ÒW6T6ÆÆ&6²‚‡F‚Â²&WÆ6RÒfÇ6RÒÒ·Ò’Óâ°¢–b‡v–æF÷ræÆö6F–öâçF†æÖRÓÓÒF‚’&WGW&ã°¢v–æF÷ræ†—7F÷'•·&WÆ6Rò'&WÆ6U7FFR"¢'W6…7FFR%Ò‡·ÒÂ""ÂF‚“°¢ÒÂµÒ“°¢6öç7Bæf–vFRÒW6T6ÆÆ&6²€¢‡vRÂ²&WÆ6RÒfÇ6RÒÒ·Ò’Óâ°¢6öç7BF&vWBÒ¶æ÷våvR‡vR’òvR¢&†öÖR#°¢6WDÖçVÄ&6¶G&÷†çVÆÂ“°¢6WD7F—fR‡F&vWB“°¢WFFUF‚‡F„f÷%vR‡F&vWB’Â²&WÆ6RÒ“°¢ÒÀ¢·WFFUF…ÒÀ¢“°¢6öç7BÆöBÒ7–æ2‚’Óâ°Ğ¢6WDÆöF–ær‡G'VR“°Ğ¢G'’°Ğ¢6öç7B·2Â6frÂ¢Â7&5ÒÒv—B&öÖ—6RæÆÂ…°Ğ¢’‚"ö’öF6†&ö&B"’ÀĞ¢’‚"ö’÷6WGF–æw2"’ÀĞ¢’‚"ö’ö¦ö'2"’æ6F6‚‚‚’ÓâµÒ’ÀĞ¢’‚"ö’÷6÷W&6W2"’æ6F6‚‚‚’ÓâµÒ’ÀĞ¢Ò“°Ğ¢6WE7FG2‡2“°Ğ¢6WE6WGF–æw4FF†6fr“°Ğ¢6WD¦ö'2„'&’æ—4'&’†¢’ò¢¢µÒ“°Ğ¢6WE6÷W&6W2„'&’æ—4'&’‡7&2’ò7&2¢µÒ“°Ğ¢Ò6F6‚†W'"’°Ğ¢–b†W'"æÖW76vRæ–æ6ÇVFW2‚.y›¾[ÙR"’’6WDWF†VçF–6FVB†fÇ6R“°Ğ¢VÇ6R6WEFö7B‡²G—S¢&W'&÷""ÂÖW76vS¢W'"æÖW76vRÒ“°Ğ¢Òf–æÆÇ’°Ğ¢6WDÆöF–ær†fÇ6R“°Ğ¢ĞĞ¢Ó°Ğ¢6öç7B&Vg&W6„¦ö'2Ò7–æ2‚’Óâ6WD¦ö'2†v—B’‚"ö’ö¦ö'2"’“°Ğ¢6öç7B&Vg&W6…6÷W&6W2ÒW6T6ÆÆ&6²€¢7–æ2‚’Óâ6WE6÷W&6W2†v—B’‚"ö’÷6÷W&6W2"’’À¢µÒÀ¢“°¢W6TVffV7B‚‚’Óâ°¢ÆöB‚“°¢ÒÂµÒ“°¢W6TVffV7B‚‚’Óâ°¢6öç7Böå÷7FFRÒ‚’Óâ°¢6WDÖçVÄ&6¶G&÷†çVÆÂ“°¢6WD7F—fR‡vTg&öÕF‚‡v–æF÷ræÆö6F–öâçF†æÖR’“°¢6WE&÷WFU&Wf—6–öâ‚‡fÇVR’ÓâfÇVR²“°¢Ó°¢v–æF÷ræFDWfVçDÆ—7FVæW"‚'÷7FFR"Âöå÷7FFR“°¢&WGW&â‚’Óâv–æF÷rç&VÖ÷fTWfVçDÆ—7FVæW"‚'÷7FFR"Âöå÷7FFR“°¢ÒÂµÒ“°¢W6TVffV7B‚‚’Óâ°Ğ¢6öç7BF—FÆRÒvTÖWF¶7F—fUÓòå³Ó°Ğ¢Fö7VÖVçBçF—FÆRÒF—FÆRòG·F—FÆWÒÒG´%$äBægVÆÄæÖWÖ¢%$äBægVÆÄæÖS°Ğ¢ÒÂ¶7F—fUÒ“°Ğ¢W6TVffV7B‚‚’Óâ°Ğ¢6öç7BF–ÖW"Ò6WD–çFW'fÂ‚‚’Óâ°Ğ¢–b€Ğ¢W6W$—4FÖ–â‡6WGF–æw4FFçW6W"’ÇÀĞ¢6WGF–æw4FFçW6W#òçW&Ö—76–öç3òæ–æ6ÇVFW2‚&ÖævUöÆ–'&'’"Ğ¢Ğ¢&Vg&W6„¦ö'2‚’æ6F6‚‚‚’Óâ·Ò“°Ğ¢ÒÂ#S“°Ğ¢&WGW&â‚’Óâ6ÆV$–çFW'fÂ‡F–ÖW"“°Ğ¢ÒÂ·6WGF–æw4FFçW6W#òç&öÆRÂ6WGF–æw4FFçW6W#òçW&Ö—76–öç3òæ¦ö–â‚'Â"•Ò“°Ğ¢6öç7BÖ&–VçD–ÖvW2ÒW6TÖVÖò€¢‚’Óâ„'&’æ—4'&’‡7FG3òæ†W&ô–ÖvW2’ò7FG2æ†W&ô–ÖvW2¢µÒ’À¢·7FG3òæ†W&ô–ÖvW5ÒÀ¢“°¢W6TVffV7B‚‚’Óâ°¢6WDÖ&–VçDFV6²†'V–ÆDÖ&–VçDFV6²†Ö&–VçD–ÖvW2’“°¢6WDÖ&–VçD–æFW‚ƒ“°¢ÒÂ¶Ö&–VçD–ÖvW5Ò“°¢W6TVffV7B‚‚’Óâ°¢–b†7F—fRÓÓÒ'Æ–W""ÇÂÖçVÄ&6¶G&÷ÇÂÖ&–VçDFV6²æÆVæwF‚Â"¢&WGW&ã°¢6öç7BF–ÖW"Ò6WD–çFW'fÂ‚‚’Óâ°¢–b†Ö&–VçD–æFW‚²ÂÖ&–VçDFV6²æÆVæwF‚’°¢6WDÖ&–VçD–æFW‚†Ö&–VçD–æFW‚²“°¢ÒVÇ6R°¢6WDÖ&–VçDFV6²†'V–ÆDÖ&–VçDFV6²†Ö&–VçD–ÖvW2’“°¢6WDÖ&–VçD–æFW‚ƒ“°¢Ğ¢ÒÂC“°¢&WGW&â‚’Óâ6ÆV$–çFW'fÂ‡F–ÖW"“°¢ÒÂ°¢7F—fRÀ¢Ö&–VçDFV6²À¢Ö&–VçD–ÖvW2À¢Ö&–VçD–æFW‚À¢ÖçVÄ&6¶G&÷À¢Ò“°¢6öç7B'Vä¦ö"Ò7–æ2†¶–æBÂ–ÆöBÒ·Ò’Óâ°Ğ¢G'’°Ğ¢v—B’‚"ö’ö¦ö'2"Â°Ğ¢ÖWF†öC¢%õ5B"ÀĞ¢&öG“¢¥4ôâç7G&–æv–g’‡²¶–æBÂ–ÆöBÒ’ÀĞ¢Ò“°Ğ¢6WEFö7B‡²ÖW76vS¢.K»¾Xª[{.XªXZ^™‰şX‰r"Ò“°¢&Vg&W6„¦ö'2‚“°¢æf–vFR‚'F6·2"“°¢Ò6F6‚†W'"’°Ğ¢6WEFö7B‡²G—S¢&W'&÷""ÂÖW76vS¢W'"æÖW76vRÒ“°Ğ¢ĞĞ¢Ó°Ğ¢6öç7B7&VFTF÷væÆöBÒ7–æ2†—FVÒÂ6÷W&6T–BÂVÆ—G’’Óâ°Ğ¢G'’°Ğ¢6öç7B&W7VÇBÒv—B’‚"ö’öF÷væÆöG2"Â°Ğ¢ÖWF†öC¢%õ5B"ÀĞ¢&öG“¢¥4ôâç7G&–æv–g’‡²—FVÒÂ6÷W&6T–BÂVÆ—G’Ò’ÀĞ¢Ò“°Ğ¢6WEFö7B‡²ÖW76vS¢8¢G¶—FVÒçF—FÆWŞ8¾[{.XªXZ^Kˆ¾‹ÛŞ™‰şX‰vÒ“°Ğ¢&Vg&W6„¦ö'2‚“°Ğ¢&WGW&â&W7VÇC°Ğ¢Ò6F6‚†W'"’°Ğ¢6WEFö7B‡²G—S¢&W'&÷""ÂÖW76vS¢W'"æÖW76vRÒ“°Ğ¢F‡&÷rW'#°Ğ¢ĞĞ¢Ó°Ğ¢6öç7BÆöv÷WBÒ7–æ2‚’Óâ°Ğ¢v—B’‚"ö’öWF‚öÆöv÷WB"Â²ÖWF†öC¢%õ5B"Ò’æ6F6‚‚‚’Óâ·Ò“°Ğ¢6WDWF†VçF–6FVB†fÇ6R“°Ğ¢Ó°Ğ¢6öç7BÆ•G&6²Ò7–æ2†—FVÒÂVWVRÒµÒ’Óâ°¢v—BÆ–W"çÆ’†—FVÒÂVWVR“°¢Ó°¢6öç7B—4FÖ–âÒW6W$—4FÖ–â‡6WGF–æw4FFçW6W"“°Ğ¢6öç7BW&Ö—76–öç2Ò6WGF–æw4FFçW6W#òçW&Ö—76–öç2ÇÂµÓ°Ğ¢6öç7B6äÖævTÆ–'&'’Ò—4FÖ–âÇÂW&Ö—76–öç2æ–æ6ÇVFW2‚&ÖævUöÆ–'&'’"“°Ğ¢6öç7B6äÖævU6÷W&6W2Ò—4FÖ–âÇÂW&Ö—76–öç2æ–æ6ÇVFW2‚&ÖævU÷6÷W&6W2"“°Ğ¢6öç7B6ä÷VäÖævVÖVçBÒ6äÖævTÆ–'&'’ÇÂ6äÖævU6÷W&6W3°¢6öç7B—4Öö&–ÆRÒW6TÖVF–VW'’‚"†Ö‚×v–GFƒ¢sƒ‚’"“°¢W6TVffV7B‚‚’Óâ°¢–b€¢ÆöF–ærb`¢6ä÷VäÖævVÖVçBb`¢ÖævVÖVçDæbç6öÖR‚†—FVÒ’Óâ—FVÒæ–BÓÓÒ7F—fR¢¢æf–vFR‚&†öÖR"Â²&WÆ6S¢G'VRÒ“°¢ÒÂ¶ÆöF–ærÂ6ä÷VäÖævVÖVçBÂ7F—fRÂæf–vFUÒ“°¢6öç7B·F—FÆRÂ7V'F—FÆUÒÒvTÖWF¶7F—fUÒÇÂvTÖWFæ†öÖS°Ğ¢6öç7B†W&òĞ¢ÖçVÄ&6¶G&÷ÇÀ¢Ö&–VçDFV6µ¶Ö&–VçD–æFW‚RÖF‚æÖ‚†Ö&–VçDFV6²æÆVæwF‚Â•ÒÇÀ¢·Ó°¢6öç7BÆ–W%G&6²ÒÆ–W"æ7W'&VçEG&6²ÇÂ·Ó°Ğ¢6öç7B6†VÆÄ&6¶G&÷ĞĞ¢7F—fRÓÓÒ'Æ–W" Ğ¢ò6÷fW%W&Äf÷"‡Æ–W%G&6²’ÇÂd•5TÅôdÄÄ$4µ2çÆ–W Ğ¢¢†W&òæ–ÖvUW&ÂÇÂd•5TÅôdÄÄ$4µ2æ'F—7C°Ğ¢6öç7B&6¶G&÷Ò7F—fRÓÓÒ'Æ–W""òÆ–W$&6¶G&÷¢'F—7D&6¶G&÷°Ğ¢6öç7B6†÷tÖ–æ•Æ–W"ÒÆ–W"æ7W'&VçEG&6²bb7F—fRÓÒ'Æ–W"#°Ğ¢&WGW&â€Ğ¢ÆF—`¢6Æ74æÖS×¶×6†VÆÂf—7VÂ×6†VÆÂ&÷WFRÒG¶7F—fWÒG·6†÷tÖ–æ•Æ–W"ò&†2ÖÖ–æ’×Æ–W""¢"'ÖĞ¢FFÖföçB×6—¦S×·6WGF–æw4FFçW6W#òæföçE6—¦RÇÂ'7FæF&B'Ğ¢àĞ¢Ä&6¶G&÷–ÖvUW&Ã×·6†VÆÄ&6¶G&÷ÒóàĞ¢²‚—4Öö&–ÆRÇÂÖVçR’bb€Ğ¢Å6–FV& Ğ¢7F—fS×¶7F—fWĞĞ¢öä6†ævS×¶æf–vFWĞ¢÷Vã×¶ÖVçWĞĞ¢6Æ÷6S×²‚’Óâ6WDÖVçR†fÇ6R—ĞĞ¢Æöv÷WC×¶Æöv÷WGĞĞ¢fW'6–öã×·6WGF–æw4FFçfW'6–öçĞĞ¢÷VåÆ–W#×²‚’Óâæf–vFR‚'Æ–W""—Ğ¢—4FÖ–ã×¶6ä÷VäÖævVÖVçGĞĞ¢óàĞ¢—ĞĞ¢ÆÖ–â6Æ74æÖSÒ&Ö–â#àĞ¢ÅF÷& ¢F—FÆS×·F—FÆWĞ¢7V'F—FÆS×·7V'F—FÆWĞ¢÷VäÖVçS×²‚’Óâ6WDÖVçR‡G'VR—Ğ¢öäæf–vFS×¶æf–vFWĞ¢Æöv÷WC×¶Æöv÷WGĞ¢&öf–ÆS×·6WGF–æw4FFçW6W'Ğ¢óà¢¶ÆöF–ærb`¢†7F—fRÓÓÒ&ÖævR"ÇÀ¢ÖævVÖVçDæbç6öÖR€¢†—FVÒ’Óâ—FVÒæ–BÓÒ'6WGF–æw2"bb—FVÒæ–BÓÓÒ7F—fRÀ¢’’bb€¢ÆF—b6Æ74æÖSÒ&ÖævVÖVçB×&÷WFRÖÆöF–ær"&–ÖÆ&VÃÒ.jÚ>YÊ‹ÛŞXZ^zêyni[hÚâ#à¢ÅvTÆöFW"óà¢ÂöF—cà¢—Ğ¢¶7F—fRÓÓÒ&†öÖR"bb€¢ÄF6†&ö&@Ğ¢7FG3×·7FG7ĞĞ¢¦ö'3×¶¦ö'7ĞĞ¢ÆöF–æs×¶ÆöF–æwĞĞ¢æf–vFS×¶æf–vFWĞ¢'Vä¦ö#×·'Vä¦ö'ĞĞ¢—4FÖ–ã×¶6äÖævTÆ–'&'—ĞĞ¢óàĞ¢—×²"'ĞĞ¢¶7F—fRÓÓÒ&Æ–'&'’"bb€¢ÄÖVF–Æ–'&'¢¶W“×¶Æ–'&'’ÒG·&÷WFU&Wf—6–öçÖĞ¢–æ—F–ÅF#×¶Æ–'&'•F$g&öÕF‚‡v–æF÷ræÆö6F–öâçF†æÖR—Ğ¢–æ—F–ÄFWF–Ã×¶Æ–'&'”FWF–Äg&öÕF‚‡v–æF÷ræÆö6F–öâçF†æÖR—Ğ¢Æ“×·Æ•G&6·Ğ¢&Wf–Wt&6¶G&÷×·6WDÖçVÄ&6¶G&÷Ğ¢öäFWF–Ä&6¶G&÷×·6WDÖçVÄ&6¶G&÷Ğ¢öåF$6†ævS×²‡F"’ÓâWFFUF‚‡F„f÷$Æ–'&'•F"‡F"’—Ğ¢öäFWF–Ä6†ævS×²†FWF–ÂÂfÆÆ&6µF"’Óà¢WFFUF‚€¢FWF–À¢òF„f÷$Æ–'&'”FWF–Â†FWF–ÂçG—RÂFWF–Âç&F–æt¶W’¢¢F„f÷$Æ–'&'•F"†fÆÆ&6µF"ÇÂ&'F—7G2"’À¢¢Ğ¢óà¢—×²"'Ğ¢¶7F—fRÓÓÒ'Æ–Æ—7G2"bb€¢ÅÆ–Æ—7G5vP¢¶W“×¶Æ–Æ—7G2ÒG·&÷WFU&Wf—6–öçÖĞ¢Æ“×·Æ•G&6·Ğ¢æ÷F–g“×²†ÖW76vR’Óâ6WEFö7B‡²ÖW76vRÒ—Ğ¢–æ—F–ÅÆ–Æ—7D–C×·Æ–Æ—7D–Dg&öÕF‚‡v–æF÷ræÆö6F–öâçF†æÖR—Ğ¢öåÆ–Æ—7D6†ævS×²†–BÂ÷F–öç2’Óà¢WFFUF‚‡F„f÷%Æ–Æ—7B†–B’Â÷F–öç2¢Ğ¢óà¢—×²"'Ğ¢¶7F—fRÓÓÒ'6V&6‚"bb€Ğ¢ÄvÆö&Å6V&6…vPĞ¢Æ“×·Æ•G&6·ĞĞ¢æf–vFS×¶æf–vFWĞ¢—4FÖ–ã×¶6äÖævTÆ–'&'—ĞĞ¢óàĞ¢—×²"'ĞĞ¢¶7F—fRÓÓÒ&ÖR"bbÄÖUvRæf–vFS×¶æf–vFWÒóç×²"'Ğ¢¶7F—fRÓÓÒ&ÖævR"bb6ä÷VäÖævVÖVçBbb€Ğ¢ÄÖævVÖVçD‡V Ğ¢æf–vFS×¶æf–vFWĞ¢7FG3×·7FG7ĞĞ¢¦ö'3×¶¦ö'7ĞĞ¢W&Ö—76–öç3×°Ğ¢—4FÖ–àĞ¢ò²&ÖævU÷W6W'2"Â&ÖævUöÆ–'&'’"Â&ÖævU÷6÷W&6W2%ĞĞ¢¢W&Ö—76–öç0Ğ¢ĞĞ¢óàĞ¢—×²"'ĞĞ¢¶6äÖævTÆ–'&'’bb7F—fRÓÓÒ&Æö6Â"bb€Ğ¢ÄÆö6ÄÆ–'&'•vPĞ¢'Vä¦ö#×·'Vä¦ö'ĞĞ¢Æ“×·Æ•G&6·ĞĞ¢æ÷F–g“×²†ÖW76vR’Óâ6WEFö7B‡²ÖW76vRÒ—ĞĞ¢æf–vFS×¶æf–vFWĞ¢óàĞ¢—×²"'ĞĞ¢¶6äÖævTÆ–'&'’bb7F—fRÓÓÒ'67&R"bb€Ğ¢Å67&T6VçFW"¦ö'3×¶¦ö'7Òæf–vFS×¶æf–vFWÒ6WGF–æw3×·6WGF–æw4FFÒóà¢—×²"'ĞĞ¢¶6äÖævTÆ–'&'’bb7F—fRÓÓÒ&F÷væÆöB"bb€¢ÄF÷væÆöD6VçFW ¢6÷W&6W3×·6÷W&6W7Ğ¢&Vg&W6…6÷W&6W3×·&Vg&W6…6÷W&6W7Ğ¢7&VFTF÷væÆöC×¶7&VFTF÷væÆöGĞ¢æf–vFS×¶æf–vFWĞ¢æ÷F–g“×²†ÖW76vR’Óâ6WEFö7B‡²ÖW76vRÒ—ĞĞ¢Æ•&Wf–Ws×·Æ•G&6·ĞĞ¢óàĞ¢—×²"'ĞĞ¢¶6äÖævU6÷W&6W2bb7F—fRÓÓÒ'6÷W&6W2"bb€Ğ¢Å6÷W&6TÖævW Ğ¢6÷W&6W3×·6÷W&6W7ĞĞ¢&Vg&W6…6÷W&6W3×·&Vg&W6…6÷W&6W7ĞĞ¢æ÷F–g“×²†ÖW76vR’Óâ6WEFö7B‡²ÖW76vRÒ—ĞĞ¢óàĞ¢—×²"'ĞĞ¢¶7F—fRÓÓÒ&F—66÷fW""bb€¢Å&V6öÖÖVæFF–öåvP¢Æ“×·Æ•G&6·Ğ¢æf–vFS×¶æf–vFWĞ¢—4FÖ–ã×¶6äÖævTÆ–'&'—Ğ¢óàĞ¢—×²"'ĞĞ¢¶7F—fRÓÓÒ'Æ–W""bb€Ğ¢ÅÆ–W%vPĞ¢æf–vFS×¶æf–vFWĞ¢Æ–W%6WGF–æw3×·6WGF–æw4FFçÆ–W'ĞĞ¢—4FÖ–ã×¶6äÖævTÆ–'&'—ĞĞ¢óàĞ¢—×²"'ĞĞ¢¶6äÖævTÆ–'&'’bb7F—fRÓÓÒ'F6·2"bb€Ğ¢ÅF6·2¦ö'3×¶¦ö'7Ò&Vg&W6ƒ×·&Vg&W6„¦ö'7Òæf–vFS×¶æf–vFWÒóà¢—×²"'ĞĞ¢¶7F—fRÓÓÒ'6WGF–æw2"bb€Ğ¢Å6WGF–æw5vPĞ¢6WGF–æw3×·6WGF–æw4FFĞĞ¢Æöv÷WC×¶Æöv÷WGĞĞ¢æf–vFS×¶æf–vFWĞ¢—4FÖ–ã×¶—4FÖ–çĞ¢öå6WGF–æw46†ævS×·6WE6WGF–æw4FFĞ¢óà¢—×²"'ĞĞ¢¶—4Öö&–ÆRbb€Ğ¢ÄÖö&–ÆTæ`Ğ¢7F—fS×¶7F—fWĞĞ¢6†ævS×¶æf–vFWĞ¢—4FÖ–ã×¶6ä÷VäÖævVÖVçGĞĞ¢óàĞ¢—ĞĞ¢ÂöÖ–ãàĞ¢·6†÷tÖ–æ•Æ–W"bb€Ğ¢ÄÖ–æ•Æ–W Ğ¢÷VåÆ–W#×²‚’Óâæf–vFR‚'Æ–W""—Ğ¢æf–vFS×¶æf–vFWĞ¢óàĞ¢—ĞĞ¢ÅFö7BFö7C×·Fö7GÒ6ÆV#×²‚’Óâ6WEFö7B†çVÆÂ—ÒóàĞ¢ÂöF—càĞ¢“°Ğ§ĞĞ Ğ¦gVæ7F–öâÖö&–ÆTæb‡²7F—fRÂ6†ævRÂ—4FÖ–âÒG'VRÒ’°¢6öç7BÆ&VÇ2Ò°¢†öÖS¢.šinšR"À¢Æ–'&'“¢.i».[©2"À¢Æ–Æ—7G3¢.jØÎXÙR"À¢F—66÷fW#¢.hêˆÙ"À¢ÖS¢.h‰y¨B"À¢Ó°¢6öç7B—FV×2ÒÖö&–ÆTæf–vF–öä–G0¢æÖ‚†–B’Óâæbæf–æB‚†—FVÒ’Óâ—FVÒæ–BÓÓÒ–B’¢æf–ÇFW"„&ööÆVâ“°¢6öç7B†–v†Æ–v‡FVBÒÖö&–ÆTæf–vF–öåF&vWB€¢7F—fRÀ¢ÖævVÖVçDæbæÖ‚†—FVÒ’Óâ—FVÒæ–B’À¢“°¢&WGW&â€¢Ææb6Æ74æÖSÒ&Öö&–ÆRÖæbÖö&–ÆRÖöæÇ’"&–ÖÆ&VÃÒ.z{¾XªzºşK‹¾ZûÎˆŠ¢#à¢¶—FV×2æÖ‚†—FVÒ’Óâ€Ğ¢Æ'WGFöàĞ¢6Æ74æÖS×¶†–v†Æ–v‡FVBÓÓÒ—FVÒæ–Bò&7F—fR"¢"'ĞĞ¢öä6Æ–6³×²‚’Óâ6†ævR†—FVÒæ–B—ĞĞ¢¶W“×¶—FVÒæ–GĞĞ¢àĞ¢Æ—FVÒæ–6öâóàĞ¢Ç7ãç¶Æ&VÇ5¶—FVÒæ–E×ÓÂ÷7ãàĞ¢Âö'WGFöãàĞ¢’—ĞĞ¢ÂöæcàĞ¢“°Ğ§ĞĞ Ğ¦7&VFU&ö÷B†Fö7VÖVçBævWDVÆVÖVçD'”–B‚'&ö÷B"’’ç&VæFW"ƒÄóâ“°Ğ
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("beforeinstallprompt", onPrompt);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, [standalone]);
+  if (!visible || standalone) return null;
+  const install = async () => {
+    if (event) {
+      setStatus("");
+      await event.prompt();
+      const result = await event.userChoice.catch(() => ({
+        outcome: "dismissed",
+      }));
+      setEvent(null);
+      if (result.outcome === "accepted") {
+        localStorage.setItem("songlib-pwa-dismissed", "1");
+        setVisible(false);
+      } else {
+        setStatus("å®‰è£…å·²å–æ¶ˆã€‚æµè§ˆå™¨å†æ¬¡å…è®¸å®‰è£…æ—¶ï¼Œè¿™é‡Œä¼šé‡æ–°å‡ºç°å®‰è£…å…¥å£ã€‚");
+        setHelpOpen(true);
+      }
+    } else {
+      setHelpOpen((value) => !value);
+      setStatus("");
+    }
+  };
+  const dismiss = () => {
+    localStorage.setItem("songlib-pwa-dismissed", "1");
+    setVisible(false);
+  };
+  return (
+    <aside className="pwa-prompt panel">
+      <button className="icon-button" onClick={dismiss}>
+        <X />
+      </button>
+      <div className="pwa-icon">
+        <img src="/icons/icon-192.png" alt="" />
+      </div>
+      <div>
+        <strong>å®‰è£…éŸ³å±¿è½»åº”ç”¨</strong>
+        <p>{guidance.summary}</p>
+        {helpOpen && (
+          <div className="pwa-install-help" role="status">
+            {guidance.detail}
+          </div>
+        )}
+        {status && <div className="pwa-install-status" role="status">{status}</div>}
+        <div>
+          <button className="primary small" onClick={install}>
+            {event ? <Download /> : <BookOpenText />}
+            {guidance.actionLabel}
+          </button>
+          <button className="secondary small" onClick={dismiss}>
+            ç¨åå†è¯´
+          </button>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function Login({ onLogin }) {
+  const [username, setUsername] = useState("admin");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const submit = async (event) => {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      await api("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ username, password }),
+      });
+      onLogin();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <main className="login-page login-motion-page">
+      <LoginMotionBackdrop />
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="login-motion-logo"
+      >
+        <div className="login-motion-logo-mark">
+          <img src={BRAND.mark} alt="" />
+        </div>
+        <div>
+          <h1>
+            {BRAND.name}
+            <span>|</span>
+            {BRAND.cnName}
+          </h1>
+          <p>è®©æ•£è½çš„éŸ³ä¹ å›åˆ°è‡ªå·±çš„å²›å±¿</p>
+        </div>
+      </motion.div>
+
+      <div className="login-motion-shell">
+        <div className="login-motion-grid">
+          <section className="login-motion-left">
+            <div>
+              <motion.div
+                initial={{ opacity: 0, x: -30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+                className="login-motion-copy"
+              >
+                <h3>
+                  <span />
+                  YOUR MUSIC, AT HOME
+                </h3>
+                <h2>
+                  è®©æ•£è½çš„éŸ³ä¹,
+                  <br />
+                  å›åˆ°è‡ªå·±çš„<span>å²›å±¿ã€‚</span>
+                </h2>
+                <p>
+                  ä¸€å¤„æ”¶è—ã€æ•´ç†å’Œæ’­æ”¾ NAS
+                  é‡Œçš„éŸ³ä¹ï¼Œä¹Ÿèƒ½ä¸ Plex ä¿æŒåŒæ­¥ã€‚
+                </p>
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+                className="login-motion-features"
+              >
+                <LoginFeatureCard
+                  delay={0.3}
+                  icon={Server}
+                  title="ç§äººæ›²åº“"
+                  desc="éŸ³ä¹å§‹ç»ˆç•™åœ¨å®¶ä¸­"
+                />
+                <LoginFeatureCard
+                  delay={0.4}
+                  icon={Play}
+                  title="è¿ç»­æ’­æ”¾"
+                  desc="æ­Œæ›²ã€é˜Ÿåˆ—ä¸æ­Œè¯ç›¸ä¼´"
+                />
+                <LoginFeatureCard
+                  delay={0.5}
+                  icon={ShieldCheck}
+                  title="æœ¬åœ°ä¼˜å…ˆ"
+                  desc="å¬æ­Œè®°å½•ç”±ä½ æŒæ§"
+                />
+                <LoginFeatureCard
+                  delay={0.6}
+                  icon={Activity}
+                  title="ä¸ºä½ å‘ç°"
+                  desc="ä»ç†Ÿæ‚‰èµ°å‘æ–°çš„æ—‹å¾‹"
+                />
+              </motion.div>
+            </div>
+          </section>
+
+          <section className="login-motion-right">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.98, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{
+                duration: 0.8,
+                delay: 0.3,
+                ease: [0.16, 1, 0.3, 1],
+              }}
+              className="login-motion-card-group"
+            >
+              <div className="login-motion-hover-glow" />
+              <div className="login-motion-card">
+                <div className="login-motion-card-line" />
+                <div className="login-motion-card-head">
+                  <div>
+                    <img src={BRAND.mark} alt="" />
+                  </div>
+                  <h2>
+                    {BRAND.name}
+                    <span>{BRAND.cnName}</span>
+                  </h2>
+                  <p>SECURE ACCESS</p>
+                </div>
+
+                <form className="login-motion-form" onSubmit={submit}>
+                  <h3>ç™»å½•æ§åˆ¶å°</h3>
+                  <label>ç”¨æˆ·å</label>
+                  <div className="login-motion-input">
+                    <User />
+                    <input
+                      autoFocus
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      placeholder="è¾“å…¥ç”¨æˆ·å"
+                    />
+                  </div>
+                  <label>å¯†ç </label>
+                  <div className="login-motion-input">
+                    <KeyRound />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((value) => !value)}
+                    >
+                      {showPassword ? <EyeOff /> : <Eye />}
+                    </button>
+                  </div>
+                  <div className="login-motion-row">
+                    <span>ä¼šè¯ä»…ä¿å­˜åœ¨å½“å‰æµè§ˆå™¨</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setError(
+                          "è¯·è”ç³»è¿™å°éŸ³å±¿å®ä¾‹çš„ç®¡ç†å‘˜ï¼ŒæŒ‰éƒ¨ç½²æ–‡æ¡£ä¸­çš„â€œæ¢å¤ç®¡ç†å‘˜è®¿é—®â€æµç¨‹é‡ç½®å¯†ç ã€‚",
+                        )
+                      }
+                    >
+                      å¿˜è®°å¯†ç ï¼Ÿ
+                    </button>
+                  </div>
+                  {error && (
+                    <div className="form-error login-motion-error">
+                      <CircleAlert />
+                      {error}
+                    </div>
+                  )}
+                  <button
+                    className="login-motion-submit"
+                    disabled={busy || !password}
+                  >
+                    {busy ? <LoaderCircle className="spin" /> : <LogIn />}
+                    è¿›å…¥éŸ³å±¿æ§åˆ¶å°
+                  </button>
+                </form>
+
+                <footer>
+                  <span className="status-dot" />
+                  NAS æœ¬åœ°è¿è¡Œ Â· æ•°æ®ä¸ä¼šä¸Šä¼ äº‘ç«¯
+                </footer>
+              </div>
+            </motion.div>
+          </section>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function SetupWizard({ onComplete }) {
+  const [form, setForm] = useState({
+    username: "admin",
+    displayName: "",
+    password: "",
+    confirmPassword: "",
+  });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const submit = async (event) => {
+    event.preventDefault();
+    if (form.password !== form.confirmPassword) {
+      setError("ä¸¤æ¬¡è¾“å…¥çš„å¯†ç ä¸ä¸€è‡´");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      await api("/api/setup/complete", {
+        method: "POST",
+        body: JSON.stringify({
+          username: form.username,
+          displayName: form.displayName,
+          password: form.password,
+        }),
+      });
+      onComplete();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <main className="setup-page">
+      <LoginMotionBackdrop />
+      <section className="setup-card panel">
+        <Brand />
+        <span className="eyebrow"><ShieldCheck />é¦–æ¬¡è®¾ç½®</span>
+        <h1>åˆ›å»ºè¿™åº§éŸ³ä¹å²›çš„ä¸»äººè´¦å·</h1>
+        <p>è´¦å·ã€ç”»åƒå’Œæ’­æ”¾è®°å½•åªä¿å­˜åœ¨è¿™å°è®¾å¤‡ã€‚å®Œæˆåå¯ç»§ç»­è¿æ¥éŸ³ä¹ç›®å½•æˆ– Plexã€‚</p>
+        <form onSubmit={submit}>
+          <label>
+            <span>ç”¨æˆ·å</span>
+            <input autoFocus value={form.username} onChange={(event) => update("username", event.target.value)} />
+          </label>
+          <label>
+            <span>æ˜¾ç¤ºåç§°</span>
+            <input value={form.displayName} onChange={(event) => update("displayName", event.target.value)} placeholder="ä¾‹å¦‚ï¼šæˆ‘çš„éŸ³å±¿" />
+          </label>
+          <label>
+            <span>ç®¡ç†å‘˜å¯†ç </span>
+            <input type="password" value={form.password} onChange={(event) => update("password", event.target.value)} placeholder="è‡³å°‘ 12 ä¸ªå­—ç¬¦" />
+          </label>
+          <label>
+            <span>ç¡®è®¤å¯†ç </span>
+            <input type="password" value={form.confirmPassword} onChange={(event) => update("confirmPassword", event.target.value)} />
+          </label>
+          {error && <div className="form-error"><CircleAlert />{error}</div>}
+          <button className="primary" disabled={busy || form.password.length < 12}>
+            {busy ? <LoaderCircle className="spin" /> : <ChevronRight />}
+            åˆ›å»ºè´¦å·å¹¶è¿›å…¥
+          </button>
+        </form>
+        <footer><ShieldCheck />ä¸ä¼šåˆ›å»ºé»˜è®¤å¼±å¯†ç ï¼Œä¹Ÿä¸ä¼šæŠŠå¯†ç å†™å…¥é¡µé¢æˆ–æ—¥å¿—ã€‚</footer>
+      </section>
+    </main>
+  );
+}
+
+function SidebarMiniPlayer({ openPlayer }) {
+  const player = usePlayer();
+  const current = player.currentTrack;
+  if (!current) return null;
+  const cover = coverUrlFor(current) || VISUAL_FALLBACKS.cover;
+  const title = current.title || "æœªå‘½åæ­Œæ›²";
+  const artist = current.artist || "æœªçŸ¥æ­Œæ‰‹";
+  const progress = player.duration
+    ? pct(player.currentTime, player.duration)
+    : 0;
+  const liked = player.isFavorite(current);
+  return (
+    <section className="sidebar-player" aria-label="ä¾§è¾¹æ è¿·ä½ æ’­æ”¾å™¨">
+      <div className="sidebar-player-head">
+        <button className="sidebar-player-cover" onClick={openPlayer}>
+          {cover ? <img src={cover} alt="" /> : <Music2 />}
+        </button>
+        <div>
+          <strong>{title}</strong>
+          <span>{artist}</span>
+        </div>
+        <button
+          className={`sidebar-like ${liked ? "active" : ""}`}
+          aria-label={liked ? "å–æ¶ˆå–œæ¬¢" : "å–œæ¬¢"}
+          onClick={() => player.toggleFavorite(current)}
+        >
+          <Heart />
+        </button>
+      </div>
+      <div className="sidebar-player-controls">
+        <button onClick={player.previous} aria-label="ä¸Šä¸€é¦–">
+          <ChevronRight className="prev-icon" />
+        </button>
+        <button
+          className="sidebar-play"
+          onClick={player.toggle}
+          aria-label={player.isPlaying ? "æš‚åœ" : "æ’­æ”¾"}
+        >
+          {player.isPlaying ? <Pause /> : <Play />}
+        </button>
+        <button onClick={player.next} aria-label="ä¸‹ä¸€é¦–">
+          <ChevronRight />
+        </button>
+      </div>
+      <div className="sidebar-player-progress">
+        <i style={{ width: `${progress}%` }} />
+      </div>
+      <div className="sidebar-player-time">
+        <span>{formatTime(player.currentTime)}</span>
+        <span>{formatTime(player.duration)}</span>
+      </div>
+    </section>
+  );
+}
+
+function Sidebar({
+  active,
+  onChange,
+  open,
+  close,
+  logout,
+  version,
+  openPlayer,
+  isAdmin = true,
+}) {
+  const visibleNav = nav.filter((item) => !item.admin || isAdmin);
+  const highlighted = activeNavId(active);
+  const groups = ["å‘ç°", "èµ„æ–™åº“", "ç³»ç»Ÿ"];
+  return (
+    <>
+      <aside className={`sidebar ${open ? "open" : ""}`}>
+        <div className="sidebar-top">
+          <Brand />
+          <button className="icon-button mobile-only" onClick={close}>
+            <X />
+          </button>
+        </div>
+        <nav aria-label="ä¸»å¯¼èˆª">
+          {groups.map((group) => (
+            <div className="nav-group" key={group}>
+              <span className="nav-group-label">{group}</span>
+              {visibleNav
+                .filter((item) => item.group === group)
+                .map((item) => (
+                  <button
+                    key={item.id}
+                    className={highlighted === item.id ? "active" : ""}
+                    onClick={() => {
+                      onChange(item.id);
+                      close();
+                    }}
+                  >
+                    <item.icon />
+                    <span>{item.label}</span>
+                    {highlighted === item.id && <i />}
+                  </button>
+                ))}
+            </div>
+          ))}
+        </nav>
+        <div className="sidebar-footer">
+          <SidebarMiniPlayer openPlayer={openPlayer} />
+          <div className="side-version">v{version || BRAND.version}</div>
+          <button className="logout" onClick={logout}>
+            <LogOut size={18} />
+            é€€å‡ºç™»å½•
+          </button>
+        </div>
+      </aside>
+      {open && <button className="backdrop mobile-only" onClick={close} />}
+    </>
+  );
+}
+
+function Topbar({ title, subtitle, openMenu, onNavigate, logout, profile }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const submitSearch = (event) => {
+    event?.preventDefault?.();
+    const text = query.trim();
+    if (!text) return;
+    localStorage.setItem("songlib-global-search", text);
+    onNavigate("search");
+  };
+  return (
+    <header className="topbar">
+      <button className="icon-button mobile-only" onClick={openMenu}>
+        <Menu />
+      </button>
+      <div>
+        <h2>{title}</h2>
+        <p>{subtitle}</p>
+      </div>
+      <div className="top-actions">
+        <form className="top-search" onSubmit={submitSearch}>
+          <Search />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") submitSearch(e);
+            }}
+            placeholder="æœç´¢éŸ³ä¹ã€è‰ºæœ¯å®¶ã€ä¸“è¾‘â€¦"
+          />
+          <kbd>â†µ</kbd>
+        </form>
+        <div
+          className="brand-status"
+          title={`${BRAND.fullName} Â· éŸ³å±¿æ­£åœ¨æœ¬åœ°è¿è¡Œ`}
+          role="status"
+          aria-label="éŸ³å±¿æ­£åœ¨æœ¬åœ°è¿è¡Œ"
+        >
+          <img src={BRAND.mark} alt="" />
+          <span />
+        </div>
+        <button
+          className="icon-button notification"
+          onClick={() => onNavigate("tasks")}
+        >
+          <Activity />
+          <span />
+        </button>
+        <div className="user-entry">
+          <button
+            className="avatar"
+            onClick={() => setOpen(!open)}
+            aria-label="ç”¨æˆ·èœå•"
+          >
+            {profile?.avatarUrl ? (
+              <img src={profile.avatarUrl} alt="" />
+            ) : (
+              <UserRound />
+            )}
+            <ChevronDown />
+          </button>
+          {open && (
+            <div className="user-menu panel">
+              <strong>{profile?.displayName || "éŸ³å±¿æ§åˆ¶å°"}</strong>
+              <button
+                onClick={() => {
+                  onNavigate("settings");
+                  setOpen(false);
+                }}
+              >
+                <UserRound />
+                è´¦å·è®¾ç½®
+              </button>
+              <button
+                onClick={() => {
+                  onNavigate("settings");
+                  setOpen(false);
+                }}
+              >
+                <Settings />
+                ç³»ç»Ÿè®¾ç½®
+              </button>
+              <button onClick={logout}>
+                <LogOut />
+                é€€å‡ºç™»å½•
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  detail,
+  tone = "amber",
+  progress,
+}) {
+  return (
+    <article className="stat-card">
+      <div className={`stat-icon ${tone}`}>
+        <Icon />
+      </div>
+      <div className="stat-copy">
+        <span>{label}</span>
+        <strong>{fmt(value)}</strong>
+        <small>{detail}</small>
+      </div>
+      {progress !== undefined && (
+        <div className="mini-progress">
+          <i style={{ width: `${progress}%` }} />
+        </div>
+      )}
+    </article>
+  );
+}
+
+function SectionHead({ title, note, action }) {
+  return (
+    <div className="section-head">
+      <div>
+        <h3>{title}</h3>
+        {note && <p>{note}</p>}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function Empty({ icon: Icon = Music2, title, text }) {
+  return (
+    <div className="empty">
+      <div>
+        <Icon />
+      </div>
+      <h4>{title}</h4>
+      <p>{text}</p>
+    </div>
+  );
+}
+
+function Dashboard({ stats, jobs, loading, navigate, runJob, isAdmin = true }) {
+  const player = usePlayer();
+  const [home, setHome] = useState({
+    artists: [],
+    albums: [],
+    tracks: [],
+    playlists: [],
+    recommendations: [],
+  });
+  const [contentLoading, setContentLoading] = useState(true);
+  useEffect(() => {
+    Promise.all([
+      api("/api/library/artists?pageSize=12").catch(() => ({ items: [] })),
+      api("/api/library/albums?pageSize=12").catch(() => ({ items: [] })),
+      api("/api/library/tracks?pageSize=12").catch(() => ({ items: [] })),
+      api("/api/playlists").catch(() => ({ items: [] })),
+      api("/api/recommendations").catch(() => ({ items: [] })),
+    ])
+      .then(([artists, albums, tracks, playlists, recommendations]) =>
+        setHome({
+          artists: artists.items || [],
+          albums: albums.items || [],
+          tracks: tracks.items || [],
+          playlists: playlists.items || [],
+          recommendations: recommendations.items || [],
+        }),
+      )
+      .finally(() => setContentLoading(false));
+  }, []);
+  if (loading) return <PageLoader />;
+  const hour = new Date().getHours();
+  const greeting = hour < 6 ? "å¤œæ·±äº†" : hour < 12 ? "æ—©ä¸Šå¥½" : hour < 18 ? "ä¸‹åˆå¥½" : "æ™šä¸Šå¥½";
+  const history = (player.history || []).slice(0, 6);
+  const continueItems = history.length ? history : home.tracks.slice(0, 6);
+  const playItems = (items, index = 0) => {
+    const playable = items
+      .map((item) => ({
+        ...item,
+        source: item.source || (item.ratingKey ? "plex_item" : item.source),
+      }))
+      .filter((item) => item.ratingKey || item.audioUrl || item.path || item.file);
+    if (playable[index]) player.play(playable[index], playable.slice(index + 1));
+  };
+  const openAlbum = async (album) => {
+    const result = await api(
+      `/api/library/albums/${encodeURIComponent(album.ratingKey)}`,
+    );
+    playItems(result.tracks || []);
+  };
+  const heroAlbum = home.albums[0];
+  const heroArtist =
+    home.artists.find(
+      (artist) =>
+        artist.ratingKey === heroAlbum?.parentRatingKey ||
+        artist.title === heroAlbum?.parentTitle,
+    ) || home.artists[0];
+  const heroCover = heroArtist?.thumbUrl || heroAlbum?.thumbUrl || "";
+  return (
+    <div className="page dashboard-page home-v2">
+      <header className="home-heading">
+        <div>
+          <span>{greeting}</span>
+          <h1>å¬ç‚¹å–œæ¬¢çš„</h1>
+        </div>
+        <button className="home-search-shortcut" onClick={() => navigate("search")}>
+          <Search />
+          <span>æœç´¢æ­Œæ›²ã€è‰ºäººæˆ–ä¸“è¾‘</span>
+          <kbd>â†µ</kbd>
+        </button>
+      </header>
+
+      <section className="home-focus">
+        <div className="home-focus-copy">
+          <span className="home-focus-label">æœ€è¿‘åŠ å…¥</span>
+          <h2>{heroAlbum?.title || "ä½ çš„ç§äººéŸ³ä¹åº“"}</h2>
+          <p>
+            {heroAlbum?.parentTitle || "éšæ—¶ä»è‡ªå·±çš„ NAS ç»§ç»­æ’­æ”¾"}
+            <span>
+              {fmt(stats?.tracks || home.tracks.length)} é¦–æ­Œæ›² Â·{" "}
+              {fmt(stats?.albums || home.albums.length)} å¼ ä¸“è¾‘
+            </span>
+          </p>
+          <div className="home-focus-actions">
+            <button
+              className="primary home-play-button"
+              disabled={!heroAlbum && !home.tracks.length}
+              onClick={() => (heroAlbum ? openAlbum(heroAlbum) : playItems(home.tracks))}
+            >
+              <Play fill="currentColor" />
+              æ’­æ”¾
+            </button>
+            <button className="secondary" onClick={() => navigate("library")}>
+              æŸ¥çœ‹éŸ³ä¹åº“
+            </button>
+          </div>
+        </div>
+        <div className="home-focus-visual" aria-hidden="true">
+          <span className="home-focus-shadow" />
+          <span className="home-focus-disc">
+            <i className="home-focus-grooves" />
+            <span className="home-focus-cover">
+              {heroCover ? <img src={heroCover} alt="" /> : <Disc3 />}
+            </span>
+            <b className="home-focus-spindle" />
+          </span>
+          <span className="home-focus-tonearm">
+            <i />
+            <b />
+          </span>
+        </div>
+      </section>
+
+      <SectionHead
+        title="ç»§ç»­æ’­æ”¾"
+        action={
+          <button className="text-button" onClick={() => navigate("me")}>
+            æ’­æ”¾è®°å½•
+            <ChevronRight />
+          </button>
+        }
+      />
+      <section className="home-listening-grid">
+        {continueItems.length ? (
+          continueItems.map((item, index) => (
+            <button
+              className="continue-card"
+              key={`${item.id || item.ratingKey || item.title}-${index}`}
+              onClick={() => playItems(continueItems, index)}
+            >
+              <span className="continue-art">
+                {coverUrlFor(item) ? <img src={coverUrlFor(item)} alt="" /> : <Music2 />}
+                <i><Play fill="currentColor" /></i>
+              </span>
+              <span className="continue-copy">
+                <strong>{item.title || "æœªå‘½åæ­Œæ›²"}</strong>
+                <small>{item.artist || item.grandparentTitle || "æœªçŸ¥è‰ºäºº"}</small>
+              </span>
+              <span className="continue-time">{item.playedAt ? timeAgo(item.playedAt) : "æ’­æ”¾"}</span>
+            </button>
+          ))
+        ) : contentLoading ? (
+          <PageLoader />
+        ) : (
+          <Empty icon={Music2} title="è¿˜æ²¡æœ‰æ’­æ”¾è®°å½•" text="ä»éŸ³ä¹åº“æŒ‘ä¸€é¦–å¼€å§‹å§ã€‚" />
+        )}
+      </section>
+
+      <SectionHead
+        title="æœ€è¿‘åŠ å…¥"
+        action={<button className="text-button" onClick={() => navigate("library")}>æŸ¥çœ‹å…¨éƒ¨<ChevronRight /></button>}
+      />
+      <section className="home-album-grid">
+        {home.albums.slice(0, 8).map((item) => (
+          <button className="home-album-card" key={item.ratingKey} onClick={() => openAlbum(item)}>
+            <span>
+              {item.thumbUrl ? <img src={item.thumbUrl} alt="" /> : <Disc3 />}
+              <i><Play fill="currentColor" /></i>
+            </span>
+            <strong>{item.title || "æœªå‘½åä¸“è¾‘"}</strong>
+            <small>{item.parentTitle || item.year || "æœªçŸ¥è‰ºäºº"}</small>
+          </button>
+        ))}
+      </section>
+
+      <div className="home-two-column">
+        <section>
+          <SectionHead
+            title="ä½ çš„æ­Œå•"
+            action={<button className="text-button" onClick={() => navigate("playlists")}>å…¨éƒ¨æ­Œå•<ChevronRight /></button>}
+          />
+          <div className="home-playlist-stack">
+            {home.playlists.slice(0, 4).map((item, index) => (
+              <button key={item.id} onClick={() => navigate("playlists")}>
+                <span className={`playlist-tile tone-${index % 4}`}><ListMusic /></span>
+                <span><strong>{item.name}</strong><small>{item.itemCount || 0} é¦–æ­Œæ›²</small></span>
+                <ChevronRight />
+              </button>
+            ))}
+            {!home.playlists.length && !contentLoading && (
+              <button onClick={() => navigate("playlists")}>
+                <span className="playlist-tile"><Plus /></span>
+                <span><strong>åˆ›å»ºç¬¬ä¸€å¼ æ­Œå•</strong><small>ä¹Ÿå¯å¯¼å…¥ M3U æˆ–å¹³å°åˆ†äº«é“¾æ¥</small></span>
+                <ChevronRight />
+              </button>
+            )}
+          </div>
+        </section>
+        <section>
+          <SectionHead
+            title="ä¸ºä½ å‘ç°"
+            action={<button className="text-button" onClick={() => navigate("discover")}>æ›´å¤šæ¨è<ChevronRight /></button>}
+          />
+          <div className="home-discovery-list">
+            {home.recommendations.slice(0, 4).map((item, index) => (
+              <button
+                key={item.id || `${item.title}-${index}`}
+                onClick={() => {
+                  const target = recommendationPlaybackInput(item);
+                  if (target) player.play(target);
+                  else navigate("discover");
+                }}
+              >
+                <span className="discovery-number">{String(index + 1).padStart(2, "0")}</span>
+                <span><strong>{item.title}</strong><small>{item.artist || "æœªçŸ¥è‰ºäºº"}</small></span>
+                <span className="discovery-reason">{(item.reasons || [item.inLibrary ? "æ›²åº“ç²¾é€‰" : "æ–°å‘ç°"])[0]}</span>
+              </button>
+            ))}
+            {!home.recommendations.length && !contentLoading && (
+              <button onClick={() => navigate("discover")}>
+                <span className="discovery-number"><Sparkles /></span>
+                <span><strong>å¼€å§‹å½¢æˆä½ çš„æ¨è</strong><small>æ’­æ”¾ã€æ”¶è—æˆ–è·³è¿‡å‡ é¦–æ­Œæ›²</small></span>
+                <ChevronRight />
+              </button>
+            )}
+          </div>
+        </section>
+      </div>
+
+      {isAdmin && (stats.failedTasks > 0 || stats.waitingIngest > 0) && (
+        <button className="home-admin-notice" onClick={() => navigate("manage")}>
+          <CircleAlert />
+          <span>
+            <strong>æœ‰å†…å®¹éœ€è¦ç¡®è®¤</strong>
+            <small>
+              {stats.waitingIngest || 0} ä¸ªå¾…å…¥åº“ï¼Œ{stats.failedTasks || 0} ä¸ªä»»åŠ¡å¤±è´¥
+            </small>
+          </span>
+          <ChevronRight />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function JobRow({ job }) {
+  const state = job.status;
+  return (
+    <div className="job-row">
+      <div className={`job-state ${state}`}>
+        {state === "running" ? (
+          <LoaderCircle className="spin" />
+        ) : state === "completed" ? (
+          <Check />
+        ) : state === "failed" ? (
+          <CircleAlert />
+        ) : (
+          <Clock3 />
+        )}
+      </div>
+      <div className="job-info">
+        <div>
+          <strong>{job.title}</strong>
+          <span>{timeAgo(job.created_at)}</span>
+        </div>
+        <p>{job.message || (state === "queued" ? "ç­‰å¾…æ‰§è¡Œ" : "ä»»åŠ¡å®Œæˆ")}</p>
+        {state === "running" && (
+          <div className="bar">
+            <i className="amber" style={{ width: `${job.progress}%` }} />
+          </div>
+        )}
+      </div>
+      <em>
+        {state === "running"
+          ? `${job.progress}%`
+          : state === "completed"
+            ? "å®Œæˆ"
+            : state === "failed"
+              ? "å¤±è´¥"
+              : "æ’é˜Ÿ"}
+      </em>
+    </div>
+  );
+}
+
+function MediaLibrary({
+  initialTab = "artists",
+  initialDetail = null,
+  play,
+  previewBackdrop,
+  onDetailBackdrop,
+  onTabChange,
+  onDetailChange,
+}) {
+  const [tab, setTab] = useState(initialTab);
+  const [detail, setDetail] = useState(initialDetail);
+  const [detailData, setDetailData] = useState(null);
+  const [search, setSearch] = useState(
+    () => localStorage.getItem("songlib-global-search") || "",
+  );
+  const [data, setData] = useState({ items: [], total: 0 });
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const libraryRequestRef = useRef(0);
+  useEffect(() => {
+    if (search) localStorage.removeItem("songlib-global-search");
+  }, []);
+  useEffect(() => {
+    if (initialTab !== tab) setTab(initialTab);
+  }, [initialTab]);
+  useEffect(() => {
+    setDetail(initialDetail);
+  }, [initialDetail?.type, initialDetail?.ratingKey]);
+  const load = async (requestId) => {
+    setLoading(true);
+    setLoadingMore(false);
+    try {
+      const first = await api(
+        `/api/library/${tab}?page=1&pageSize=200&search=${encodeURIComponent(search)}`,
+      );
+      if (requestId !== libraryRequestRef.current) return;
+      setData(first);
+      setLoading(false);
+      if (tab === "tracks" || first.items.length >= first.total) {
+        return;
+      }
+      const pages = Math.ceil(first.total / first.pageSize);
+      setLoadingMore(true);
+      for (let page = 2; page <= pages; page += 4) {
+        const batch = await Promise.all(
+          Array.from(
+            { length: Math.min(4, pages - page + 1) },
+            (_, offset) =>
+              api(
+                `/api/library/${tab}?page=${page + offset}&pageSize=200&search=${encodeURIComponent(search)}`,
+              ),
+          ),
+        );
+        if (requestId !== libraryRequestRef.current) return;
+        const items = batch.flatMap((result) => result.items || []);
+        setData((value) => ({ ...first, items: [...value.items, ...items] }));
+      }
+    } finally {
+      if (requestId === libraryRequestRef.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    }
+  };
+  useEffect(() => {
+    const requestId = ++libraryRequestRef.current;
+    const timer = setTimeout(() => load(requestId), 180);
+    return () => {
+      clearTimeout(timer);
+      if (libraryRequestRef.current === requestId)
+        libraryRequestRef.current += 1;
+    };
+  }, [tab, search]);
+  useEffect(() => {
+    if (!detail?.ratingKey) {
+      setDetailData(null);
+      return;
+    }
+    let cancelled = false;
+    setDetailData(null);
+    api(
+      `/api/library/${detail.type}/${encodeURIComponent(detail.ratingKey)}`,
+    )
+      .then((result) => {
+        if (!cancelled) setDetailData(result);
+      })
+      .catch(() => {
+        if (!cancelled) setDetailData({ error: "æ— æ³•è¯»å–è¿™é¡¹èµ„æ–™ï¼Œè¯·ç¨åé‡è¯•ã€‚" });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [detail?.type, detail?.ratingKey]);
+  useEffect(() => {
+    if (!detail) {
+      onDetailBackdrop?.(null);
+      return;
+    }
+    if (!detailData || detailData.error) return;
+    const artist = detailData.artist;
+    const subject =
+      detail.type === "artists" ? detailData.artist : detailData.album;
+    const imageUrl = artist?.backgroundUrl || VISUAL_FALLBACKS.artist;
+    onDetailBackdrop?.({
+      imageUrl,
+      coverUrl: subject?.thumbUrl || artist?.thumbUrl || "",
+      title: subject?.title || artist?.title || "",
+      subtitle:
+        detail.type === "artists" ? "å½“å‰æ­Œæ‰‹èƒŒæ™¯" : "å½“å‰ä¸“è¾‘èƒŒæ™¯",
+    });
+  }, [
+    detail?.type,
+    detail?.ratingKey,
+    detailData,
+    onDetailBackdrop,
+  ]);
+  useEffect(
+    () => () => {
+      onDetailBackdrop?.(null);
+    },
+    [onDetailBackdrop],
+  );
+  const openDetail = (type, item) => {
+    const next = { type, ratingKey: item.ratingKey };
+    setDetail(next);
+    onDetailChange?.(next);
+  };
+  const closeDetail = () => {
+    setDetail(null);
+    setDetailData(null);
+    onDetailChange?.(null, tab);
+  };
+  const loadMore = async () => {
+    if (loadingMore || data.items.length >= data.total) return;
+    setLoadingMore(true);
+    try {
+      const page = Math.floor(data.items.length / 200) + 1;
+      const next = await api(
+        `/api/library/${tab}?page=${page}&pageSize=200&search=${encodeURIComponent(search)}`,
+      );
+      setData((value) => ({
+        ...next,
+        items: [...value.items, ...(next.items || [])],
+      }));
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+  const showTracks = (item) => {
+    setTab("tracks");
+    setSearch(item.title || "");
+    onTabChange?.("tracks");
+  };
+  const playFirst = async (item) => {
+    const type = item.type === "artist" ? "artists" : "albums";
+    const result = await api(
+      `/api/library/${type}/${encodeURIComponent(item.ratingKey)}`,
+    );
+    const items = result.popularTracks || result.tracks || [];
+    if (items[0])
+      play?.(
+        { ...items[0], source: "plex_item" },
+        items.slice(1).map((track) => ({ ...track, source: "plex_item" })),
+      );
+  };
+  if (detail) {
+    return (
+      <LibraryDetailPage
+        type={detail.type}
+        data={detailData}
+        back={closeDetail}
+        play={play}
+        openDetail={openDetail}
+      />
+    );
+  }
+  return (
+    <div className="page library-page">
+      <div className="library-toolbar">
+        <div className="segmented">
+          {[
+            ["artists", "æ­Œæ‰‹"],
+            ["albums", "ä¸“è¾‘"],
+            ["tracks", "å•æ›²"],
+          ].map(([id, label]) => (
+            <button
+              className={tab === id ? "active" : ""}
+              onClick={() => {
+                setTab(id);
+                setDetail(null);
+                onTabChange?.(id);
+              }}
+              key={id}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="search-field">
+          <Search />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={`æœç´¢${tab === "artists" ? "æ­Œæ‰‹" : tab === "albums" ? "ä¸“è¾‘" : "å•æ›²"}â€¦`}
+          />
+        </div>
+        <span className="result-count">
+          {fmt(data.items.length)} / {fmt(data.total)} é¡¹
+        </span>
+      </div>
+      {loading ? (
+        <PageLoader />
+      ) : tab === "tracks" ? (
+        <TrackTable items={data.items} play={play} />
+      ) : (
+        <div className="media-grid">
+          {data.items.map((item) => (
+            <MediaCard
+              item={item}
+              type={tab}
+              key={item.ratingKey}
+              showTracks={showTracks}
+              playFirst={playFirst}
+              openDetail={openDetail}
+              previewBackdrop={previewBackdrop}
+            />
+          ))}
+        </div>
+      )}
+      {!loading && data.items.length < data.total && (
+        <div className="library-load-more">
+          <button className="secondary" onClick={loadMore} disabled={loadingMore}>
+            {loadingMore ? <LoaderCircle className="spin" /> : <Plus />}
+            {loadingMore
+              ? `æ­£åœ¨è½½å…¥å‰©ä½™ ${fmt(data.total - data.items.length)} é¡¹`
+              : `ç»§ç»­è½½å…¥å‰©ä½™ ${fmt(data.total - data.items.length)} é¡¹`}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MediaCard({
+  item,
+  type,
+  showTracks,
+  playFirst,
+  openDetail,
+  previewBackdrop,
+}) {
+  const isArtist = type === "artists";
+  const isAlbum = type === "albums";
+  const canBackdrop = isArtist && item.artUrl;
+  return (
+    <article
+      className="media-card"
+      role="button"
+      tabIndex={0}
+      onClick={() => openDetail?.(type, item)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openDetail?.(type, item);
+        }
+      }}
+    >
+      <div className="media-art">
+        {item.thumbUrl ? (
+          <img src={item.thumbUrl} alt="" loading="lazy" />
+        ) : (
+          <div className="art-placeholder">
+            {isArtist ? <UserRound /> : <Disc3 />}
+          </div>
+        )}
+        <div className="media-overlay media-actions">
+          <button
+            onClick={(event) => {
+              event.stopPropagation();
+              playFirst?.(item);
+            }}
+            title={isArtist ? "æ’­æ”¾è¿™ä¸ªæ­Œæ‰‹çš„æ›²ç›®" : "æ’­æ”¾è¿™å¼ ä¸“è¾‘"}
+          >
+            <Play fill="currentColor" />
+          </button>
+          <button
+            onClick={(event) => {
+              event.stopPropagation();
+              showTracks?.(item);
+            }}
+            title={isArtist ? "æŸ¥çœ‹æ­Œæ‰‹æ›²ç›®" : "æŸ¥çœ‹ä¸“è¾‘æ›²ç›®"}
+          >
+            <ListMusic />
+          </button>
+          {canBackdrop && (
+            <button
+              onClick={(event) => {
+                event.stopPropagation();
+                previewBackdrop?.({
+                  imageUrl: item.artUrl,
+                  coverUrl: item.thumbUrl || item.artUrl,
+                  title: item.title,
+                  subtitle: "æ‰‹åŠ¨é€‰æ‹©çš„æ­Œæ‰‹èƒŒæ™¯",
+                });
+              }}
+              title="ç”¨ä½œå½“å‰èƒŒæ™¯"
+            >
+              <Image />
+            </button>
+          )}
+        </div>
+        {!item.hasCover && <span className="missing-badge">ç¼ºå°é¢</span>}
+        {item.hasBackground && <span className="background-badge">æœ‰èƒŒæ™¯</span>}
+      </div>
+      <h4>{item.title || "æœªå‘½å"}</h4>
+      <p>
+        {isArtist
+          ? `${(item.tags?.genre || []).slice(0, 2).join(" Â· ") || "éŸ³ä¹äºº"}`
+          : item.parentTitle || item.year || "æœªçŸ¥æ­Œæ‰‹"}
+      </p>
+      <div className="chips media-health-chips">
+        <span>{item.synced ? "å·²åŒæ­¥" : "å¾…åŒæ­¥"}</span>
+        {isArtist && <span>{item.hasChineseBio ? "ä¸­æ–‡ç®€ä»‹å®Œæ•´" : "ç¼ºä¸­æ–‡ç®€ä»‹"}</span>}
+        {isArtist && <span>{item.hasBackground ? "èƒŒæ™¯å®Œæ•´" : "ç¼ºèƒŒæ™¯"}</span>}
+      </div>
+    </article>
+  );
+}
+
+function LibraryDetailPage({ type, data, back, play, openDetail }) {
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
+  const detailKey =
+    data?.artist?.ratingKey || data?.album?.ratingKey || "";
+  useEffect(() => setSummaryExpanded(false), [detailKey]);
+  if (!data) return <PageLoader />;
+  if (data.error)
+    return (
+      <div className="page library-detail-page">
+        <button className="detail-back" onClick={back}>
+          <ArrowLeft />
+          è¿”å›éŸ³ä¹åº“
+        </button>
+        <Empty icon={CircleAlert} title="èµ„æ–™æš‚æ—¶ä¸å¯ç”¨" text={data.error} />
+      </div>
+    );
+  const isArtist = type === "artists";
+  const subject = isArtist ? data.artist : data.album;
+  const tracks = isArtist ? data.popularTracks || [] : data.tracks || [];
+  const albums = isArtist ? data.albums || [] : [];
+  const playAll = () => {
+    if (!tracks.length) return;
+    play?.(
+      { ...tracks[0], source: "plex_item" },
+      tracks.slice(1).map((item) => ({ ...item, source: "plex_item" })),
+    );
+  };
+  const playAlbum = async (album) => {
+    const result = await api(
+      `/api/library/albums/${encodeURIComponent(album.ratingKey)}`,
+    );
+    const items = result.tracks || [];
+    if (!items.length) return;
+    play?.(
+      { ...items[0], source: "plex_item" },
+      items.slice(1).map((item) => ({ ...item, source: "plex_item" })),
+    );
+  };
+  return (
+    <div
+      className={`page library-detail-page ${
+        isArtist ? "artist-profile-page" : "album-profile-page"
+      }`}
+    >
+      <button className="detail-back" onClick={back}>
+        <ArrowLeft />
+        è¿”å›{isArtist ? "æ­Œæ‰‹" : "ä¸“è¾‘"}
+      </button>
+      <section
+        className={`library-detail-hero ${
+          isArtist ? "artist-detail-hero" : "album-detail-hero"
+        }`}
+      >
+        <div className="library-detail-content">
+          <div className="library-detail-cover">
+            {subject?.thumbUrl ? (
+              <img src={subject.thumbUrl} alt="" />
+            ) : isArtist ? (
+              <UserRound />
+            ) : (
+              <Disc3 />
+            )}
+          </div>
+          <div className="library-detail-copy">
+            <span>{isArtist ? "è‰ºäºº" : "ä¸“è¾‘"}</span>
+            <h1>{subject?.title || "æœªå‘½å"}</h1>
+            <p className="library-detail-meta">
+              {isArtist
+                ? [
+                    ...(subject?.tags?.genre || []).slice(0, 3),
+                    `${data.albumCount || albums.length} å¼ ä¸“è¾‘`,
+                    `${data.trackCount || tracks.length} é¦–æ­Œæ›²`,
+                  ].join(" Â· ")
+                : [
+                    subject?.parentTitle || data.artist?.title,
+                    subject?.year,
+                    `${data.trackCount || tracks.length} é¦–æ­Œæ›²`,
+                    durationLabel(data.duration),
+                  ]
+                    .filter(Boolean)
+                    .join(" Â· ")}
+            </p>
+            <div className="library-detail-actions">
+              <button className="primary" onClick={playAll} disabled={!tracks.length}>
+                <Play fill="currentColor" />
+                æ’­æ”¾
+              </button>
+              {!isArtist && data.artist?.ratingKey && (
+                <button
+                  className="secondary"
+                  onClick={() => openDetail?.("artists", data.artist)}
+                >
+                  <UserRound />
+                  æŸ¥çœ‹è‰ºäºº
+                </button>
+              )}
+            </div>
+            {subject?.summary && (
+              <div className="library-detail-biography">
+                <p
+                  className={`library-detail-summary ${
+                    summaryExpanded ? "expanded" : ""
+                  }`}
+                >
+                  {subject.summary}
+                </p>
+                {subject.summary.length > 120 && (
+                  <button
+                    className="summary-toggle"
+                    onClick={() => setSummaryExpanded((value) => !value)}
+                    aria-expanded={summaryExpanded}
+                  >
+                    {summaryExpanded ? "æ”¶èµ·ä»‹ç»" : "æŸ¥çœ‹å…¨éƒ¨"}
+                    <ChevronDown
+                      className={summaryExpanded ? "rotate-180" : ""}
+                    />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+      <SectionHead
+        title={isArtist ? "çƒ­é—¨æ›²ç›®" : "æ›²ç›®"}
+        note={
+          isArtist
+            ? "æ ¹æ® Plex æ’­æ”¾æ•°æ®æ’åˆ—"
+            : `${data.trackCount || tracks.length} é¦– Â· ${durationLabel(data.duration)}`
+        }
+      />
+      <TrackTable items={tracks} play={play} />
+      {isArtist && (
+        <>
+          <SectionHead title={`${data.albumCount || albums.length} å¼ ä¸“è¾‘`} />
+          <div className="media-grid detail-album-grid">
+            {albums.map((item) => (
+              <MediaCard
+                item={item}
+                type="albums"
+                key={item.ratingKey}
+                openDetail={openDetail}
+                playFirst={playAlbum}
+                showTracks={(album) => openDetail?.("albums", album)}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function TrackTable({ items, play }) {
+  return (
+    <div className="track-table panel">
+      <div className="track-head">
+        <span>#</span>
+        <span>æ ‡é¢˜</span>
+        <span>æ­Œæ‰‹</span>
+        <span>ä¸“è¾‘</span>
+        <span>æ—¶é•¿</span>
+      </div>
+      {items.map((item, index) => (
+        <button
+          className="track-row track-button"
+          key={item.ratingKey}
+          onClick={() =>
+            play?.(
+              { ...item, source: "plex_item" },
+              items
+                .slice(index + 1)
+                .map((track) => ({ ...track, source: "plex_item" })),
+            )
+          }
+        >
+          <span>{String(index + 1).padStart(2, "0")}</span>
+          <span className="track-title">
+            <div>
+              <Music2 />
+            </div>
+            <b>{item.title}</b>
+          </span>
+          <span>{item.grandparentTitle || item.originalTitle || "â€”"}</span>
+          <span>{item.parentTitle || "â€”"}</span>
+          <span>
+            {item.duration
+              ? `${Math.floor(item.duration / 60000)}:${String(Math.floor(item.duration / 1000) % 60).padStart(2, "0")}`
+              : "â€”"}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function LocalLibraryPage({ runJob, play, notify, navigate }) {
+  const [tab, setTab] = useState("files"),
+    [data, setData] = useState({ items: [], total: 0, stats: {} }),
+    [search, setSearch] = useState(
+      () => localStorage.getItem("songlib-global-search") || "",
+    ),
+    [missing, setMissing] = useState(""),
+    [loading, setLoading] = useState(true),
+    [selected, setSelected] = useState([]),
+    [previews, setPreviews] = useState([]),
+    [editing, setEditing] = useState(null),
+    [operations, setOperations] = useState([]),
+    [error, setError] = useState("");
+  const [categories, setCategories] = useState({ summary: [], groups: {} });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [activeFilter, setActiveFilter] = useState(null);
+  useEffect(() => {
+    if (search) localStorage.removeItem("songlib-global-search");
+  }, []);
+  const load = async () => {
+    setLoading(true);
+    try {
+      setData(
+        await api(
+          `/api/local/files?limit=${pageSize}&offset=${(page - 1) * pageSize}&search=${encodeURIComponent(search)}&missing=${missing}`,
+        ),
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    const timer = setTimeout(load, 180);
+    return () => clearTimeout(timer);
+  }, [search, missing, page, pageSize]);
+  const toggle = (id) =>
+    setSelected((value) =>
+      value.includes(id) ? value.filter((item) => item !== id) : [...value, id],
+    );
+  const preview = async () => {
+    if (!selected.length) return;
+    try {
+      const result = await api("/api/local/organize/preview", {
+        method: "POST",
+        body: JSON.stringify({ fileIds: selected }),
+      });
+      setPreviews(result.items);
+      setTab("preview");
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  const apply = async () => {
+    if (!previews.length) return;
+    if (
+      !confirm(
+        `ç¡®è®¤æŒ‰é¢„è§ˆç»“æœæ•´ç† ${previews.length} ä¸ªæ–‡ä»¶ï¼Ÿ\n\næ‰§è¡Œå‰è¯·ç¡®è®¤ç›®æ ‡è·¯å¾„æ— è¯¯ï¼Œæ“ä½œä¼šå†™å…¥å›æ»šè®°å½•ã€‚`,
+      )
+    )
+      return;
+    try {
+      await api("/api/local/organize/apply", {
+        method: "POST",
+        body: JSON.stringify({ previews }),
+      });
+      notify("æ•´ç†ä»»åŠ¡å·²åŠ å…¥é˜Ÿåˆ—");
+      navigate("tasks");
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  const saveTags = async (event) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const changes = Object.fromEntries(form.entries());
+    try {
+      await api(`/api/local/files/${editing.id}/tags`, {
+        method: "PATCH",
+        body: JSON.stringify({ changes }),
+      });
+      setEditing(null);
+      notify("æ ‡ç­¾å·²å†™å…¥éŸ³é¢‘æ–‡ä»¶");
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  const switchTab = async (value) => {
+    setTab(value);
+    if (value === "history")
+      try {
+        setOperations(await api("/api/local/operations"));
+      } catch (err) {
+        setError(err.message);
+      }
+    if (value === "categories")
+      try {
+        setCategories(await api("/api/local/categories"));
+      } catch (err) {
+        setError(err.message);
+      }
+  };
+  const applyCategory = (item, type, label) => {
+    setMissing(item.missing || "");
+    setSearch(item.search || item.name || "");
+    setPage(1);
+    setActiveFilter({
+      type: label || type,
+      name: item.name,
+      missing: item.missing || "",
+    });
+    setTab("files");
+  };
+  const clearFilter = () => {
+    setSearch("");
+    setMissing("");
+    setActiveFilter(null);
+    setPage(1);
+  };
+  const rollback = async (item) => {
+    if (!confirm("ç¡®è®¤å›æ»šè¿™æ¬¡æ“ä½œï¼ŸéŸ³å±¿ä¼šæ£€æŸ¥è·¯å¾„å†²çªåå†æ‰§è¡Œã€‚")) return;
+    try {
+      await api(`/api/local/operations/${item.id}/rollback`, {
+        method: "POST",
+      });
+      setOperations(await api("/api/local/operations"));
+      notify("æ“ä½œå·²å®‰å…¨å›æ»š");
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  const stats = data.stats || {};
+  return (
+    <div className="page local-page">
+      <section className="local-hero panel">
+        <div>
+          <span className="eyebrow">
+            <FolderTree />
+            NAS MUSIC LIBRARY
+          </span>
+          <h1>è®©æ¯ä¸€é¦–æ­Œéƒ½æœ‰æ¸…æ™°çš„ä½ç½®ã€‚</h1>
+          <p>æµè§ˆæ›²åº“ï¼Œæ ¡å¯¹æ ‡ç­¾å’Œç›®å½•ï¼Œéœ€è¦æ—¶å¯å®‰å…¨æ’¤é”€ã€‚</p>
+        </div>
+        <div>
+          <button className="secondary" onClick={() => runJob("plex_sync")}>
+            <RefreshCw />
+            åŒæ­¥ Plex å¯¹ç…§
+          </button>
+          <button className="primary" onClick={() => runJob("local_scan")}>
+            <FolderTree />
+            æ‰«ææœ¬åœ°æ›²åº“
+          </button>
+        </div>
+      </section>
+      <div className="local-stats">
+        <StatCard icon={FileAudio} label="æœ¬åœ°éŸ³é¢‘" value={stats.total} />
+        <StatCard
+          icon={Image}
+          label="ç¼ºå°é¢"
+          value={stats.missing_cover}
+          tone="violet"
+        />
+        <StatCard
+          icon={BookOpenText}
+          label="ç¼ºæ­Œè¯"
+          value={stats.missing_lyrics}
+          tone="blue"
+        />
+        <StatCard
+          icon={CircleAlert}
+          label="ç›®å½•å¾…æ•´ç†"
+          value={stats.bad_path}
+          tone="amber"
+        />
+      </div>
+      <div className="local-tabs">
+        {[
+          ["files", "æ–‡ä»¶æµè§ˆ"],
+          ["categories", "åˆ†ç±»æµè§ˆ"],
+          ["missing", "ç¼ºå¤±ä¿¡æ¯"],
+          ["preview", "å…¥åº“é¢„è§ˆ"],
+          ["history", "æ“ä½œå†å²"],
+        ].map(([id, label]) => (
+          <button
+            className={tab === id ? "active" : ""}
+            onClick={() => switchTab(id)}
+            key={id}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {error && (
+        <div className="inline-error">
+          <CircleAlert />
+          {error}
+        </div>
+      )}
+      {tab === "files" && (
+        <section className="panel local-workspace">
+          {activeFilter && (
+            <div className="library-context">
+              <span>åˆ†ç±»æµè§ˆ</span>
+              <ChevronRight />
+              <span>{activeFilter.type}</span>
+              <ChevronRight />
+              <strong>{activeFilter.name}</strong>
+              <button onClick={clearFilter}>
+                {activeFilter.type}={activeFilter.name}
+                <X />
+              </button>
+            </div>
+          )}
+          <div className="local-toolbar">
+            <div className="search-field">
+              <Search />
+              <input
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                  setActiveFilter(null);
+                }}
+                placeholder="æœç´¢æ–‡ä»¶ã€æ­Œæ›²ã€æ­Œæ‰‹æˆ–ä¸“è¾‘â€¦"
+              />
+            </div>
+            <span>{data.total} ä¸ªçœŸå®æ–‡ä»¶</span>
+            <button
+              className="secondary small"
+              disabled={!selected.length}
+              onClick={preview}
+            >
+              <WandSparkles />
+              æ•´ç†é¢„è§ˆ ({selected.length})
+            </button>
+          </div>
+          {loading ? (
+            <PageLoader />
+          ) : (
+            <div className="local-table">
+              <div className="local-row local-head">
+                <span></span>
+                <span>æ­Œæ›² / æ–‡ä»¶</span>
+                <span>æ­Œæ‰‹</span>
+                <span>ä¸“è¾‘</span>
+                <span>çŠ¶æ€</span>
+                <span>æ“ä½œ</span>
+              </div>
+              {data.items.map((item) => (
+                <div className="local-row" key={item.id}>
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(item.id)}
+                    onChange={() => toggle(item.id)}
+                  />
+                  <div className="local-title">
+                    <strong>{item.title || item.filename}</strong>
+                    <small>{item.path}</small>
+                  </div>
+                  <span>{item.artist || "æœªçŸ¥æ­Œæ‰‹"}</span>
+                  <span>{item.album || "æœªçŸ¥ä¸“è¾‘"}</span>
+                  <div className="file-flags">
+                    <i className={item.has_cover ? "ok" : ""}>å°é¢</i>
+                    <i className={item.has_lrc ? "ok" : ""}>æ­Œè¯</i>
+                    <i className={item.plex_matched ? "ok" : ""}>Plex</i>
+                  </div>
+                  <div className="row-actions">
+                    <button title="æ’­æ”¾" onClick={() => play(item)}>
+                      <Play />
+                    </button>
+                    <button title="ç¼–è¾‘æ ‡ç­¾" onClick={() => setEditing(item)}>
+                      <Tags />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {!loading && data.total > pageSize && (
+            <div className="pagination">
+              <button
+                disabled={page <= 1}
+                onClick={() => setPage((value) => Math.max(1, value - 1))}
+              >
+                ä¸Šä¸€é¡µ
+              </button>
+              <span>
+                ç¬¬ {page} / {Math.ceil(data.total / pageSize)} é¡µ
+              </span>
+              <select
+                value={pageSize}
+                onChange={(event) => {
+                  setPageSize(Number(event.target.value));
+                  setPage(1);
+                }}
+              >
+                <option value="30">æ¯é¡µ 30 é¦–</option>
+                <option value="50">æ¯é¡µ 50 é¦–</option>
+                <option value="100">æ¯é¡µ 100 é¦–</option>
+              </select>
+              <button
+                disabled={page >= Math.ceil(data.total / pageSize)}
+                onClick={() => setPage((value) => value + 1)}
+              >
+                ä¸‹ä¸€é¡µ
+              </button>
+            </div>
+          )}
+        </section>
+      )}
+      {tab === "missing" && (
+        <section className="panel missing-workspace">
+          <SectionHead
+            title="ç¼ºå¤±ä¿¡æ¯æ‰«æ"
+            note="ç­›é€‰çœŸå®æ–‡ä»¶ï¼Œä¸ä¿®æ”¹ Plex æ¡ç›®"
+          />
+          <div className="missing-filters">
+            {[
+              ["cover", "ç¼ºå°é¢", stats.missing_cover],
+              ["lyrics", "ç¼ºæ­Œè¯", stats.missing_lyrics],
+              ["artist", "ç¼ºæ­Œæ‰‹", stats.missing_artist],
+              ["album", "ç¼ºä¸“è¾‘", stats.missing_album],
+              ["path", "ç›®å½•ä¸è§„èŒƒ", stats.bad_path],
+              ["plex", "Plex æœªè¯†åˆ«", stats.plex_unmatched],
+            ].map(([id, label, count]) => (
+              <button
+                className={missing === id ? "active" : ""}
+                onClick={() => {
+                  setMissing(id);
+                  setActiveFilter({
+                    type: "ç¼ºå¤±ä¿¡æ¯",
+                    name: label,
+                    missing: id,
+                  });
+                  setPage(1);
+                  setTab("files");
+                }}
+                key={id}
+              >
+                <b>{count || 0}</b>
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+      {tab === "categories" && (
+        <section className="panel category-workspace">
+          <SectionHead
+            title="æ›²åº“åˆ†ç±»"
+            note="é€‰æ‹©åˆ†ç±»åå¯ç»§ç»­ç­›é€‰ã€æ’­æ”¾æˆ–ç¼–è¾‘ï¼Œè¿”å›æ—¶ä¿ç•™åˆ†ç±»ä¸Šä¸‹æ–‡ã€‚"
+          />
+          <div className="category-summary">
+            {(categories.summary || []).map((item) => (
+              <button
+                key={item.id}
+                onClick={() => {
+                  if (item.id === "tracks") clearFilter();
+                  else setActiveFilter(null);
+                  setTab(item.id === "tracks" ? "files" : "categories");
+                }}
+              >
+                <strong>{fmt(item.count)}</strong>
+                <span>{item.label}</span>
+                <small>{item.note}</small>
+              </button>
+            ))}
+          </div>
+          <div className="category-groups">
+            {[
+              ["genre", "æµæ´¾ / é£æ ¼"],
+              ["artist", "è‰ºäºº"],
+              ["album", "ä¸“è¾‘"],
+              ["folder", "é¡¶å±‚æ–‡ä»¶å¤¹"],
+              ["format", "æ–‡ä»¶æ ¼å¼"],
+              ["quality", "éŸ³è´¨è§„æ ¼"],
+              ["year", "å¹´ä»½"],
+              ["scene", "åœºæ™¯ç²¾é€‰"],
+              ["missing", "å¾…ä¿®å¤"],
+            ].map(([key, title]) => (
+              <div className="category-group" key={key}>
+                <h3>{title}</h3>
+                <div>
+                  {(categories.groups?.[key] || []).map((item) => (
+                    <button
+                      key={item.id || item.name}
+                      onClick={() => applyCategory(item, key, title)}
+                    >
+                      <span>{item.name}</span>
+                      <b>{fmt(item.count)}</b>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+      {tab === "preview" && (
+        <section className="panel preview-workspace">
+          <SectionHead
+            title="æ•´ç†é¢„è§ˆ"
+            note="ç¡®è®¤å‰ä¸ä¼šç§»åŠ¨ä»»ä½•æ–‡ä»¶"
+            action={
+              previews.length ? (
+                <button className="primary" onClick={apply}>
+                  <Check />
+                  ç¡®è®¤æ‰§è¡Œ
+                </button>
+              ) : null
+            }
+          />
+          {previews.length ? (
+            <div className="preview-list">
+              {previews.map((item) => (
+                <div key={item.fileId}>
+                  <div>
+                    <small>åŸè·¯å¾„</small>
+                    <code>{item.sourcePath}</code>
+                  </div>
+                  <ChevronRight />
+                  <div>
+                    <small>æ–°è·¯å¾„</small>
+                    <code>{item.targetPath}</code>
+                  </div>
+                  <i className={item.conflict ? "danger" : "safe"}>
+                    {item.conflict ? "å­˜åœ¨å†²çª" : "å®‰å…¨"}
+                  </i>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <Empty
+              icon={WandSparkles}
+              title="æš‚æ— æ•´ç†é¢„è§ˆ"
+              text="åœ¨æ–‡ä»¶æµè§ˆä¸­å‹¾é€‰æ­Œæ›²ï¼Œå†ç‚¹å‡»â€œæ•´ç†é¢„è§ˆâ€ã€‚"
+            />
+          )}
+        </section>
+      )}
+      {tab === "history" && (
+        <section className="panel operation-workspace">
+          <SectionHead
+            title="æ“ä½œå†å²"
+            note="æ ‡ç­¾å†™å…¥ã€ç§»åŠ¨å’Œä¸‹è½½å…¥åº“å‡æœ‰å›æ»šæ•°æ®"
+          />
+          <div className="operation-list">
+            {operations.length ? (
+              operations.map((item) => (
+                <div key={item.id}>
+                  <span>{item.action}</span>
+                  <code>{item.target_id || "â€”"}</code>
+                  <i>{item.rollbackable ? "å¯å›æ»š" : "ä»…è®°å½•"}</i>
+                  <time>{timeAgo(item.created_at)}</time>
+                  {item.rollbackable ? (
+                    <button onClick={() => rollback(item)}>
+                      <RotateCcw />
+                      å›æ»š
+                    </button>
+                  ) : null}
+                </div>
+              ))
+            ) : (
+              <Empty
+                icon={RotateCcw}
+                title="æš‚æ— ä¿®æ”¹è®°å½•"
+                text="å®Œæˆæ ‡ç­¾å†™å…¥ã€æ–‡ä»¶æ•´ç†æˆ–å…¥åº“åï¼Œè®°å½•ä¼šæ˜¾ç¤ºåœ¨è¿™é‡Œã€‚"
+              />
+            )}
+          </div>
+        </section>
+      )}
+      {editing && (
+        <div className="modal-wrap">
+          <button className="modal-backdrop" onClick={() => setEditing(null)} />
+          <form className="modal panel tag-modal" onSubmit={saveTags}>
+            <div className="modal-head">
+              <div>
+                <span className="eyebrow">AUDIO TAGS</span>
+                <h3>{editing.filename}</h3>
+              </div>
+              <button
+                type="button"
+                className="icon-button"
+                onClick={() => setEditing(null)}
+              >
+                <X />
+              </button>
+            </div>
+            <div className="tag-grid">
+              {[
+                ["title", "æ ‡é¢˜"],
+                ["artist", "æ­Œæ‰‹"],
+                ["album", "ä¸“è¾‘"],
+                ["albumArtist", "ä¸“è¾‘è‰ºæœ¯å®¶"],
+                ["year", "å¹´ä»½"],
+                ["trackNumber", "éŸ³è½¨å·"],
+                ["discNumber", "ç¢Ÿå·"],
+                ["genre", "æµæ´¾"],
+              ].map(([key, label]) => (
+                <label key={key}>
+                  {label}
+                  <input
+                    name={key}
+                    defaultValue={
+                      editing[key] ||
+                      editing[
+                        key.replace(/[A-Z]/g, (m) => "_" + m.toLowerCase())
+                      ] ||
+                      ""
+                    }
+                  />
+                </label>
+              ))}
+            </div>
+            <p className="modal-note">
+              <ShieldCheck />
+              ä¿å­˜ä¼šç›´æ¥å†™å…¥çœŸå®éŸ³é¢‘æ ‡ç­¾ï¼Œå¹¶è®°å½•å¯å›æ»šçš„æ—§å€¼ã€‚
+            </p>
+            <button className="primary full">
+              <Tags />
+              ç¡®è®¤å†™å…¥æ ‡ç­¾
+            </button>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DiscoverPage({ play, navigate, isAdmin = true }) {
+  const [feed, setFeed] = useState({ categories: [], playlists: [] }),
+    [category, setCategory] = useState("çƒ­é—¨"),
+    [detail, setDetail] = useState(null),
+    [detailPage, setDetailPage] = useState(1);
+  const [loading, setLoading] = useState(true),
+    [detailLoading, setDetailLoading] = useState(false),
+    [error, setError] = useState(""),
+    [queueing, setQueueing] = useState(false);
+  const loadFeed = async (name) => {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await api(
+        `/api/discovery/playlists?category=${encodeURIComponent(name || "çƒ­é—¨")}`,
+      );
+      setFeed(data);
+      setCategory(data.selectedCategory || name || "çƒ­é—¨");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    loadFeed("çƒ­é—¨");
+  }, []);
+  const openPlaylist = async (item) => {
+    setDetailLoading(true);
+    setError("");
+    setDetailPage(1);
+    try {
+      setDetail(await api(`/api/discovery/playlists/${item.id}`));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+  const playMatched = (track) => track?.localTrack && play(track.localTrack);
+  const locateMatched = async (track) => {
+    const resources = track?.localTrack?.resources || [];
+    const local = resources.find((item) => item.type === "local_file");
+    if (local?.path) {
+      await navigator.clipboard?.writeText(local.path);
+      return;
+    }
+    const plexResource = resources.find((item) => item.type === "plex_item");
+    if (plexResource?.id) {
+      const info = await api(`/api/plex/items/${plexResource.id}/playback`);
+      if (info.openPlexUrl) window.open(info.openPlexUrl, "_blank");
+    }
+  };
+  const queueMissing = async () => {
+    const tracks = (detail?.tracks || []).filter((item) => item.canDownload);
+    if (!tracks.length || !detail.downloadSource) return;
+    setQueueing(true);
+    setError("");
+    try {
+      const result = await api("/api/discovery/download-missing", {
+        method: "POST",
+        body: JSON.stringify({
+          sourceId: detail.downloadSource.id,
+          quality: "320k",
+          tracks,
+        }),
+      });
+      if (result.created) {
+        navigate?.("tasks");
+      } else setError(result.errors?.[0]?.error || "æ²¡æœ‰å¯åŠ å…¥çš„ä¸‹è½½å€™é€‰");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setQueueing(false);
+    }
+  };
+  const categories = feed.categories || [],
+    playlists = feed.playlists || [];
+  const detailPageSize = 50;
+  const detailTracks = detail?.tracks || [];
+  const detailPages = Math.max(
+    1,
+    Math.ceil(detailTracks.length / detailPageSize),
+  );
+  const visibleDetailTracks = detailTracks.slice(
+    (detailPage - 1) * detailPageSize,
+    detailPage * detailPageSize,
+  );
+  return (
+    <div className="page discover-page">
+      <section className="page-intro">
+        <span className="eyebrow">
+          <Sparkles />
+          MUSIC DISCOVERY
+        </span>
+        <h1>
+          ä»æ­Œå•å‘ç°ï¼Œ<span>åœ¨è‡ªå·±çš„æ›²åº“é‡Œæ’­æ”¾ã€‚</span>
+        </h1>
+        <p>æµè§ˆçƒ­é—¨æ­Œå•ï¼Œå·²ç»æ”¶è—åœ¨æ›²åº“é‡Œçš„æ­Œæ›²å¯ä»¥ç›´æ¥æ’­æ”¾ã€‚</p>
+      </section>
+      {error && (
+        <div className="inline-error">
+          <CircleAlert />
+          {error}
+        </div>
+      )}
+      <div className="discover-layout">
+        <section className="panel discover-panel playlist-taxonomy">
+          <SectionHead
+            title="æ­Œå•åˆ†ç±»"
+            note={
+              feed.source === "netease-hottags"
+                ? "ç½‘æ˜“äº‘éŸ³ä¹å…¬å¼€åˆ†ç±»"
+                : "å¹³å°æš‚æ—¶ä¸å¯ç”¨"
+            }
+          />
+          <div className="playlist-tags">
+            {categories.map((item) => (
+              <button
+                className={category === item.name ? "active" : ""}
+                key={item.id}
+                onClick={() => {
+                  setDetail(null);
+                  setDetailPage(1);
+                  loadFeed(item.name);
+                }}
+              >
+                <span>{item.name}</span>
+                {item.count ? <b>{fmt(item.count)}</b> : null}
+              </button>
+            ))}
+          </div>
+        </section>
+        <section className="panel discover-panel">
+          <SectionHead
+            title={`${category}æ­Œå•`}
+            note="é€‰æ‹©æ­Œå•åæŸ¥çœ‹æœ¬åœ°åŒ¹é…ç»“æœ"
+          />
+          {loading ? (
+            <PageLoader />
+          ) : playlists.length ? (
+            <div className="playlist-card-grid">
+              {playlists.map((item) => (
+                <button key={item.id} onClick={() => openPlaylist(item)}>
+                  <div>
+                    {item.coverUrl ? (
+                      <img src={item.coverUrl} alt="" />
+                    ) : (
+                      <ListMusic />
+                    )}
+                  </div>
+                  <strong>{item.title}</strong>
+                  <span>
+                    {item.creator} Â· {fmt(item.trackCount)} é¦–
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <Empty
+              icon={Radio}
+              title="æš‚æ—¶æ²¡æœ‰è¯»åˆ°æ­Œå•"
+              text="ç¨ååˆ·æ–°åˆ†ç±»ï¼›æœ¬åœ°æ›²åº“å’Œæ’­æ”¾å™¨ä¸å—å½±å“ã€‚"
+            />
+          )}
+        </section>
+        {(detailLoading || detail) && (
+          <section className="panel discover-panel playlist-detail">
+            <SectionHead
+              title={detail?.playlist?.title || "æ­£åœ¨è¯»å–æ­Œå•"}
+              note={
+                detail
+                  ? `${detail.summary.matched} é¦–å·²åŒ¹é… Â· ${detail.summary.downloadable} é¦–å¯ä¸‹è½½ Â· ${detail.summary.unavailable} é¦–æ— æ³•è¯†åˆ«`
+                  : ""
+              }
+              action={
+                detail && isAdmin && detail.summary.downloadable ? (
+                  <button
+                    className="primary small"
+                    disabled={queueing}
+                    onClick={queueMissing}
+                  >
+                    {queueing ? (
+                      <LoaderCircle className="spin" />
+                    ) : (
+                      <Download />
+                    )}
+                    æ‰¹é‡åŠ å…¥ä¸‹è½½
+                  </button>
+                ) : null
+              }
+            />
+            {detailLoading ? (
+              <PageLoader />
+            ) : (
+              <div className="playlist-match-table">
+                {visibleDetailTracks.map((item, index) => (
+                  <div key={`${item.platformTrackId}-${index}`}>
+                    <span>
+                      {String(
+                        (detailPage - 1) * detailPageSize + index + 1,
+                      ).padStart(2, "0")}
+                    </span>
+                    <div>
+                      <strong>{item.title}</strong>
+                      <small>
+                        {item.artist || "æœªçŸ¥æ­Œæ‰‹"} Â· {item.album || "æœªçŸ¥ä¸“è¾‘"}
+                      </small>
+                    </div>
+                    <i className={item.matchStatus}>
+                      {item.matchStatus === "matched"
+                        ? `å·²åŒ¹é… Â· ${item.localTrack?.sourceSummary || "æœ¬åœ°"}`
+                        : item.canDownload
+                          ? "å¯ä¸‹è½½"
+                          : "æ— æ³•è¯†åˆ«"}
+                    </i>
+                    {item.matchStatus === "matched" ? (
+                      <div className="inline-task-actions">
+                        <button onClick={() => playMatched(item)}><Play />æ’­æ”¾</button>
+                        <button onClick={() => locateMatched(item)}><LocateFixed />{item.localTrack?.sourceTypes?.includes("local_file") ? "å¤åˆ¶è·¯å¾„" : "æ‰“å¼€ Plex"}</button>
+                      </div>
+                    ) : item.canDownload && isAdmin ? (
+                      <button
+                        onClick={() => {
+                          localStorage.setItem(
+                            "songlib-download-query",
+                            `${item.title} ${item.artist}`,
+                          );
+                          navigate?.("download");
+                        }}
+                      >
+                        <Download />
+                        ä¸‹è½½
+                      </button>
+                    ) : (
+                      <span />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {!detailLoading && detailTracks.length > detailPageSize && (
+              <div className="pagination">
+                <button
+                  className="secondary small"
+                  disabled={detailPage <= 1}
+                  onClick={() => setDetailPage((value) => value - 1)}
+                >
+                  ä¸Šä¸€é¡µ
+                </button>
+                <span>
+                  ç¬¬ {detailPage} / {detailPages} é¡µ Â· å…± {detailTracks.length}{" "}
+                  é¦–
+                </span>
+                <button
+                  className="secondary small"
+                  disabled={detailPage >= detailPages}
+                  onClick={() => setDetailPage((value) => value + 1)}
+                >
+                  ä¸‹ä¸€é¡µ
+                </button>
+              </div>
+            )}
+          </section>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const parseLrc = (text) =>
+  (text || "")
+    .replace(/\\n/g, "\n")
+    .split(/\r?\n/)
+    .flatMap((line) => {
+      const match = line.match(/\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?]\s*(.*)$/);
+      if (!match) return [];
+      return [
+        {
+          time:
+            Number(match[1]) * 60 +
+            Number(match[2]) +
+            Number(`0.${match[3] || 0}`),
+          text: match[4] || "â™ª",
+        },
+      ];
+    })
+    .sort((a, b) => a.time - b.time);
+
+const displayLyricsFor = (track, parsed) => {
+  if (parsed.length) return parsed;
+  const plain = (track?.lyrics || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (plain.length)
+    return plain.map((text, index) => ({ time: index * 7, text }));
+  return [];
+};
+
+const PlayerContext = createContext(null);
+const usePlayer = () => useContext(PlayerContext);
+
+const sourceLabel = (sourceType) =>
+  ({
+    local_file: "æœ¬åœ°æ–‡ä»¶",
+    plex_item: "Plex æ›²ç›®",
+    source_preview: "ä¸‹è½½å‰è¯•å¬",
+  })[sourceType] || "æœ¬åœ°æ–‡ä»¶";
+
+function immediatePlaybackTrack(input, quality = "original") {
+  if (!input) return null;
+  let candidate = input;
+  if (Array.isArray(input.resources)) {
+    const resource =
+      input.preferredResource ||
+      input.resources.find((item) => item.type === "local_file") ||
+      input.resources.find((item) => item.type === "plex_item");
+    if (!resource) return null;
+    candidate = {
+      ...input,
+      ...resource,
+      source: resource.source || resource.type,
+      sourceType: resource.type,
+    };
+  }
+  const sourceType =
+    candidate.sourceType ||
+    candidate.source ||
+    (candidate.ratingKey || candidate.plexRatingKey
+      ? "plex_item"
+      : "local_file");
+  const duration = playbackDurationSeconds(candidate.duration);
+  if (sourceType === "local_file") {
+    const id = candidate.localFileId || candidate.id;
+    if (!id || (!candidate.path && !candidate.file)) return null;
+    return {
+      id: `local-${id}`,
+      sourceType: "local_file",
+      title: normalizeTrackTitle(candidate.title || candidate.filename),
+      artist: candidate.artist || "æœªçŸ¥æ­Œæ‰‹",
+      album: candidate.album || "æœªçŸ¥ä¸“è¾‘",
+      duration,
+      coverUrl:
+        candidate.coverUrl ||
+        (candidate.hasCover || candidate.has_cover
+          ? `/api/local/files/${encodeURIComponent(id)}/cover`
+          : ""),
+      artistBackgroundUrl: candidate.artistBackgroundUrl || "",
+      audioUrl: `/api/local/files/${encodeURIComponent(id)}/stream`,
+      lyrics: candidate.lyrics || "",
+      quality: "original",
+      bitrate: "original",
+      localFileId: id,
+      file: candidate.path || candidate.file || "",
+      raw: candidate,
+    };
+  }
+  if (sourceType === "plex_item") {
+    const ratingKey =
+      candidate.plexRatingKey || candidate.ratingKey || candidate.id;
+    if (!ratingKey) return null;
+    return {
+      id: `plex-${ratingKey}`,
+      sourceType: "plex_item",
+      title: normalizeTrackTitle(candidate.title),
+      artist: candidate.artist || candidate.grandparentTitle || "æœªçŸ¥æ­Œæ‰‹",
+      album: candidate.album || candidate.parentTitle || "æœªçŸ¥ä¸“è¾‘",
+      duration,
+      coverUrl: candidate.coverUrl || candidate.thumbUrl || "",
+      artistBackgroundUrl:
+        candidate.artistBackgroundUrl || candidate.artUrl || "",
+      audioUrl: `/api/player/plex/${encodeURIComponent(ratingKey)}/stream?bitrate=${encodeURIComponent(quality)}`,
+      lyrics: candidate.lyrics || "",
+      quality,
+      bitrate: quality,
+      plexRatingKey: ratingKey,
+      file: candidate.path || candidate.file || "",
+      raw: candidate,
+    };
+  }
+  return null;
+}
+
+async function toPlaybackTrack(input, quality = "original") {
+  if (!input) return null;
+  if (Array.isArray(input.resources)) {
+    const resource =
+      input.preferredResource ||
+      input.resources.find((item) => item.type === "local_file") ||
+      input.resources.find((item) => item.type === "plex_item");
+    if (!resource) throw new Error("è¿™é¦–æ­Œæ²¡æœ‰å¯æ’­æ”¾èµ„æº");
+    return toPlaybackTrack(
+      {
+        ...input,
+        ...resource,
+        source: resource.source || resource.type,
+        sourceType: resource.type,
+      },
+      quality,
+    );
+  }
+  if (
+    input.sourceType &&
+    input.audioUrl &&
+    input.sourceType !== "plex_item"
+  )
+    return input;
+  const sourceType = input.sourceType || input.source || "local_file";
+  if (sourceType === "plex_item") {
+    const ratingKey = input.plexRatingKey || input.ratingKey;
+    const info = await api(`/api/plex/items/${ratingKey}/playback`);
+    const audioUrl =
+      quality === "original"
+        ? info.directPlayUrl
+        : info.transcodeUrls?.[quality] || info.directPlayUrl;
+    return {
+      id: `plex-${ratingKey}`,
+      sourceType: "plex_item",
+      title: normalizeTrackTitle(info.title),
+      artist: info.artist,
+      album: info.album,
+      duration: Math.round((info.duration || 0) / 1000),
+      coverUrl: info.coverUrl,
+      artistBackgroundUrl: info.artistBackgroundUrl,
+      audioUrl,
+      lyrics: info.lyrics || "",
+      quality,
+      bitrate: quality,
+      plexRatingKey: ratingKey,
+      file: info.file,
+      openPlexUrl: info.openPlexUrl,
+      transcodeUrls: info.transcodeUrls || {},
+      raw: info,
+    };
+  }
+  if (sourceType === "source_preview") {
+    const data = await api("/api/player/source-preview", {
+      method: "POST",
+      body: JSON.stringify({
+        sourceId: input.sourceId,
+        quality: input.quality || quality,
+        item: input.item || input,
+      }),
+    });
+    return {
+      id: `preview-${input.trackId || input.id || Date.now()}`,
+      sourceType: "source_preview",
+      title: normalizeTrackTitle(data.title || input.title),
+      artist: data.artist || input.artist,
+      album: data.album || input.album,
+      coverUrl: data.coverUrl || input.coverUrl || input.cover,
+      audioUrl: data.streamUrl,
+      lyrics: "",
+      quality: data.quality || input.quality || quality,
+      sourceId: input.sourceId,
+      raw: input,
+    };
+  }
+  const data = await api(`/api/player/local/${input.localFileId || input.id}`);
+  let lyrics = "";
+  if (data.lyricsUrl) {
+    const lyricData = await api(data.lyricsUrl).catch(() => ({ lyrics: "" }));
+    lyrics = lyricData.lyrics || "";
+  }
+  return {
+    id: `local-${data.id}`,
+    sourceType: "local_file",
+    title: normalizeTrackTitle(data.title || data.filename),
+    artist: data.artist,
+    album: data.album,
+    duration: Math.round((data.duration || 0) / 1000),
+    coverUrl: data.coverUrl,
+    artistBackgroundUrl: data.artistBackgroundUrl,
+    audioUrl: data.streamUrl,
+    lyrics,
+    quality: "original",
+    bitrate: "original",
+    localFileId: data.id,
+    file: data.file,
+    raw: data,
+  };
+}
+
+function PlayerProvider({ children }) {
+  const audioRef = useRef(null);
+  const hydratedRef = useRef(false);
+  const progressMilestoneRef = useRef(0);
+  const playlistIdsRef = useRef({});
+  const playlistCreateRef = useRef({});
+  const [state, setState] = useState({
+    currentTrack: null,
+    queue: [],
+    isPlaying: false,
+    currentTime: 0,
+    duration: 0,
+    volume: 0.86,
+    playMode: "order",
+    quality: "original",
+    loading: false,
+    error: "",
+  });
+  const [favorites, setFavorites] = useState(() =>
+    storedJson("songlib-favorites", {}),
+  );
+  const [history, setHistory] = useState(() =>
+    storedJson("songlib-play-history", []),
+  );
+  const [playEvents, setPlayEvents] = useState(() =>
+    storedJson("songlib-play-events", []),
+  );
+  const [playlists, setPlaylists] = useState(() =>
+    storedJson("songlib-playlists", {}),
+  );
+  const currentTrack = state.currentTrack;
+  const sendListeningEvent = (eventType, track, position = 0, duration = 0) => {
+    if (!track) return;
+    api("/api/listening/events", {
+      method: "POST",
+      body: JSON.stringify({
+        eventType,
+        fileId: track.localFileId || (track.sourceType === "local_file" ? track.raw?.id : null),
+        externalRef:
+          track.localFileId || track.sourceType === "local_file"
+            ? null
+            : trackIdentity(track),
+        positionMs: Math.round(Number(position || 0) * 1000),
+        durationMs: Math.round(Number(duration || track.duration || 0) * 1000),
+        context: { sourceType: track.sourceType || "unknown" },
+      }),
+    }).catch(() => {});
+  };
+  useEffect(() => {
+    let cancelled = false;
+    api("/api/player/state")
+      .then(async (remote) => {
+        if (cancelled) return;
+        if (Object.keys(remote.favorites || {}).length)
+          setFavorites(remote.favorites);
+        if ((remote.history || []).length) setHistory(remote.history);
+        if ((remote.playEvents || []).length) setPlayEvents(remote.playEvents);
+        if (Object.keys(remote.playlists || {}).length)
+          setPlaylists(remote.playlists);
+        if ((remote.queue || []).length)
+          setState((value) => ({
+            ...value,
+            queue: sanitizeQueue(remote.queue),
+          }));
+        if (remote.currentTrack) {
+          try {
+            const restored = await toPlaybackTrack(
+              remote.currentTrack,
+              "original",
+            );
+            if (!cancelled)
+              setState((value) => ({
+                ...value,
+                currentTrack: restored,
+                isPlaying: false,
+                duration: restored.duration || 0,
+              }));
+          } catch {}
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        hydratedRef.current = true;
+      });
+    api("/api/playlists")
+      .then(async (data) => {
+        const details = await Promise.all(
+          (data.items || []).map((item) => api(`/api/playlists/${item.id}`)),
+        );
+        const mapped = {};
+        for (const playlist of details) {
+          playlistIdsRef.current[playlist.name] = playlist.id;
+          mapped[playlist.name] = (playlist.items || []).map((item) => ({
+            id: item.file_id ? `local-${item.file_id}` : item.id,
+            sourceType: item.file_id ? "local_file" : "external",
+            localFileId: item.file_id,
+            title: item.title,
+            artist: item.artist,
+            album: item.album,
+            duration: item.duration,
+            file: item.path,
+            externalRef: item.external_ref,
+          }));
+        }
+        if (!cancelled) setPlaylists(mapped);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  useEffect(() => {
+    localStorage.setItem("songlib-favorites", JSON.stringify(favorites));
+  }, [favorites]);
+  useEffect(() => {
+    localStorage.setItem(
+      "songlib-play-history",
+      JSON.stringify(history.slice(0, 100)),
+    );
+  }, [history]);
+  useEffect(() => {
+    localStorage.setItem(
+      "songlib-play-events",
+      JSON.stringify(playEvents.slice(0, 1000)),
+    );
+  }, [playEvents]);
+  useEffect(() => {
+    localStorage.setItem("songlib-playlists", JSON.stringify(playlists));
+  }, [playlists]);
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    const timer = setTimeout(
+      () =>
+        api("/api/player/state", {
+          method: "PATCH",
+          body: JSON.stringify({
+            values: {
+              queue: state.queue.map(persistableTrack).filter(Boolean),
+              currentTrack: persistableTrack(state.currentTrack),
+              favorites,
+              history,
+              playEvents,
+              playlists,
+            },
+          }),
+        }).catch(() => {}),
+      900,
+    );
+    return () => clearTimeout(timer);
+  }, [
+    state.queue,
+    state.currentTrack?.id,
+    favorites,
+    history,
+    playEvents,
+    playlists,
+  ]);
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) audio.volume = state.volume;
+  }, [state.volume]);
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !currentTrack) return;
+    audio.src = currentTrack.audioUrl || "";
+    audio.load();
+    if (state.isPlaying && currentTrack.audioUrl)
+      audio
+        .play()
+        .catch((err) =>
+          setState((s) => ({ ...s, error: err.message, isPlaying: false })),
+        );
+  }, [currentTrack?.id, currentTrack?.audioUrl]);
+  const remember = (track) => {
+    const playedAt = new Date().toISOString();
+    setPlayEvents((value) => [{ ...track, playedAt }, ...value].slice(0, 1000));
+    setHistory((value) => {
+      const item = { ...track, playedAt };
+      return [
+        item,
+        ...value.filter(
+          (entry) => trackIdentity(entry) !== trackIdentity(track),
+        ),
+      ].slice(0, 100);
+    });
+    progressMilestoneRef.current = 0;
+    sendListeningEvent("start", track, 0, track.duration);
+  };
+  const play = async (input, queue) => {
+    setState((s) => ({ ...s, loading: true, error: "" }));
+    try {
+      const immediate = immediatePlaybackTrack(input, state.quality);
+      if (immediate) {
+        if (!isPlayableDuration(immediate))
+          throw new Error("è¿™é¦–æ­Œçš„æ—¶é•¿å¼‚å¸¸ï¼Œå·²é˜»æ­¢æ’­æ”¾å¹¶é¿å…æ±¡æŸ“é˜Ÿåˆ—ã€‚");
+        const nextQueue = sanitizeQueue(
+          Array.isArray(queue) ? queue : state.queue,
+          immediate,
+        );
+        remember(immediate);
+        setState((s) => ({
+          ...s,
+          currentTrack: immediate,
+          queue: nextQueue,
+          isPlaying: true,
+          loading: false,
+          currentTime: 0,
+          duration: immediate.duration || 0,
+          error: "",
+        }));
+        const audio = audioRef.current;
+        if (audio) {
+          audio.src = immediate.audioUrl;
+          audio.load();
+          audio.play().catch((err) =>
+            setState((s) => ({
+              ...s,
+              isPlaying: false,
+              error: err.message || "æµè§ˆå™¨é˜»æ­¢äº†è‡ªåŠ¨æ’­æ”¾ï¼Œè¯·å†ç‚¹ä¸€æ¬¡æ’­æ”¾ã€‚",
+            })),
+          );
+        }
+        toPlaybackTrack(input, state.quality)
+          .then((fullTrack) => {
+            if (!fullTrack) return;
+            setState((s) =>
+              trackIdentity(s.currentTrack) === trackIdentity(immediate)
+                ? {
+                    ...s,
+                    currentTrack: {
+                      ...immediate,
+                      ...fullTrack,
+                      audioUrl: immediate.audioUrl,
+                    },
+                  }
+                : s,
+            );
+          })
+          .catch(() => {});
+        return;
+      }
+      const track = await toPlaybackTrack(input, state.quality);
+      if (!track?.audioUrl)
+        throw new Error(
+          "æ²¡æœ‰æ‹¿åˆ°å¯æ’­æ”¾åœ°å€ã€‚è‹¥ä½ é€šè¿‡ HTTPS è®¿é—®ï¼Œè¯·ç¡®è®¤å·²ä½¿ç”¨éŸ³å±¿åŒæºä»£ç†æ’­æ”¾æµã€‚",
+        );
+      if (!isPlayableDuration(track))
+        throw new Error("è¿™é¦–æ­Œçš„æ—¶é•¿å¼‚å¸¸ï¼Œå·²é˜»æ­¢æ’­æ”¾å¹¶é¿å…æ±¡æŸ“é˜Ÿåˆ—ã€‚");
+      const nextQueue = sanitizeQueue(
+        Array.isArray(queue) ? queue : state.queue,
+        track,
+      );
+      remember(track);
+      setState((s) => ({
+        ...s,
+        currentTrack: track,
+        queue: nextQueue,
+        isPlaying: true,
+        loading: false,
+        currentTime: 0,
+        duration: track.duration || 0,
+        error: "",
+      }));
+    } catch (err) {
+      setState((s) => ({
+        ...s,
+        loading: false,
+        isPlaying: false,
+        error: err.message || "æ’­æ”¾å¤±è´¥",
+      }));
+    }
+  };
+  const pause = () => {
+    audioRef.current?.pause();
+    setState((s) => ({ ...s, isPlaying: false }));
+  };
+  const resume = () => {
+    if (!state.currentTrack?.audioUrl) {
+      setState((s) => ({ ...s, error: "å½“å‰æ›²ç›®æ²¡æœ‰å¯æ’­æ”¾åœ°å€" }));
+      return;
+    }
+    audioRef.current
+      ?.play()
+      .then(() => setState((s) => ({ ...s, isPlaying: true, error: "" })))
+      .catch((err) =>
+        setState((s) => ({ ...s, error: err.message, isPlaying: false })),
+      );
+  };
+  const toggle = () =>
+    state.currentTrack
+      ? state.isPlaying
+        ? pause()
+        : resume()
+      : setState((s) => ({
+          ...s,
+          error: "è¿˜æ²¡æœ‰æ’­æ”¾å†…å®¹ã€‚å¯ä»¥å…ˆéšæœºæ’­æ”¾ã€æ‰“å¼€éŸ³ä¹åº“æˆ–æŸ¥çœ‹ä»Šæ—¥æ¨èã€‚",
+        }));
+  const seek = (time) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = time;
+    }
+    setState((s) => ({ ...s, currentTime: time }));
+  };
+  const setVolume = (volume) =>
+    setState((s) => ({ ...s, volume: Number(volume) }));
+  const setQuality = async (quality) => {
+    const audio = audioRef.current;
+    const keep = audio?.currentTime || 0;
+    setState((s) => ({ ...s, quality }));
+    if (!currentTrack) return;
+    if (currentTrack.sourceType === "plex_item") {
+      const track = await toPlaybackTrack(
+        {
+          ...currentTrack,
+          source: "plex_item",
+          ratingKey: currentTrack.plexRatingKey,
+        },
+        quality,
+      );
+      setState((s) => ({ ...s, currentTrack: track, isPlaying: s.isPlaying }));
+      setTimeout(() => {
+        if (audioRef.current) {
+          audioRef.current.currentTime = keep;
+          if (state.isPlaying) audioRef.current.play().catch(() => {});
+        }
+      }, 200);
+    }
+  };
+  const setQueue = (queue) =>
+    setState((s) => ({ ...s, queue: sanitizeQueue(queue, s.currentTrack) }));
+  const addToQueue = async (input) => {
+    try {
+      const track = await toPlaybackTrack(input, state.quality);
+      if (!isPlayableDuration(track)) throw new Error("æ—¶é•¿å¼‚å¸¸ï¼Œå·²è·³è¿‡ã€‚");
+      setState((s) => ({
+        ...s,
+        queue: sanitizeQueue([...s.queue, track], s.currentTrack),
+        error: "",
+      }));
+    } catch (err) {
+      setState((s) => ({ ...s, error: err.message || "åŠ å…¥é˜Ÿåˆ—å¤±è´¥" }));
+    }
+  };
+  const removeFromQueue = (id) =>
+    setState((s) => ({
+      ...s,
+      queue: s.queue.filter((item) => item.id !== id),
+    }));
+  const setPlayMode = (playMode) => setState((s) => ({ ...s, playMode }));
+  const favoriteId = (track) =>
+    track?.id || track?.ratingKey || track?.localFileId || track?.title;
+  const isFavorite = (track) => !!favorites[favoriteId(track)];
+  const toggleFavorite = (track) => {
+    const id = favoriteId(track);
+    if (!id) return;
+    const removing = isFavorite(track);
+    setFavorites((value) => {
+      const next = { ...value };
+      next[id]
+        ? delete next[id]
+        : (next[id] = {
+            ...track,
+            title: track.title,
+            artist: track.artist,
+            album: track.album,
+            likedAt: new Date().toISOString(),
+          });
+      return next;
+    });
+    sendListeningEvent(removing ? "unfavorite" : "favorite", track, state.currentTime, state.duration);
+  };
+  const ensureServerPlaylist = async (name) => {
+    if (playlistIdsRef.current[name]) return playlistIdsRef.current[name];
+    if (!playlistCreateRef.current[name]) {
+      playlistCreateRef.current[name] = api("/api/playlists", {
+        method: "POST",
+        body: JSON.stringify({ name, description: "", items: [] }),
+      })
+        .catch(async (err) => {
+          if (!err.message.includes("åŒå")) throw err;
+          const data = await api("/api/playlists");
+          const existing = (data.items || []).find((item) => item.name === name);
+          if (!existing) throw err;
+          return existing;
+        })
+        .then((item) => {
+          playlistIdsRef.current[name] = item.id;
+          return item.id;
+        })
+        .finally(() => {
+          delete playlistCreateRef.current[name];
+        });
+    }
+    return playlistCreateRef.current[name];
+  };
+  const createPlaylist = (name) => {
+    const clean = String(name || "").trim();
+    if (!clean) return;
+    setPlaylists((value) => (value[clean] ? value : { ...value, [clean]: [] }));
+    ensureServerPlaylist(clean).catch((err) =>
+      setState((value) => ({ ...value, error: err.message })),
+    );
+  };
+  const deletePlaylist = (name) => {
+    const playlistId = playlistIdsRef.current[name];
+    setPlaylists((value) => {
+      const next = { ...value };
+      delete next[name];
+      return next;
+    });
+    if (playlistId) {
+      api(`/api/playlists/${playlistId}`, { method: "DELETE" })
+        .then(() => {
+          delete playlistIdsRef.current[name];
+        })
+        .catch((err) => setState((value) => ({ ...value, error: err.message })));
+    }
+  };
+  const addToPlaylist = (name, track) => {
+    if (!name || !track) return;
+    setPlaylists((value) => {
+      const items = value[name] || [];
+      if (items.some((item) => trackIdentity(item) === trackIdentity(track)))
+        return value;
+      const nextItems = [...items, persistableTrack(track)].filter(Boolean);
+      const updateServer = async () => {
+        const playlistId = await ensureServerPlaylist(name);
+        await api(`/api/playlists/${playlistId}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            items: nextItems.map(playlistTrackPayload),
+          }),
+        });
+      };
+      updateServer().catch((err) =>
+        setState((current) => ({ ...current, error: err.message })),
+      );
+      return {
+        ...value,
+        [name]: nextItems,
+      };
+    });
+  };
+  const next = (completed = false) => {
+    if (!completed && currentTrack && state.duration && state.currentTime / state.duration < 0.85)
+      sendListeningEvent("skip", currentTrack, state.currentTime, state.duration);
+    const nextTrack = state.queue[0];
+    if (nextTrack) {
+      play(nextTrack, state.queue.slice(1));
+    }
+  };
+  const previous = () => seek(0);
+  const clear = () => {
+    audioRef.current?.pause();
+    setState((s) => ({
+      ...s,
+      currentTrack: null,
+      isPlaying: false,
+      currentTime: 0,
+      error: "",
+    }));
+  };
+  const value = {
+    ...state,
+    audioRef,
+    history,
+    playEvents,
+    playlists,
+    favorites,
+    play,
+    pause,
+    resume,
+    toggle,
+    next,
+    previous,
+    seek,
+    setVolume,
+    setQueue,
+    addToQueue,
+    removeFromQueue,
+    setQuality,
+    setPlayMode,
+    isFavorite,
+    toggleFavorite,
+    createPlaylist,
+    deletePlaylist,
+    addToPlaylist,
+    clear,
+  };
+  return (
+    <PlayerContext.Provider value={value}>
+      {children}
+      <audio
+        ref={audioRef}
+        className="global-audio"
+        onTimeUpdate={(e) => {
+          const audio = e.currentTarget;
+          const currentTime = audio.currentTime || 0;
+          const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+          setState((s) => ({
+            ...s,
+            currentTime,
+            duration: duration || s.duration,
+          }));
+          const ratio = duration ? currentTime / duration : 0;
+          const milestone = ratio >= 0.75 ? 75 : ratio >= 0.5 ? 50 : ratio >= 0.25 ? 25 : 0;
+          if (milestone > progressMilestoneRef.current) {
+            progressMilestoneRef.current = milestone;
+            sendListeningEvent("progress", currentTrack, currentTime, duration);
+          }
+        }}
+        onLoadedMetadata={(e) => {
+          const duration = Number.isFinite(e.currentTarget.duration)
+            ? e.currentTarget.duration
+            : 0;
+          setState((s) => ({ ...s, duration: duration || s.duration }));
+        }}
+        onError={(e) => {
+          const error = e.currentTarget.error;
+          setState((s) => ({
+            ...s,
+            isPlaying: false,
+            error:
+              error?.message ||
+              `éŸ³é¢‘åŠ è½½å¤±è´¥ï¼ˆé”™è¯¯ç  ${error?.code || "æœªçŸ¥"}ï¼‰`,
+          }));
+        }}
+        onPlay={() => setState((s) => ({ ...s, isPlaying: true, error: "" }))}
+        onPause={() => setState((s) => ({ ...s, isPlaying: false }))}
+        onEnded={() => {
+          sendListeningEvent("complete", currentTrack, state.duration, state.duration);
+          if (state.playMode === "repeat_one") {
+            sendListeningEvent("replay", currentTrack, 0, state.duration);
+            seek(0);
+            audioRef.current?.play().catch(() => {});
+          } else next(true);
+        }}
+      />
+    </PlayerContext.Provider>
+  );
+}
+
+function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
+  const player = usePlayer(),
+    current = player.currentTrack;
+  const [lyricsFull, setLyricsFull] = useState(false);
+  const [resolvedLyrics, setResolvedLyrics] = useState("");
+  const [lyricsLoading, setLyricsLoading] = useState(false);
+  const [lyricsError, setLyricsError] = useState("");
+  const [lyricsRequest, setLyricsRequest] = useState(0);
+  const [seeds, setSeeds] = useState([]),
+    [seedLoading, setSeedLoading] = useState(false);
+  useEffect(() => {
+    if (current || seeds.length || seedLoading) return;
+    setSeedLoading(true);
+    Promise.all([
+      api("/api/local/files?limit=10").catch(() => ({ items: [] })),
+      api("/api/library/tracks?pageSize=10").catch(() => ({ items: [] })),
+    ])
+      .then(([local, plexTracks]) => {
+        const localItems = (local.items || []).map((item) => ({
+          ...item,
+          source: "local_file",
+        }));
+        const plexItems = (plexTracks.items || []).map((item) => ({
+          ...item,
+          source: "plex_item",
+        }));
+        setSeeds([...localItems, ...plexItems].slice(0, 12));
+      })
+      .finally(() => setSeedLoading(false));
+  }, [current, seeds.length, seedLoading]);
+  useEffect(() => {
+    setResolvedLyrics("");
+    setLyricsError("");
+    if (!current || String(current.lyrics || "").trim()) {
+      setLyricsLoading(false);
+      return;
+    }
+    const key =
+      current.sourceType === "plex_item"
+        ? current.plexRatingKey || current.raw?.ratingKey
+        : current.sourceType === "local_file"
+          ? current.localFileId || current.raw?.id
+          : "";
+    if (!key) {
+      setLyricsLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLyricsLoading(true);
+    api(
+      current.sourceType === "plex_item"
+        ? `/api/player/plex/${encodeURIComponent(key)}/lyrics`
+        : `/api/player/local/${encodeURIComponent(key)}/lyrics`,
+    )
+      .then((data) => {
+        if (!cancelled) setResolvedLyrics(String(data.lyrics || "").trim());
+      })
+      .catch((error) => {
+        if (!cancelled)
+          setLyricsError(error.message || "æš‚æ—¶æ— æ³•è·å–æ­Œè¯");
+      })
+      .finally(() => {
+        if (!cancelled) setLyricsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [current?.id, current?.lyrics, lyricsRequest]);
+  const lyricsText = String(current?.lyrics || "").trim() || resolvedLyrics;
+  const lyricsTrack = current ? { ...current, lyrics: lyricsText } : current;
+  const parsedLyrics = parseLrc(lyricsText);
+  const displayLyrics = displayLyricsFor(lyricsTrack, parsedLyrics);
+  const activeLine = displayLyrics.reduce(
+    (acc, line, index) => (line.time <= player.currentTime ? index : acc),
+    0,
+  );
+  const albumCover = coverUrlFor(current);
+  const bg = albumCover || "";
+  const cover = albumCover || VISUAL_FALLBACKS.cover;
+  const accent =
+    current?.accentColor ||
+    current?.dominantColor ||
+    current?.raw?.accentColor ||
+    current?.raw?.dominantColor ||
+    "#e3b459";
+  const meta = [
+    ["ä¸“è¾‘", current?.album || "æœªçŸ¥ä¸“è¾‘", Album],
+    ["æ¥æº", sourceLabel(current?.sourceType), Server],
+    current?.raw?.year || current?.year
+      ? ["å¹´ä»½", current.raw?.year || current.year, Clock3]
+      : null,
+    current?.raw?.genre || current?.genre
+      ? ["é£æ ¼", current.raw?.genre || current.genre, Tags]
+      : null,
+  ].filter(Boolean);
+  const queue = player.queue || [];
+  const queueTotal = [current, ...queue]
+    .filter(Boolean)
+    .reduce((sum, item) => sum + Number(item.duration || 0), 0);
+  const showLyrics = playerSettings.showLyrics !== false;
+  const liked = player.isFavorite(current);
+  const addCurrentToPlaylist = () => {
+    const names = Object.keys(player.playlists || {});
+    const name = names.length
+      ? prompt(`æ·»åŠ åˆ°æ­Œå•ï¼ˆå·²æœ‰ï¼š${names.join("ã€")}ï¼‰`, names[0])
+      : prompt("æ–°å»ºæ­Œå•åç§°");
+    if (!name) return;
+    if (!player.playlists?.[name]) player.createPlaylist(name);
+    player.addToPlaylist(name, current);
+  };
+  if (!current)
+    return (
+      <div className="page player-page">
+        <section className="player-stage player-pro player-empty-state smart-player-empty">
+          <div className="player-bg" />
+          <div className="player-bg-gradient" />
+          <div className="player-empty-copy">
+            {player.loading || seedLoading ? (
+              <LoaderCircle className="spin" />
+            ) : (
+              <Play />
+            )}
+            <span className="eyebrow">
+              <Radio />
+              SMART QUEUE
+            </span>
+            <h1>{player.loading ? "æ­£åœ¨å‡†å¤‡æ’­æ”¾â€¦" : "è¿˜æ²¡æœ‰æ’­æ”¾å†…å®¹"}</h1>
+            <p>
+              {player.error ||
+                "ä»éŸ³ä¹åº“ã€å‘ç°é¡µæˆ–æœ€è¿‘æ’­æ”¾é‡Œé€‰ä¸€é¦–ï¼›ä¹Ÿå¯ä»¥è®©éŸ³å±¿ä»çœŸå®æ›²åº“é‡Œéšæœºå¼€æ’­ã€‚"}
+            </p>
+            <div className="player-empty-actions">
+              <button
+                className="primary"
+                disabled={!seeds.length}
+                onClick={() =>
+                  player.play(
+                    seeds[Math.floor(Math.random() * seeds.length)],
+                    sanitizeQueue(seeds),
+                  )
+                }
+              >
+                <Shuffle />
+                éšæœºæ’­æ”¾
+              </button>
+              <button
+                className="secondary"
+                onClick={() => navigate?.("library")}
+              >
+                <Library />
+                æ‰“å¼€éŸ³ä¹åº“
+              </button>
+              <button
+                className="secondary"
+                onClick={() => navigate?.("discover")}
+              >
+                <Sparkles />
+                ä»Šæ—¥æ¨è
+              </button>
+            </div>
+            {player.error && (
+              <button className="secondary" onClick={player.clear}>
+                <X />
+                æ¸…é™¤é”™è¯¯
+              </button>
+            )}
+          </div>
+          <div className="player-seed-grid">
+            {seeds.length ? (
+              seeds.slice(0, 8).map((item) => (
+                <button
+                  key={`${item.source}-${item.id || item.ratingKey}`}
+                  onClick={() => player.play(item, sanitizeQueue(seeds, item))}
+                >
+                  <div className="seed-cover">
+                    {coverUrlFor(item) ? (
+                      <img src={coverUrlFor(item)} alt="" />
+                    ) : (
+                      <Disc3 />
+                    )}
+                  </div>
+                  <strong>
+                    {normalizeTrackTitle(item.title || item.filename)}
+                  </strong>
+                  <span>
+                    {item.artist || item.grandparentTitle || "æœªçŸ¥æ­Œæ‰‹"}
+                  </span>
+                  <Play />
+                </button>
+              ))
+            ) : (
+              <Empty
+                icon={Music2}
+                title="è¿˜æ²¡è¯»åˆ°å¯æ’­æ›²ç›®"
+                text="æ‰«ææœ¬åœ°æ›²åº“æˆ–åŒæ­¥ Plex åï¼Œè¿™é‡Œä¼šå‡ºç°çœŸå®æ¨èã€‚"
+              />
+            )}
+          </div>
+        </section>
+      </div>
+    );
+  return (
+    <div className="page player-page" style={{ "--player-accent": accent }}>
+      <section className="player-stage player-pro player-immersive">
+        <div
+          className="player-bg"
+          style={{ backgroundImage: `url(${bg || VISUAL_FALLBACKS.player})` }}
+        />
+        <div className="player-bg-gradient" />
+        <div className="player-layout player-immersive-grid">
+          <article className="player-primary-card">
+            <div className="player-art-wrap">
+              <div className="player-disc-halo">
+                <span />
+              </div>
+              <div className="player-cover">
+                {cover ? (
+                  <img src={cover} alt={current.title || "ä¸“è¾‘å°é¢"} />
+                ) : (
+                  <Music2 />
+                )}
+              </div>
+              <div className="player-badges">
+                <span>
+                  {player.quality === "original"
+                    ? "æ— æŸåŸå§‹"
+                    : player.quality.toUpperCase()}
+                </span>
+                <span>{sourceLabel(current.sourceType)}</span>
+                <span>FLAC / Plex Ready</span>
+              </div>
+            </div>
+            <div className="player-main">
+              <span className="eyebrow">
+                <Radio />
+                NOW PLAYING
+              </span>
+              <h1>{current.title || "æœªå‘½åæ­Œæ›²"}</h1>
+              <p className="player-artist-line">
+                {current.artist || "æœªçŸ¥æ­Œæ‰‹"}
+                <ChevronRight />
+                {current.album || "æœªçŸ¥ä¸“è¾‘"}
+              </p>
+              <div className="player-meta-line">
+                {meta.map(([label, value, Icon]) => (
+                  <span key={label}>
+                    <Icon />
+                    {label}ï¼š{value}
+                  </span>
+                ))}
+              </div>
+              {player.error && (
+                <div className="inline-error">
+                  <CircleAlert />
+                  {player.error}
+                </div>
+              )}
+              <Spectrum bars={64} />
+              <div className="player-progress">
+                <span>{formatTime(player.currentTime)}</span>
+                <input
+                  type="range"
+                  min="0"
+                  max={player.duration || 0}
+                  value={Math.min(player.currentTime, player.duration || 0)}
+                  onChange={(e) => player.seek(Number(e.target.value))}
+                />
+                <span>{formatTime(player.duration)}</span>
+              </div>
+              <div className="player-main-controls">
+                <button
+                  aria-label="éšæœºæ’­æ”¾"
+                  onClick={() => player.setQueue([...queue].reverse())}
+                >
+                  <Shuffle />
+                </button>
+                <button aria-label="ä¸Šä¸€é¦–" onClick={player.previous}>
+                  <ChevronRight className="prev-icon" />
+                </button>
+                <button
+                  className="play-large"
+                  aria-label={player.isPlaying ? "æš‚åœ" : "æ’­æ”¾"}
+                  onClick={player.toggle}
+                >
+                  {player.isPlaying ? <Pause /> : <Play />}
+                </button>
+                <button aria-label="ä¸‹ä¸€é¦–" onClick={player.next}>
+                  <ChevronRight />
+                </button>
+                <button
+                  className={player.playMode === "repeat_one" ? "active" : ""}
+                  aria-label={
+                    player.playMode === "repeat_one"
+                      ? "å•æ›²å¾ªç¯å·²å¼€å¯"
+                      : "å¼€å¯å•æ›²å¾ªç¯"
+                  }
+                  onClick={() =>
+                    player.setPlayMode(
+                      player.playMode === "repeat_one" ? "order" : "repeat_one",
+                    )
+                  }
+                >
+                  <Repeat />
+                </button>
+              </div>
+              <div className="player-controls-extra">
+                <label className="quality-select">
+                  <span>éŸ³è´¨</span>
+                  <select
+                    value={player.quality}
+                    onChange={(e) => player.setQuality(e.target.value)}
+                  >
+                    <option value="original">Original</option>
+                    <option value="320k">320K</option>
+                    <option value="256k">256K</option>
+                    <option value="192k">192K</option>
+                    <option value="128k">128K</option>
+                  </select>
+                </label>
+                <label className="quality-select">
+                  <span>é€Ÿåº¦</span>
+                  <select
+                    onChange={(e) => {
+                      if (player.audioRef.current)
+                        player.audioRef.current.playbackRate = Number(
+                          e.target.value,
+                        );
+                    }}
+                    defaultValue="1"
+                  >
+                    <option value="0.75">0.75x</option>
+                    <option value="1">1x</option>
+                    <option value="1.25">1.25x</option>
+                    <option value="1.5">1.5x</option>
+                  </select>
+                </label>
+                <label className="quality-select">
+                  <Volume2 />
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={player.volume}
+                    onChange={(e) => player.setVolume(e.target.value)}
+                  />
+                </label>
+                <button
+                  className={`secondary small ${liked ? "active" : ""}`}
+                  onClick={() => player.toggleFavorite(current)}
+                >
+                  <Heart />
+                  {liked ? "å·²å–œæ¬¢" : "å–œæ¬¢"}
+                </button>
+                <button
+                  className="secondary small"
+                  onClick={addCurrentToPlaylist}
+                >
+                  <ListMusic />
+                  åŠ å…¥æ­Œå•
+                </button>
+                {isAdmin && (
+                  <button
+                    className="secondary small"
+                    disabled={!current.file}
+                    onClick={() =>
+                      current.file &&
+                      navigator.clipboard?.writeText(current.file)
+                    }
+                  >
+                    <LocateFixed />
+                    å®šä½æ–‡ä»¶
+                  </button>
+                )}
+                {isAdmin && (
+                  <button
+                    className="secondary small"
+                    disabled={!current.openPlexUrl}
+                    onClick={() =>
+                      current.openPlexUrl &&
+                      window.open(current.openPlexUrl, "_blank")
+                    }
+                  >
+                    <Server />
+                    æ‰“å¼€ Plex
+                  </button>
+                )}
+              </div>
+            </div>
+          </article>
+          <aside className="queue-panel">
+            <SectionHead
+              title={`æ’­æ”¾é˜Ÿåˆ—ï¼ˆ${queue.length + 1}ï¼‰`}
+              note={`æ€»æ—¶é•¿ ${queueTotal ? formatTime(queueTotal) : formatTime(player.duration)}`}
+              action={
+                queue.length ? (
+                  <button
+                    className="text-button"
+                    onClick={() => player.setQueue([])}
+                  >
+                    æ¸…ç©º
+                  </button>
+                ) : (
+                  <span className="queue-hint">æ²¡æœ‰å¾…æ’­æ­Œæ›²</span>
+                )
+              }
+            />
+            <div className="queue-item active" aria-current="true">
+              <div className="queue-thumb">
+                {cover ? <img src={cover} alt="" /> : <Music2 />}
+              </div>
+              <div>
+                <strong>{current.title}</strong>
+                <span>{current.artist || "æœªçŸ¥æ­Œæ‰‹"} Â· æ­£åœ¨æ’­æ”¾</span>
+              </div>
+              <span className="playing-indicator">
+                <i />
+                <i />
+                <i />
+              </span>
+              <em>{formatTime(player.duration)}</em>
+            </div>
+            {queue.length ? (
+              queue.map((item, index) => (
+                <button
+                  className="queue-item"
+                  key={item.id || `${item.title}-${index}`}
+                  onClick={() =>
+                    player.play(
+                      item,
+                      queue.slice(index + 1),
+                    )
+                  }
+                >
+                  <span className="queue-index">
+                    {String(index + 2).padStart(2, "0")}
+                  </span>
+                  <div>
+                    <strong>{item.title}</strong>
+                    <span>
+                      {item.artist || "æœªçŸ¥æ­Œæ‰‹"} Â· {item.album || "å¾…æ’­æ”¾"}
+                    </span>
+                  </div>
+                  <em>{item.duration ? formatTime(item.duration) : "â€”"}</em>
+                  <X
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      player.removeFromQueue(item.id);
+                    }}
+                  />
+                </button>
+              ))
+            ) : (
+              <div className="queue-empty">
+                <ListMusic />
+                <strong>é˜Ÿåˆ—ä¸ºç©º</strong>
+                <span>åœ¨éŸ³ä¹åº“ã€å‘ç°é¡µæˆ–æœç´¢ç»“æœé‡Œç‚¹â€œä¸‹ä¸€é¦–/åŠ å…¥é˜Ÿåˆ—â€ã€‚</span>
+              </div>
+            )}
+          </aside>
+          {showLyrics ? (
+            <section className="lyrics-panel player-lyrics-card">
+              <div className="lyrics-head">
+                <Mic2 />
+                <span>æ­Œè¯</span>
+                <div>
+                  {displayLyrics.length ? (
+                    <button
+                      className="lyrics-fullscreen-button"
+                      onClick={() => setLyricsFull(true)}
+                    >
+                      <Maximize2 />
+                      å…¨å±æ­Œè¯
+                    </button>
+                  ) : lyricsLoading ? (
+                    <span className="lyrics-fetching">
+                      <LoaderCircle className="spin" />
+                      æ­£åœ¨åŒ¹é…
+                    </span>
+                  ) : (
+                    <button
+                      className="lyrics-fullscreen-button"
+                      onClick={() => setLyricsRequest((value) => value + 1)}
+                    >
+                      <RefreshCw />
+                      é‡æ–°è·å–
+                    </button>
+                  )}
+                </div>
+              </div>
+              {displayLyrics.length ? (
+                displayLyrics.map((line, index) => (
+                  <p
+                    className={index === activeLine ? "active" : ""}
+                    key={`${line.time}-${index}`}
+                  >
+                    {line.text}
+                  </p>
+                ))
+              ) : (
+                <Empty
+                  icon={Mic2}
+                  title={
+                    lyricsLoading
+                      ? "æ­£åœ¨åŒ¹é…æ­Œè¯"
+                      : lyricsError
+                        ? "æ­Œè¯è·å–å¤±è´¥"
+                        : "è¿™é¦–æ­Œè¿˜æ²¡æœ‰å¯ç”¨æ­Œè¯"
+                  }
+                  text={
+                    lyricsLoading
+                      ? "æ­£åœ¨æŒ‰æ­Œæ›²ã€è‰ºäººå’Œæ—¶é•¿æ ¸éªŒå¯ç”¨æ­Œè¯ã€‚"
+                      : lyricsError ||
+                        (isAdmin
+                          ? "æ²¡æœ‰æ‰¾åˆ°é€šè¿‡æ ¡éªŒçš„ç‰ˆæœ¬ï¼Œå¯åœ¨èµ„æ–™è¡¥å…¨ä¸­ç»§ç»­å¤„ç†ã€‚"
+                          : "æš‚æ—¶æ²¡æœ‰æ‰¾åˆ°é€šè¿‡æ ¡éªŒçš„æ­Œè¯ã€‚")
+                  }
+                />
+              )}
+            </section>
+          ) : (
+            <section className="lyrics-panel player-lyrics-card">
+              <Empty
+                icon={Mic2}
+                title="æ­Œè¯æ˜¾ç¤ºå·²å…³é—­"
+                text="å¯åœ¨ç³»ç»Ÿè®¾ç½® > æ’­æ”¾å™¨ä¸­é‡æ–°æ‰“å¼€ã€‚"
+              />
+            </section>
+          )}
+        </div>
+      </section>
+      {lyricsFull && showLyrics && (
+        <LyricsFullscreenOverlay
+          current={lyricsTrack}
+          cover={cover}
+          bg={bg}
+          lines={displayLyrics}
+          activeLine={activeLine}
+          player={player}
+          onClose={() => setLyricsFull(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function LyricsFullscreenOverlay({
+  current,
+  cover,
+  bg,
+  lines,
+  activeLine,
+  player,
+  onClose,
+}) {
+  useEffect(() => {
+    const handler = (event) => {
+      if (event.key === "Escape") onClose?.();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+  return (
+    <section
+      className="lyrics-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label="å…¨å±æ­Œè¯"
+    >
+      <div className="lyrics-overlay-backdrop" aria-hidden="true">
+        <img src={bg || cover || VISUAL_FALLBACKS.player} alt="" />
+        <i />
+      </div>
+      <button className="lyrics-overlay-close" onClick={onClose}>
+        <X />
+        å…³é—­
+      </button>
+      <div className="lyrics-overlay-song">
+        <div className="lyrics-overlay-cover">
+          {cover ? <img src={cover} alt="" /> : <Music2 />}
+        </div>
+        <div>
+          <strong>{current?.title || "æœªå‘½åæ­Œæ›²"}</strong>
+          <span>
+            {current?.artist || "æœªçŸ¥æ­Œæ‰‹"} Â· {current?.album || "æœªçŸ¥ä¸“è¾‘"}
+          </span>
+        </div>
+      </div>
+      <div className="lyrics-overlay-lines">
+        {lines.map((line, index) => (
+          <p
+            className={
+              index === activeLine
+                ? "active"
+                : Math.abs(index - activeLine) <= 1
+                  ? "near"
+                  : "far"
+            }
+            key={`${line.time}-${index}`}
+            onClick={() => Number.isFinite(line.time) && player.seek(line.time)}
+          >
+            {line.text}
+          </p>
+        ))}
+      </div>
+      <div className="lyrics-overlay-controls">
+        <span>{formatTime(player.currentTime)}</span>
+        <input
+          type="range"
+          min="0"
+          max={player.duration || 0}
+          value={Math.min(player.currentTime, player.duration || 0)}
+          onChange={(e) => player.seek(Number(e.target.value))}
+        />
+        <span>{formatTime(player.duration)}</span>
+        <button onClick={player.previous}>
+          <ChevronRight className="prev-icon" />
+        </button>
+        <button className="play-large" onClick={player.toggle}>
+          {player.isPlaying ? <Pause /> : <Play />}
+        </button>
+        <button onClick={player.next}>
+          <ChevronRight />
+        </button>
+      </div>
+    </section>
+  );
+}
+
+const formatTime = (value) => {
+  const v = Math.max(0, Math.floor(value || 0));
+  return `${Math.floor(v / 60)}:${String(v % 60).padStart(2, "0")}`;
+};
+
+function MiniPlayer({ openPlayer, navigate }) {
+  const player = usePlayer(),
+    current = player.currentTrack;
+  if (!current) return null;
+  const cover = coverUrlFor(current) || VISUAL_FALLBACKS.cover;
+  const liked = player.isFavorite(current);
+  return (
+    <div className="mini-player">
+      <button className="mini-cover" onClick={openPlayer}>
+        <img src={cover} alt="" />
+      </button>
+      <div className="mini-copy">
+        <strong>{current.title}</strong>
+        <span>
+          {current.artist || "æœªçŸ¥æ­Œæ‰‹"} Â· {sourceLabel(current.sourceType)}
+        </span>
+      </div>
+      <button
+        className={`mini-like ${liked ? "active" : ""}`}
+        aria-label={liked ? "å–æ¶ˆå–œæ¬¢" : "å–œæ¬¢"}
+        onClick={() => player.toggleFavorite(current)}
+      >
+        <Heart />
+      </button>
+      <div className="mini-controls">
+        <button onClick={player.previous}>
+          <ChevronRight className="prev-icon" />
+        </button>
+        <button onClick={player.toggle}>
+          {player.isPlaying ? <Pause /> : <Play />}
+        </button>
+        <button onClick={player.next}>
+          <ChevronRight />
+        </button>
+        <div className="mini-progress">
+          <i
+            style={{
+              width: `${player.duration ? pct(player.currentTime, player.duration) : 0}%`,
+            }}
+          />
+        </div>
+        <span>
+          {formatTime(player.currentTime)} / {formatTime(player.duration)}
+        </span>
+      </div>
+      <label className="mini-volume">
+        <select
+          value={player.quality}
+          onChange={(e) => player.setQuality(e.target.value)}
+        >
+          <option value="original">Original</option>
+          <option value="320k">320K</option>
+          <option value="256k">256K</option>
+          <option value="192k">192K</option>
+          <option value="128k">128K</option>
+        </select>
+        <Volume2 />
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value={player.volume}
+          onChange={(e) => player.setVolume(e.target.value)}
+        />
+      </label>
+      <button className="icon-button" onClick={openPlayer}>
+        <ListMusic />
+      </button>
+      <button className="icon-button" onClick={player.clear}>
+        <X />
+      </button>
+    </div>
+  );
+}
+
+const scrapeTabs = [
+  {
+    id: "plex",
+    kind: "scrape_plex_metadata",
+    icon: UsersRound,
+    tone: "amber",
+    title: "Plex å…ƒæ•°æ®è¡¥å…¨",
+    desc: "è¡¥é½æ­Œæ‰‹æµ·æŠ¥ã€èƒŒæ™¯ã€ä¸­æ–‡ç®€ä»‹ä¸ä¸“è¾‘å°é¢ï¼Œå¹¶è§¦å‘ Plex æ‰«æã€‚",
+    chips: ["æ­Œæ‰‹æµ·æŠ¥", "æ­Œæ‰‹èƒŒæ™¯", "ä¸­æ–‡ç®€ä»‹", "ä¸“è¾‘å°é¢"],
+  },
+  {
+    id: "tags",
+    kind: "fill_local_tags",
+    icon: Tags,
+    tone: "blue",
+    title: "æœ¬åœ°æ ‡ç­¾è¡¥å…¨",
+    desc: "æ‰«ææ ‡é¢˜ã€æ­Œæ‰‹ã€ä¸“è¾‘ã€å¹´ä»½ã€éŸ³è½¨å·ä¸æµæ´¾ï¼Œä¸ºåç»­æ•´ç†æä¾›ä¾æ®ã€‚",
+    chips: ["æ ‡é¢˜", "æ­Œæ‰‹", "ä¸“è¾‘", "å¹´ä»½", "éŸ³è½¨å·", "æµæ´¾"],
+  },
+  {
+    id: "assets",
+    kind: "fill_assets",
+    icon: BookOpenText,
+    tone: "violet",
+    title: "å°é¢ä¸æ­Œè¯",
+    desc: "è¡¥é½ cover.jpgã€å†…åµŒå°é¢ã€åŒå .lrc ä¸ UTF-8 æ­Œè¯æ–‡ä»¶ã€‚",
+    chips: ["cover.jpg", "å†…åµŒå°é¢", "åŒå LRC", "UTF-8"],
+  },
+  {
+    id: "rename",
+    kind: "local_organize",
+    icon: FolderTree,
+    tone: "green",
+    title: "é‡å‘½åä¸ç›®å½•æ•´ç†",
+    desc: "æŒ‰ Plex è§„åˆ™ç”Ÿæˆç›®æ ‡è·¯å¾„ï¼Œå…ˆé¢„è§ˆå†²çªï¼Œå†æ‰¹é‡ç§»åŠ¨ç›®å½•ã€‚",
+    chips: ["è·¯å¾„é¢„è§ˆ", "å†²çªæ£€æµ‹", "Unknown ä¿®å¤", "å›æ»š"],
+  },
+  {
+    id: "tasks",
+    kind: "tasks",
+    icon: ScrollText,
+    tone: "pink",
+    title: "ä»»åŠ¡è®°å½•",
+    desc: "æŸ¥çœ‹åˆ®å‰Šã€æ‰«æã€æ•´ç†çš„è¿›åº¦ã€è®¡æ•°ã€é”™è¯¯å’Œæ—¥å¿—ã€‚",
+    chips: ["è¿›åº¦", "æˆåŠŸ/å¤±è´¥/è·³è¿‡", "é”™è¯¯æ—¥å¿—", "å–æ¶ˆ/é‡è¯•"],
+  },
+];
+
+function ScrapeCenter({ jobs, navigate, settings }) {
+  const activeKinds = new Set(
+    jobs
+      .filter((j) => ["queued", "running"].includes(j.status))
+      .map((j) => j.kind),
+  );
+  const [tab, setTab] = useState("plex"),
+    [mode, setMode] = useState(settings?.scrapeRules?.defaultMode || "missing"),
+    [scope, setScope] = useState("missing"),
+    [scopeValue, setScopeValue] = useState("");
+  const [plan, setPlan] = useState(null),
+    [planPage, setPlanPage] = useState(1),
+    [busy, setBusy] = useState(""),
+    [error, setError] = useState("");
+  const action = scrapeTabs.find((item) => item.id === tab) || scrapeTabs[0];
+  const generatePlan = async () => {
+    setBusy("preview");
+    setError("");
+    try {
+      setPlan(
+        await api("/api/scrape/preview", {
+          method: "POST",
+          body: JSON.stringify({ kind: action.kind, scope, scopeValue, mode, limit: 150 }),
+        }),
+      );
+      setPlanPage(1);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy("");
+    }
+  };
+  const planPageSize = 50;
+  const planItems = plan?.items || [];
+  const planPages = Math.max(1, Math.ceil(planItems.length / planPageSize));
+  const visiblePlanItems = planItems.slice(
+    (planPage - 1) * planPageSize,
+    planPage * planPageSize,
+  );
+  const applyPlan = async () => {
+    if (!plan) {
+      generatePlan();
+      return;
+    }
+    if (
+      !confirm(
+        `ç¡®è®¤åº”ç”¨â€œ${action.title}â€ï¼Ÿ\n\nèŒƒå›´ï¼š${scope}\næ¨¡å¼ï¼š${mode}\næ‰§è¡Œåä¼šè¿›å…¥ä»»åŠ¡ä¸­å¿ƒï¼Œå¯åœ¨æ—¥å¿—/å›æ»šè®°å½•ä¸­è¿½è¸ªã€‚`,
+      )
+    )
+      return;
+    setBusy("apply");
+    setError("");
+    try {
+      await api("/api/scrape/apply", {
+        method: "POST",
+        body: JSON.stringify({ planId: plan.id }),
+      });
+      navigate?.("tasks");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy("");
+    }
+  };
+  return (
+    <div className="page scrape-page">
+      <section className="page-intro">
+        <span className="eyebrow">
+          <Zap size={14} />
+          SCRAPE CENTER
+        </span>
+        <h1>è¡¥é½å°é¢ã€æ­Œè¯ã€èƒŒæ™¯ä¸ä¸­æ–‡ç®€ä»‹ã€‚</h1>
+        <p>å…ˆæ ¸å¯¹æ—§å€¼ã€å€™é€‰ç»“æœã€æ¥æºä¸å†²çªï¼Œå†å†³å®šæ˜¯å¦åº”ç”¨ã€‚</p>
+      </section>
+      <div className="scrape-tabs">
+        {scrapeTabs.map((item) => (
+          <button
+            className={tab === item.id ? "active" : ""}
+            onClick={() => {
+              if (item.id === "tasks") {
+                navigate?.("tasks");
+                return;
+              }
+              setTab(item.id);
+              setPlan(null);
+              setPlanPage(1);
+            }}
+            key={item.id}
+          >
+            <item.icon />
+            {item.title}
+          </button>
+        ))}
+      </div>
+      <section className="panel scrape-workbench">
+        <div className="scrape-main">
+          <div className={`action-icon ${action.tone}`}>
+            <action.icon />
+          </div>
+          <div>
+            <h3>{action.title}</h3>
+            <p>{action.desc}</p>
+            <div className="chips">
+              {action.chips.map((chip) => (
+                <span key={chip}>{chip}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="scrape-options">
+          <label>
+            èŒƒå›´
+            <select
+              value={scope}
+              onChange={(e) => {
+                setScope(e.target.value);
+                setPlan(null);
+                setPlanPage(1);
+              }}
+            >
+              <option value="all">å…¨éƒ¨</option>
+              <option value="missing">ç¼ºå¤±é¡¹</option>
+              <option value="specific_artist">æŒ‡å®šæ­Œæ‰‹</option>
+              <option value="specific_album">æŒ‡å®šä¸“è¾‘</option>
+              <option value="folder">æŒ‡å®šæ–‡ä»¶å¤¹</option>
+              <option value="missing_cover">ä»…ç¼ºå¤±å°é¢</option>
+              <option value="missing_lyrics">ä»…ç¼ºå¤±æ­Œè¯</option>
+              <option value="missing_background">ä»…ç¼ºå¤±èƒŒæ™¯å›¾</option>
+              <option value="missing_bio">ä»…ç¼ºå¤±ä¸­æ–‡ç®€ä»‹</option>
+              <option value="unknown">Unknown Artist / Album</option>
+            </select>
+          </label>
+          {["specific_artist", "specific_album", "folder"].includes(scope) && (
+            <label>
+              {scope === "folder" ? "ç›®å½•" : "åç§°"}
+              <input
+                value={scopeValue}
+                onChange={(e) => {
+                  setScopeValue(e.target.value);
+                  setPlan(null);
+                }}
+                placeholder={scope === "folder" ? "/music/æ­Œæ‰‹/ä¸“è¾‘" : "è¾“å…¥å‡†ç¡®åç§°"}
+              />
+            </label>
+          )}
+          <label>
+            æ¨¡å¼
+            <select
+              value={mode}
+              onChange={(e) => {
+                setMode(e.target.value);
+                setPlan(null);
+                setPlanPage(1);
+              }}
+            >
+              <option value="missing">åªè¡¥ç¼ºå¤±</option>
+              <option value="incremental">å¢é‡æ›´æ–°</option>
+              <option value="refresh">å…¨é‡åˆ·æ–°</option>
+              <option value="force">å¼ºåˆ¶è¦†ç›–</option>
+            </select>
+          </label>
+        </div>
+        {error && (
+          <div className="inline-error">
+            <CircleAlert />
+            {error}
+          </div>
+        )}
+        <div className="preview-list scrape-preview">
+          {plan ? (
+            <>
+              <div>
+                <div>
+                  <small>é¢„è§ˆç”Ÿæˆæ—¶é—´</small>
+                  <code>
+                    {new Date(plan.createdAt).toLocaleString("zh-CN")}
+                  </code>
+                </div>
+                <ChevronRight />
+                <div>
+                  <small>ç­–ç•¥</small>
+                  <code>
+                    {plan.scope} Â· {plan.mode}
+                  </code>
+                </div>
+                <i className="safe">æœªæ‰§è¡Œ</i>
+              </div>
+              <div className="scrape-summary">
+                <span>æ–°å¢ {plan.summary.create}</span>
+                <span>æ›¿æ¢ {plan.summary.replace}</span>
+                <span>è·³è¿‡ {plan.summary.skip}</span>
+                <span>å†²çª {plan.summary.conflicts}</span>
+              </div>
+              <div className="scrape-diff-head">
+                <span>å¯¹è±¡ / å­—æ®µ</span>
+                <span>æ—§å€¼</span>
+                <span>å€™é€‰æ–°å€¼</span>
+                <span>æ¥æº / ç½®ä¿¡åº¦</span>
+                <span>ç»“æœ</span>
+              </div>
+              {visiblePlanItems.map((item) => (
+                <div className="scrape-diff-row" key={item.id}>
+                  <div>
+                    <strong>{item.target}</strong>
+                    <small>{item.field}</small>
+                  </div>
+                  <code>{item.oldValue}</code>
+                  <code>{item.newValue}</code>
+                  <div>
+                    <strong>{item.candidateSource}</strong>
+                    <small>{Math.round(item.confidence * 100)}% ç½®ä¿¡åº¦</small>
+                  </div>
+                  <i
+                    className={
+                      item.conflict || item.action === "skip"
+                        ? "danger"
+                        : "safe"
+                    }
+                  >
+                    {item.skipReason ||
+                      (item.conflict
+                        ? "å­˜åœ¨å†²çª"
+                        : item.action === "replace"
+                          ? "å°†æ›¿æ¢"
+                          : "å°†æ–°å¢")}
+                  </i>
+                </div>
+              ))}
+              {planItems.length > planPageSize && (
+                <div className="pagination scrape-pagination">
+                  <button
+                    className="secondary small"
+                    disabled={planPage <= 1}
+                    onClick={() => setPlanPage((value) => value - 1)}
+                  >
+                    ä¸Šä¸€é¡µ
+                  </button>
+                  <span>
+                    ç¬¬ {planPage} / {planPages} é¡µ Â· å…± {planItems.length} é¡¹
+                  </span>
+                  <button
+                    className="secondary small"
+                    disabled={planPage >= planPages}
+                    onClick={() => setPlanPage((value) => value + 1)}
+                  >
+                    ä¸‹ä¸€é¡µ
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div>
+              <div>
+                <small>é¢„è§ˆçŠ¶æ€</small>
+                <code>å°šæœªç”Ÿæˆ</code>
+              </div>
+              <ChevronRight />
+              <div>
+                <small>ä¸‹ä¸€æ­¥</small>
+                <code>å…ˆç‚¹å‡»ç”Ÿæˆå·®å¼‚é¢„è§ˆ</code>
+              </div>
+              <i>ä¸ä¼šæ‰§è¡Œ</i>
+            </div>
+          )}
+        </div>
+        <div className="scrape-actions">
+          <button
+            className="secondary"
+            disabled={activeKinds.has(action.kind) || !!busy}
+            onClick={generatePlan}
+          >
+            {busy === "preview" ? <LoaderCircle className="spin" /> : <Gauge />}
+            ç”Ÿæˆå·®å¼‚é¢„è§ˆ
+          </button>
+          <button
+            className="primary"
+            disabled={
+              activeKinds.has(action.kind) ||
+              !plan ||
+              !!busy ||
+              plan.summary.create + plan.summary.replace === 0
+            }
+            onClick={applyPlan}
+          >
+            {activeKinds.has(action.kind) || busy === "apply" ? (
+              <LoaderCircle className="spin" />
+            ) : (
+              <Check />
+            )}
+            åº”ç”¨ä¿®æ”¹
+          </button>
+        </div>
+      </section>
+      <section className="safe-note">
+        <ShieldCheck />
+        <div>
+          <strong>å®‰å…¨å†™å…¥ç­–ç•¥</strong>
+          <p>æ— æ³•ç²¾ç¡®åŒ¹é…çš„æ¡ç›®ä¼šè‡ªåŠ¨è·³è¿‡ï¼›å®Œæˆåå¯åœ¨ä»»åŠ¡ä¸­å¿ƒæŸ¥çœ‹ç»“æœã€‚</p>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+const SOURCE_STATES = {
+  unverified: ["æœªéªŒè¯", "muted"],
+  imported: ["å·²å¯¼å…¥", "amber"],
+  search_ok: ["æœç´¢å¯ç”¨", "blue"],
+  inspect_ok: ["æ¥å£å·²æˆæƒ", "green"],
+  partial: ["æ¥å£å·²æˆæƒ", "green"],
+  degraded: ["å·²æˆæƒ Â· è¿è¡Œå¼‚å¸¸", "amber"],
+  resolve_ok: ["è§£æå¯ç”¨", "green"],
+  unavailable: ["ä¸å¯ç”¨", "red"],
+  disabled: ["å·²ç¦ç”¨", "muted"],
+};
+
+function SourceManager({ sources, refreshSources, notify }) {
+  const [mode, setMode] = useState("url"),
+    [name, setName] = useState(""),
+    [url, setUrl] = useState(""),
+    [code, setCode] = useState(""),
+    [file, setFile] = useState(null);
+  const [busy, setBusy] = useState(false),
+    [error, setError] = useState(""),
+    [keyword, setKeyword] = useState(""),
+    [quality, setQuality] = useState("320k");
+  const [testing, setTesting] = useState(""),
+    [testData, setTestData] = useState(null),
+    [logs, setLogs] = useState(null),
+    [inspection, setInspection] = useState(null);
+  const importSource = async (event) => {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      let result;
+      if (mode === "file") {
+        if (!file) throw new Error("è¯·é€‰æ‹©æœ¬åœ° .js éŸ³ä¹æºæ–‡ä»¶ã€‚");
+        const body = new FormData();
+        body.append("name", name);
+        body.append("file", file);
+        result = await api("/api/sources/import-file", {
+          method: "POST",
+          body,
+        });
+      } else if (mode === "code")
+        result = await api("/api/sources/import-code", {
+          method: "POST",
+          body: JSON.stringify({ name, code }),
+        });
+      else
+        result = await api("/api/sources/import-url", {
+          method: "POST",
+          body: JSON.stringify({ name, url }),
+        });
+      await refreshSources();
+      setName("");
+      setUrl("");
+      setCode("");
+      setFile(null);
+      if (!result.ok) setError(`å¯¼å…¥å®Œæˆä½†æ ¡éªŒå¤±è´¥ï¼š${result.message}`);
+      else notify(result.message);
+    } catch (err) {
+      setError(`å¯¼å…¥å¤±è´¥ï¼š${err.message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const testSearch = async (source) => {
+    const probe = keyword.trim();
+    if (!probe) {
+      setError(
+        "è¯·è¾“å…¥ä¸€é¦–ä½ çœŸå®æƒ³æµ‹è¯•çš„æ­Œæ›²æˆ–æ­Œæ‰‹ï¼Œç³»ç»Ÿä¸ä¼šå†ä½¿ç”¨æ¼”ç¤ºå…³é”®è¯ã€‚",
+      );
+      return;
+    }
+    setTesting(source.id);
+    setError("");
+    try {
+      const platform = source.supportedPlatforms?.includes("tx")
+        ? "tx"
+        : source.supportedPlatforms?.[0];
+      const result = await api(`/api/sources/${source.id}/test-search`, {
+        method: "POST",
+        body: JSON.stringify({ keyword: probe, platform }),
+      });
+      setTestData({ source, result });
+      await refreshSources();
+      notify(`â€œ${source.displayName}â€æµ‹è¯•æœç´¢æˆåŠŸ`);
+    } catch (err) {
+      setError(`æµ‹è¯•æœç´¢å¤±è´¥ï¼š${err.message}`);
+      await refreshSources();
+    } finally {
+      setTesting("");
+    }
+  };
+  const inspect = async (source) => {
+    setTesting(`inspect-${source.id}`);
+    setError("");
+    try {
+      const result = await api(`/api/sources/${source.id}/inspect`, {
+        method: "POST",
+      });
+      setInspection({ source, result });
+      await refreshSources();
+    } catch (err) {
+      setError(`æ ¼å¼æ£€æŸ¥å¤±è´¥ï¼š${err.message}`);
+    } finally {
+      setTesting("");
+    }
+  };
+  const testResolve = async (track) => {
+    setTesting(`resolve-${track.trackId}`);
+    setError("");
+    try {
+      const result = await api(
+        `/api/sources/${testData.source.id}/test-resolve`,
+        { method: "POST", body: JSON.stringify({ track, quality }) },
+      );
+      notify(result.message);
+      await refreshSources();
+    } catch (err) {
+      setError(`è§£æå¤±è´¥ï¼š${err.message}`);
+      await refreshSources();
+    } finally {
+      setTesting("");
+    }
+  };
+  const toggle = async (source) => {
+    try {
+      await api(
+        `/api/sources/${source.id}/${source.enabled ? "disable" : "enable"}`,
+        { method: "POST" },
+      );
+      await refreshSources();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  const remove = async (source) => {
+    if (!confirm(`ç¡®å®šåˆ é™¤â€œ${source.displayName}â€ï¼Ÿè¿™ä¸ä¼šåˆ é™¤éŸ³ä¹åº“æ–‡ä»¶ã€‚`))
+      return;
+    try {
+      await api(`/api/sources/${source.id}`, { method: "DELETE" });
+      if (logs?.source.id === source.id) setLogs(null);
+      await refreshSources();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  const showLogs = async (source) => {
+    try {
+      setLogs({ source, items: await api(`/api/sources/${source.id}/logs`) });
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  return (
+    <div className="page sources-page">
+      <section className="source-layout">
+        <form className="panel source-import" onSubmit={importSource}>
+          <SectionHead
+            title="å¯¼å…¥éŸ³ä¹æº"
+            note="è¯†åˆ«åˆ°éŸ³ä¹æ¥å£åä¼šç«‹å³å¯ç”¨"
+          />
+          <div className="import-tabs">
+            {[
+              ["url", Link2, "åœ¨çº¿ URL"],
+              ["file", FileUp, "æœ¬åœ°æ–‡ä»¶"],
+              ["code", Code2, "ç²˜è´´æºç "],
+            ].map(([id, Icon, label]) => (
+              <button
+                type="button"
+                className={mode === id ? "active" : ""}
+                onClick={() => {
+                  setMode(id);
+                  setError("");
+                }}
+                key={id}
+              >
+                <Icon />
+                {label}
+              </button>
+            ))}
+          </div>
+          <label>
+            æ˜¾ç¤ºåç§°ï¼ˆå¯é€‰ï¼‰
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="ä¾‹å¦‚ï¼šæˆ‘çš„æ— æŸæº"
+            />
+          </label>
+          {mode === "url" && (
+            <label>
+              Raw JavaScript URL
+              <input
+                required
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://â€¦/latest.js"
+              />
+            </label>
+          )}
+          {mode === "file" && (
+            <label className="file-picker">
+              <input
+                type="file"
+                accept=".js,application/javascript,text/javascript"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+              />
+              <FileUp />
+              <strong>{file?.name || "é€‰æ‹©æœ¬åœ° .js æ–‡ä»¶"}</strong>
+              <span>æœ€å¤§ 2 MB Â· æµè§ˆå™¨ä¸Šä¼ ï¼Œä¸å¡«å†™ç”µè„‘è·¯å¾„</span>
+            </label>
+          )}
+          {mode === "code" && (
+            <label>
+              JavaScript æºç 
+              <textarea
+                required
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="ç²˜è´´å®Œæ•´ LX è‡ªå®šä¹‰éŸ³ä¹æºæºç â€¦"
+              />
+            </label>
+          )}
+          <p className="modal-note">
+            <ShieldCheck />
+            ä¸å†…ç½®ç¬¬ä¸‰æ–¹éŸ³ä¹æºã€‚ä»…å¯¼å…¥ä½ ä¿¡ä»»ä¸”æœ‰æƒä½¿ç”¨çš„è„šæœ¬ï¼›éŸ³å±¿ä¸ç»•è¿‡ DRMã€‚
+          </p>
+          <button className="primary full" disabled={busy}>
+            {busy ? <LoaderCircle className="spin" /> : <Plus />}å¯¼å…¥å¹¶å¯ç”¨
+          </button>
+        </form>
+        <section className="panel source-guide">
+          <span className="eyebrow">
+            <TestTube2 />
+            SOURCE CHECK
+          </span>
+          <h3>è¯†åˆ«é€šè¿‡ï¼Œç«‹å³å¯ç”¨ã€‚</h3>
+          <p>
+            å¯¼å…¥æ—¶å®Œæˆç»“æ„ä¸å®‰å…¨æ ¡éªŒï¼Œé€šè¿‡åé»˜è®¤å¯ç”¨ï¼›æœç´¢å’ŒéŸ³é¢‘è§£ææµ‹è¯•ç”¨äºç¡®è®¤å…·ä½“èƒ½åŠ›ï¼Œä¸ä¼šé˜»æ­¢ä½ å¯ç”¨éŸ³ä¹æºã€‚
+          </p>
+          <ol>
+            <li>
+              <b>01</b> å¯¼å…¥å¹¶æ£€æŸ¥è„šæœ¬ç»“æ„
+            </li>
+            <li>
+              <b>02</b> æ ¡éªŒé€šè¿‡åè‡ªåŠ¨å¯ç”¨
+            </li>
+            <li>
+              <b>03</b> æœç´¢ä¸ä¸‹è½½æƒé™ç«‹å³å¼€æ”¾
+            </li>
+            <li>
+              <b>04</b> å®é™…ä½¿ç”¨æ—¶è®°å½•æ¥å£çŠ¶æ€
+            </li>
+          </ol>
+        </section>
+      </section>
+      {error && (
+        <div className="inline-error">
+          <CircleAlert />
+          {error}
+        </div>
+      )}
+      <section className="panel installed-sources">
+        <SectionHead
+          title="å·²å®‰è£…éŸ³ä¹æº"
+          note={`${sources.length} ä¸ªæ¥æº Â· æ ¼å¼ã€æœç´¢ã€è§£æä¸å¯ç”¨çŠ¶æ€åˆ†åˆ«è®°å½•`}
+        />
+        {sources.length ? (
+          <div className="source-cards">
+            {sources.map((source) => {
+              const [label, tone] = SOURCE_STATES[source.status] || [
+                source.status,
+                "muted",
+              ];
+              return (
+                <article className="source-card" key={source.id}>
+                  <div className="source-card-head">
+                    <div className="source-logo">
+                      <Music2 />
+                    </div>
+                    <div>
+                      <strong>{source.displayName}</strong>
+                      <span>
+                        {source.metadata?.author || "è‡ªå®šä¹‰æ¥æº"} Â·{" "}
+                        {source.sourceType}
+                      </span>
+                    </div>
+                    <i className={`source-state ${tone}`}>{label}</i>
+                  </div>
+                  <dl>
+                    <div>
+                      <dt>æ£€æµ‹æ ¼å¼</dt>
+                      <dd>
+                        {source.detectedFormat || "å¾…æ£€æŸ¥"} Â·{" "}
+                        {source.compatibility || "æœªçŸ¥"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>ä½¿ç”¨æƒé™</dt>
+                      <dd>
+                        {source.accessGranted
+                          ? "æœç´¢ä¸ä¸‹è½½å·²å¼€æ”¾"
+                          : source.enabled
+                            ? "ç­‰å¾…æ¥å£è¯†åˆ«"
+                            : "å·²åœç”¨"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>è¿è¡ŒéªŒè¯</dt>
+                      <dd>
+                        æœç´¢ {source.searchOk ? "æˆåŠŸ" : "å¾…è¿è¡Œ"} Â· è§£æ{" "}
+                        {source.resolveOk ? "æˆåŠŸ" : "å¾…è¿è¡Œ"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>æ”¯æŒå¹³å°</dt>
+                      <dd>
+                        {source.supportedPlatforms?.join(" Â· ") || "æœªçŸ¥"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>æ”¯æŒéŸ³è´¨</dt>
+                      <dd>
+                        {source.supportedQualities?.join(" Â· ") || "å¾…æµ‹è¯•"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>æœ€è¿‘æµ‹è¯•</dt>
+                      <dd>
+                        {source.lastTestAt
+                          ? timeAgo(source.lastTestAt)
+                          : "å°šæœªæµ‹è¯•"}
+                      </dd>
+                    </div>
+                  </dl>
+                  {source.lastErrorMessage && (
+                    <p className="source-error">
+                      <CircleAlert />
+                      {source.lastErrorMessage}
+                    </p>
+                  )}
+                  <div className="source-actions">
+                    <button
+                      className="secondary small"
+                      disabled={testing === `inspect-${source.id}`}
+                      onClick={() => inspect(source)}
+                    >
+                      {testing === `inspect-${source.id}` ? (
+                        <LoaderCircle className="spin" />
+                      ) : (
+                        <Gauge />
+                      )}
+                      æ£€æŸ¥æ ¼å¼
+                    </button>
+                    <button
+                      className="secondary small"
+                      disabled={testing === source.id}
+                      onClick={() => testSearch(source)}
+                    >
+                      {testing === source.id ? (
+                        <LoaderCircle className="spin" />
+                      ) : (
+                        <Search />
+                      )}
+                      æµ‹è¯•æœç´¢
+                    </button>
+                    <button
+                      className="icon-button"
+                      title="æŸ¥çœ‹æ—¥å¿—"
+                      onClick={() => showLogs(source)}
+                    >
+                      <ScrollText />
+                    </button>
+                    <button
+                      className={`icon-button ${source.enabled ? "powered" : ""}`}
+                      title={source.enabled ? "ç¦ç”¨" : "å¯ç”¨"}
+                      onClick={() => toggle(source)}
+                    >
+                      <Power />
+                    </button>
+                    <button
+                      className="icon-button danger"
+                      title="åˆ é™¤"
+                      onClick={() => remove(source)}
+                    >
+                      <Trash2 />
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <Empty
+            icon={Wifi}
+            title="è¿˜æ²¡æœ‰éŸ³ä¹æº"
+            text="å¯é€šè¿‡ URLã€æœ¬åœ° .js æ–‡ä»¶æˆ–ç²˜è´´æºç å¯¼å…¥ã€‚"
+          />
+        )}
+      </section>
+      {testData && (
+        <section className="panel source-test">
+          <SectionHead
+            title={`æµ‹è¯•æœç´¢ Â· ${testData.source.displayName}`}
+            note={`æ‰¾åˆ° ${testData.result.count} é¦–å€™é€‰æ­Œæ›²ï¼Œå¯é€‰æ‹©ä¸€é¦–æµ‹è¯•æ’­æ”¾åœ°å€`}
+            action={
+              <select
+                value={quality}
+                onChange={(e) => setQuality(e.target.value)}
+              >
+                <option value="128k">128K</option>
+                <option value="320k">320K</option>
+                <option value="flac">FLAC</option>
+                <option value="flac24bit">Hi-Res</option>
+              </select>
+            }
+          />
+          <div className="result-list">
+            {testData.result.results.map((item) => (
+              <div
+                className="result-row source-result"
+                key={`${item.platform}-${item.trackId}`}
+              >
+                <div className="result-cover">
+                  {item.coverUrl ? <img src={item.coverUrl} /> : <Music2 />}
+                </div>
+                <div className="result-main">
+                  <strong>{item.title}</strong>
+                  <span>
+                    {item.artist} Â· {item.album || "å•æ›²"}
+                  </span>
+                </div>
+                <span className="duration">
+                  {Math.floor(item.duration / 60)}:
+                  {String(item.duration % 60).padStart(2, "0")}
+                </span>
+                <div className="quality-dots">
+                  {item.qualities.slice(-2).map((q) => (
+                    <i key={q}>{q}</i>
+                  ))}
+                </div>
+                <button
+                  className="secondary small"
+                  disabled={testing === `resolve-${item.trackId}`}
+                  onClick={() => testResolve(item)}
+                >
+                  {testing === `resolve-${item.trackId}` ? (
+                    <LoaderCircle className="spin" />
+                  ) : (
+                    <TestTube2 />
+                  )}
+                  æµ‹è¯•è§£æ
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+      {logs && (
+        <div className="modal-wrap">
+          <button className="modal-backdrop" onClick={() => setLogs(null)} />
+          <section className="modal panel log-modal">
+            <div className="modal-head">
+              <div>
+                <span className="eyebrow">SOURCE LOG</span>
+                <h3>{logs.source.displayName}</h3>
+              </div>
+              <button className="icon-button" onClick={() => setLogs(null)}>
+                <X />
+              </button>
+            </div>
+            <div className="log-list">
+              {logs.items.length ? (
+                logs.items.map((item) => (
+                  <div className={item.level} key={item.id}>
+                    <time>
+                      {new Date(item.created_at).toLocaleString("zh-CN")}
+                    </time>
+                    <b>{item.action}</b>
+                    <p>{item.message}</p>
+                  </div>
+                ))
+              ) : (
+                <Empty
+                  icon={ScrollText}
+                  title="æš‚æ— æ—¥å¿—"
+                  text="æ‰§è¡Œå¯¼å…¥æˆ–æµ‹è¯•åä¼šè®°å½•åœ¨è¿™é‡Œã€‚"
+                />
+              )}
+            </div>
+          </section>
+        </div>
+      )}
+      {inspection && (
+        <div className="modal-wrap">
+          <button
+            className="modal-backdrop"
+            onClick={() => setInspection(null)}
+          />
+          <section className="modal panel inspect-modal">
+            <div className="modal-head">
+              <div>
+                <span className="eyebrow">SOURCE FORMAT</span>
+                <h3>{inspection.source.displayName}</h3>
+              </div>
+              <button
+                className="icon-button"
+                onClick={() => setInspection(null)}
+              >
+                <X />
+              </button>
+            </div>
+            <div className="inspect-summary">
+              <i
+                className={`source-state ${inspection.result.ok ? "green" : "red"}`}
+              >
+                {inspection.result.compatibility}
+              </i>
+              <strong>{inspection.result.detected_format}</strong>
+              <p>{inspection.result.message}</p>
+            </div>
+            <dl>
+              <div>
+                <dt>é¡¶å±‚æ¥å£</dt>
+                <dd>{inspection.result.top_level_keys?.join(" Â· ") || "æ— "}</dd>
+              </div>
+              <div>
+                <dt>æœç´¢</dt>
+                <dd>
+                  {inspection.result.methods?.search
+                    ? "æºå†…ç½®"
+                    : "éŸ³å±¿ç›®å½•é€‚é…å™¨"}
+                </dd>
+              </div>
+              <div>
+                <dt>åœ°å€è§£æ</dt>
+                <dd>{inspection.result.methods?.resolve ? "æ”¯æŒ" : "ç¼ºå¤±"}</dd>
+              </div>
+              <div>
+                <dt>æ­Œè¯ / å°é¢</dt>
+                <dd>
+                  {inspection.result.methods?.lyric ? "æ”¯æŒ" : "â€”"} /{" "}
+                  {inspection.result.methods?.cover ? "æ”¯æŒ" : "â€”"}
+                </dd>
+              </div>
+              <div>
+                <dt>å¹³å°</dt>
+                <dd>
+                  {inspection.result.supported_platforms?.join(" Â· ") || "æœªçŸ¥"}
+                </dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DownloadInboxPanel({ notify, navigate }) {
+  const [data, setData] = useState({ items: [], errors: [], summary: {} });
+  const [selected, setSelected] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const load = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const result = await api("/api/local/download-inbox");
+      setData(result);
+      setSelected(
+        (result.items || [])
+          .filter((item) => !item.conflict && !item.needsReview)
+          .map((item) => item.sourcePath),
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  useEffect(() => {
+    load();
+  }, []);
+  const toggle = (path) =>
+    setSelected((value) =>
+      value.includes(path) ? value.filter((item) => item !== path) : [...value, path],
+    );
+  const ingest = async () => {
+    const items = data.items.filter((item) => selected.includes(item.sourcePath));
+    if (!items.length) return;
+    if (!confirm(`ç¡®è®¤æ•´ç†å¹¶å…¥åº“ ${items.length} é¦–æ­Œæ›²ï¼Ÿ\n\næ–‡ä»¶ä¼šä»ç‹¬ç«‹ä¸‹è½½ç›®å½•ç§»åŠ¨åˆ°æ­£å¼éŸ³ä¹åº“ï¼ŒåŸè·¯å¾„ä¼šå†™å…¥å›æ»šè®°å½•ã€‚`)) return;
+    setBusy(true);
+    try {
+      await api("/api/local/download-inbox/ingest", {
+        method: "POST",
+        body: JSON.stringify({ items }),
+      });
+      notify?.(`${items.length} é¦–æ­Œæ›²å·²è¿›å…¥æ•´ç†é˜Ÿåˆ—`);
+      navigate?.("tasks");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="panel download-inbox-panel">
+      <SectionHead
+        title="ä¸‹è½½ç›®å½•"
+        note="å…ˆé¢„è§ˆè§„èŒƒå‘½åä¸ç›®æ ‡å±‚çº§ï¼Œå†ç§»åŠ¨åˆ°æ­£å¼éŸ³ä¹åº“"
+        action={
+          <div className="pending-actions">
+            <button className="secondary small" onClick={load} disabled={busy}><RefreshCw className={busy ? "spin" : ""} />é‡æ–°æ‰«æ</button>
+            <button className="primary small" onClick={ingest} disabled={busy || !selected.length}><FolderTree />æ•´ç†å…¥åº“ ({selected.length})</button>
+          </div>
+        }
+      />
+      <div className="inbox-roots">
+        <span><Download />ä¸‹è½½ç›®å½• <code>{data.downloadRoot || "/downloads"}</code></span>
+        <ChevronRight />
+        <span><Library />éŸ³ä¹åº“ <code>{data.musicRoot || "/music"}</code></span>
+      </div>
+      {error && <div className="inline-error"><CircleAlert />{error}</div>}
+      {data.items?.length ? (
+        <div className="inbox-table">
+          {data.items.map((item) => (
+            <label className={item.conflict ? "conflict" : item.needsReview ? "review" : ""} key={item.sourcePath}>
+              <input type="checkbox" checked={selected.includes(item.sourcePath)} disabled={item.conflict} onChange={() => toggle(item.sourcePath)} />
+              <div>
+                <strong>{item.title}</strong>
+                <small>{item.artist} Â· {item.album}</small>
+              </div>
+              <div className="inbox-paths">
+                <code>{item.sourcePath}</code>
+                <ChevronRight />
+                <code>{item.targetPath}</code>
+              </div>
+              <em>{item.conflict ? "ç›®æ ‡å†²çª" : item.needsReview ? "è¯·æ ¸å¯¹ä¿¡æ¯" : "å¯å…¥åº“"}</em>
+            </label>
+          ))}
+        </div>
+      ) : busy ? <PageLoader /> : (
+        <Empty icon={Download} title="ä¸‹è½½ç›®å½•æ˜¯ç©ºçš„" text="æ”¾å…¥è¿™é‡Œçš„éŸ³é¢‘ä¼šå…ˆç»è¿‡æ ‡ç­¾ã€å‘½åå’Œè·¯å¾„é¢„è§ˆã€‚" />
+      )}
+    </section>
+  );
+}
+
+function DownloadCenter({
+  sources,
+  refreshSources,
+  createDownload,
+  navigate,
+  playPreview,
+  notify,
+}) {
+  const ready = sources.filter(sourceCatalogReady);
+  const [query, setQuery] = useState(
+      () => localStorage.getItem("songlib-download-query") || "",
+    ),
+    [platform, setPlatform] = useState("tx"),
+    [searchType, setSearchType] = useState("song"),
+    [results, setResults] = useState([]),
+    [loading, setLoading] = useState(false),
+    [sourceId, setSourceId] = useState(""),
+    [quality, setQuality] = useState("320k"),
+    [error, setError] = useState("");
+  const [target, setTarget] = useState("nas");
+  const [pending, setPending] = useState([]),
+    [selectedPending, setSelectedPending] = useState([]);
+  useEffect(() => {
+    if (!ready.some((source) => source.id === sourceId))
+      setSourceId(ready[0]?.id || "");
+  }, [sources, sourceId]);
+  const selected = ready.find((source) => source.id === sourceId);
+  const loadPending = async () => {
+    try {
+      const data = await api("/api/downloads/pending");
+      setPending(data.items || []);
+    } catch {}
+  };
+  useEffect(() => {
+    loadPending();
+    localStorage.removeItem("songlib-download-query");
+  }, []);
+  useEffect(() => {
+    const refresh = () => refreshSources?.().catch(() => {});
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    refresh();
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [refreshSources]);
+  const submit = async (event) => {
+    event.preventDefault();
+    if (!query.trim() || !sourceId) return;
+    setLoading(true);
+    setError("");
+    try {
+      const data = await api(`/api/sources/${sourceId}/test-search`, {
+        method: "POST",
+        body: JSON.stringify({
+          keyword: query,
+          platform: platform === "all" ? "tx" : platform,
+        }),
+      });
+      setResults(data.results || []);
+      await refreshSources?.();
+    } catch (err) {
+      setError(`æœç´¢å¤±è´¥ï¼š${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+  const albumGroups = useMemo(
+    () =>
+      Object.values(
+        results.reduce((map, item) => {
+          const key = `${item.album || "å•æ›²"}-${item.artist}`;
+          map[key] ||= {
+            album: item.album || "å•æ›²",
+            artist: item.artist,
+            coverUrl: item.coverUrl,
+            tracks: [],
+          };
+          map[key].tracks.push(item);
+          return map;
+        }, {}),
+      ),
+    [results],
+  );
+  const deviceDownload = async (item) => {
+    const data = await api("/api/downloads/device-token", {
+      method: "POST",
+      body: JSON.stringify({ item, sourceId, quality }),
+    });
+    const link = document.createElement("a");
+    link.href = data.downloadUrl;
+    link.download = data.filename || "";
+    link.rel = "noopener";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    notify?.(`å·²å‘å½“å‰è®¾å¤‡ä¸‹è½½ã€Š${item.title}ã€‹`);
+  };
+  const downloadOne = async (item) => {
+    if (target === "device") {
+      await deviceDownload(item);
+      return;
+    }
+    await createDownload(item, sourceId, quality);
+    await loadPending();
+  };
+  const downloadMany = async (items) => {
+    if (target === "device") {
+      for (const item of items) await deviceDownload(item);
+      notify?.(`å·²å‘å½“å‰è®¾å¤‡å‘èµ· ${items.length} ä¸ªä¸‹è½½`);
+      return;
+    }
+    for (const item of items) await createDownload(item, sourceId, quality);
+    await loadPending();
+    notify?.(`å·²åŠ å…¥ ${items.length} é¦–æ­Œæ›²åˆ°å¾…å…¥åº“æµç¨‹`);
+  };
+  const togglePending = (id) =>
+    setSelectedPending((value) =>
+      value.includes(id) ? value.filter((item) => item !== id) : [...value, id],
+    );
+  const decide = async (action) => {
+    const ids = selectedPending.length
+      ? selectedPending
+      : pending.map((item) => item.jobId);
+    if (!ids.length) return;
+    const verb = action === "confirm" ? "ç¡®è®¤å…¥åº“" : "åˆ é™¤ä¸‹è½½æ–‡ä»¶";
+    if (
+      !confirm(
+        `${verb} ${ids.length} é¦–å¾…å…¥åº“æ­Œæ›²ï¼Ÿ\n\néŸ³å±¿ä¼šåˆ›å»ºä»»åŠ¡å¹¶å†™å…¥æ“ä½œè®°å½•ï¼Œç¡®è®¤å…¥åº“åä¼šè§¦å‘ Plex æ‰«æï¼›åˆ é™¤ä¼šç§»å…¥ä¸‹è½½å›æ”¶åŒºã€‚`,
+      )
+    )
+      return;
+    await api(
+      `/api/downloads/${action === "confirm" ? "batch-confirm" : "batch-cancel"}`,
+      { method: "POST", body: JSON.stringify({ jobIds: ids }) },
+    );
+    setSelectedPending([]);
+    await loadPending();
+    notify?.(action === "confirm" ? "æ‰¹é‡å…¥åº“ä»»åŠ¡å·²åˆ›å»º" : "å·²ç§»å…¥å›æ”¶ç«™");
+  };
+  if (!ready.length)
+    return (
+      <div className="page download-page">
+        <section className="download-hero">
+          <div>
+            <span className="eyebrow">
+              <ArrowDownToLine />
+              MUSIC DOWNLOAD
+            </span>
+            <h1>æœç´¢éŸ³ä¹ï¼Œä¿å­˜åˆ°ä½ çš„ NASã€‚</h1>
+            <p>å¯¼å…¥å¹¶è¯†åˆ«éŸ³ä¹æ¥å£åå³å¯æœç´¢ä¸ä¸‹è½½ã€‚</p>
+          </div>
+        </section>
+        <section className="panel download-empty">
+          <Empty
+            icon={Wifi}
+            title="æš‚æ— å¯ç”¨éŸ³ä¹æº"
+            text="å¯¼å…¥éŸ³ä¹æºå¹¶è¯†åˆ«åˆ°æ¥å£åä¼šè‡ªåŠ¨å¯ç”¨ï¼Œæ— éœ€å…ˆåšæœç´¢æˆ–è§£ææµ‹è¯•ã€‚"
+          />
+          <button className="primary" onClick={() => navigate("sources")}>
+            <Wifi />
+            å»éŸ³ä¹æºç®¡ç†
+          </button>
+        </section>
+        <DownloadInboxPanel notify={notify} navigate={navigate} />
+      </div>
+    );
+  return (
+    <div className="page download-page">
+      <section className="download-hero">
+        <div>
+          <span className="eyebrow">
+            <ArrowDownToLine />
+            MUSIC DOWNLOAD
+          </span>
+          <h1>
+            æœç´¢éŸ³ä¹ï¼Œ
+            {target === "device" ? "ä¸‹è½½åˆ°å½“å‰è®¾å¤‡ã€‚" : "ä¿å­˜åˆ°ä½ çš„ NASã€‚"}
+          </h1>
+          <p>
+            {target === "device"
+              ? "å½“å‰è®¾å¤‡æ¨¡å¼ä¼šç›´æ¥è§¦å‘æµè§ˆå™¨ä¸‹è½½ï¼Œé€‚åˆç”µè„‘æˆ–æ‰‹æœºä¸´æ—¶ä¿å­˜ã€‚"
+              : "ä¸‹è½½æ–‡ä»¶å…ˆè¿›å…¥ä¸´æ—¶åŒºï¼Œç¡®è®¤å…ƒæ•°æ®ä¸ç›®å½•ç»“æ„åå†æ‰¹é‡å…¥åº“ã€‚"}
+          </p>
+        </div>
+        <div className="hero-actions">
+          <button className="secondary" onClick={loadPending}>
+            <RefreshCw />
+            åˆ·æ–°å¾…å…¥åº“
+          </button>
+          <button className="secondary" onClick={() => navigate("sources")}>
+            <Settings />
+            ç®¡ç†éŸ³ä¹æº
+          </button>
+        </div>
+      </section>
+      <section className="source-strip download-controls">
+        <div className="source-summary">
+          <div className="status-orb">
+            <Wifi />
+          </div>
+          <div>
+            <strong>{ready.length} ä¸ªå·²å¯ç”¨æ¥æº</strong>
+            <span>
+              {selected?.resolveOk
+                ? "æœ€è¿‘ä¸€æ¬¡åœ°å€è§£ææˆåŠŸ"
+                : "æ¥å£å·²æˆæƒï¼Œä¸‹è½½æ—¶å®æ—¶è§£æ"}
+            </span>
+          </div>
+        </div>
+        <div className="target-toggle">
+          <button
+            className={target === "nas" ? "active" : ""}
+            onClick={() => setTarget("nas")}
+          >
+            <Server />
+            NAS å…¥åº“
+          </button>
+          <button
+            className={target === "device" ? "active" : ""}
+            onClick={() => setTarget("device")}
+          >
+            <Download />
+            å½“å‰è®¾å¤‡
+          </button>
+        </div>
+        <select value={sourceId} onChange={(e) => setSourceId(e.target.value)}>
+          {ready.map((source) => (
+            <option value={source.id} key={source.id}>
+              {source.displayName}
+            </option>
+          ))}
+        </select>
+        <select value={platform} onChange={(e) => setPlatform(e.target.value)}>
+          <option value="tx">QQ éŸ³ä¹</option>
+          <option value="wy">ç½‘æ˜“äº‘</option>
+          <option value="all">å…¨æº</option>
+        </select>
+        <select
+          value={searchType}
+          onChange={(e) => setSearchType(e.target.value)}
+        >
+          <option value="song">æ­Œæ›²</option>
+          <option value="album">ä¸“è¾‘</option>
+          <option value="artist">æ­Œæ‰‹</option>
+          <option value="playlist">æ­Œå•</option>
+        </select>
+        <select value={quality} onChange={(e) => setQuality(e.target.value)}>
+          <option value="128k">æ ‡å‡† 128K</option>
+          <option value="320k">é«˜å“è´¨ 320K</option>
+          <option value="flac">æ— æŸ FLAC</option>
+          <option value="flac24bit">Hi-Res</option>
+        </select>
+      </section>
+      <form className="catalog-search" onSubmit={submit}>
+        <div className="big-search">
+          <Search />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="æœç´¢æ­Œæ›²ã€ä¸“è¾‘åã€æ­Œæ‰‹æˆ–æ­Œå•"
+          />
+          <button className="primary" disabled={loading || !selected}>
+            {loading ? <LoaderCircle className="spin" /> : "æœç´¢"}
+          </button>
+        </div>
+      </form>
+      {error && (
+        <div className="inline-error">
+          <CircleAlert />
+          {error}
+        </div>
+      )}
+      <section className="search-results panel">
+        <SectionHead
+          title={searchType === "album" ? "ä¸“è¾‘ç»“æœ" : "æœç´¢ç»“æœ"}
+          note={
+            results.length
+              ? `æ‰¾åˆ° ${results.length} é¦–å€™é€‰æ­Œæ›² Â· å½“å‰ç›®æ ‡ï¼š${target === "device" ? "å½“å‰è®¾å¤‡" : "NAS å¾…å…¥åº“"}`
+              : "å¯è§£æçš„æ­Œæ›²å¯åŠ å…¥ä¸‹è½½é˜Ÿåˆ—"
+          }
+        />
+        {loading ? (
+          <PageLoader />
+        ) : results.length ? (
+          searchType === "album" ? (
+            <div className="album-results">
+              {albumGroups.map((group) => (
+                <article
+                  className="album-result"
+                  key={`${group.album}-${group.artist}`}
+                >
+                  <div className="result-cover big">
+                    {group.coverUrl ? <img src={group.coverUrl} /> : <Album />}
+                  </div>
+                  <div>
+                    <strong>{group.album}</strong>
+                    <span>
+                      {group.artist} Â· {group.tracks.length} é¦– Â·{" "}
+                      {platform === "tx"
+                        ? "QQ éŸ³ä¹"
+                        : platform === "wy"
+                          ? "ç½‘æ˜“äº‘"
+                          : "å…¨æº"}
+                    </span>
+                    <div className="quality-dots">
+                      <i>{quality}</i>
+                      <i>
+                        {target === "device" ? "æµè§ˆå™¨ä¸‹è½½" : "æœ¬åœ°åŒ¹é…å¾…æ£€æŸ¥"}
+                      </i>
+                    </div>
+                  </div>
+                  <div className="album-actions">
+                    <button
+                      className="secondary small"
+                      onClick={() => setResults(group.tracks)}
+                    >
+                      æŸ¥çœ‹æ›²ç›®
+                    </button>
+                    <button
+                      className="primary small"
+                      onClick={() => downloadMany(group.tracks)}
+                    >
+                      <Download />
+                      {target === "device" ? "ä¸‹è½½åˆ°è®¾å¤‡" : "ä¸‹è½½æ•´å¼ ä¸“è¾‘"}
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="result-list">
+              {results.map((item) => (
+                <div
+                  className="result-row"
+                  key={`${item.platform}-${item.trackId}`}
+                >
+                  <div className="result-cover">
+                    {item.coverUrl ? <img src={item.coverUrl} /> : <Music2 />}
+                  </div>
+                  <div className="result-main">
+                    <strong>{item.title}</strong>
+                    <span>
+                      {item.artist} Â· {item.album || "å•æ›²"}
+                    </span>
+                  </div>
+                  <span className="duration">
+                    {Math.floor(item.duration / 60)}:
+                    {String(item.duration % 60).padStart(2, "0")}
+                  </span>
+                  <div className="quality-dots">
+                    {item.qualities.slice(-2).map((q) => (
+                      <i key={q}>{q}</i>
+                    ))}
+                  </div>
+                  <div className="row-actions wide">
+                    <button
+                      title="è¯•å¬"
+                      onClick={() =>
+                        playPreview?.({
+                          ...item,
+                          source: "source_preview",
+                          sourceId,
+                          quality,
+                          item,
+                        })
+                      }
+                    >
+                      <Play />
+                    </button>
+                    <button
+                      title={
+                        target === "device"
+                          ? "ä¸‹è½½åˆ°å½“å‰è®¾å¤‡"
+                          : "ä¸‹è½½å¹¶åŠ å…¥å¾…å…¥åº“"
+                      }
+                      onClick={() => downloadOne(item)}
+                    >
+                      <Download />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        ) : (
+          <Empty
+            icon={Search}
+            title="æœç´¢æ­Œæ›²ã€ä¸“è¾‘æˆ–æ­Œæ‰‹"
+            text="ç»“æœä¼šå±•ç¤ºæ­Œæ‰‹ã€ä¸“è¾‘ã€æ—¶é•¿ä¸å¯é€‰éŸ³è´¨ã€‚"
+          />
+        )}
+      </section>
+      <section className="panel pending-ingest">
+        <SectionHead
+          title="å¾…å…¥åº“"
+          note={`${pending.length} é¦–æ­Œæ›²å·²ä¸‹è½½åˆ°ä¸´æ—¶åŒºï¼Œå°šæœªè¿›å…¥æ­£å¼æ›²åº“`}
+          action={
+            <div className="pending-actions">
+              <button
+                className="secondary small"
+                disabled={!pending.length}
+                onClick={() => decide("cancel")}
+              >
+                <Trash2 />
+                æ‰¹é‡åˆ é™¤ä¸‹è½½æ–‡ä»¶
+              </button>
+              <button
+                className="primary small"
+                disabled={!pending.length}
+                onClick={() => decide("confirm")}
+              >
+                <Check />
+                æ‰¹é‡ç¡®è®¤å…¥åº“
+              </button>
+            </div>
+          }
+        />
+        {pending.length ? (
+          <div className="pending-table">
+            <div className="pending-row pending-head">
+              <span></span>
+              <span>æ­Œæ›²</span>
+              <span>æ¥æº / éŸ³è´¨</span>
+              <span>å½“å‰ä½ç½® / å…¥åº“ä½ç½®</span>
+              <span>çŠ¶æ€</span>
+            </div>
+            {pending.map((item) => (
+              <div className="pending-row" key={item.jobId}>
+                <input
+                  type="checkbox"
+                  checked={selectedPending.includes(item.jobId)}
+                  onChange={() => togglePending(item.jobId)}
+                />
+                <div>
+                  <strong>{item.title}</strong>
+                  <small>
+                    {item.artist} Â· {item.album}
+                  </small>
+                </div>
+                <span>
+                  {item.source || "éŸ³ä¹æº"} Â· {item.quality}
+                </span>
+                <div className="pending-paths">
+                  <code>{item.currentPath || item.downloadPath}</code>
+                  <ChevronRight />
+                  <code>{item.proposedPath || item.targetPath}</code>
+                </div>
+                <div className="file-flags">
+                  <i className="pending-stage">
+                    {item.stageLabel || "ä¸´æ—¶åŒº Â· å¾…ç¡®è®¤"}
+                  </i>
+                  <i className={item.tagStatus === "æ ‡ç­¾å·²å‡†å¤‡" ? "ok" : ""}>
+                    {item.tagStatus}
+                  </i>
+                  <i className={item.coverStatus === "å°é¢å·²å‡†å¤‡" ? "ok" : ""}>
+                    {item.coverStatus}
+                  </i>
+                  <i className={item.lyricStatus === "æ­Œè¯å·²å‡†å¤‡" ? "ok" : ""}>
+                    {item.lyricStatus}
+                  </i>
+                  <i className={!item.conflict ? "ok" : ""}>
+                    {item.conflict ? "å†²çª" : "æ— å†²çª"}
+                  </i>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <Empty
+            icon={Download}
+            title="æš‚æ— å¾…å…¥åº“æ­Œæ›²"
+            text="ä¸‹è½½å®Œæˆåï¼Œæ­Œæ›²ä¼šåœ¨è¿™é‡Œç­‰å¾…æ‰¹é‡ç¡®è®¤å…¥åº“ã€‚"
+          />
+        )}
+      </section>
+    </div>
+  );
+}
+
+function Tasks({ jobs, refresh, navigate }) {
+  const [detail, setDetail] = useState(null),
+    [error, setError] = useState("");
+  const [filter, setFilter] = useState("running");
+  const inspect = async (id) => {
+    try {
+      setDetail(await api(`/api/jobs/${id}`));
+      setError("");
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  const control = async (job, action) => {
+    if (!confirm(`${action === "retry" ? "é‡è¯•" : "å®‰å…¨å–æ¶ˆ"}ï¼š${job.title}ï¼Ÿ`)) return;
+    try {
+      await api(`/api/jobs/${job.id}/${action}`, { method: "POST" });
+      setDetail(null);
+      await refresh();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  const label = (status) =>
+    status === "running"
+      ? "æ‰§è¡Œä¸­"
+      : status === "completed"
+        ? "å®Œæˆ"
+        : status === "failed"
+          ? "å¤±è´¥"
+          : status === "waiting_confirm"
+            ? "å¾…ç¡®è®¤"
+            : status === "cancelled"
+              ? "å·²å–æ¶ˆ"
+              : "æ’é˜Ÿ";
+  const groups = {
+    running: jobs.filter((j) => ["running", "queued"].includes(j.status)),
+    confirm: jobs.filter((j) => j.status === "waiting_confirm"),
+    failed: jobs.filter((j) => j.status === "failed"),
+    history: jobs.filter(
+      (j) =>
+        !["running", "queued", "waiting_confirm", "failed"].includes(j.status),
+    ),
+    all: jobs,
+  };
+  const visible = groups[filter] || jobs;
+  return (
+    <div className="page tasks-page">
+      <SectionHead
+        title="ä»»åŠ¡ä¸­å¿ƒ"
+        note="è¿è¡Œä¸­ã€å¾…ç¡®è®¤ã€å¤±è´¥å’Œå†å²ä»»åŠ¡åˆ†å¼€å¤„ç†"
+        action={
+          <button className="secondary small" onClick={refresh}>
+            <RefreshCw />
+            åˆ·æ–°
+          </button>
+        }
+      />
+      {error && (
+        <div className="inline-error">
+          <CircleAlert />
+          {error}
+        </div>
+      )}
+      <div className="task-summary">
+        <button
+          className={filter === "running" ? "active" : ""}
+          onClick={() => setFilter("running")}
+        >
+          <LoaderCircle />
+          <strong>{groups.running.length}</strong>
+          <span>æ­£åœ¨æ‰§è¡Œ</span>
+        </button>
+        <button
+          className={filter === "confirm" ? "active" : ""}
+          onClick={() => setFilter("confirm")}
+        >
+          <WandSparkles />
+          <strong>{groups.confirm.length}</strong>
+          <span>å¾…æˆ‘ç¡®è®¤</span>
+        </button>
+        <button
+          className={filter === "failed" ? "active" : ""}
+          onClick={() => setFilter("failed")}
+        >
+          <CircleAlert />
+          <strong>{groups.failed.length}</strong>
+          <span>å¤±è´¥ä»»åŠ¡</span>
+        </button>
+        <button
+          className={filter === "history" ? "active" : ""}
+          onClick={() => setFilter("history")}
+        >
+          <Check />
+          <strong>{groups.history.length}</strong>
+          <span>å†å²è®°å½•</span>
+        </button>
+      </div>
+      <section className="panel task-list">
+        <div className="task-list-head">
+          <span>ä»»åŠ¡</span>
+          <span>çŠ¶æ€</span>
+          <span>æ—¶é—´</span>
+        </div>
+        {visible.length ? (
+          visible.map((job) => (
+            <div
+              className="task-detail"
+              key={job.id}
+              onClick={() => inspect(job.id)}
+            >
+              <div className={`job-state ${job.status}`}>
+                {job.status === "running" ? (
+                  <LoaderCircle className="spin" />
+                ) : job.status === "completed" ? (
+                  <Check />
+                ) : job.status === "failed" ? (
+                  <CircleAlert />
+                ) : job.status === "waiting_confirm" ? (
+                  <WandSparkles />
+                ) : (
+                  <Clock3 />
+                )}
+              </div>
+              <div className="task-copy">
+                <strong>{job.title}</strong>
+                <span>
+                  {job.error_message ||
+                    job.message ||
+                    `ä»»åŠ¡ #${job.id} Â· å‘èµ·æ—¶é—´ ${timeAgo(job.created_at)}`}
+                </span>
+                {!["queued", "running", "waiting_confirm"].includes(job.status) && (
+                  <small>æˆåŠŸ {job.success_count || 0} Â· å¤±è´¥ {job.failed_count || 0} Â· è·³è¿‡ {job.skipped_count || 0}</small>
+                )}
+                {job.status === "running" && (
+                  <div className="bar">
+                    <i
+                      className="amber"
+                      style={{ width: `${job.progress}%` }}
+                    />
+                  </div>
+                )}
+                {job.status === "waiting_confirm" && (
+                  <div className="inline-task-actions">
+                    <button
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        navigate?.("download");
+                      }}
+                    >
+                      æ‰“å¼€å¾…å…¥åº“
+                    </button>
+                  </div>
+                )}
+                {["running", "queued"].includes(job.status) && (
+                  <div className="inline-task-actions">
+                    <button onClick={(event) => { event.stopPropagation(); control(job, "cancel"); }}>
+                      å–æ¶ˆä»»åŠ¡
+                    </button>
+                  </div>
+                )}
+                {["failed", "cancelled"].includes(job.status) && (
+                  <div className="inline-task-actions">
+                    <button className="confirm" onClick={(event) => { event.stopPropagation(); control(job, "retry"); }}>
+                      é‡è¯•
+                    </button>
+                  </div>
+                )}
+              </div>
+              <em className={`status-pill ${job.status}`}>
+                {label(job.status)}
+              </em>
+              <time>{timeAgo(job.created_at)}</time>
+            </div>
+          ))
+        ) : (
+          <Empty
+            icon={Activity}
+            title="è¿™ä¸€ç±»æš‚æ—¶æ²¡æœ‰ä»»åŠ¡"
+            text="ä»»åŠ¡ä¼šæŒ‰è¿è¡Œã€ç¡®è®¤ã€å¤±è´¥å’Œå†å²è‡ªåŠ¨å½’ç±»ã€‚"
+          />
+        )}
+      </section>
+      {detail && (
+        <div className="modal-wrap">
+          <button className="modal-backdrop" onClick={() => setDetail(null)} />
+          <section className="modal panel log-modal job-modal">
+            <div className="modal-head">
+              <div>
+                <span className="eyebrow">ä»»åŠ¡è¯¦æƒ…</span>
+                <h3>{detail.title}</h3>
+              </div>
+              <button className="icon-button" onClick={() => setDetail(null)}>
+                <X />
+              </button>
+            </div>
+            <dl className="task-detail-meta">
+              <div>
+                <dt>ä»»åŠ¡åç§°</dt>
+                <dd>{detail.title}</dd>
+              </div>
+              <div>
+                <dt>å¼€å§‹æ—¶é—´</dt>
+                <dd>
+                  {detail.created_at
+                    ? new Date(detail.created_at).toLocaleString("zh-CN")
+                    : "â€”"}
+                </dd>
+              </div>
+              <div>
+                <dt>å½“å‰è¿›åº¦</dt>
+                <dd>{detail.progress || 0}%</dd>
+              </div>
+              <div>
+                <dt>çŠ¶æ€</dt>
+                <dd>{label(detail.status)}</dd>
+              </div>
+              <div>
+                <dt>æ‰§è¡ŒèŒƒå›´</dt>
+                <dd>{detail.payload?.scope || "å…¨éƒ¨"}{detail.payload?.scopeValue ? ` Â· ${detail.payload.scopeValue}` : ""}</dd>
+              </div>
+              <div>
+                <dt>ç»“æœ</dt>
+                <dd>æˆåŠŸ {detail.success_count || 0} Â· å¤±è´¥ {detail.failed_count || 0} Â· è·³è¿‡ {detail.skipped_count || 0}</dd>
+              </div>
+              <div>
+                <dt>ç»“æŸæ—¶é—´</dt>
+                <dd>{detail.finished_at ? new Date(detail.finished_at).toLocaleString("zh-CN") : "â€”"}</dd>
+              </div>
+            </dl>
+            {detail.error_message && (
+              <div className="inline-error">
+                <CircleAlert />
+                {detail.error_code}: {detail.error_message}
+              </div>
+            )}
+            {detail.status === "waiting_confirm" && detail.result?.preview && (
+              <div className="ingest-preview">
+                <div>
+                  <small>ä¸´æ—¶æ–‡ä»¶</small>
+                  <code>{detail.result.preview.incomingPath}</code>
+                </div>
+                <ChevronRight />
+                <div>
+                  <small>ç›®æ ‡è·¯å¾„</small>
+                  <code>{detail.result.preview.targetPath}</code>
+                </div>
+                <dl>
+                  <div>
+                    <dt>æ­Œæ›²</dt>
+                    <dd>{detail.result.preview.title}</dd>
+                  </div>
+                  <div>
+                    <dt>æ­Œæ‰‹ / ä¸“è¾‘</dt>
+                    <dd>
+                      {detail.result.preview.artist} Â·{" "}
+                      {detail.result.preview.album}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>éŸ³è´¨</dt>
+                    <dd>{detail.result.preview.quality}</dd>
+                  </div>
+                  <div>
+                    <dt>å†²çª</dt>
+                    <dd>
+                      {detail.result.preview.conflictAdjusted
+                        ? "å·²è‡ªåŠ¨ä½¿ç”¨å®‰å…¨æ–°æ–‡ä»¶å"
+                        : "æ— "}
+                    </dd>
+                  </div>
+                </dl>
+                <div className="decision-actions">
+                  <button className="primary" onClick={() => { setDetail(null); navigate?.("download"); }}>
+                    <ArrowDownToLine />æ‰“å¼€å¾…å…¥åº“æ‰¹é‡å¤„ç†
+                  </button>
+                </div>
+              </div>
+            )}
+            <div className="decision-actions">
+              {["running", "queued"].includes(detail.status) && (
+                <button className="secondary" onClick={() => control(detail, "cancel")}><X />å–æ¶ˆä»»åŠ¡</button>
+              )}
+              {["failed", "cancelled"].includes(detail.status) && (
+                <button className="primary" onClick={() => control(detail, "retry")}><RefreshCw />é‡è¯•ä»»åŠ¡</button>
+              )}
+            </div>
+            <div className="log-list">
+              {detail.logs?.map((item) => (
+                <div className={item.level} key={item.id}>
+                  <time>
+                    {new Date(item.created_at).toLocaleString("zh-CN")}
+                  </time>
+                  <p>{item.message}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SettingsPage({
+  settings,
+  logout,
+  navigate,
+  isAdmin = true,
+  onSettingsChange,
+}) {
+  const [current, setCurrent] = useState(""),
+    [next, setNext] = useState(""),
+    [message, setMessage] = useState("");
+  const [tab, setTab] = useState(isAdmin ? "plex" : "user"),
+    [draft, setDraft] = useState({}),
+    [plexOpen, setPlexOpen] = useState(false),
+    [plex, setPlex] = useState(settings.plex || {});
+  const [profile, setProfile] = useState(settings.user || {}),
+    [logs, setLogs] = useState(null),
+    [logsLoading, setLogsLoading] = useState(false);
+  const [fnosDraft, setFnosDraft] = useState({
+    serverUrl: settings.fnosMusic?.serverUrl || "",
+    authMode: settings.fnosMusic?.authMode || "password",
+    username: settings.fnosMusic?.accountLabel || "",
+    password: "",
+    token: "",
+  });
+  const [backups, setBackups] = useState([]),
+    [backupBusy, setBackupBusy] = useState("");
+  const defaultPlayerPrefs = {
+    defaultSource: "local_first",
+    remoteBitrate: "320k",
+    autoTranscode: false,
+    showLyrics: true,
+    blurBackground: true,
+    extractColor: true,
+  };
+  const [playerPrefs, setPlayerPrefs] = useState({
+    ...defaultPlayerPrefs,
+    ...(settings.player || {}),
+  });
+  useEffect(() => {
+    setDraft(settings || {});
+    setPlex(settings.plex || {});
+    setProfile(settings.user || {});
+    setFnosDraft((value) => ({
+      ...value,
+      serverUrl: settings.fnosMusic?.serverUrl || "",
+      authMode: settings.fnosMusic?.authMode || "password",
+      username: settings.fnosMusic?.accountLabel || "",
+      password: "",
+      token: "",
+    }));
+    setPlayerPrefs({ ...defaultPlayerPrefs, ...(settings.player || {}) });
+  }, [settings]);
+  useEffect(() => {
+    if (!isAdmin && tab !== "user") setTab("user");
+  }, [isAdmin, tab]);
+  const change = async (event) => {
+    event.preventDefault();
+    setMessage("");
+    try {
+      await api("/api/auth/change-password", {
+        method: "POST",
+        body: JSON.stringify({ currentPassword: current, newPassword: next }),
+      });
+      setMessage("å¯†ç å·²æ›´æ–°ï¼Œè¯·é‡æ–°ç™»å½•");
+      setTimeout(logout, 1200);
+    } catch (err) {
+      setMessage(err.message);
+    }
+  };
+  const save = async () => {
+    if (!isAdmin) return setMessage("å½“å‰è´¦å·æ²¡æœ‰ä¿®æ”¹ç³»ç»Ÿè®¾ç½®æƒé™");
+    await api("/api/settings", {
+      method: "PATCH",
+      body: JSON.stringify({ values: draft }),
+    });
+    setMessage("è®¾ç½®å·²ä¿å­˜");
+  };
+  const savePlayerPrefs = async () => {
+    if (!isAdmin) return setMessage("å½“å‰è´¦å·æ²¡æœ‰ä¿®æ”¹æ’­æ”¾å™¨å…¨å±€åå¥½æƒé™");
+    const values = { ...draft, player: playerPrefs };
+    await api("/api/settings", {
+      method: "PATCH",
+      body: JSON.stringify({ values }),
+    });
+    setDraft(values);
+    setMessage("æ’­æ”¾å™¨åå¥½å·²ä¿å­˜ï¼Œæ’­æ”¾å™¨é¡µé¢ä¼šç«‹å³æŒ‰â€œæ˜¾ç¤ºæ­Œè¯â€ç­‰é€‰é¡¹åˆ·æ–°ã€‚");
+  };
+  const togglePlayerPref = (key) =>
+    setPlayerPrefs((value) => ({ ...value, [key]: !value[key] }));
+  const saveProfile = async (values) => {
+    const result = await api("/api/profile", {
+      method: "PATCH",
+      body: JSON.stringify({ values }),
+    });
+    setProfile(result.profile);
+    onSettingsChange?.((value) => ({ ...value, user: result.profile }));
+    setMessage("ä¸ªäººèµ„æ–™å·²ä¿å­˜");
+  };
+  const uploadAvatar = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const body = new FormData();
+    body.append("file", file);
+    try {
+      const result = await api("/api/profile/avatar", { method: "POST", body });
+      setProfile(result.profile);
+      setMessage("å¤´åƒå·²æ›´æ–°ï¼Œåˆ·æ–°é¡µé¢åé¡¶éƒ¨èœå•ä¹Ÿä¼šåŒæ­¥ã€‚");
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      event.target.value = "";
+    }
+  };
+  const loadLogs = async () => {
+    if (!isAdmin) return;
+    setLogsLoading(true);
+    try {
+      setLogs(await api("/api/logs/summary?limit=120"));
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+  const loadBackups = async () => {
+    try {
+      const data = await api("/api/backups");
+      setBackups(data.items || []);
+    } catch (err) {
+      setMessage(err.message);
+    }
+  };
+  const createBackup = async () => {
+    setBackupBusy("create");
+    try {
+      await api("/api/backups", { method: "POST" });
+      setMessage("æ•°æ®åº“å¤‡ä»½å·²åˆ›å»º");
+      await loadBackups();
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBackupBusy("");
+    }
+  };
+  const restoreBackup = async (item) => {
+    if (
+      !confirm(
+        `æ¢å¤å¤‡ä»½ ${item.name}ï¼Ÿ\n\nå½“å‰è´¦å·ã€è®¾ç½®ã€ä»»åŠ¡å’Œç´¢å¼•ä¼šå›åˆ°è¯¥å¤‡ä»½æ—¶é—´ã€‚éŸ³ä¹æ–‡ä»¶ä¸ä¼šè¢«è¦†ç›–ã€‚`,
+      )
+    )
+      return;
+    setBackupBusy(item.name);
+    try {
+      const result = await api(
+        `/api/backups/${encodeURIComponent(item.name)}/restore`,
+        { method: "POST" },
+      );
+      setMessage(result.message);
+      setTimeout(logout, 1200);
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBackupBusy("");
+    }
+  };
+  useEffect(() => {
+    if (tab === "logs") {
+      if (!logs) loadLogs();
+      loadBackups();
+    }
+  }, [tab]);
+  const refreshPlex = async () => setPlex(await api("/api/settings/plex"));
+  const syncPlex = async () => {
+    try {
+      await api("/api/plex/sync", { method: "POST" });
+      setMessage("Plex åŒæ­¥ä»»åŠ¡å·²åŠ å…¥é˜Ÿåˆ—");
+    } catch (err) {
+      setMessage(err.message);
+    }
+  };
+  const testSavedPlex = async () => {
+    try {
+      const result = await api("/api/plex/test", {
+        method: "POST",
+        body: JSON.stringify({ serverUrl: plex.serverUrl, token: "" }),
+      });
+      setMessage(result.message || "Plex è¿æ¥æˆåŠŸ");
+      await refreshPlex();
+    } catch (err) {
+      setMessage(err.message);
+    }
+  };
+  const testFnosMusic = async () => {
+    try {
+      const result = await api("/api/settings/fnos/test", { method: "POST" });
+      setMessage(result.message || "é£ç‰›éŸ³ä¹è¿æ¥æˆåŠŸ");
+    } catch (err) {
+      setMessage(err.message);
+    }
+  };
+  const saveFnosMusic = async () => {
+    if (!isAdmin) return setMessage("å½“å‰è´¦å·æ²¡æœ‰ä¿®æ”¹è¿æ¥çš„æƒé™");
+    try {
+      const result = await api("/api/settings/fnos", {
+        method: "POST",
+        body: JSON.stringify(fnosDraft),
+      });
+      setFnosDraft((value) => ({
+        ...value,
+        password: "",
+        token: "",
+        ...result.fnosMusic,
+        username: result.fnosMusic?.accountLabel || value.username,
+      }));
+      onSettingsChange?.((value) => ({
+        ...value,
+        fnosMusic: result.fnosMusic,
+      }));
+      setMessage(result.message || "é£ç‰›éŸ³ä¹è¿æ¥å·²ä¿å­˜");
+    } catch (err) {
+      setMessage(err.message);
+    }
+  };
+  const tabs = isAdmin
+    ? [
+        ["plex", "Plex è¿æ¥", Server],
+        ["paths", "æœ¬åœ°è·¯å¾„", FolderTree],
+        ["ingest", "ä¸‹è½½ä¸å…¥åº“", ArrowDownToLine],
+        ["scrape", "åˆ®å‰Šè§„åˆ™", WandSparkles],
+        ["naming", "å‘½åè§„åˆ™", Tags],
+        ["exclude", "æ‰«ææ’é™¤", ShieldCheck],
+        ["player", "æ’­æ”¾å™¨", Play],
+        ["user", "ç”¨æˆ·ä¸å®‰å…¨", UserRound],
+        ["logs", "å¤‡ä»½ä¸æ—¥å¿—", ScrollText],
+      ]
+    : [["user", "ç”¨æˆ·ä¸å®‰å…¨", UserRound]];
+  const templates = draft.namingTemplates || settings.namingTemplates || {};
+  const scrapeRules = draft.scrapeRules || settings.scrapeRules || {
+    defaultMode: "missing",
+    writeCover: true,
+    writeLyrics: true,
+    refreshPlex: true,
+    skipExistingCover: true,
+    skipExistingLyrics: true,
+  };
+  const templateLabels = {
+    album: "æ™®é€šä¸“è¾‘",
+    multiDisc: "å¤šç¢Ÿä¸“è¾‘",
+    compilation: "åˆè¾‘",
+    unknown: "ä¿¡æ¯ä¸å®Œæ•´",
+  };
+  const templateExample = (value) =>
+    String(value || "")
+      .replaceAll("{artist}", "å‘¨æ°ä¼¦")
+      .replaceAll("{album}", "å¶æƒ ç¾")
+      .replaceAll("{year}", "2003")
+      .replaceAll("{discNumber}", "2")
+      .replaceAll("{trackNumber}", "03")
+      .replaceAll("{title}", "æ™´å¤©")
+      .replaceAll("{ext}", "flac");
+  return (
+    <div className="page settings-page">
+      <div className="settings-tabs">
+        {tabs.map(([id, label, Icon]) => (
+          <button
+            className={tab === id ? "active" : ""}
+            onClick={() => setTab(id)}
+            key={id}
+          >
+            <Icon />
+            {label}
+          </button>
+        ))}
+      </div>
+      <section className="panel settings-workbench">
+        {message && (
+          <div className="inline-info">
+            <ShieldCheck />
+            {message}
+          </div>
+        )}
+        {tab === "plex" && (
+          <div className="settings-grid">
+            <SettingBlock
+              icon={Server}
+              title="Plex è¿æ¥"
+              note="Plex è´Ÿè´£å±•ç¤ºã€æ’­æ”¾ã€æ‰«æã€åˆ·æ–°ä¸è¿œç¨‹æ’­æ”¾ã€‚"
+            >
+              <dl>
+                <div>
+                  <dt>å¯ç”¨çŠ¶æ€</dt>
+                  <dd>{plex.enabled ? "å·²å¯ç”¨" : "æœªå¯ç”¨"}</dd>
+                </div>
+                <div>
+                  <dt>æœåŠ¡å™¨åç§°</dt>
+                  <dd>{plex.name || settings.plexServerName}</dd>
+                </div>
+                <div>
+                  <dt>Plex åœ°å€</dt>
+                  <dd>{plex.serverUrl || settings.plexUrl}</dd>
+                </div>
+                <div>
+                  <dt>å¤–ç½‘æ’­æ”¾åœ°å€</dt>
+                  <dd>{plex.externalUrl || settings.externalPlexUrl}</dd>
+                </div>
+                <div>
+                  <dt>Token</dt>
+                  <dd>{plex.hasToken ? "å·²ä¿å­˜" : "æœªä¿å­˜"}</dd>
+                </div>
+                <div>
+                  <dt>åŒæ­¥åª’ä½“åº“</dt>
+                  <dd>
+                    {plex.selectedLibraryKeys === "all"
+                      ? "å…¨éƒ¨éŸ³ä¹åº“"
+                      : (plex.selectedLibraryKeys || []).join(", ") ||
+                        "æœªé€‰æ‹©"}{" "}
+                    Â· {plex.syncedLibraryCount || 0} ä¸ª
+                  </dd>
+                </div>
+                <div>
+                  <dt>æœ€è¿‘è¿æ¥</dt>
+                  <dd>
+                    {plex.lastConnectedAt
+                      ? timeAgo(plex.lastConnectedAt)
+                      : "å°šæœªæµ‹è¯•"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>æœ€è¿‘åŒæ­¥</dt>
+                  <dd>
+                    {plex.lastSyncAt ? timeAgo(plex.lastSyncAt) : "å°šæœªåŒæ­¥"}
+                  </dd>
+                </div>
+              </dl>
+              <div className="setting-actions">
+                <button
+                  className="primary small"
+                  onClick={() => setPlexOpen(true)}
+                >
+                  <Settings />
+                  é…ç½® Plex
+                </button>
+                <button className="secondary small" onClick={testSavedPlex}>
+                  <TestTube2 />
+                  æµ‹è¯•è¿æ¥
+                </button>
+                <button className="secondary small" onClick={syncPlex}>
+                  <RefreshCw />
+                  ç«‹å³åŒæ­¥
+                </button>
+              </div>
+            </SettingBlock>
+            <SettingBlock
+              icon={Library}
+              title="Plex éŸ³ä¹èµ„æ–™åº“"
+              note="é…ç½®çª—å£ä¸­å¯ä»¥åˆ·æ–°å¹¶é€‰æ‹©å…¨éƒ¨æˆ–æŒ‡å®šéŸ³ä¹åº“ã€‚"
+            >
+              {plex.libraries?.length ? (
+                <div className="plex-library-chips">
+                  {plex.libraries.map((item) => (
+                    <span
+                      key={item.key}
+                      className={item.enabled ? "active" : ""}
+                    >
+                      {item.title}
+                      <small>#{item.key}</small>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <Empty
+                  icon={Library}
+                  title="æœªè¯»å–åˆ°éŸ³ä¹åº“"
+                  text="è¯·å…ˆåœ¨é…ç½®çª—å£æµ‹è¯•è¿æ¥å¹¶åˆ·æ–°åª’ä½“åº“åˆ—è¡¨ã€‚"
+                />
+              )}
+            </SettingBlock>
+            <SettingBlock
+              icon={Radio}
+              title="é£ç‰›éŸ³ä¹"
+              note="è¿æ¥åå¯å°†æ­Œå•æŒ‰åŸé¡ºåºåŒæ­¥åˆ°é£ç‰›éŸ³ä¹ã€‚"
+            >
+              <dl>
+                <div>
+                  <dt>æœåŠ¡åœ°å€</dt>
+                  <dd>{settings.fnosMusic?.serverUrl || "æœªé…ç½®"}</dd>
+                </div>
+                <div>
+                  <dt>è¿æ¥çŠ¶æ€</dt>
+                  <dd>{settings.fnosMusic?.configured ? "å·²è¿æ¥" : "å¾…é…ç½®"}</dd>
+                </div>
+                <div>
+                  <dt>è®¤è¯æ–¹å¼</dt>
+                  <dd>
+                    {settings.fnosMusic?.configured
+                      ? settings.fnosMusic?.authMode === "password"
+                        ? "é£ç‰›éŸ³ä¹è´¦å·"
+                        : "æœåŠ¡ä»¤ç‰Œ"
+                      : "é£ç‰›éŸ³ä¹è´¦å·æˆ–æœåŠ¡ä»¤ç‰Œ"}
+                  </dd>
+                </div>
+              </dl>
+              <div className="fnos-config-form">
+                <label>
+                  æœåŠ¡åœ°å€
+                  <input
+                    value={fnosDraft.serverUrl}
+                    placeholder="http://NASåœ°å€:5666"
+                    onChange={(event) =>
+                      setFnosDraft((value) => ({
+                        ...value,
+                        serverUrl: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label>
+                  è®¤è¯æ–¹å¼
+                  <select
+                    value={fnosDraft.authMode}
+                    onChange={(event) =>
+                      setFnosDraft((value) => ({
+                        ...value,
+                        authMode: event.target.value,
+                        password: "",
+                        token: "",
+                      }))
+                    }
+                  >
+                    <option value="password">é£ç‰›éŸ³ä¹è´¦å·</option>
+                    <option value="token">æœåŠ¡ä»¤ç‰Œ</option>
+                  </select>
+                </label>
+                {fnosDraft.authMode === "password" ? (
+                  <>
+                    <label>
+                      é£ç‰›éŸ³ä¹è´¦å·
+                      <input
+                        autoComplete="username"
+                        value={fnosDraft.username}
+                        onChange={(event) =>
+                          setFnosDraft((value) => ({
+                            ...value,
+                            username: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                    <label>
+                      é£ç‰›éŸ³ä¹å¯†ç 
+                      <input
+                        type="password"
+                        autoComplete="current-password"
+                        value={fnosDraft.password}
+                        placeholder={
+                          settings.fnosMusic?.configured
+                            ? "é‡æ–°è¿æ¥æ—¶è¾“å…¥"
+                            : "ä»…ç”¨äºæ¢å–æœåŠ¡ä¼šè¯"
+                        }
+                        onChange={(event) =>
+                          setFnosDraft((value) => ({
+                            ...value,
+                            password: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                  </>
+                ) : (
+                  <label className="fnos-token-field">
+                    æœåŠ¡ä»¤ç‰Œ
+                    <input
+                      type="password"
+                      autoComplete="off"
+                      value={fnosDraft.token}
+                      placeholder={
+                        settings.fnosMusic?.configured
+                          ? "å¦‚éœ€æ›¿æ¢è¯·è¾“å…¥æ–°ä»¤ç‰Œ"
+                          : "music-token"
+                      }
+                      onChange={(event) =>
+                        setFnosDraft((value) => ({
+                          ...value,
+                          token: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                )}
+              </div>
+              <p className="setting-explainer">
+                è´¦å·å¯†ç åªç”¨äºå‘é£ç‰›éŸ³ä¹æ¢å–æœåŠ¡ä¼šè¯ï¼Œå¯†ç ä¸ä¼šä¿å­˜ã€‚æ´¾ç”Ÿä»¤ç‰Œä¿å­˜åœ¨
+                NAS çš„å—ä¿æŠ¤æ•°æ®ç›®å½•ä¸­ï¼Œä¹Ÿä¸ä¼šå›æ˜¾åˆ°é¡µé¢ã€‚
+              </p>
+              <div className="setting-actions">
+                <button className="primary small" onClick={saveFnosMusic}>
+                  <Check />
+                  ä¿å­˜å¹¶è¿æ¥
+                </button>
+                <button
+                  className="secondary small"
+                  onClick={testFnosMusic}
+                  disabled={!settings.fnosMusic?.configured}
+                >
+                  <TestTube2 />
+                  æµ‹è¯•è¿æ¥
+                </button>
+                <button className="secondary small" onClick={() => navigate?.("playlists")}>
+                  <ListMusic />
+                  æ‰“å¼€æ­Œå•
+                </button>
+              </div>
+            </SettingBlock>
+            <SettingBlock
+              icon={Activity}
+              title="ç³»ç»Ÿä¿¡æ¯"
+              note="å½“å‰éƒ¨ç½²ç‰ˆæœ¬ä¸è¿è¡Œé™åˆ¶ã€‚"
+            >
+              <dl>
+                <div>
+                  <dt>äº§å“</dt>
+                  <dd>{BRAND.fullName}</dd>
+                </div>
+                <div>
+                  <dt>ç‰ˆæœ¬</dt>
+                  <dd>v{settings.version || BRAND.version}</dd>
+                </div>
+                <div>
+                  <dt>éŸ³ä¹æºæ–‡ä»¶é™åˆ¶</dt>
+                  <dd>{settings.sourceMaxSizeMb} MB</dd>
+                </div>
+                <div>
+                  <dt>å•éŸ³é¢‘é™åˆ¶</dt>
+                  <dd>{settings.maxDownloadMb} MB</dd>
+                </div>
+              </dl>
+            </SettingBlock>
+          </div>
+        )}
+        {tab === "paths" && (
+          <div className="settings-grid">
+            <SettingBlock
+              icon={FolderTree}
+              title="æœ¬åœ°è·¯å¾„"
+              note="è¿™é‡Œæ˜¾ç¤ºéŸ³å±¿å¯ä»¥è¯»å–å’Œæ•´ç†çš„éŸ³ä¹ç›®å½•ã€‚"
+            >
+              <dl>
+                <div>
+                  <dt>æ­£å¼éŸ³ä¹åº“</dt>
+                  <dd>{settings.musicRoot}</dd>
+                </div>
+                <div>
+                  <dt>æˆæƒä¸‹è½½æš‚å­˜åŒº</dt>
+                  <dd>{settings.downloadTempDir}</dd>
+                </div>
+                <div>
+                  <dt>ä¸‹è½½å¤„ç†ä¸­è½¬åŒº</dt>
+                  <dd>{settings.incomingDir}</dd>
+                </div>
+                <div>
+                  <dt>ä¸‹è½½æ¥æ”¶ç›®å½•</dt>
+                  <dd>{settings.manualDownloadDir}</dd>
+                </div>
+                <div>
+                  <dt>éŸ³ä¹åº“å›æ”¶ç«™</dt>
+                  <dd>{settings.trashDir}</dd>
+                </div>
+                <div>
+                  <dt>ä¸‹è½½å›æ”¶ç«™</dt>
+                  <dd>{settings.downloadTrashDir}</dd>
+                </div>
+              </dl>
+            </SettingBlock>
+            <SettingBlock
+              icon={Image}
+              title="ä¿å­˜è§„åˆ™"
+              note="å°é¢ä¸æ­Œè¯ä¼˜å…ˆä¿å­˜åˆ°æœ¬åœ°æ›²åº“ã€‚"
+            >
+              <dl>
+                <div>
+                  <dt>æ­Œè¯ä¿å­˜</dt>
+                  <dd>{settings.lyricRule}</dd>
+                </div>
+                <div>
+                  <dt>å°é¢ä¿å­˜</dt>
+                  <dd>{settings.coverRule}</dd>
+                </div>
+              </dl>
+            </SettingBlock>
+          </div>
+        )}
+        {tab === "ingest" && (
+          <div className="settings-grid">
+            <SettingBlock
+              icon={Download}
+              title="ä¸‹è½½ä¸å…¥åº“"
+              note="ä¸‹è½½å…ˆè¿›å…¥ä¸´æ—¶ç›®å½•ï¼Œå†æ‰¹é‡ç¡®è®¤åˆ°æ­£å¼æ›²åº“ã€‚"
+            >
+              <dl>
+                <div>
+                  <dt>ä¸´æ—¶ä¸‹è½½</dt>
+                  <dd>{settings.downloadTempDir}</dd>
+                </div>
+                <div>
+                  <dt>å¾…å…¥åº“</dt>
+                  <dd>{settings.incomingDir}</dd>
+                </div>
+                <div>
+                  <dt>æ­£å¼æ›²åº“</dt>
+                  <dd>{settings.musicRoot}</dd>
+                </div>
+              </dl>
+              <button
+                className="primary small"
+                onClick={() => navigate?.("download")}
+              >
+                <Check />
+                æ‰“å¼€å¾…å…¥åº“
+              </button>
+            </SettingBlock>
+            <SettingBlock
+              icon={RotateCcw}
+              title="å›æ»šç­–ç•¥"
+              note="ç§»åŠ¨ã€æ ‡ç­¾å†™å…¥ä¸ä¸‹è½½å…¥åº“å‡è®°å½•æ“ä½œæ—¥å¿—ã€‚"
+            >
+              <p className="setting-copy">
+                ç¡®è®¤å…¥åº“å‰ä¼šæ£€æŸ¥å†²çªï¼›å–æ¶ˆå…¥åº“ä¼šç§»åŠ¨åˆ°å›æ”¶ç«™ç›®å½•ã€‚
+              </p>
+            </SettingBlock>
+          </div>
+        )}
+        {tab === "scrape" && (
+          <SettingBlock
+            icon={WandSparkles}
+            title="åˆ®å‰Šè§„åˆ™"
+            note="é»˜è®¤åªè¡¥ç¼ºå¤±ï¼›è¦†ç›–æ¨¡å¼ä»éœ€åœ¨åˆ®å‰Šä¸­å¿ƒé€æ¬¡ç¡®è®¤ã€‚"
+          >
+            <div className="settings-switches">
+              <label>
+                é»˜è®¤æ¨¡å¼
+                <select
+                  value={scrapeRules.defaultMode}
+                  onChange={(e) => setDraft((value) => ({ ...value, scrapeRules: { ...scrapeRules, defaultMode: e.target.value } }))}
+                >
+                  <option value="missing">åªè¡¥ç¼ºå¤±</option>
+                  <option value="incremental">å¢é‡æ›´æ–°</option>
+                  <option value="refresh">å…¨é‡åˆ·æ–°</option>
+                  <option value="force">å¼ºåˆ¶è¦†ç›–</option>
+                </select>
+              </label>
+              {[
+                ["å†™å…¥ cover.jpg", "writeCover"],
+                ["å†™å…¥åŒå .lrc", "writeLyrics"],
+                ["å®Œæˆååˆ·æ–° Plex", "refreshPlex"],
+                ["è·³è¿‡å·²æœ‰å°é¢", "skipExistingCover"],
+                ["è·³è¿‡å·²æœ‰æ­Œè¯", "skipExistingLyrics"],
+              ].map(([label, key]) => (
+                <label key={key}>
+                  <input
+                    type="checkbox"
+                    checked={!!scrapeRules[key]}
+                    onChange={() => setDraft((value) => ({ ...value, scrapeRules: { ...scrapeRules, [key]: !scrapeRules[key] } }))}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+            <button className="secondary small" onClick={save}><Check />ä¿å­˜åˆ®å‰Šè§„åˆ™</button>
+          </SettingBlock>
+        )}
+        {tab === "naming" && (
+          <SettingBlock
+            icon={Tags}
+            title="å‘½åè§„åˆ™"
+            note="æ¨¡æ¿ä¼šåœ¨æ•´ç†é¢„è§ˆä¸­ç”Ÿæˆç›®æ ‡è·¯å¾„ã€‚"
+          >
+            <div className="template-list">
+              {Object.entries(templates).map(([key, value]) => (
+                <label key={key}>
+                  {templateLabels[key] || key}
+                  <input
+                    value={value}
+                    onChange={(e) =>
+                      setDraft((v) => ({
+                        ...v,
+                        namingTemplates: {
+                          ...(v.namingTemplates || templates),
+                          [key]: e.target.value,
+                        },
+                      }))
+                    }
+                  />
+                  <small>
+                    ç¤ºä¾‹ï¼š
+                    {templateExample(value)}
+                  </small>
+                </label>
+              ))}
+            </div>
+            <button className="secondary small" onClick={save}>
+              <Check />
+              ä¿å­˜å‘½åæ¨¡æ¿
+            </button>
+          </SettingBlock>
+        )}
+        {tab === "exclude" && (
+          <SettingBlock
+            icon={ShieldCheck}
+            title="æ‰«ææ’é™¤è§„åˆ™"
+            note="è¿™äº›ç›®å½•ä¸ä¼šè¢«å½“ä½œæ­£å¼æ›²åº“æ‰«æã€‚"
+          >
+            <label className="exclude-editor">
+              æ¯è¡Œä¸€ä¸ªç›®å½•
+              <textarea
+                value={(draft.excludeDirs || settings.excludeDirs || []).join(
+                  "\n",
+                )}
+                onChange={(event) =>
+                  setDraft((value) => ({
+                    ...value,
+                    excludeDirs: event.target.value
+                      .split(/\r?\n/)
+                      .map((item) => item.trim())
+                      .filter(Boolean),
+                  }))
+                }
+              />
+            </label>
+            <button className="secondary small" onClick={save}>
+              <Check />
+              ä¿å­˜æ’é™¤è§„åˆ™
+            </button>
+          </SettingBlock>
+        )}
+        {tab === "player" && (
+          <SettingBlock
+            icon={Play}
+            title="æ’­æ”¾å™¨è®¾ç½®"
+            note="è¿™äº›åå¥½ä¼šä¿å­˜åˆ°æœåŠ¡ç«¯ï¼Œå¹¶ç«‹å³å½±å“æ’­æ”¾å™¨çš„æ­Œè¯æ˜¾ç¤ºç­‰è¡Œä¸ºã€‚"
+          >
+            <div className="settings-switches">
+              {[
+                ["æœ¬åœ°ä¼˜å…ˆ", "defaultSource", true],
+                ["è¿œç¨‹é»˜è®¤ 320K", "remoteBitrate", true],
+                ["è‡ªåŠ¨è½¬ç ", "autoTranscode"],
+                ["æ˜¾ç¤ºæ­Œè¯", "showLyrics"],
+                ["èƒŒæ™¯ä½æ¨¡ç³Š", "blurBackground"],
+                ["å°é¢å–è‰²", "extractColor"],
+              ].map(([label, key, derived]) => (
+                <label
+                  key={key}
+                  title={
+                    derived ? "ç­–ç•¥é¡¹ä¼šå‚ä¸åç»­æ’­æ”¾è§£æé»˜è®¤å€¼" : "å¯ç«‹å³ä¿å­˜"
+                  }
+                >
+                  <input
+                    type="checkbox"
+                    checked={
+                      key === "defaultSource"
+                        ? playerPrefs.defaultSource === "local_first"
+                        : key === "remoteBitrate"
+                          ? playerPrefs.remoteBitrate === "320k"
+                          : !!playerPrefs[key]
+                    }
+                    onChange={() =>
+                      key === "defaultSource"
+                        ? setPlayerPrefs((v) => ({
+                            ...v,
+                            defaultSource:
+                              v.defaultSource === "local_first"
+                                ? "plex_first"
+                                : "local_first",
+                          }))
+                        : key === "remoteBitrate"
+                          ? setPlayerPrefs((v) => ({
+                              ...v,
+                              remoteBitrate:
+                                v.remoteBitrate === "320k"
+                                  ? "original"
+                                  : "320k",
+                            }))
+                          : togglePlayerPref(key)
+                    }
+                  />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
+            <div className="setting-actions">
+              <button className="primary small" onClick={savePlayerPrefs}>
+                <Check />
+                ä¿å­˜æ’­æ”¾å™¨åå¥½
+              </button>
+              <button
+                className="secondary small"
+                onClick={() => navigate?.("player")}
+              >
+                <Play />
+                æ‰“å¼€æ’­æ”¾å™¨éªŒè¯
+              </button>
+            </div>
+          </SettingBlock>
+        )}
+        {tab === "user" && (
+          <div className="settings-grid">
+            <SettingBlock
+              icon={UserRound}
+              title="ç”¨æˆ·åå¥½"
+              note="å¤´åƒã€ä¸»é¢˜ã€é»˜è®¤éŸ³ä¹æºä¸é»˜è®¤éŸ³è´¨ã€‚"
+            >
+              <div className="profile-card">
+                <div className="profile-avatar">
+                  {profile?.avatarUrl ? (
+                    <img src={profile.avatarUrl} alt="" />
+                  ) : (
+                    <UserRound />
+                  )}
+                </div>
+                <div>
+                  <strong>
+                    {profile?.displayName || settings.user?.username || "admin"}
+                  </strong>
+                  <span>@{settings.user?.username || "admin"}</span>
+                  <label className="secondary small avatar-upload">
+                    <Image />
+                    æ›´æ¢å¤´åƒ
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      onChange={uploadAvatar}
+                    />
+                  </label>
+                </div>
+              </div>
+              <div className="profile-form">
+                <label>
+                  æ˜¾ç¤ºåç§°
+                  <input
+                    value={profile?.displayName || ""}
+                    onChange={(e) =>
+                      setProfile((v) => ({ ...v, displayName: e.target.value }))
+                    }
+                  />
+                </label>
+                <label>
+                  é»˜è®¤éŸ³æº
+                  <select
+                    value={profile?.defaultSource || "tx"}
+                    onChange={(e) =>
+                      setProfile((v) => ({
+                        ...v,
+                        defaultSource: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value="tx">QQ éŸ³ä¹</option>
+                    <option value="wy">ç½‘æ˜“äº‘</option>
+                  </select>
+                </label>
+                <label>
+                  é»˜è®¤éŸ³è´¨
+                  <select
+                    value={profile?.defaultQuality || "320k"}
+                    onChange={(e) =>
+                      setProfile((v) => ({
+                        ...v,
+                        defaultQuality: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value="128k">128K</option>
+                    <option value="320k">320K</option>
+                    <option value="flac">FLAC</option>
+                    <option value="flac24bit">Hi-Res</option>
+                  </select>
+                </label>
+                <label>
+                  ç•Œé¢å­—å·
+                  <select
+                    value={profile?.fontSize || "standard"}
+                    onChange={(e) =>
+                      setProfile((value) => ({
+                        ...value,
+                        fontSize: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value="compact">ç´§å‡‘</option>
+                    <option value="standard">æ ‡å‡†</option>
+                    <option value="large">å¤§å·</option>
+                  </select>
+                </label>
+                <button
+                  className="secondary small"
+                  onClick={() => saveProfile(profile)}
+                >
+                  <Check />
+                  ä¿å­˜åå¥½
+                </button>
+              </div>
+            </SettingBlock>
+            <section className="setting-card">
+              <div className="setting-title">
+                <KeyRound />
+                <div>
+                  <h3>ä¿®æ”¹å¯†ç </h3>
+                  <p>æ›´æ¢éŸ³å±¿ Web æ§åˆ¶å°å¯†ç ã€‚</p>
+                </div>
+              </div>
+              <form className="password-form" onSubmit={change}>
+                <label>
+                  å½“å‰å¯†ç 
+                  <input
+                    type="password"
+                    value={current}
+                    onChange={(e) => setCurrent(e.target.value)}
+                  />
+                </label>
+                <label>
+                  æ–°å¯†ç 
+                  <input
+                    type="password"
+                    minLength="10"
+                    value={next}
+                    onChange={(e) => setNext(e.target.value)}
+                    placeholder="è‡³å°‘ 10 ä¸ªå­—ç¬¦"
+                  />
+                </label>
+                {message && <p className="form-message">{message}</p>}
+                <button className="secondary">
+                  <ShieldCheck />
+                  æ›´æ–°å¯†ç 
+                </button>
+              </form>
+            </section>
+          </div>
+        )}
+        {tab === "logs" && (
+          <>
+            <SettingBlock
+              icon={ShieldCheck}
+              title="å¤‡ä»½ä¸æ¢å¤"
+              note="å¤‡ä»½è´¦å·ã€è®¾ç½®ã€ä»»åŠ¡ã€ç´¢å¼•å’Œæ“ä½œè®°å½•ï¼›éŸ³ä¹æ–‡ä»¶ä¸ä¼šå¤åˆ¶ã€‚"
+            >
+              <div className="backup-toolbar">
+                <button
+                  className="primary small"
+                  disabled={!!backupBusy}
+                  onClick={createBackup}
+                >
+                  {backupBusy === "create" ? (
+                    <LoaderCircle className="spin" />
+                  ) : (
+                    <Plus />
+                  )}
+                  åˆ›å»ºå¤‡ä»½
+                </button>
+                <span>å¤‡ä»½ä¿å­˜åœ¨ NAS çš„ /data/backups</span>
+              </div>
+              <div className="backup-list">
+                {backups.length ? (
+                  backups.map((item) => (
+                    <div key={item.name}>
+                      <ShieldCheck />
+                      <div>
+                        <strong>{item.name}</strong>
+                        <span>
+                          {new Date(item.createdAt).toLocaleString("zh-CN")} Â·{" "}
+                          {(item.size / 1024 / 1024).toFixed(1)} MB
+                        </span>
+                      </div>
+                      <a
+                        className="secondary small"
+                        href={`/api/backups/${encodeURIComponent(item.name)}/download`}
+                      >
+                        <Download />
+                        å¯¼å‡º
+                      </a>
+                      <button
+                        className="secondary small"
+                        disabled={!!backupBusy}
+                        onClick={() => restoreBackup(item)}
+                      >
+                        {backupBusy === item.name ? (
+                          <LoaderCircle className="spin" />
+                        ) : (
+                          <RotateCcw />
+                        )}
+                        æ¢å¤
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <Empty
+                    icon={ShieldCheck}
+                    title="è¿˜æ²¡æœ‰å¤‡ä»½"
+                    text="åˆ›å»ºé¦–ä¸ªå¤‡ä»½åï¼Œå¯åœ¨è¿™é‡Œå¯¼å‡ºæˆ–æ¢å¤ã€‚"
+                  />
+                )}
+              </div>
+            </SettingBlock>
+            <SettingBlock
+              icon={ScrollText}
+              title="è¿è¡Œæ—¥å¿—"
+              note="æ“ä½œæ—¥å¿—ã€ä»»åŠ¡æ—¥å¿—ã€éŸ³ä¹æºæ—¥å¿—ä¸å›æ»šè®°å½•é›†ä¸­æŸ¥çœ‹ã€‚"
+            >
+              <div className="log-toolbar">
+                <button
+                  className="secondary small"
+                  disabled={logsLoading}
+                  onClick={loadLogs}
+                >
+                  {logsLoading ? (
+                    <LoaderCircle className="spin" />
+                  ) : (
+                    <RefreshCw />
+                  )}
+                  åˆ·æ–°æ—¥å¿—
+                </button>
+                <span>
+                  {logs?.updatedAt
+                    ? `æ›´æ–°äº ${new Date(logs.updatedAt).toLocaleString("zh-CN")}`
+                    : "ç‚¹å‡»åˆ·æ–°è¯»å–æ—¥å¿—"}
+                </span>
+              </div>
+              {logsLoading ? (
+                <PageLoader />
+              ) : (
+                <div className="settings-log-grid">
+                  <div>
+                    <h3>ä»»åŠ¡æ—¥å¿—</h3>
+                    {(logs?.jobLogs || []).slice(0, 30).map((item) => (
+                      <div className={`log-line ${item.level}`} key={item.id}>
+                        <time>
+                          {new Date(item.created_at).toLocaleString("zh-CN")}
+                        </time>
+                        <strong>
+                          {item.job_title || item.job_kind || "ä»»åŠ¡"}
+                        </strong>
+                        <span>{item.message}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <h3>éŸ³ä¹æºæ—¥å¿—</h3>
+                    {(logs?.sourceLogs || []).slice(0, 30).map((item) => (
+                      <div className={`log-line ${item.level}`} key={item.id}>
+                        <time>
+                          {new Date(item.created_at).toLocaleString("zh-CN")}
+                        </time>
+                        <strong>{item.source_name || item.action}</strong>
+                        <span>{item.message}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <h3>æ“ä½œä¸å›æ»š</h3>
+                    {(logs?.operations || []).slice(0, 30).map((item) => (
+                      <div className={`log-line ${item.status}`} key={item.id}>
+                        <time>
+                          {new Date(item.created_at).toLocaleString("zh-CN")}
+                        </time>
+                        <strong>{item.action}</strong>
+                        <span>
+                          {item.target_id || item.error_message || "å·²è®°å½•"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </SettingBlock>
+          </>
+        )}
+      </section>
+      {isAdmin && tab === "user" && <UserAccounts />}
+      {isAdmin && plexOpen && (
+        <PlexSettingsModal
+          initial={plex}
+          onClose={() => setPlexOpen(false)}
+          onSaved={async (next) => {
+            setPlex(next);
+            setPlexOpen(false);
+            setMessage("Plex é…ç½®å·²ä¿å­˜");
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function PlexSettingsModal({ initial, onClose, onSaved }) {
+  const [draft, setDraft] = useState({
+    enabled: initial.enabled ?? true,
+    name: initial.name || "Plex",
+    serverUrl: initial.serverUrl || "",
+    externalUrl: initial.externalUrl || "",
+    token: "",
+    selectedLibraryKeys: initial.selectedLibraryKeys || "all",
+  });
+  const [libraries, setLibraries] = useState(initial.libraries || []),
+    [busy, setBusy] = useState(""),
+    [message, setMessage] = useState(""),
+    [showToken, setShowToken] = useState(false);
+  const selectedAll = draft.selectedLibraryKeys === "all";
+  const selectedKeys = Array.isArray(draft.selectedLibraryKeys)
+    ? draft.selectedLibraryKeys
+    : [];
+  const validateBaseUrl = (value, label, required = true) => {
+    const raw = (value || "").trim();
+    if (!raw && !required) return "";
+    if (!raw) throw new Error(`${label}ä¸èƒ½ä¸ºç©º`);
+    let parsed;
+    try {
+      parsed = new URL(raw);
+    } catch {
+      throw new Error(`${label}å¿…é¡»æ˜¯ http æˆ– https åœ°å€`);
+    }
+    if (!["http:", "https:"].includes(parsed.protocol) || !parsed.host)
+      throw new Error(`${label}å¿…é¡»æ˜¯ http æˆ– https åœ°å€`);
+    if (
+      (parsed.pathname && parsed.pathname !== "/") ||
+      parsed.search ||
+      parsed.hash
+    )
+      throw new Error(`${label}åªèƒ½å¡«å†™æ ¹åœ°å€ï¼Œä¸èƒ½å¸¦è·¯å¾„ã€å‚æ•°æˆ–ç‰‡æ®µ`);
+    return raw.replace(/\/+$/, "");
+  };
+  const setField = (key, value) => setDraft((v) => ({ ...v, [key]: value }));
+  const refreshLibraries = async () => {
+    setBusy("libraries");
+    setMessage("");
+    try {
+      const data = await api("/api/plex/libraries");
+      setLibraries(data.items || []);
+      setMessage(`å·²è¯»å– ${data.items?.length || 0} ä¸ªéŸ³ä¹åº“`);
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBusy("");
+    }
+  };
+  const test = async () => {
+    setBusy("test");
+    setMessage("");
+    try {
+      const serverUrl = validateBaseUrl(draft.serverUrl, "æœåŠ¡å™¨å†…ç½‘åœ°å€");
+      const result = await api("/api/plex/test", {
+        method: "POST",
+        body: JSON.stringify({ serverUrl, token: draft.token }),
+      });
+      setLibraries(result.libraries || []);
+      setMessage(result.message || "Plex è¿æ¥æˆåŠŸ");
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBusy("");
+    }
+  };
+  const save = async () => {
+    setBusy("save");
+    setMessage("");
+    try {
+      const safe = {
+        ...draft,
+        serverUrl: validateBaseUrl(draft.serverUrl, "æœåŠ¡å™¨å†…ç½‘åœ°å€"),
+        externalUrl: validateBaseUrl(draft.externalUrl, "å¤–ç½‘æ’­æ”¾åœ°å€", false),
+      };
+      const result = await api("/api/settings/plex", {
+        method: "POST",
+        body: JSON.stringify(safe),
+      });
+      onSaved(result.settings);
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBusy("");
+    }
+  };
+  const toggleLibrary = (key) =>
+    setDraft((v) => {
+      const keys = Array.isArray(v.selectedLibraryKeys)
+        ? v.selectedLibraryKeys
+        : [];
+      return {
+        ...v,
+        selectedLibraryKeys: keys.includes(key)
+          ? keys.filter((item) => item !== key)
+          : [...keys, key],
+      };
+    });
+  return (
+    <div className="modal-wrap">
+      <button className="modal-backdrop" onClick={onClose} />
+      <section className="modal panel plex-modal">
+        <div className="modal-head">
+          <div>
+            <span className="eyebrow">
+              <Server />
+              PLEX MEDIA SERVER
+            </span>
+            <h3>é…ç½® Plex åª’ä½“æœåŠ¡å™¨</h3>
+          </div>
+          <button className="icon-button" onClick={onClose}>
+            <X />
+          </button>
+        </div>
+        <div className="plex-form">
+          <label className="switch-line">
+            <input
+              type="checkbox"
+              checked={draft.enabled}
+              onChange={(e) => setField("enabled", e.target.checked)}
+            />
+            <span>å¯ç”¨ Plex è”åŠ¨ä¸åª’ä½“åº“åŒæ­¥</span>
+          </label>
+          <div className="plex-grid">
+            <label>
+              æ˜¾ç¤ºåç§°
+              <input
+                value={draft.name}
+                onChange={(e) => setField("name", e.target.value)}
+                placeholder="ä¾‹å¦‚ï¼šæç©ºé—´ Plex"
+              />
+            </label>
+            <label>
+              æœåŠ¡å™¨å†…ç½‘åœ°å€
+              <input
+                value={draft.serverUrl}
+                onChange={(e) => setField("serverUrl", e.target.value)}
+                placeholder="http://nas-address:32400"
+              />
+            </label>
+            <label>
+              å¤–ç½‘æ’­æ”¾åœ°å€ï¼ˆå¯é€‰ï¼‰
+              <input
+                value={draft.externalUrl}
+                onChange={(e) => setField("externalUrl", e.target.value)}
+                placeholder="https://plex.example.com"
+              />
+            </label>
+            <label>
+              X-Plex-Token
+              <div className="token-row">
+                <input
+                  type={showToken ? "text" : "password"}
+                  value={draft.token}
+                  onChange={(e) => setField("token", e.target.value)}
+                  placeholder={
+                    initial.hasToken
+                      ? "ç•™ç©ºåˆ™ç»§ç»­ä½¿ç”¨å·²ä¿å­˜ Token"
+                      : "è¾“å…¥ X-Plex-Token"
+                  }
+                />
+                <button type="button" onClick={() => setShowToken((v) => !v)}>
+                  {showToken ? "éšè—" : "æ˜¾ç¤º"}
+                </button>
+              </div>
+            </label>
+          </div>
+          <div className="library-mode">
+            <button
+              type="button"
+              className={selectedAll ? "active" : ""}
+              onClick={() => setField("selectedLibraryKeys", "all")}
+            >
+              <Library />
+              åŒæ­¥å…¨éƒ¨éŸ³ä¹åº“
+            </button>
+            <button
+              type="button"
+              className={!selectedAll ? "active" : ""}
+              onClick={() =>
+                setField(
+                  "selectedLibraryKeys",
+                  selectedKeys.length ? selectedKeys : [],
+                )
+              }
+            >
+              <ListMusic />
+              ä»…åŒæ­¥æŒ‡å®šéŸ³ä¹åº“
+            </button>
+          </div>
+          <div className="library-tools">
+            <button
+              className="secondary small"
+              disabled={!!busy}
+              onClick={test}
+            >
+              {busy === "test" ? (
+                <LoaderCircle className="spin" />
+              ) : (
+                <TestTube2 />
+              )}
+              æµ‹è¯•è¿æ¥
+            </button>
+            <button
+              className="secondary small"
+              disabled={!!busy}
+              onClick={refreshLibraries}
+            >
+              {busy === "libraries" ? (
+                <LoaderCircle className="spin" />
+              ) : (
+                <RefreshCw />
+              )}
+              åˆ·æ–°åª’ä½“åº“
+            </button>
+          </div>
+          <div className="library-list">
+            {libraries.length ? (
+              libraries.map((item) => (
+                <label
+                  key={item.key}
+                  className={`library-row ${item.enabled ? "active" : ""}`}
+                >
+                  <input
+                    type="checkbox"
+                    disabled={selectedAll}
+                    checked={selectedAll || selectedKeys.includes(item.key)}
+                    onChange={() => toggleLibrary(item.key)}
+                  />
+                  <div>
+                    <strong>{item.title}</strong>
+                    <span>
+                      {item.type || "music"} Â· #{item.key}
+                    </span>
+                  </div>
+                  <i>{item.enabled ? "å·²åŒæ­¥" : "æœªé€‰ä¸­"}</i>
+                </label>
+              ))
+            ) : (
+              <Empty
+                icon={Library}
+                title="è¿˜æ²¡æœ‰åª’ä½“åº“åˆ—è¡¨"
+                text="å…ˆæµ‹è¯•è¿æ¥æˆ–åˆ·æ–°åª’ä½“åº“ï¼ŒéŸ³å±¿ä¼šåªå±•ç¤º Plex éŸ³ä¹èµ„æ–™åº“ã€‚"
+              />
+            )}
+          </div>
+          {message && (
+            <div className="inline-info">
+              <ShieldCheck />
+              {message}
+            </div>
+          )}
+          <div className="modal-actions">
+            <button className="secondary" onClick={onClose}>
+              å–æ¶ˆ
+            </button>
+            <button className="primary" disabled={!!busy} onClick={save}>
+              {busy === "save" ? <LoaderCircle className="spin" /> : <Check />}
+              ç¡®è®¤ä¿å­˜
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function UserAccounts() {
+  const [items, setItems] = useState([]),
+    [form, setForm] = useState({
+      username: "",
+      displayName: "",
+      password: "",
+      role: "listener",
+      permissions: ["listen"],
+      libraryScopes: [],
+    }),
+    [busy, setBusy] = useState(""),
+    [message, setMessage] = useState("");
+  const [resetting, setResetting] = useState(null),
+    [resetPassword, setResetPassword] = useState("");
+  const strength = (password) => {
+    let score = 0;
+    if ((password || "").length >= 10) score++;
+    if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++;
+    if (/\d/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
+    return ["å¤ªå¼±", "åå¼±", "å¯ç”¨", "è¾ƒå¼º", "å¾ˆå¼º"][score];
+  };
+  const load = async () => {
+    try {
+      const data = await api("/api/users");
+      setItems(data.items || []);
+    } catch (err) {
+      setMessage(err.message);
+    }
+  };
+  useEffect(() => {
+    load();
+  }, []);
+  const create = async (event) => {
+    event.preventDefault();
+    if (strength(form.password) === "å¤ªå¼±")
+      return setMessage("å¯†ç è‡³å°‘ 10 ä½ï¼Œå»ºè®®åŒ…å«å¤§å°å†™ã€æ•°å­—å’Œç¬¦å·ã€‚");
+    setBusy("create");
+    setMessage("");
+    try {
+      await api("/api/users", { method: "POST", body: JSON.stringify(form) });
+      setForm({
+        username: "",
+        displayName: "",
+        password: "",
+        role: "listener",
+        permissions: ["listen"],
+        libraryScopes: [],
+      });
+      setMessage("è´¦å·å·²åˆ›å»º");
+      load();
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBusy("");
+    }
+  };
+  const toggle = async (item) => {
+    if (!confirm(`${item.enabled ? "åœç”¨" : "å¯ç”¨"}è´¦å· ${item.username}ï¼Ÿ`))
+      return;
+    setBusy(item.id);
+    setMessage("");
+    try {
+      await api(`/api/users/${item.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ enabled: !item.enabled }),
+      });
+      load();
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBusy("");
+    }
+  };
+  const rename = async (item) => {
+    const username = prompt(
+      "æ–°çš„ç”¨æˆ·åï¼ˆadmin å†…ç½®è´¦å·ä¸å¯æ”¹åï¼‰",
+      item.username,
+    );
+    if (!username) return;
+    const displayName =
+      prompt("æ˜¾ç¤ºåç§°", item.displayName || username) || username;
+    setBusy(item.id);
+    try {
+      await api(`/api/users/${item.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ username, displayName }),
+      });
+      load();
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBusy("");
+    }
+  };
+  const editAccess = async (item) => {
+    const permissions = prompt(
+      "æ“ä½œæƒé™ï¼ˆé€—å·åˆ†éš”ï¼šlisten, manage_library, manage_sources, view_logs, manage_usersï¼‰",
+      (item.permissions || []).join(", "),
+    );
+    if (permissions === null) return;
+    const scopes = prompt(
+      "å¯è®¿é—®ç›®å½•ï¼ˆç›¸å¯¹ /musicï¼Œé€—å·åˆ†éš”ï¼›* è¡¨ç¤ºå…¨éƒ¨ï¼‰",
+      (item.libraryScopes || []).join(", "),
+    );
+    if (scopes === null) return;
+    setBusy(item.id);
+    try {
+      await api(`/api/users/${item.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          permissions: permissions
+            .split(",")
+            .map((value) => value.trim())
+            .filter(Boolean),
+          libraryScopes: scopes
+            .split(",")
+            .map((value) => value.trim())
+            .filter(Boolean),
+        }),
+      });
+      setMessage("æƒé™èŒƒå›´å·²æ›´æ–°");
+      load();
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBusy("");
+    }
+  };
+  const submitReset = async (event) => {
+    event.preventDefault();
+    if (!resetting) return;
+    if (strength(resetPassword) === "å¤ªå¼±")
+      return setMessage("æ–°å¯†ç è‡³å°‘ 10 ä½ï¼Œå»ºè®®åŒ…å«å¤§å°å†™ã€æ•°å­—å’Œç¬¦å·ã€‚");
+    if (
+      !confirm(
+        `ç¡®è®¤é‡ç½® ${resetting.username} çš„å¯†ç ï¼Ÿè¯¥è´¦å·éœ€è¦ä½¿ç”¨æ–°å¯†ç é‡æ–°ç™»å½•ã€‚`,
+      )
+    )
+      return;
+    setBusy(resetting.id);
+    try {
+      await api(`/api/users/${resetting.id}/password`, {
+        method: "POST",
+        body: JSON.stringify({ password: resetPassword }),
+      });
+      setMessage(`å·²é‡ç½® ${resetting.username} çš„å¯†ç `);
+      setResetting(null);
+      setResetPassword("");
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBusy("");
+    }
+  };
+  const remove = async (item) => {
+    if (
+      !confirm(
+        `åˆ é™¤è´¦å· ${item.username}ï¼Ÿ\n\næ­¤æ“ä½œä¼šç§»é™¤ç™»å½•èƒ½åŠ›ï¼Œä½†ä¸ä¼šåˆ é™¤éŸ³ä¹æ–‡ä»¶ã€‚`,
+      )
+    )
+      return;
+    setBusy(item.id);
+    try {
+      await api(`/api/users/${item.id}`, { method: "DELETE" });
+      load();
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBusy("");
+    }
+  };
+  return (
+    <section className="panel account-panel">
+      <SectionHead
+        title="è´¦æˆ·ä¸å¤šç”¨æˆ·"
+        note="æ™®é€šç”¨æˆ·åªçœ‹åˆ°æ’­æ”¾ã€æ”¶è—ã€å‘ç°å’Œä¸ªäººé¡µï¼›ç®¡ç†å‘˜æ‰æ˜¾ç¤ºç®¡ç†ä¸­å¿ƒã€‚"
+        action={
+          <button className="secondary small" onClick={load}>
+            <RefreshCw />
+            åˆ·æ–°
+          </button>
+        }
+      />
+      {message && (
+        <div className="inline-info">
+          <ShieldCheck />
+          {message}
+        </div>
+      )}
+      <div className="account-list">
+        {items.map((item) => (
+          <div className="account-row" key={item.id}>
+            <UserRound />
+            <div>
+              <strong>{item.displayName || item.username}</strong>
+              <span>
+                @{item.username} Â· {item.role || "listener"} Â·{" "}
+                {item.enabled ? "å·²å¯ç”¨" : "å·²åœç”¨"} Â·{" "}
+                {item.lastLoginAt
+                  ? `ä¸Šæ¬¡ç™»å½• ${timeAgo(item.lastLoginAt)}`
+                  : "æœªç™»å½•"}
+                <br />
+                æƒé™ï¼š{(item.permissions || []).join("ã€")} Â· ç›®å½•ï¼š
+                {(item.libraryScopes || []).join("ã€") || "æœªæˆæƒ"}
+              </span>
+            </div>
+            <button className="secondary small" onClick={() => rename(item)}>
+              æ”¹å
+            </button>
+            <button
+              className="secondary small"
+              onClick={() => editAccess(item)}
+            >
+              æƒé™èŒƒå›´
+            </button>
+            <button
+              className="secondary small"
+              onClick={() => setResetting(item)}
+            >
+              é‡ç½®å¯†ç 
+            </button>
+            <button
+              className="secondary small"
+              disabled={busy === item.id}
+              onClick={() => toggle(item)}
+            >
+              {item.enabled ? "åœç”¨" : "å¯ç”¨"}
+            </button>
+            <button className="icon-button danger" onClick={() => remove(item)}>
+              <Trash2 />
+            </button>
+          </div>
+        ))}
+      </div>
+      <form className="account-create" onSubmit={create}>
+        <label>
+          ç”¨æˆ·å
+          <input
+            value={form.username}
+            onChange={(e) =>
+              setForm((v) => ({ ...v, username: e.target.value }))
+            }
+            placeholder="ä¾‹å¦‚ playsong"
+          />
+        </label>
+        <label>
+          æ˜¾ç¤ºåç§°
+          <input
+            value={form.displayName}
+            onChange={(e) =>
+              setForm((v) => ({ ...v, displayName: e.target.value }))
+            }
+            placeholder="ä¾‹å¦‚ PlaySong"
+          />
+        </label>
+        <label>
+          è§’è‰²
+          <select
+            value={form.role}
+            onChange={(e) => {
+              const role = e.target.value;
+              setForm((v) => ({
+                ...v,
+                role,
+                permissions:
+                  role === "listener"
+                    ? ["listen"]
+                    : role === "library_admin"
+                      ? [
+                          "listen",
+                          "manage_library",
+                          "manage_sources",
+                          "view_logs",
+                        ]
+                      : [
+                          "listen",
+                          "manage_library",
+                          "manage_sources",
+                          "manage_users",
+                          "view_logs",
+                        ],
+                libraryScopes: role === "listener" ? [] : ["*"],
+              }));
+            }}
+          >
+            <option value="listener">æ™®é€šç”¨æˆ·</option>
+            <option value="library_admin">æ›²åº“ç®¡ç†å‘˜</option>
+            <option value="admin">ç®¡ç†å‘˜</option>
+          </select>
+        </label>
+        <label className="account-scope">
+          å¯è®¿é—®ç›®å½•
+          <input
+            value={(form.libraryScopes || []).join(", ")}
+            onChange={(event) =>
+              setForm((value) => ({
+                ...value,
+                libraryScopes: event.target.value
+                  .split(",")
+                  .map((item) => item.trim())
+                  .filter(Boolean),
+              }))
+            }
+            placeholder="ä¾‹å¦‚ï¼šå‘¨æ°ä¼¦, äº”æœˆå¤©ï¼›* è¡¨ç¤ºå…¨éƒ¨"
+          />
+          <small>æŒ‰ /music ä¸‹çš„ç›¸å¯¹ç›®å½•é™åˆ¶æœ¬åœ°æ–‡ä»¶è®¿é—®ã€‚</small>
+        </label>
+        <div className="account-permissions">
+          {[
+            ["listen", "æ’­æ”¾"],
+            ["manage_library", "æ›²åº“ç®¡ç†"],
+            ["manage_sources", "éŸ³ä¹æº"],
+            ["view_logs", "æ—¥å¿—/å¤‡ä»½"],
+            ["manage_users", "ç”¨æˆ·ç®¡ç†"],
+          ].map(([key, label]) => (
+            <label key={key}>
+              <input
+                type="checkbox"
+                checked={(form.permissions || []).includes(key)}
+                disabled={key === "listen"}
+                onChange={() =>
+                  setForm((value) => ({
+                    ...value,
+                    permissions: value.permissions.includes(key)
+                      ? value.permissions.filter((item) => item !== key)
+                      : [...value.permissions, key],
+                  }))
+                }
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+        <label>
+          åˆå§‹å¯†ç 
+          <input
+            type="password"
+            autoComplete="new-password"
+            value={form.password}
+            onChange={(e) =>
+              setForm((v) => ({ ...v, password: e.target.value }))
+            }
+            placeholder="è‡³å°‘ 10 ä½"
+          />
+          <small>å¼ºåº¦ï¼š{strength(form.password)}</small>
+        </label>
+        <button className="primary small" disabled={busy === "create"}>
+          {busy === "create" ? <LoaderCircle className="spin" /> : <Plus />}
+          æ–°å»ºç”¨æˆ·
+        </button>
+      </form>
+      <p className="setting-copy">
+        å¿˜è®°ä¸»äººè´¦å·å¯†ç æ—¶ï¼Œè¯·ç”±è®¾å¤‡ç®¡ç†å‘˜æŒ‰ç…§éƒ¨ç½²æ–‡æ¡£ä¸­çš„â€œæ¢å¤ç®¡ç†å‘˜è®¿é—®â€
+        æµç¨‹æ“ä½œï¼›æ¢å¤ä¼šä½¿ç°æœ‰ä¼šè¯å¤±æ•ˆã€‚
+      </p>
+      {resetting && (
+        <div className="modal-wrap">
+          <button
+            className="modal-backdrop"
+            onClick={() => setResetting(null)}
+          />
+          <form
+            className="modal panel password-reset-modal"
+            onSubmit={submitReset}
+          >
+            <div className="modal-head">
+              <div>
+                <span className="eyebrow">RESET PASSWORD</span>
+                <h3>é‡ç½® {resetting.username} çš„å¯†ç </h3>
+              </div>
+              <button
+                type="button"
+                className="icon-button"
+                onClick={() => setResetting(null)}
+              >
+                <X />
+              </button>
+            </div>
+            <label>
+              æ–°å¯†ç 
+              <input
+                autoFocus
+                type="password"
+                autoComplete="new-password"
+                minLength="10"
+                value={resetPassword}
+                onChange={(e) => setResetPassword(e.target.value)}
+                placeholder="è‡³å°‘ 10 ä½"
+              />
+              <small>å¼ºåº¦ï¼š{strength(resetPassword)}</small>
+            </label>
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setResetting(null)}
+              >
+                å–æ¶ˆ
+              </button>
+              <button className="primary" disabled={busy === resetting.id}>
+                {busy === resetting.id ? (
+                  <LoaderCircle className="spin" />
+                ) : (
+                  <ShieldCheck />
+                )}
+                ç¡®è®¤é‡ç½®
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function SettingBlock({ icon: Icon, title, note, children }) {
+  return (
+    <section className="setting-card">
+      <div className="setting-title">
+        <Icon />
+        <div>
+          <h3>{title}</h3>
+          <p>{note}</p>
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function PageLoader() {
+  return (
+    <div className="page-loader">
+      <LoaderCircle className="spin" />
+      <span>æ­£åœ¨è¯»å–éŸ³ä¹åº“â€¦</span>
+    </div>
+  );
+}
+
+function Toast({ toast, clear }) {
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(clear, 3200);
+    return () => clearTimeout(t);
+  }, [toast]);
+  if (!toast) return null;
+  return (
+    <div className={`toast ${toast.type || "ok"}`}>
+      {toast.type === "error" ? <CircleAlert /> : <Check />}
+      <span>{toast.message}</span>
+      <button onClick={clear}>
+        <X />
+      </button>
+    </div>
+  );
+}
+
+function GlobalSearchPage({ play, navigate, isAdmin }) {
+  const player = usePlayer();
+  const [query, setQuery] = useState(
+      () => localStorage.getItem("songlib-global-search") || "",
+    ),
+    [loading, setLoading] = useState(false),
+    [groups, setGroups] = useState({
+      tracks: [],
+      artists: [],
+      albums: [],
+      pending: [],
+    }),
+    [error, setError] = useState("");
+  const search = async (event) => {
+    event?.preventDefault?.();
+    const text = query.trim();
+    if (!text) return;
+    localStorage.setItem("songlib-global-search", text);
+    setLoading(true);
+    setError("");
+    try {
+      const [tracks, artists, albums, pending] = await Promise.all([
+        api(
+          `/api/catalog/unified?limit=40&q=${encodeURIComponent(text)}`,
+        ).catch(() => ({ items: [] })),
+        api(
+          `/api/library/artists?pageSize=12&search=${encodeURIComponent(text)}`,
+        ).catch(() => ({ items: [] })),
+        api(
+          `/api/library/albums?pageSize=12&search=${encodeURIComponent(text)}`,
+        ).catch(() => ({ items: [] })),
+        isAdmin
+          ? api("/api/downloads/pending").catch(() => ({ items: [] }))
+          : Promise.resolve({ items: [] }),
+      ]);
+      setGroups({
+        tracks: tracks.items || [],
+        artists: artists.items || [],
+        albums: albums.items || [],
+        pending: (pending.items || []).filter((item) =>
+          JSON.stringify(item).includes(text),
+        ),
+      });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    if (query) search();
+  }, []);
+  const groupTotal = Object.values(groups).reduce(
+    (sum, items) => sum + (items?.length || 0),
+    0,
+  );
+  const TrackActions = ({ item }) => (
+    <div className="search-row-actions">
+      <button title="æ’­æ”¾" onClick={() => play(item)}>
+        <Play />
+      </button>
+      <button title="ä¸‹ä¸€é¦–" onClick={() => player.addToQueue(item)}>
+        <ListMusic />
+      </button>
+      <button title="æ”¶è—" onClick={() => player.toggleFavorite(item)}>
+        <Heart />
+      </button>
+      {isAdmin && (
+        <button
+          title="ç¼–è¾‘/å®šä½"
+          onClick={() =>
+            navigate(
+              item.sourceTypes?.includes("local_file") ? "local" : "library",
+            )
+          }
+        >
+          <Tags />
+        </button>
+      )}
+    </div>
+  );
+  return (
+    <div className="page global-search-page">
+      <section className="page-intro">
+        <span className="eyebrow">
+          <Search />
+          GLOBAL SEARCH
+        </span>
+        <h1>å…¨å±€æœç´¢</h1>
+        <p>åŒä¸€é¦–æ­Œåªæ˜¾ç¤ºä¸€æ¬¡ï¼Œæœ¬åœ°æ–‡ä»¶ä¸ Plex ä½œä¸ºå¯åˆ‡æ¢èµ„æºé™„åœ¨æ­Œæ›²ä¸‹ã€‚</p>
+      </section>
+      <form className="catalog-search" onSubmit={search}>
+        <div className="big-search">
+          <Search />
+          <input
+            autoFocus
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="æœç´¢æ­Œæ›²ã€è‰ºæœ¯å®¶ã€ä¸“è¾‘ã€æ–‡ä»¶åâ€¦"
+          />
+          <button className="primary" disabled={loading}>
+            {loading ? <LoaderCircle className="spin" /> : "æœç´¢"}
+          </button>
+        </div>
+      </form>
+      {error && (
+        <div className="inline-error">
+          <CircleAlert />
+          {error}
+        </div>
+      )}
+      {loading ? (
+        <PageLoader />
+      ) : (
+        <div className="search-groups">
+          {!groupTotal && query ? (
+            <Empty
+              icon={Search}
+              title="æ²¡æœ‰æ‰¾åˆ°åŒ¹é…å†…å®¹"
+              text="æ¢ä¸ªå…³é”®è¯ï¼Œæˆ–å…ˆæ‰«ææœ¬åœ°æ›²åº“/åŒæ­¥ Plexã€‚"
+            />
+          ) : null}
+          <section className="panel">
+            <SectionHead
+              title="å•æ›²"
+              note={`${groups.tracks.length} é¦–æ ‡å‡†æ­Œæ›²å®ä½“`}
+            />
+            {groups.tracks.map((item) => (
+              <div className="search-result-row" key={item.id}>
+                <Music2 />
+                <div>
+                  <strong>{item.title}</strong>
+                  <span>
+                    {item.artist || "æœªçŸ¥æ­Œæ‰‹"} Â· {item.album || "æœªçŸ¥ä¸“è¾‘"}
+                    <em className={`match-badge ${item.matchStatus}`}>
+                      {item.sourceSummary}
+                    </em>
+                  </span>
+                </div>
+                <TrackActions item={item} />
+              </div>
+            ))}
+          </section>
+          <section className="panel">
+            <SectionHead
+              title="è‰ºäºº / ä¸“è¾‘"
+              note={`${groups.artists.length} ä½è‰ºäºº Â· ${groups.albums.length} å¼ ä¸“è¾‘`}
+            />
+            <div className="search-card-grid">
+              {[
+                ...groups.artists.map((item) => ({ ...item, type: "artists" })),
+                ...groups.albums.map((item) => ({ ...item, type: "albums" })),
+              ].map((item) => (
+                <button
+                  key={`${item.type}-${item.ratingKey}`}
+                  onClick={() => {
+                    navigate("library");
+                    localStorage.setItem("songlib-global-search", item.title);
+                  }}
+                >
+                  <div>
+                    {item.thumbUrl ? (
+                      <img src={item.thumbUrl} alt="" />
+                    ) : (
+                      <Album />
+                    )}
+                  </div>
+                  <strong>{item.title}</strong>
+                  <span>{item.type === "artists" ? "è‰ºäºº" : "ä¸“è¾‘"}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+          {isAdmin && (
+            <section className="panel">
+              <SectionHead
+                title="å¾…ä¿®å¤ / å¾…å…¥åº“"
+                note={`${groups.pending.length} ä¸ªä¸‹è½½å€™é€‰`}
+              />
+              {groups.pending.map((item) => (
+                <div className="search-result-row" key={item.jobId}>
+                  <Download />
+                  <div>
+                    <strong>{item.title}</strong>
+                    <span>{item.downloadPath || "å¾…ç¡®è®¤è·¯å¾„"}</span>
+                  </div>
+                  <button
+                    className="secondary small"
+                    onClick={() => navigate("download")}
+                  >
+                    å»å¤„ç†
+                  </button>
+                </div>
+              ))}
+            </section>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MePage({ navigate }) {
+  const player = usePlayer();
+  const favorites = Object.values(player.favorites || {}).sort((a, b) =>
+    String(b.likedAt || "").localeCompare(String(a.likedAt || "")),
+  );
+  const history = player.history || [];
+  const events = player.playEvents || history;
+  const playlists = player.playlists || {};
+  const newPlaylist = () => {
+    const name = prompt("æ–°å»ºæ­Œå•åç§°");
+    if (name) player.createPlaylist(name);
+  };
+  const totalMinutes = Math.round(
+    events.reduce((sum, item) => sum + Number(item.duration || 0), 0) / 60,
+  );
+  const artistCounts = events.reduce((map, item) => {
+    const key = item.artist || "æœªçŸ¥æ­Œæ‰‹";
+    map[key] = (map[key] || 0) + 1;
+    return map;
+  }, {});
+  const topArtists = Object.entries(artistCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+  const recentDays = Array.from({ length: 7 }, (_, offset) => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() - (6 - offset));
+    const next = new Date(date);
+    next.setDate(next.getDate() + 1);
+    return {
+      label: `${date.getMonth() + 1}/${date.getDate()}`,
+      count: events.filter((item) => {
+        const value = new Date(item.playedAt).getTime();
+        return value >= date.getTime() && value < next.getTime();
+      }).length,
+    };
+  });
+  const maxDay = Math.max(1, ...recentDays.map((item) => item.count));
+  return (
+    <div className="page me-page refined-me-page">
+      <section className="page-intro">
+        <span className="eyebrow">
+          <UserRound />
+          MY MUSIC
+        </span>
+        <h1>æˆ‘çš„éŸ³ä¹</h1>
+        <p>æ”¶è—ã€å›å¬ä¸ä¸ªäººæ­Œå•ï¼ŒæŒ‰ä½ çš„è†å¬ä¹ æƒ¯è‡ªç„¶æ±‡é›†ã€‚</p>
+      </section>
+      <div className="me-dashboard">
+        <section className="me-listening-surface">
+          <header className="me-section-head">
+            <div>
+              <span>æœ¬åœ°è†å¬æŠ¥å‘Š</span>
+              <h2>æœ€è¿‘çš„éŸ³ä¹è¶³è¿¹</h2>
+            </div>
+            <small>ä»…æ ¹æ®æœ¬æœºè®°å½•ç”Ÿæˆ</small>
+          </header>
+          <div className="me-metric-strip">
+            {[
+              [Play, "æ’­æ”¾", events.length, "æ¬¡"],
+              [Clock3, "æ—¶é•¿", totalMinutes, "åˆ†é’Ÿ"],
+              [Heart, "æ”¶è—", favorites.length, "é¦–"],
+            ].map(([Icon, label, value, unit]) => (
+              <div className="me-metric" key={label}>
+                <span><Icon /></span>
+                <div>
+                  <small>{label}</small>
+                  <strong>{fmt(value)} <em>{unit}</em></strong>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="me-insights">
+            <div className="me-weekly">
+              <h3>è¿‘ 7 å¤©</h3>
+              <div className="listening-bars">
+                {recentDays.map((item) => (
+                  <span key={item.label}>
+                    <i
+                      style={{
+                        height: `${Math.max(4, (item.count / maxDay) * 100)}%`,
+                      }}
+                    />
+                    <b>{item.count}</b>
+                    <small>{item.label}</small>
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="me-artists">
+              <h3>å¸¸å¬éŸ³ä¹äºº</h3>
+              {topArtists.length ? (
+                <ol>
+                  {topArtists.map(([name, count], index) => (
+                    <li key={name}>
+                      <b>{String(index + 1).padStart(2, "0")}</b>
+                      <span>{name}</span>
+                      <em>{count} æ¬¡</em>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p>æ’­æ”¾å‡ é¦–æ­Œæ›²åï¼Œè¿™é‡Œä¼šå‡ºç°ä½ çš„å¸¸å¬éŸ³ä¹äººã€‚</p>
+              )}
+            </div>
+          </div>
+        </section>
+        <section className="me-collection-surface">
+          <header className="me-section-head">
+            <div>
+              <span>æ”¶è—</span>
+              <h2>æˆ‘å–œæ¬¢</h2>
+            </div>
+            <small>{favorites.length} é¦–</small>
+          </header>
+          {favorites.length ? (
+            <div className="favorite-list me-track-list">
+              {favorites.slice(0, 8).map((item) => (
+                <button
+                  key={trackIdentity(item)}
+                  onClick={() => player.play(item)}
+                >
+                  <Heart />
+                  <div>
+                    <strong>{item.title}</strong>
+                    <span>
+                      {item.artist || "æœªçŸ¥æ­Œæ‰‹"} Â· {item.album || "æœªçŸ¥ä¸“è¾‘"}
+                    </span>
+                  </div>
+                  <Play />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="me-empty-inline">
+              <span><Heart /></span>
+              <div>
+                <strong>è¿˜æ²¡æœ‰æ”¶è—</strong>
+                <p>æ’­æ”¾æ­Œæ›²æ—¶ç‚¹äº®å–œæ¬¢ï¼Œå®ƒå°±ä¼šç•™åœ¨è¿™é‡Œã€‚</p>
+              </div>
+            </div>
+          )}
+        </section>
+      </div>
+      <div className="me-lower-grid">
+        <section className="me-list-surface">
+          <header className="me-section-head">
+            <div>
+              <span>ç»§ç»­è†å¬</span>
+              <h2>æœ€è¿‘æ’­æ”¾</h2>
+            </div>
+            <small>{history.length} æ¡</small>
+          </header>
+          {history.length ? (
+            <div className="favorite-list me-track-list">
+              {history.slice(0, 10).map((item) => (
+                <button
+                  key={`${trackIdentity(item)}-${item.playedAt}`}
+                  onClick={() => player.play(item)}
+                >
+                  <Clock3 />
+                  <div>
+                    <strong>{item.title}</strong>
+                    <span>
+                      {item.artist || "æœªçŸ¥æ­Œæ‰‹"} Â· {timeAgo(item.playedAt)}
+                    </span>
+                  </div>
+                  <Play />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="me-empty-inline">
+              <span><Play /></span>
+              <div>
+                <strong>æš‚æ— æ’­æ”¾è®°å½•</strong>
+                <p>ä»éŸ³ä¹åº“å¼€å§‹æ’­æ”¾ï¼Œæœ€è¿‘å¬è¿‡çš„å†…å®¹ä¼šä¿ç•™åœ¨è¿™é‡Œã€‚</p>
+              </div>
+            </div>
+          )}
+        </section>
+        <section className="me-list-surface">
+          <header className="me-section-head">
+            <div>
+              <span>æˆ‘çš„æ”¶è—å¤¹</span>
+              <h2>æ­Œå•</h2>
+            </div>
+            <button className="secondary small" onClick={newPlaylist}>
+              <Plus />
+              æ–°å»ºæ­Œå•
+            </button>
+          </header>
+          {Object.keys(playlists).length ? (
+            <div className="playlist-library me-playlist-list">
+              {Object.entries(playlists).map(([name, tracks]) => (
+                <article key={name}>
+                  <button
+                    onClick={() =>
+                      tracks[0] && player.play(tracks[0], tracks.slice(1))
+                    }
+                  >
+                    <ListMusic />
+                    <div>
+                      <strong>{name}</strong>
+                      <span>{tracks.length} é¦–æ­Œæ›²</span>
+                    </div>
+                    <Play />
+                  </button>
+                  <button
+                    className="icon-button danger"
+                    onClick={() =>
+                      confirm(`åˆ é™¤æ­Œå•â€œ${name}â€ï¼Ÿæ­Œæ›²æ–‡ä»¶ä¸ä¼šè¢«åˆ é™¤ã€‚`) &&
+                      player.deletePlaylist(name)
+                    }
+                    aria-label={`åˆ é™¤æ­Œå• ${name}`}
+                  >
+                    <Trash2 />
+                  </button>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="me-empty-inline">
+              <span><ListMusic /></span>
+              <div>
+                <strong>è¿˜æ²¡æœ‰æ­Œå•</strong>
+                <p>æ–°å»ºæ­Œå•ï¼ŒæŠŠæƒ³åå¤å¬çš„æ­Œæ›²æ”¾åœ¨ä¸€èµ·ã€‚</p>
+              </div>
+            </div>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function PlaylistsPage({
+  play,
+  notify,
+  initialPlaylistId = "",
+  onPlaylistChange,
+}) {
+  const [items, setItems] = useState([]);
+  const [servicePlaylists, setServicePlaylists] = useState({
+    plex: { configured: false, items: [], error: null },
+    fnos: { configured: false, items: [], error: null },
+  });
+  const [serviceBusy, setServiceBusy] = useState(false);
+  const [servicePlaying, setServicePlaying] = useState("");
+  const [selected, setSelected] = useState(null);
+  const [newName, setNewName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [shareUrl, setShareUrl] = useState("");
+  const [migration, setMigration] = useState(null);
+  const [migrationBusy, setMigrationBusy] = useState("");
+  const [migrationTargets, setMigrationTargets] = useState(["songlib"]);
+  const [downloadMissing, setDownloadMissing] = useState(false);
+  const [migrationSource, setMigrationSource] = useState("");
+  const [migrationQuality, setMigrationQuality] = useState("320k");
+  const fileRef = useRef(null);
+  const loadServices = async () => {
+    setServiceBusy(true);
+    try {
+      const connected = await api("/api/playlists/services");
+      setServicePlaylists(connected);
+    } catch (err) {
+      setServicePlaylists({
+        plex: { configured: false, items: [], error: err.message },
+        fnos: { configured: false, items: [], error: err.message },
+      });
+    } finally {
+      setServiceBusy(false);
+    }
+  };
+  const load = async (preferredId, { replace = false } = {}) => {
+    const [data] = await Promise.all([
+      api("/api/playlists"),
+      loadServices(),
+    ]);
+    setItems(data.items || []);
+    const id = preferredId || selected?.id || data.items?.[0]?.id;
+    if (id) {
+      const detail = await api(`/api/playlists/${id}`);
+      setSelected(detail);
+      onPlaylistChange?.(id, { replace });
+    } else {
+      setSelected(null);
+      onPlaylistChange?.("", { replace: true });
+    }
+  };
+  useEffect(() => {
+    load(initialPlaylistId, { replace: !initialPlaylistId }).catch((err) =>
+      setError(err.message),
+    );
+  }, []);
+  const create = async (event) => {
+    event.preventDefault();
+    if (!newName.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      const created = await api("/api/playlists", {
+        method: "POST",
+        body: JSON.stringify({ name: newName.trim(), description: "", items: [] }),
+      });
+      setNewName("");
+      await load(created.id);
+      notify("æ­Œå•å·²åˆ›å»º");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const importFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await api("/api/playlists/import/m3u", {
+        method: "POST",
+        body: JSON.stringify({
+          name: file.name.replace(/\.(m3u8?|txt)$/i, ""),
+          content: await file.text(),
+          pathMappings: [],
+        }),
+      });
+      await load(result.playlist.id);
+      notify(`å·²å¯¼å…¥ ${result.matched} é¦–ï¼Œ${result.unmatched.length} é¦–éœ€è¦åŒ¹é…`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const remove = async () => {
+    if (!selected || !window.confirm(`åˆ é™¤æ­Œå•â€œ${selected.name}â€ï¼Ÿæ­Œæ›²æ–‡ä»¶ä¸ä¼šè¢«åˆ é™¤ã€‚`)) return;
+    setBusy(true);
+    try {
+      await api(`/api/playlists/${selected.id}`, { method: "DELETE" });
+      setSelected(null);
+      await load();
+      notify("æ­Œå•å·²åˆ é™¤");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const move = async (index, delta) => {
+    const next = [...selected.items];
+    const target = index + delta;
+    if (target < 0 || target >= next.length) return;
+    [next[index], next[target]] = [next[target], next[index]];
+    setBusy(true);
+    try {
+      const updated = await api(`/api/playlists/${selected.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          items: next.map(playlistTrackPayload),
+        }),
+      });
+      setSelected(updated);
+      await load(updated.id);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const playable = playlistPlaybackInput;
+  const playAll = () => {
+    const queue = (selected?.items || []).map(playable).filter(Boolean);
+    if (queue.length) play(queue[0], queue.slice(1));
+  };
+  const playSelectedFrom = (index) => {
+    const queue = (selected?.items || [])
+      .slice(index)
+      .map(playable)
+      .filter(Boolean);
+    if (queue.length) play(queue[0], queue.slice(1));
+  };
+  const playServicePlaylist = async (serviceId, item) => {
+    if (serviceId !== "plex") {
+      setError("é£ç‰›éŸ³ä¹æ­Œå•æ’­æ”¾éœ€è¦æœåŠ¡è¿”å›å¯æ’­æ”¾æ›²ç›®ï¼›å½“å‰è¿æ¥å¯ç”¨äºæ­Œå•åŒæ­¥ã€‚");
+      return;
+    }
+    const busyKey = `${serviceId}:${item.id}`;
+    setServicePlaying(busyKey);
+    setError("");
+    try {
+      const detail = await api(
+        `/api/playlists/services/${serviceId}/${encodeURIComponent(item.id)}`,
+      );
+      const queue = servicePlaylistPlaybackItems(serviceId, detail.items);
+      if (!queue.length) throw new Error("è¿™ä¸ªæ­Œå•é‡Œæ²¡æœ‰å¯æ’­æ”¾æ›²ç›®");
+      await play(queue[0], queue.slice(1));
+      notify(`æ­£åœ¨æ’­æ”¾â€œ${item.name}â€ï¼Œå…± ${queue.length} é¦–`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setServicePlaying("");
+    }
+  };
+  const syncSelected = async (target) => {
+    if (!selected) return;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await api(`/api/playlists/${selected.id}/sync`, {
+        method: "POST",
+        body: JSON.stringify({ targets: [target] }),
+      });
+      const synced = result[target];
+      if (synced?.ok === false) throw new Error(synced.error || "åŒæ­¥å¤±è´¥");
+      notify(
+        target === "plex"
+          ? `å·²åŒæ­¥åˆ° Plexï¼Œå…± ${synced?.itemCount || 0} é¦–`
+          : `å·²åŒæ­¥åˆ°é£ç‰›éŸ³ä¹ï¼Œå…± ${synced?.matched || 0} é¦–`,
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const previewMigration = async (event) => {
+    event.preventDefault();
+    if (!shareUrl.trim()) return;
+    setMigrationBusy("preview");
+    setError("");
+    try {
+      const result = await api("/api/playlists/migrate/preview", {
+        method: "POST",
+        body: JSON.stringify({ shareUrl: shareUrl.trim() }),
+      });
+      setMigration(result);
+      setMigrationTargets(["songlib"]);
+      setDownloadMissing(false);
+      setMigrationSource(result.downloadSources?.[0]?.id || "");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setMigrationBusy("");
+    }
+  };
+  const toggleMigrationTarget = (target) => {
+    setMigrationTargets((value) =>
+      value.includes(target)
+        ? value.filter((item) => item !== target)
+        : [...value, target],
+    );
+  };
+  const executeMigration = async () => {
+    if (!migrationTargets.length) {
+      setError("è¯·è‡³å°‘é€‰æ‹©ä¸€ä¸ªè¿ç§»ç›®æ ‡");
+      return;
+    }
+    setMigrationBusy("execute");
+    setError("");
+    try {
+      const result = await api("/api/playlists/migrate/execute", {
+        method: "POST",
+        body: JSON.stringify({
+          sourceUrl: migration.sourceUrl,
+          targets: migrationTargets,
+          downloadMissing,
+          sourceId: downloadMissing ? migrationSource : null,
+          quality: migrationQuality,
+        }),
+      });
+      if (result.songlib?.id) await load(result.songlib.id);
+      const details = [
+        result.songlib ? `éŸ³å±¿ ${result.songlib.itemCount} é¦–` : "",
+        result.plex?.ratingKey ? `Plex ${result.plex.itemCount} é¦–` : "",
+        result.fnos?.ok ? `é£ç‰›éŸ³ä¹ ${result.fnos.matched} é¦–` : "",
+        result.downloads?.created ? `${result.downloads.created} é¦–è¿›å…¥ä¸‹è½½é˜Ÿåˆ—` : "",
+      ].filter(Boolean);
+      notify(details.length ? `è¿ç§»å®Œæˆï¼š${details.join("ï¼Œ")}` : "è¿ç§»ä»»åŠ¡å·²å¤„ç†");
+      setMigration(null);
+      setShareUrl("");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setMigrationBusy("");
+    }
+  };
+  return (
+    <div className="page playlists-page">
+      <section className="page-intro playlist-intro">
+        <div>
+          <span className="eyebrow"><ListMusic />æˆ‘çš„æ­Œå•</span>
+          <h1>æŠŠå–œæ¬¢çš„æ­Œå¸¦å›æ¥</h1>
+          <p>åˆ›å»ºæ­Œå•ï¼Œå¯¼å…¥æ–‡ä»¶ï¼Œæˆ–ä»å¸¸ç”¨éŸ³ä¹å¹³å°è¿ç§»ã€‚</p>
+        </div>
+        <div className="playlist-actions">
+          <button className="secondary" onClick={() => fileRef.current?.click()} disabled={busy}>
+            <FileUp />å¯¼å…¥ M3U
+          </button>
+          <input ref={fileRef} hidden type="file" accept=".m3u,.m3u8,audio/x-mpegurl" onChange={importFile} />
+          {selected && (
+            <a className="secondary button-link" href={`/api/playlists/${selected.id}/export.m3u`}>
+              <Download />å¯¼å‡º
+            </a>
+          )}
+        </div>
+      </section>
+      <section className="playlist-migration panel">
+        <div className="migration-heading">
+          <span><Link2 /></span>
+          <div>
+            <strong>ä»åˆ†äº«é“¾æ¥è¿ç§»</strong>
+            <small>æ”¯æŒ QQ éŸ³ä¹ã€ç½‘æ˜“äº‘éŸ³ä¹å…¬å¼€æ­Œå•</small>
+          </div>
+        </div>
+        <form onSubmit={previewMigration}>
+          <input
+            type="url"
+            value={shareUrl}
+            onChange={(event) => setShareUrl(event.target.value)}
+            placeholder="ç²˜è´´æ­Œå•åˆ†äº«é“¾æ¥"
+          />
+          <button className="primary" disabled={!shareUrl.trim() || migrationBusy === "preview"}>
+            {migrationBusy === "preview" ? <LoaderCircle className="spin" /> : <Search />}
+            è¯»å–æ­Œå•
+          </button>
+        </form>
+        <p className="migration-privacy">åªè¯»å–å…¬å¼€æ­Œå•ä¿¡æ¯ï¼Œä¸éœ€è¦ç¬¬ä¸‰æ–¹è´¦å·å¯†ç ã€‚</p>
+      </section>
+      {migration && (
+        <section className="migration-preview panel">
+          <header>
+            <div className="migration-cover">
+              {migration.coverUrl ? <img src={migration.coverUrl} alt="" /> : <ListMusic />}
+            </div>
+            <div>
+              <span>{migration.platformLabel}</span>
+              <h2>{migration.name}</h2>
+              <p>
+                {migration.summary.total} é¦– Â· {migration.summary.matched} é¦–å·²åŒ¹é… Â·{" "}
+                {migration.summary.missing} é¦–å¾…è¡¥å…¨
+              </p>
+            </div>
+            <button className="icon-button" onClick={() => setMigration(null)} aria-label="å…³é—­è¿ç§»é¢„è§ˆ"><X /></button>
+          </header>
+          <div className="migration-targets">
+            {[
+              ["songlib", "éŸ³å±¿æ­Œå•", Music2],
+              ["plex", "Plex", Server],
+              ["fnos", "é£ç‰›éŸ³ä¹", Radio],
+            ].map(([id, label, Icon]) => {
+              const available = migration.targets?.[id]?.available !== false;
+              const selectedTarget = migrationTargets.includes(id);
+              return (
+                <button
+                  key={id}
+                  className={selectedTarget ? "active" : ""}
+                  disabled={!available}
+                  onClick={() => toggleMigrationTarget(id)}
+                >
+                  <Icon />
+                  <span><strong>{label}</strong><small>{available ? (selectedTarget ? "å·²é€‰æ‹©" : "å¯è¿ç§»") : "éœ€è¦å…ˆé…ç½®è¿æ¥"}</small></span>
+                  <i>{selectedTarget ? <Check /> : <Plus />}</i>
+                </button>
+              );
+            })}
+          </div>
+          {migration.summary.missing > 0 && (
+            <div className="migration-download-option">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={downloadMissing}
+                  disabled={!migration.downloadSources?.length}
+                  onChange={(event) => setDownloadMissing(event.target.checked)}
+                />
+                <span><strong>è¡¥å…¨ç¼ºå¤±æ­Œæ›²</strong><small>åªé‡‡ç”¨æ ‡é¢˜ã€ä¸»è¦è‰ºäººå’Œæ—¶é•¿å…¨éƒ¨é€šè¿‡æ ¡éªŒçš„ç‰ˆæœ¬</small></span>
+              </label>
+              {downloadMissing && (
+                <div>
+                  <select value={migrationSource} onChange={(event) => setMigrationSource(event.target.value)}>
+                    {(migration.downloadSources || []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                  </select>
+                  <select value={migrationQuality} onChange={(event) => setMigrationQuality(event.target.value)}>
+                    <option value="flac">ä¼˜å…ˆæ— æŸ</option>
+                    <option value="320k">é«˜å“è´¨ 320K</option>
+                    <option value="128k">æ ‡å‡† 128K</option>
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+          <div className="migration-track-preview">
+            {(migration.tracks || []).slice(0, 12).map((item, index) => (
+              <div key={`${item.externalRef}-${index}`} className={item.matchStatus === "matched" ? "matched" : "missing"}>
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                <div><strong>{item.title}</strong><small>{item.artist || "æœªçŸ¥è‰ºäºº"} Â· {item.album || "æœªçŸ¥ä¸“è¾‘"}</small></div>
+                <em>{item.matchStatus === "matched" ? "å·²åŒ¹é…" : "å¾…è¡¥å…¨"}</em>
+              </div>
+            ))}
+            {migration.summary.total > 12 && <p>å¦æœ‰ {migration.summary.total - 12} é¦–ï¼Œå°†æŒ‰åŸé¡ºåºå¤„ç†</p>}
+          </div>
+          <footer>
+            <span>æ‰§è¡Œå‰åªæ˜¾ç¤ºé¢„è§ˆï¼›è¿ç§»ç»“æœå’ŒæœªåŒ¹é…é¡¹ä¼šä¿ç•™è®°å½•ã€‚</span>
+            <button className="primary" disabled={migrationBusy === "execute" || !migrationTargets.length || (downloadMissing && !migrationSource)} onClick={executeMigration}>
+              {migrationBusy === "execute" ? <LoaderCircle className="spin" /> : <ArrowDownToLine />}
+              å¼€å§‹è¿ç§»
+            </button>
+          </footer>
+        </section>
+      )}
+      {error && <div className="form-error"><CircleAlert />{error}</div>}
+      <section className="connected-playlists panel">
+        <header>
+          <div>
+            <span>å·²è¿æ¥çš„éŸ³ä¹æœåŠ¡</span>
+            <h2>æœåŠ¡æ­Œå•</h2>
+            <p>Plex ä¸é£ç‰›éŸ³ä¹ä¸­çš„æ­Œå•ä¼šåœ¨è¿™é‡Œæ±‡æ€»æ˜¾ç¤ºã€‚</p>
+          </div>
+          <button
+            className="secondary small"
+            onClick={loadServices}
+            disabled={serviceBusy}
+          >
+            <RefreshCw className={serviceBusy ? "spin" : ""} />
+            åˆ·æ–°
+          </button>
+        </header>
+        <div className="service-playlist-grid">
+          {[
+            ["plex", "Plex", Server],
+            ["fnos", "é£ç‰›éŸ³ä¹", Radio],
+          ].map(([id, label, Icon]) => {
+            const service = servicePlaylists[id] || {};
+            return (
+              <article className="service-playlist-column" key={id}>
+                <header>
+                  <span><Icon /></span>
+                  <div>
+                    <strong>{label}</strong>
+                    <small>
+                      {service.configured
+                        ? `${service.items?.length || 0} ä¸ªæ­Œå•`
+                        : "å°šæœªè¿æ¥"}
+                    </small>
+                  </div>
+                </header>
+                {service.error ? (
+                  <div className="service-playlist-message error">
+                    <CircleAlert />
+                    <span>{service.error}</span>
+                  </div>
+                ) : !service.configured ? (
+                  <div className="service-playlist-message">
+                    <Link2 />
+                    <span>åœ¨è®¾ç½®ä¸­å®Œæˆè¿æ¥åï¼Œæ­Œå•ä¼šè‡ªåŠ¨å‡ºç°åœ¨è¿™é‡Œã€‚</span>
+                  </div>
+                ) : service.items?.length ? (
+                  <div className="service-playlist-list">
+                    {service.items.map((item, index) => (
+                      <button
+                        type="button"
+                        key={`${id}-${item.id}`}
+                        className={id !== "plex" ? "sync-only" : ""}
+                        disabled={
+                          id !== "plex" ||
+                          servicePlaying === `${id}:${item.id}`
+                        }
+                        onClick={() => playServicePlaylist(id, item)}
+                        aria-label={
+                          id === "plex"
+                            ? `æ’­æ”¾æ­Œå• ${item.name}`
+                            : `æŸ¥çœ‹é£ç‰›éŸ³ä¹æ­Œå• ${item.name} çš„æ’­æ”¾èƒ½åŠ›`
+                        }
+                      >
+                        <span className={`playlist-tile tone-${index % 4}`}>
+                          {item.coverUrl ? (
+                            <img src={item.coverUrl} alt="" />
+                          ) : (
+                            <ListMusic />
+                          )}
+                        </span>
+                        <div>
+                          <strong>{item.name}</strong>
+                          <small>{item.itemCount || 0} é¦–æ­Œæ›²</small>
+                        </div>
+                        <em>
+                          {servicePlaying === `${id}:${item.id}` ? (
+                            <LoaderCircle className="spin" />
+                          ) : id === "plex" ? (
+                            <Play fill="currentColor" />
+                          ) : (
+                            label
+                          )}
+                        </em>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="service-playlist-message">
+                    <ListMusic />
+                    <span>æœåŠ¡å·²è¿æ¥ï¼Œæš‚æ—¶æ²¡æœ‰æ­Œå•ã€‚</span>
+                  </div>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      </section>
+      <div className="playlist-workspace">
+        <aside className="panel playlist-list">
+          <form onSubmit={create}>
+            <input value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="æ–°æ­Œå•åç§°" />
+            <button className="primary icon-button" disabled={busy || !newName.trim()} aria-label="åˆ›å»ºæ­Œå•"><Plus /></button>
+          </form>
+          {items.length ? items.map((item) => (
+            <button
+              key={item.id}
+              className={selected?.id === item.id ? "active" : ""}
+              onClick={() => load(item.id).catch((err) => setError(err.message))}
+            >
+              <span><ListMusic /><strong>{item.name}</strong></span>
+              <small>{item.itemCount} é¦–</small>
+            </button>
+          )) : <Empty icon={ListMusic} title="è¿˜æ²¡æœ‰æ­Œå•" text="åˆ›å»ºä¸€ä¸ªç©ºæ­Œå•ï¼Œæˆ–å¯¼å…¥ M3U/M3U8 æ–‡ä»¶ã€‚" />}
+        </aside>
+        <section className="panel playlist-detail">
+          {!selected ? (
+            <Empty icon={ListMusic} title="é€‰æ‹©ä¸€ä¸ªæ­Œå•" text="æ­Œå•å†…å®¹ã€åŒ¹é…çŠ¶æ€å’Œé¡ºåºä¼šæ˜¾ç¤ºåœ¨è¿™é‡Œã€‚" />
+          ) : (
+            <>
+              <header>
+                <div>
+                  <span>æœ¬åœ°æ­Œå•</span>
+                  <h2>{selected.name}</h2>
+                  <p>{selected.description || `${selected.itemCount} é¦–æ­Œæ›²`}</p>
+                </div>
+                <div>
+                  <button className="secondary" onClick={() => syncSelected("plex")} disabled={busy || !selected.items.length}>
+                    <Server />åŒæ­¥ Plex
+                  </button>
+                  <button className="secondary" onClick={() => syncSelected("fnos")} disabled={busy || !selected.items.length}>
+                    <Radio />åŒæ­¥é£ç‰›éŸ³ä¹
+                  </button>
+                  <button className="primary" onClick={playAll} disabled={!selected.items.some(playable)}>
+                    <Play />æ’­æ”¾å…¨éƒ¨
+                  </button>
+                  <button className="icon-button danger" onClick={remove} aria-label="åˆ é™¤æ­Œå•"><Trash2 /></button>
+                </div>
+              </header>
+              <div className="playlist-tracks">
+                {selected.items.length ? selected.items.map((item, index) => (
+                  <article key={item.id} className={!playable(item) ? "unmatched" : ""}>
+                    <button
+                      className="track-play"
+                      disabled={!playable(item)}
+                      onClick={() => playable(item) && playSelectedFrom(index)}
+                      aria-label={playable(item) ? `æ’­æ”¾ ${item.title}` : `${item.title} å°šæœªåŒ¹é…`}
+                    >
+                      {item.file_id ? <Play /> : <CircleAlert />}
+                    </button>
+                    <span className="track-position">{index + 1}</span>
+                    <div><strong>{item.title || "æœªå‘½åæ­Œæ›²"}</strong><small>{item.artist || "æœªçŸ¥è‰ºäºº"} Â· {item.album || "æœªçŸ¥ä¸“è¾‘"}</small></div>
+                    <em>{playable(item) ? "å¯æ’­æ”¾" : "å¾…åŒ¹é…"}</em>
+                    <div className="track-order">
+                      <button className="icon-button" onClick={() => move(index, -1)} disabled={busy || index === 0} aria-label="ä¸Šç§»"><ChevronDown className="rotate-180" /></button>
+                      <button className="icon-button" onClick={() => move(index, 1)} disabled={busy || index === selected.items.length - 1} aria-label="ä¸‹ç§»"><ChevronDown /></button>
+                    </div>
+                  </article>
+                )) : <Empty icon={Music2} title="ç©ºæ­Œå•" text="å¯ä»¥å…ˆå¯¼å…¥ M3Uï¼Œæˆ–ä»æ’­æ”¾å™¨æŠŠæ­Œæ›²åŠ å…¥æ­Œå•ã€‚" />}
+              </div>
+            </>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function RecommendationPage({ play, navigate, isAdmin = true }) {
+  const [data, setData] = useState({ profile: {}, items: [], eventCount: 0 });
+  const [exploration, setExploration] = useState(0.35);
+  const [busy, setBusy] = useState(true);
+  const [error, setError] = useState("");
+  const applyRecommendationData = (value = {}) => {
+    const normalized = {
+      profile: value.profile || {},
+      items: Array.isArray(value.items) ? value.items : [],
+      eventCount: Number(value.eventCount || 0),
+    };
+    setData(normalized);
+    return normalized;
+  };
+  const load = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const result = await api("/api/recommendations");
+      const normalized = applyRecommendationData(result);
+      if (!normalized.items.length) {
+        const refreshed = await api("/api/recommendations/refresh", {
+          method: "POST",
+          body: JSON.stringify({ exploration, discoveries: [] }),
+        });
+        applyRecommendationData(refreshed);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  useEffect(() => {
+    load();
+  }, []);
+  const refresh = async () => {
+    setBusy(true);
+    try {
+      applyRecommendationData(
+        await api("/api/recommendations/refresh", {
+          method: "POST",
+          body: JSON.stringify({ exploration, discoveries: [] }),
+        }),
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const profile = data.profile || {};
+  const playRecommendation = (item) => {
+    const target = recommendationPlaybackInput(item);
+    if (target) play(target);
+  };
+  return (
+    <div className="page recommendation-page refined-recommendation-page">
+      <section className="recommendation-intro">
+        <div>
+          <span className="eyebrow"><Sparkles />FOR YOU</span>
+          <h1>ä¸ºä½ æ¨è</h1>
+          <p>
+            {profile.explanation ||
+              "ä»ä½ çš„æ”¶è—ä¸æ’­æ”¾ä¹ æƒ¯ä¸­æŒ‘é€‰ç†Ÿæ‚‰çš„å£°éŸ³ï¼Œä¹Ÿç•™å‡ºå‘ç°æ–°éŸ³ä¹çš„ç©ºé—´ã€‚"}
+          </p>
+        </div>
+        <div className="exploration-control">
+          <div>
+            <span>ç†Ÿæ‚‰åº¦</span>
+            <strong>{100 - Math.round(exploration * 100)}%</strong>
+          </div>
+          <input
+            aria-label="æ¨èæ¢ç´¢æ¯”ä¾‹"
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={exploration}
+            onChange={(event) => setExploration(Number(event.target.value))}
+          />
+          <div>
+            <span>æ¢ç´¢åº¦</span>
+            <strong>{Math.round(exploration * 100)}%</strong>
+          </div>
+          <button className="secondary small" onClick={refresh} disabled={busy}>
+            <RefreshCw className={busy ? "spin" : ""} />
+            æ¢ä¸€æ‰¹
+          </button>
+        </div>
+      </section>
+      {error && (
+        <div className="recommendation-error">
+          <CircleAlert />
+          <div>
+            <strong>æ¨èæš‚æ—¶æ²¡æœ‰åŠ è½½æˆåŠŸ</strong>
+            <span>{error}</span>
+          </div>
+          <button className="secondary small" onClick={load}>é‡è¯•</button>
+        </div>
+      )}
+      <section className="recommendation-signals" aria-label="æ¨èç”»åƒæ‘˜è¦">
+        <div>
+          <span>å®Œæ•´å¬å®Œ</span>
+          <strong>{Math.round((profile.completionRate || 0) * 100)}%</strong>
+          <small>å®Œæˆç‡</small>
+        </div>
+        <i />
+        <div>
+          <span>å¿«é€Ÿè·³è¿‡</span>
+          <strong>{Math.round((profile.skipRate || 0) * 100)}%</strong>
+          <small>è·³è¿‡ç‡</small>
+        </div>
+        <i />
+        <div>
+          <span>æœ¬åœ°è¡Œä¸º</span>
+          <strong>{fmt(data.eventCount)}</strong>
+          <small>ä¸ä¼šä¸Šä¼ å®Œæ•´å†å²</small>
+        </div>
+      </section>
+      <section className="recommendation-profile">
+        <article>
+          <header>
+            <h2>å¸¸å¬éŸ³ä¹äºº</h2>
+            <span>æ”¶è—ä¸å®Œæ•´æ’­æ”¾çš„æƒé‡æ›´é«˜</span>
+          </header>
+          <div className="profile-tags">
+            {(profile.topArtists || []).length ? (
+              profile.topArtists.map((item) => (
+                <span key={item.name}>
+                  {item.name}
+                  <small>{item.score}</small>
+                </span>
+              ))
+            ) : (
+              <p>ç»§ç»­æ’­æ”¾ä¸æ”¶è—ï¼Œå¸¸å¬éŸ³ä¹äººä¼šé€æ¸æµ®ç°ã€‚</p>
+            )}
+          </div>
+        </article>
+        <article>
+          <header>
+            <h2>åå¥½å¹´ä»£ä¸æµæ´¾</h2>
+            <span>åªæ ¹æ®æœ¬åœ°æ ‡ç­¾ä¸æ’­æ”¾è¡Œä¸ºè®¡ç®—</span>
+          </header>
+          <div className="profile-tags">
+            {[...(profile.favoriteDecades || []), ...(profile.topGenres || [])]
+              .length ? (
+              [
+                ...(profile.favoriteDecades || []),
+                ...(profile.topGenres || []),
+              ].map((item) => (
+                <span key={item.name}>
+                  {item.name}
+                  <small>{item.score}</small>
+                </span>
+              ))
+            ) : (
+              <p>æ›²åº“æ ‡ç­¾è¶Šå®Œæ•´ï¼Œæ¨èç†ç”±ä¼šè¶Šå‡†ç¡®ã€‚</p>
+            )}
+          </div>
+        </article>
+      </section>
+      <section className="recommendation-feed">
+        <header className="recommendation-feed-head">
+          <div>
+            <span>ä»Šæ—¥å‘ç°</span>
+            <h2>æ ¹æ®ä½ çš„å£å‘³æŒ‘é€‰</h2>
+          </div>
+          <small>å·²è¿‡æ»¤ Liveã€ä¼´å¥ã€DJ ä¸é‡å¤ç‰ˆæœ¬</small>
+        </header>
+        {busy && !data.items.length ? (
+          <PageLoader />
+        ) : data.items.length ? (
+          <div className="recommendation-grid">
+            {data.items.slice(0, 24).map((item) => (
+              <article key={item.id}>
+                <div className="recommendation-cover"><Disc3 /><span>{item.inLibrary ? "åº“å†…" : "åº“å¤–"}</span></div>
+                <div><strong>{item.title}</strong><p>{item.artist}{item.album ? ` Â· ${item.album}` : ""}</p><small>{(item.reasons || []).join(" Â· ")}</small></div>
+                {item.inLibrary ? (
+                  <button className="icon-button" onClick={() => playRecommendation(item)} aria-label={`æ’­æ”¾ ${item.title}`}><Play /></button>
+                ) : isAdmin ? (
+                  <button className="text-button recommendation-source-link" onClick={() => navigate("download")}>æŸ¥æ‰¾æˆæƒæ¥æº<ChevronRight /></button>
+                ) : <em>å¯å‘ç®¡ç†å‘˜ç”³è¯·å…¥åº“</em>}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="recommendation-empty">
+            <span><Sparkles /></span>
+            <div>
+              <strong>æ¨èæ­£åœ¨è®¤è¯†ä½ çš„å£å‘³</strong>
+              <p>å…ˆä»æ›²åº“æ’­æ”¾æˆ–æ”¶è—å‡ é¦–æ­Œæ›²ï¼Œä¸‹ä¸€æ¬¡åˆ·æ–°å°±ä¼šæœ‰æ›´è´´åˆçš„ç»“æœã€‚</p>
+            </div>
+            <button className="secondary" onClick={() => navigate("library")}>
+              æ‰“å¼€éŸ³ä¹åº“
+            </button>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function ManagementHub({ navigate, stats, jobs, permissions = [] }) {
+  const waiting = jobs.filter((job) => job.status === "waiting_confirm").length;
+  const failed = jobs.filter((job) => job.status === "failed").length;
+  const can = (permission) =>
+    permissions.includes(permission) || permissions.includes("manage_users");
+  const visibleManagement = managementNav.filter((item) =>
+    item.id === "sources"
+      ? can("manage_sources")
+      : item.id === "settings"
+        ? false
+        : can("manage_library"),
+  );
+  const managementGroups = [
+    {
+      id: "catalog",
+      eyebrow: "æ›²åº“ä¸å†…å®¹",
+      title: "æ•´ç†ã€è¡¥å…¨ä¸å…¥åº“",
+      items: visibleManagement.filter((item) =>
+        ["local", "scrape", "download"].includes(item.id),
+      ),
+    },
+    {
+      id: "operations",
+      eyebrow: "è¿æ¥ä¸è¿è¡Œ",
+      title: "æœåŠ¡ã€é˜Ÿåˆ—ä¸æ•…éšœ",
+      items: visibleManagement.filter((item) =>
+        ["sources", "tasks"].includes(item.id),
+      ),
+    },
+  ].filter((group) => group.items.length);
+  const metrics = [
+    [Music2, "æ­Œæ›²", stats?.tracks, "catalog"],
+    [CircleAlert, "å¾…ç¡®è®¤", waiting, waiting ? "warning" : "quiet"],
+    [CircleAlert, "å¤±è´¥ä»»åŠ¡", failed, failed ? "danger" : "quiet"],
+    [BookOpenText, "ç¼ºæ­Œè¯", stats?.missingLyrics, "info"],
+  ];
+  return (
+    <div className="page manage-page refined-manage-page">
+      <section className="page-intro">
+        <span className="eyebrow">
+          <Gauge />
+          ADMIN CENTER
+        </span>
+        <h1>ç®¡ç†ä¸­å¿ƒ</h1>
+        <p>æ‰«æã€æ•´ç†ã€è¿æ¥ä¸ä»»åŠ¡çŠ¶æ€é›†ä¸­åœ¨ä¸€å¤„ã€‚</p>
+      </section>
+      <section className="manage-metrics" aria-label="æ›²åº“çŠ¶æ€æ‘˜è¦">
+        {metrics.map(([Icon, label, value, tone]) => (
+          <article className={`manage-metric ${tone}`} key={label}>
+            <span className="manage-metric-icon"><Icon /></span>
+            <div>
+              <small>{label}</small>
+              <strong>{fmt(value)}</strong>
+            </div>
+          </article>
+        ))}
+      </section>
+      <section className="manage-workspace">
+        {managementGroups.map((group) => (
+          <article className="manage-section" key={group.id}>
+            <header>
+              <span>{group.eyebrow}</span>
+              <h2>{group.title}</h2>
+            </header>
+            <div className="manage-menu">
+              {group.items.map((item) => (
+                <button
+                  className="manage-menu-row"
+                  key={item.id}
+                  onClick={() => navigate(item.id)}
+                >
+                  <span className="manage-menu-icon"><item.icon /></span>
+                  <span className="manage-menu-copy">
+                    <strong>{item.label}</strong>
+                    <small>{item.desc}</small>
+                  </span>
+                  <ChevronRight />
+                </button>
+              ))}
+            </div>
+          </article>
+        ))}
+      </section>
+    </div>
+  );
+}
+
+const pageMeta = {
+  home: ["é¦–é¡µ", ""],
+  library: ["éŸ³ä¹åº“", "æ­Œæ‰‹ã€ä¸“è¾‘ä¸å•æ›²"],
+  playlists: ["æ­Œå•", "æ”¶è—ã€å¯¼å…¥ä¸è¿ç§»"],
+  player: ["æ­£åœ¨æ’­æ”¾", ""],
+  discover: ["ä¸ºä½ æ¨è", "ç†Ÿæ‚‰çš„æ—‹å¾‹ï¼Œä¹Ÿæœ‰æ–°çš„å‘ç°"],
+  me: ["æ”¶è—ä¸å†å²", "ä½ çš„éŸ³ä¹è¶³è¿¹"],
+  manage: ["ç®¡ç†ä¸­å¿ƒ", "æ›²åº“ã€ä»»åŠ¡ä¸æœåŠ¡"],
+  search: ["æœç´¢", "æ­Œæ›²ã€è‰ºäººã€ä¸“è¾‘ä¸æ­Œå•"],
+  local: ["æœ¬åœ°æ›²åº“", "æ–‡ä»¶ä¸ç›®å½•"],
+  scrape: ["èµ„æ–™è¡¥å…¨", "å°é¢ã€æ­Œè¯ä¸ç®€ä»‹"],
+  download: ["ä¸‹è½½ä¸å…¥åº“", "æˆæƒæ¥æºä¸å¾…æ•´ç†æ–‡ä»¶"],
+  sources: ["éŸ³ä¹æº", "è¿æ¥ä¸å¯ç”¨æ€§"],
+  tasks: ["ä»»åŠ¡", "è¿›åº¦ä¸å†å²"],
+  settings: ["è®¾ç½®", "è´¦å·ã€è¿æ¥ä¸å­˜å‚¨"],
+};
+
+function App() {
+  const [authenticated, setAuthenticated] = useState(null);
+  const [setupRequired, setSetupRequired] = useState(false);
+  useEffect(() => {
+    api("/api/auth/status")
+      .then((d) => {
+        setAuthenticated(d.authenticated);
+        setSetupRequired(Boolean(d.setupRequired));
+      })
+      .catch(() => setAuthenticated(false));
+  }, []);
+  if (authenticated === null)
+    return (
+      <div className="boot">
+        <Brand />
+        <LoaderCircle className="spin" />
+      </div>
+    );
+  if (setupRequired)
+    return (
+      <SetupWizard
+        onComplete={() => {
+          setSetupRequired(false);
+          setAuthenticated(true);
+        }}
+      />
+    );
+  if (!authenticated) return <Login onLogin={() => setAuthenticated(true)} />;
+  return (
+    <PlayerProvider>
+      <AuthenticatedShell setAuthenticated={setAuthenticated} />
+      <PwaInstallPrompt />
+    </PlayerProvider>
+  );
+}
+
+function AuthenticatedShell({ setAuthenticated }) {
+  const [active, setActive] = useState(() =>
+    pageFromPath(window.location.pathname),
+  );
+  const [routeRevision, setRouteRevision] = useState(0);
+  const [menu, setMenu] = useState(false);
+  const [stats, setStats] = useState({});
+  const [jobs, setJobs] = useState([]);
+  const [sources, setSources] = useState([]);
+  const [settingsData, setSettingsData] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(null);
+  const [ambientIndex, setAmbientIndex] = useState(0);
+  const [ambientDeck, setAmbientDeck] = useState([]);
+  const [manualBackdrop, setManualBackdrop] = useState(null);
+  const player = usePlayer();
+  const updatePath = useCallback((path, { replace = false } = {}) => {
+    if (window.location.pathname === path) return;
+    window.history[replace ? "replaceState" : "pushState"]({}, "", path);
+  }, []);
+  const navigate = useCallback(
+    (page, { replace = false } = {}) => {
+      const target = knownPage(page) ? page : "home";
+      setManualBackdrop(null);
+      setActive(target);
+      updatePath(pathForPage(target), { replace });
+    },
+    [updatePath],
+  );
+  const load = async () => {
+    setLoading(true);
+    try {
+      const [s, cfg, j, src] = await Promise.all([
+        api("/api/dashboard"),
+        api("/api/settings"),
+        api("/api/jobs").catch(() => []),
+        api("/api/sources").catch(() => []),
+      ]);
+      setStats(s);
+      setSettingsData(cfg);
+      setJobs(Array.isArray(j) ? j : []);
+      setSources(Array.isArray(src) ? src : []);
+    } catch (err) {
+      if (err.message.includes("ç™»å½•")) setAuthenticated(false);
+      else setToast({ type: "error", message: err.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+  const refreshJobs = async () => setJobs(await api("/api/jobs"));
+  const refreshSources = useCallback(
+    async () => setSources(await api("/api/sources")),
+    [],
+  );
+  useEffect(() => {
+    load();
+  }, []);
+  useEffect(() => {
+    const onPopState = () => {
+      setManualBackdrop(null);
+      setActive(pageFromPath(window.location.pathname));
+      setRouteRevision((value) => value + 1);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+  useEffect(() => {
+    const title = pageMeta[active]?.[0];
+    document.title = title ? `${title} - ${BRAND.fullName}` : BRAND.fullName;
+  }, [active]);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (
+        userIsAdmin(settingsData.user) ||
+        settingsData.user?.permissions?.includes("manage_library")
+      )
+        refreshJobs().catch(() => {});
+    }, 2500);
+    return () => clearInterval(timer);
+  }, [settingsData.user?.role, settingsData.user?.permissions?.join("|")]);
+  const ambientImages = useMemo(
+    () => (Array.isArray(stats?.heroImages) ? stats.heroImages : []),
+    [stats?.heroImages],
+  );
+  useEffect(() => {
+    setAmbientDeck(buildAmbientDeck(ambientImages));
+    setAmbientIndex(0);
+  }, [ambientImages]);
+  useEffect(() => {
+    if (active === "player" || manualBackdrop || ambientDeck.length < 2)
+      return;
+    const timer = setInterval(() => {
+      if (ambientIndex + 1 < ambientDeck.length) {
+        setAmbientIndex(ambientIndex + 1);
+      } else {
+        setAmbientDeck(buildAmbientDeck(ambientImages));
+        setAmbientIndex(0);
+      }
+    }, 14000);
+    return () => clearInterval(timer);
+  }, [
+    active,
+    ambientDeck,
+    ambientImages,
+    ambientIndex,
+    manualBackdrop,
+  ]);
+  const runJob = async (kind, payload = {}) => {
+    try {
+      await api("/api/jobs", {
+        method: "POST",
+        body: JSON.stringify({ kind, payload }),
+      });
+      setToast({ message: "ä»»åŠ¡å·²åŠ å…¥é˜Ÿåˆ—" });
+      refreshJobs();
+      navigate("tasks");
+    } catch (err) {
+      setToast({ type: "error", message: err.message });
+    }
+  };
+  const createDownload = async (item, sourceId, quality) => {
+    try {
+      const result = await api("/api/downloads", {
+        method: "POST",
+        body: JSON.stringify({ item, sourceId, quality }),
+      });
+      setToast({ message: `ã€Š${item.title}ã€‹å·²åŠ å…¥ä¸‹è½½é˜Ÿåˆ—` });
+      refreshJobs();
+      return result;
+    } catch (err) {
+      setToast({ type: "error", message: err.message });
+      throw err;
+    }
+  };
+  const logout = async () => {
+    await api("/api/auth/logout", { method: "POST" }).catch(() => {});
+    setAuthenticated(false);
+  };
+  const playTrack = async (item, queue = []) => {
+    await player.play(item, queue);
+  };
+  const isAdmin = userIsAdmin(settingsData.user);
+  const permissions = settingsData.user?.permissions || [];
+  const canManageLibrary = isAdmin || permissions.includes("manage_library");
+  const canManageSources = isAdmin || permissions.includes("manage_sources");
+  const canOpenManagement = canManageLibrary || canManageSources;
+  const isMobile = useMediaQuery("(max-width: 780px)");
+  useEffect(() => {
+    if (
+      !loading &&
+      !canOpenManagement &&
+      managementNav.some((item) => item.id === active)
+    )
+      navigate("home", { replace: true });
+  }, [loading, canOpenManagement, active, navigate]);
+  const [title, subtitle] = pageMeta[active] || pageMeta.home;
+  const hero =
+    manualBackdrop ||
+    ambientDeck[ambientIndex % Math.max(ambientDeck.length, 1)] ||
+    {};
+  const playerTrack = player.currentTrack || {};
+  const shellBackdrop =
+    active === "player"
+      ? coverUrlFor(playerTrack) || VISUAL_FALLBACKS.player
+      : hero.imageUrl || VISUAL_FALLBACKS.artist;
+  const Backdrop = active === "player" ? PlayerBackdrop : ArtistBackdrop;
+  const showMiniPlayer = !!player.currentTrack && active !== "player";
+  return (
+    <div
+      className={`app-shell visual-shell route-${active} ${showMiniPlayer ? "has-mini-player" : ""}`}
+      data-font-size={settingsData.user?.fontSize || "standard"}
+    >
+      <Backdrop imageUrl={shellBackdrop} />
+      {(!isMobile || menu) && (
+        <Sidebar
+          active={active}
+          onChange={navigate}
+          open={menu}
+          close={() => setMenu(false)}
+          logout={logout}
+          version={settingsData.version}
+          openPlayer={() => navigate("player")}
+          isAdmin={canOpenManagement}
+        />
+      )}
+      <main className="main">
+        <Topbar
+          title={title}
+          subtitle={subtitle}
+          openMenu={() => setMenu(true)}
+          onNavigate={navigate}
+          logout={logout}
+          profile={settingsData.user}
+        />
+        {loading &&
+          (active === "manage" ||
+            managementNav.some(
+              (item) => item.id !== "settings" && item.id === active,
+            )) && (
+          <div className="management-route-loading" aria-label="æ­£åœ¨è½½å…¥ç®¡ç†æ•°æ®">
+            <PageLoader />
+          </div>
+        )}
+        {active === "home" && (
+          <Dashboard
+            stats={stats}
+            jobs={jobs}
+            loading={loading}
+            navigate={navigate}
+            runJob={runJob}
+            isAdmin={canManageLibrary}
+          />
+        )}{" "}
+        {active === "library" && (
+          <MediaLibrary
+            key={`library-${routeRevision}`}
+            initialTab={libraryTabFromPath(window.location.pathname)}
+            initialDetail={libraryDetailFromPath(window.location.pathname)}
+            play={playTrack}
+            previewBackdrop={setManualBackdrop}
+            onDetailBackdrop={setManualBackdrop}
+            onTabChange={(tab) => updatePath(pathForLibraryTab(tab))}
+            onDetailChange={(detail, fallbackTab) =>
+              updatePath(
+                detail
+                  ? pathForLibraryDetail(detail.type, detail.ratingKey)
+                  : pathForLibraryTab(fallbackTab || "artists"),
+              )
+            }
+          />
+        )}{" "}
+        {active === "playlists" && (
+          <PlaylistsPage
+            key={`playlists-${routeRevision}`}
+            play={playTrack}
+            notify={(message) => setToast({ message })}
+            initialPlaylistId={playlistIdFromPath(window.location.pathname)}
+            onPlaylistChange={(id, options) =>
+              updatePath(pathForPlaylist(id), options)
+            }
+          />
+        )}{" "}
+        {active === "search" && (
+          <GlobalSearchPage
+            play={playTrack}
+            navigate={navigate}
+            isAdmin={canManageLibrary}
+          />
+        )}{" "}
+        {active === "me" && <MePage navigate={navigate} />}{" "}
+        {active === "manage" && canOpenManagement && (
+          <ManagementHub
+            navigate={navigate}
+            stats={stats}
+            jobs={jobs}
+            permissions={
+              isAdmin
+                ? ["manage_users", "manage_library", "manage_sources"]
+                : permissions
+            }
+          />
+        )}{" "}
+        {canManageLibrary && active === "local" && (
+          <LocalLibraryPage
+            runJob={runJob}
+            play={playTrack}
+            notify={(message) => setToast({ message })}
+            navigate={navigate}
+          />
+        )}{" "}
+        {canManageLibrary && active === "scrape" && (
+          <ScrapeCenter jobs={jobs} navigate={navigate} settings={settingsData} />
+        )}{" "}
+        {canManageLibrary && active === "download" && (
+          <DownloadCenter
+            sources={sources}
+            refreshSources={refreshSources}
+            createDownload={createDownload}
+            navigate={navigate}
+            notify={(message) => setToast({ message })}
+            playPreview={playTrack}
+          />
+        )}{" "}
+        {canManageSources && active === "sources" && (
+          <SourceManager
+            sources={sources}
+            refreshSources={refreshSources}
+            notify={(message) => setToast({ message })}
+          />
+        )}{" "}
+        {active === "discover" && (
+          <RecommendationPage
+            play={playTrack}
+            navigate={navigate}
+            isAdmin={canManageLibrary}
+          />
+        )}{" "}
+        {active === "player" && (
+          <PlayerPage
+            navigate={navigate}
+            playerSettings={settingsData.player}
+            isAdmin={canManageLibrary}
+          />
+        )}{" "}
+        {canManageLibrary && active === "tasks" && (
+          <Tasks jobs={jobs} refresh={refreshJobs} navigate={navigate} />
+        )}{" "}
+        {active === "settings" && (
+          <SettingsPage
+            settings={settingsData}
+            logout={logout}
+            navigate={navigate}
+            isAdmin={isAdmin}
+            onSettingsChange={setSettingsData}
+          />
+        )}{" "}
+        {isMobile && (
+          <MobileNav
+            active={active}
+            change={navigate}
+            isAdmin={canOpenManagement}
+          />
+        )}
+      </main>
+      {showMiniPlayer && (
+        <MiniPlayer
+          openPlayer={() => navigate("player")}
+          navigate={navigate}
+        />
+      )}
+      <Toast toast={toast} clear={() => setToast(null)} />
+    </div>
+  );
+}
+
+function MobileNav({ active, change, isAdmin = true }) {
+  const labels = {
+    home: "é¦–é¡µ",
+    library: "æ›²åº“",
+    playlists: "æ­Œå•",
+    discover: "æ¨è",
+    me: "æˆ‘çš„",
+  };
+  const items = mobileNavigationIds
+    .map((id) => nav.find((item) => item.id === id))
+    .filter(Boolean);
+  const highlighted = mobileNavigationTarget(
+    active,
+    managementNav.map((item) => item.id),
+  );
+  return (
+    <nav className="mobile-nav mobile-only" aria-label="ç§»åŠ¨ç«¯ä¸»å¯¼èˆª">
+      {items.map((item) => (
+        <button
+          className={highlighted === item.id ? "active" : ""}
+          onClick={() => change(item.id)}
+          key={item.id}
+        >
+          <item.icon />
+          <span>{labels[item.id]}</span>
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+createRoot(document.getElementById("root")).render(<App />);

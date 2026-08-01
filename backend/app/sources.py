@@ -324,7 +324,50 @@ def inspect_source(source_id: str):
         if isinstance(lx_sources, dict) and lx_sources:
             result = {
                 "ok": True, "detected_format": "lx-event", "export_type": "event-protocol",
-     �Mm�G����ƭy�ms, ensure_ascii=False),
+                "top_level_keys": ["lx.EVENT_NAMES", "lx.on", "lx.send", "lx.request"], "global_keys": [],
+                "methods": {
+                    "search": False,
+                    "resolve": any("musicUrl" in (item.get("actions") or []) for item in lx_sources.values() if isinstance(item, dict)),
+                    "lyric": any("lyric" in (item.get("actions") or []) for item in lx_sources.values() if isinstance(item, dict)),
+                    "cover": any("pic" in (item.get("actions") or []) for item in lx_sources.values() if isinstance(item, dict)),
+                    "album": False, "playlist": False, "chart": False,
+                },
+                "compatibility": "full", "source_info": lx_info, "catalog_search_adapter": True,
+                "load_error": None,
+            }
+        else:
+            result = _inspect_path(path)
+    except SourceError as lx_error:
+        result = _inspect_path(path)
+        if not result.get("ok") and not result.get("load_error"):
+            result["load_error"] = lx_error.message
+    source_info = result.get("source_info") or {}
+    sources = source_info.get("sources") if isinstance(source_info, dict) else {}
+    sources = sources if isinstance(sources, dict) else {}
+    platforms = list(sources.keys())
+    qualities = sorted(
+        {quality for detail in sources.values() if isinstance(detail, dict) for quality in (detail.get("qualitys") or [])},
+        key=lambda value: QUALITY_ORDER.index(value) if value in QUALITY_ORDER else 99,
+    )
+    methods = result.get("methods") or {}
+    detected = result.get("detected_format") or "unknown"
+    compatibility = result.get("compatibility") or "none"
+    ok = bool(result.get("ok"))
+    if detected == "lx-event" and methods.get("resolve"):
+        status = "inspect_ok"
+        message = "已识别音乐接口并默认启用；搜索与下载权限已开放，实际地址会在使用时验证。"
+    elif ok:
+        status = "inspect_ok"
+        message = f"已识别为 {detected} 音乐接口并默认启用；具体能力会在实际使用时验证。"
+    else:
+        status = "unavailable"
+        message = "音乐源已加载，但没有检测到可识别的搜索或解析方法。"
+    stamp = now()
+    with transaction() as conn:
+        conn.execute(
+            """UPDATE source_plugins SET enabled=?,status=?,detected_format=?,compatibility=?,inspect_result=?,
+            supported_platforms=?,supported_qualities=?,last_test_at=?,last_error_code=?,last_error_message=?,updated_at=? WHERE id=?""",
+            (1 if ok else 0, status, detected, compatibility, json.dumps(result, ensure_ascii=False), json.dumps(platforms, ensure_ascii=False),
              json.dumps(qualities, ensure_ascii=False), stamp, None if ok else "SOURCE_FORMAT_UNKNOWN",
              None if ok else message, stamp, str(source_id)),
         )

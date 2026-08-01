@@ -58,20 +58,18 @@ def source_catalog_ready(source: dict) -> bool:
     if source.get("searchOk") or source.get("search_ok"):
         return True
     inspection = source.get("inspectResult") or source.get("inspect_result") or {}
-    methods = inspection.get("methods") or {}
-    return bool(
-        inspection.get("ok")
-        and (inspection.get("catalog_search_adapter") or methods.get("search"))
-    )
+    return bool(inspection.get("ok"))
 
 
 def source_download_capable(source: dict) -> bool:
     if not source.get("enabled"):
         return False
-    if source.get("resolveOk") or source.get("resolve_ok"):
-        return True
     inspection = source.get("inspectResult") or source.get("inspect_result") or {}
-    return bool(inspection.get("ok") and (inspection.get("methods") or {}).get("resolve"))
+    return bool(
+        source.get("resolveOk")
+        or source.get("resolve_ok")
+        or inspection.get("ok")
+    )
 
 
 def _decode(item: dict | None):
@@ -95,6 +93,7 @@ def _decode(item: dict | None):
     item["successRate"] = item.get("success_rate") or 0
     item["catalogReady"] = source_catalog_ready(item)
     item["downloadCapable"] = source_download_capable(item)
+    item["accessGranted"] = bool(item.get("enabled") and (item.get("inspectResult") or {}).get("ok"))
     item.pop("stored_path", None)
     return item
 
@@ -325,50 +324,7 @@ def inspect_source(source_id: str):
         if isinstance(lx_sources, dict) and lx_sources:
             result = {
                 "ok": True, "detected_format": "lx-event", "export_type": "event-protocol",
-                "top_level_keys": ["lx.EVENT_NAMES", "lx.on", "lx.send", "lx.request"], "global_keys": [],
-                "methods": {
-                    "search": False,
-                    "resolve": any("musicUrl" in (item.get("actions") or []) for item in lx_sources.values() if isinstance(item, dict)),
-                    "lyric": any("lyric" in (item.get("actions") or []) for item in lx_sources.values() if isinstance(item, dict)),
-                    "cover": any("pic" in (item.get("actions") or []) for item in lx_sources.values() if isinstance(item, dict)),
-                    "album": False, "playlist": False, "chart": False,
-                },
-                "compatibility": "full", "source_info": lx_info, "catalog_search_adapter": True,
-                "load_error": None,
-            }
-        else:
-            result = _inspect_path(path)
-    except SourceError as lx_error:
-        result = _inspect_path(path)
-        if not result.get("ok") and not result.get("load_error"):
-            result["load_error"] = lx_error.message
-    source_info = result.get("source_info") or {}
-    sources = source_info.get("sources") if isinstance(source_info, dict) else {}
-    sources = sources if isinstance(sources, dict) else {}
-    platforms = list(sources.keys())
-    qualities = sorted(
-        {quality for detail in sources.values() if isinstance(detail, dict) for quality in (detail.get("qualitys") or [])},
-        key=lambda value: QUALITY_ORDER.index(value) if value in QUALITY_ORDER else 99,
-    )
-    methods = result.get("methods") or {}
-    detected = result.get("detected_format") or "unknown"
-    compatibility = result.get("compatibility") or "none"
-    ok = bool(result.get("ok"))
-    if detected == "lx-event" and methods.get("resolve"):
-        status = "inspect_ok"
-        message = "已识别为洛雪事件协议源；搜索由音屿目录适配器提供，下载地址由该源解析。"
-    elif ok:
-        status = "partial"
-        message = f"已识别为 {detected}，但当前仅提供部分兼容能力。"
-    else:
-        status = "unavailable"
-        message = "音乐源已加载，但没有检测到可识别的搜索或解析方法。"
-    stamp = now()
-    with transaction() as conn:
-        conn.execute(
-            """UPDATE source_plugins SET enabled=?,status=?,detected_format=?,compatibility=?,inspect_result=?,
-            supported_platforms=?,supported_qualities=?,last_test_at=?,last_error_code=?,last_error_message=?,updated_at=? WHERE id=?""",
-            (1 if ok else 0, status, detected, compatibility, json.dumps(result, ensure_ascii=False), json.dumps(platforms, ensure_ascii=False),
+     �Mm�G����ƭy�ms, ensure_ascii=False),
              json.dumps(qualities, ensure_ascii=False), stamp, None if ok else "SOURCE_FORMAT_UNKNOWN",
              None if ok else message, stamp, str(source_id)),
         )
@@ -411,11 +367,7 @@ def set_enabled(source_id: str, enabled: bool):
     elif enabled and source["search_ok"]:
         status = "search_ok"
     elif enabled:
-        status = (
-            "inspect_ok"
-            if source.get("detectedFormat") == "lx-event"
-            else "partial"
-        )
+        status = "inspect_ok"
     with transaction() as conn:
         conn.execute("UPDATE source_plugins SET enabled=?,status=?,updated_at=? WHERE id=?", (1 if enabled else 0, status, now(), str(source_id)))
     add_log(source_id, "info", "enable" if enabled else "disable", "音乐源已启用。" if enabled else "音乐源已禁用。")
@@ -473,7 +425,7 @@ def test_search(source_id: str, keyword: str, platform: str | None = None):
         return {"ok": True, "source_id": source_id, "platform": selected, "count": len(results), "results": results}
     except Exception as exc:
         error = _as_source_error(exc) if not isinstance(exc, (httpx.HTTPError,)) else SourceError("SOURCE_SEARCH_FAILED", f"测试搜索失败：{exc}")
-        _mark_error(source_id, error, action="test_search")
+        _mark_error(source_id, error, action="test_search", preserve_validation=True)
         raise error
 
 
@@ -582,17 +534,11 @@ def test_resolve(source_id: str, track: dict, quality: str):
         return {"ok": True, "message": "下载地址解析可用。", "resolved": safe_result, "source": get_source(source_id)}
     except Exception as exc:
         error = _as_source_error(exc)
-        _mark_error(source_id, error, action="test_resolve")
+        _mark_error(source_id, error, action="test_resolve", preserve_validation=True)
         raise error
 
 
 def preflight_download(source_id: str, track: dict, quality: str):
-    source = get_source(source_id)
-    if not source_download_capable(source):
-        raise SourceError(
-            "SOURCE_NOT_DOWNLOAD_READY",
-            "该音乐源尚未启用，或格式检查未识别到下载地址解析能力。",
-        )
     resolved = resolve_track(source_id, track, quality, require_enabled=True)
     probe = _probe_audio(resolved)
     _record_resolve_success(source_id, quality, probe, "download_preflight")

@@ -55,6 +55,35 @@ class CommercialFoundationTests(unittest.TestCase):
         second = manager.create("local_scan", "扫描", {"idempotencyKey": key})
         self.assertEqual(first["id"], second["id"])
 
+    def test_download_is_queued_without_a_preflight_permission_gate(self):
+        item = {
+            "trackId": "track-1",
+            "platform": "tx",
+            "title": "晴天",
+            "artist": "周杰伦",
+            "musicInfo": {"id": "track-1", "source": "tx"},
+        }
+        with TestClient(app) as client:
+            client.post(
+                "/api/auth/login",
+                json={"username": "admin", "password": "test-password-123"},
+            )
+            token = client.cookies.get("songlib_csrf")
+            with patch.object(
+                manager,
+                "create",
+                return_value={"id": 88, "kind": "download", "status": "queued"},
+            ) as create:
+                response = client.post(
+                    "/api/downloads",
+                    json={"sourceId": "recognized-source", "quality": "320k", "item": item},
+                    headers={"X-CSRF-Token": token},
+                )
+        self.assertEqual(response.status_code, 200)
+        payload = create.call_args.args[2]
+        self.assertNotIn("preflight", payload)
+        self.assertEqual(payload["sourceId"], "recognized-source")
+
     def test_m3u_import_keeps_order_and_reports_unmatched(self):
         result = import_m3u(
             "admin",
@@ -396,6 +425,7 @@ class CommercialFoundationTests(unittest.TestCase):
             "type": "artist",
             "title": "周杰伦",
             "summary": "艺人简介",
+            "art": "/library/metadata/other-artist/art/999",
         }
         album = {
             "ratingKey": "album-1",
@@ -403,6 +433,7 @@ class CommercialFoundationTests(unittest.TestCase):
             "title": "叶惠美",
             "parentRatingKey": "artist-1",
             "parentTitle": "周杰伦",
+            "art": "/library/metadata/artist-1/art/123",
         }
         track = {
             "ratingKey": "track-1",
@@ -411,6 +442,9 @@ class CommercialFoundationTests(unittest.TestCase):
             "duration": "269000",
             "index": "3",
             "viewCount": "12",
+            "grandparentRatingKey": "artist-1",
+            "grandparentTitle": "周杰伦",
+            "art": "/library/metadata/artist-1/art/123",
         }
         with TestClient(app) as client:
             login = client.post(
@@ -435,8 +469,11 @@ class CommercialFoundationTests(unittest.TestCase):
                 album_response = client.get("/api/library/albums/album-1")
         self.assertEqual(artist_response.status_code, 200)
         self.assertEqual(artist_response.json()["albumCount"], 1)
+        self.assertIn("artist-1", artist_response.json()["artist"]["backgroundUrl"])
+        self.assertNotIn("other-artist", artist_response.json()["artist"]["backgroundUrl"])
         self.assertEqual(album_response.status_code, 200)
         self.assertEqual(album_response.json()["trackCount"], 1)
+        self.assertIn("artist-1", album_response.json()["artist"]["backgroundUrl"])
 
     def test_health_uses_saved_plex_settings(self):
         set_kv(

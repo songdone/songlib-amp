@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   csrfFromCookie,
+  playbackDurationSeconds,
   playlistPlaybackInput,
   playlistTrackPayload,
   recommendationPlaybackInput,
@@ -23,6 +24,7 @@ import {
   mobileNavigationTarget,
 } from "../src/lib/navigation.js";
 import { sourceCatalogReady } from "../src/lib/sources.js";
+import { pwaInstallGuidance, pwaSecureOrigin } from "../src/lib/pwa.js";
 import { buildAmbientDeck } from "../src/lib/ambient.js";
 
 test("unsafe requests can recover the encoded CSRF cookie", () => {
@@ -87,12 +89,14 @@ test("a connected Plex playlist becomes one ordered playback queue", () => {
       title: "晴天",
       grandparentTitle: "周杰伦",
       parentTitle: "叶惠美",
+      duration: 269000,
     },
     {
       ratingKey: "12",
       title: "夜曲",
       artist: "周杰伦",
       album: "十一月的萧邦",
+      duration: 226000,
     },
   ]);
   assert.equal(queue.length, 2);
@@ -102,7 +106,24 @@ test("a connected Plex playlist becomes one ordered playback queue", () => {
   );
   assert.equal(queue[0].source, "plex_item");
   assert.equal(queue[0].artist, "周杰伦");
+  assert.deepEqual(
+    queue.map((item) => item.duration),
+    [269, 226],
+  );
   assert.deepEqual(servicePlaylistPlaybackItems("fnos", queue), []);
+});
+
+test("Plex millisecond durations remain valid player queue durations", () => {
+  assert.equal(playbackDurationSeconds(269000), 269);
+  assert.equal(playbackDurationSeconds(269), 269);
+  assert.equal(playbackDurationSeconds(undefined), 0);
+  assert.equal(
+    playlistPlaybackInput({
+      external_ref: "plex:7842",
+      duration: 269000,
+    }).duration,
+    269,
+  );
 });
 
 test("only library recommendations become direct playback actions", () => {
@@ -185,6 +206,33 @@ test("an inspected source is immediately available without a search-test gate", 
   };
   assert.equal(sourceCatalogReady(source), true);
   assert.equal(sourceCatalogReady({ ...source, enabled: false }), false);
+});
+
+test("PWA install guidance never exposes a no-op install action", () => {
+  assert.equal(
+    pwaSecureOrigin({
+      protocol: "http:",
+      hostname: "192.168.31.28",
+      isSecureContext: false,
+    }),
+    false,
+  );
+  assert.deepEqual(
+    pwaInstallGuidance({
+      hasPrompt: false,
+      secureOrigin: false,
+      userAgent: "Chrome",
+    }).actionLabel,
+    "查看 HTTPS 要求",
+  );
+  assert.equal(
+    pwaInstallGuidance({
+      hasPrompt: true,
+      secureOrigin: true,
+      userAgent: "Chrome",
+    }).actionLabel,
+    "安装应用",
+  );
 });
 
 test("ambient deck keeps every unique artist image and prioritizes larger libraries", () => {

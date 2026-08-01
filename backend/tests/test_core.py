@@ -15,6 +15,7 @@ from app.db import init_db, rows, transaction
 from app.downloader import safe_name, validate_public_url
 from app.local_library import local_library
 from app.lyrics import artist_match, norm
+from app.media_lyrics import read_local_lyrics
 from app.sources import (
     SourceError,
     _inspect_path,
@@ -24,6 +25,7 @@ from app.sources import (
     list_sources,
     set_enabled,
     source_catalog_ready,
+    source_download_capable,
     source_metadata,
     validate_source,
 )
@@ -33,6 +35,20 @@ class CoreTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         init_db()
+
+    def test_local_lyrics_accept_uppercase_sidecar_and_big5_text(self):
+        with tempfile.TemporaryDirectory() as directory:
+            audio = Path(directory) / "測試歌曲.flac"
+            audio.write_bytes(b"")
+            sidecar = audio.with_suffix(".LRC")
+            expected = "[00:01.00]繁體歌詞\n[00:04.00]下一句"
+            sidecar.write_bytes(expected.encode("big5"))
+
+            result = read_local_lyrics(audio)
+
+            self.assertEqual(result["lyrics"], expected)
+            self.assertEqual(result["format"], "lrc")
+            self.assertEqual(result["source"], "sidecar")
 
     def test_password_hash(self):
         encoded = hash_password("hello-plex-123")
@@ -85,7 +101,10 @@ class CoreTests(unittest.TestCase):
             self.assertTrue(source["enabled"])
             self.assertFalse(source["searchOk"])
             self.assertTrue(source["catalogReady"])
+            self.assertTrue(source["downloadCapable"])
+            self.assertTrue(source["accessGranted"])
             self.assertTrue(source_catalog_ready(source))
+            self.assertTrue(source_download_capable(source))
             set_enabled(source["id"], False)
             manually_disabled = next(
                 item for item in list_sources() if item["id"] == source["id"]

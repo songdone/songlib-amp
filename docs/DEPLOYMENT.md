@@ -67,7 +67,7 @@ Docker Hub 的 `latest` 与固定标签同时发布 `linux/amd64`、`linux/arm64
 
 ```bash
 docker buildx build --platform linux/amd64,linux/arm64 \
-  -t 666uos/songlib-amp:1.0.0-rc.4 \
+  -t 666uos/songlib-amp:1.0.0-rc.5 \
   -t 666uos/songlib-amp:latest \
   --push .
 ```

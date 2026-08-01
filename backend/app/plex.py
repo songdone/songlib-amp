@@ -10,6 +10,7 @@ import httpx
 
 from .config import settings
 from .db import get_kv, now
+from .media_lyrics import read_local_lyrics
 
 
 def has_chinese(text: str, minimum: int = 20) -> bool:
@@ -344,9 +345,7 @@ class PlexClient:
         lyrics = ""
         file_path = local_media_path(info.get("file") or "")
         if file_path and file_path.exists():
-            lyric_path = file_path.with_suffix(".lrc")
-            if lyric_path.exists():
-                lyrics = lyric_path.read_text(encoding="utf-8", errors="ignore")
+            lyrics = read_local_lyrics(file_path)["lyrics"]
         saved = self.saved_settings()
         external = saved.get("externalUrl") or base
         mapped_path = local_media_path(info.get("file") or "")
@@ -576,9 +575,7 @@ def dashboard_stats():
             audio_paths.append(path)
     lrc_count = sum(path.with_suffix(".lrc").exists() for path in audio_paths)
     hero_images = []
-    seen_titles = set()
     ranked = _ranked_artists(artists, tracks)
-    _, title_counts = _artist_track_counts(tracks)
 
     # Plex is the source of truth for the ambient artist-background deck.
     # Rank by the number of tracks in the connected Plex library and keep a
@@ -586,8 +583,11 @@ def dashboard_stats():
     for item, count in ranked:
         title = item.get("title") or "未知歌手"
         image_path = item.get("art")
+        artist_key = str(item.get("ratingKey") or "")
+        owner = re.search(r"/library/metadata/([^/]+)/art(?:/|$)", image_path or "")
+        if owner and owner.group(1) != artist_key:
+            image_path = ""
         if image_path:
-            seen_titles.add(title.casefold())
             hero_images.append({
                 "type": "plex_artist_background",
                 "title": title,
@@ -598,17 +598,6 @@ def dashboard_stats():
             })
         if len(hero_images) >= 80:
             break
-
-    # A mounted file is a fallback only when Plex exposes fewer than 80 artist
-    # backgrounds.
-    if len(hero_images) < 80:
-        hero_images.extend(
-            _local_background_items(
-                80 - len(hero_images),
-                seen_titles,
-                title_counts,
-            )
-        )
     return {
         "artists": len(artists),
         "artistPosters": sum(bool(item.get("thumb")) for item in artists),

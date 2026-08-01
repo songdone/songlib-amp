@@ -3,9 +3,9 @@ from __future__ import annotations
 import hashlib
 import json
 import mimetypes
+import os
 import re
 import secrets
-import shutil
 import subprocess
 import urllib.parse
 import uuid
@@ -52,6 +52,26 @@ def _json(value, fallback):
         return fallback
 
 
+def source_catalog_ready(source: dict) -> bool:
+    if not source.get("enabled"):
+        return False
+    if source.get("searchOk") or source.get("search_ok"):
+        return True
+    inspection = source.get("inspectResult") or source.get("inspect_result") or {}
+    return bool(inspection.get("ok"))
+
+
+def source_download_capable(source: dict) -> bool:
+    if not source.get("enabled"):
+        return False
+    inspection = source.get("inspectResult") or source.get("inspect_result") or {}
+    return bool(
+        source.get("resolveOk")
+        or source.get("resolve_ok")
+        or inspection.get("ok")
+    )
+
+
 def _decode(item: dict | None):
     if not item:
         return None
@@ -71,11 +91,41 @@ def _decode(item: dict | None):
     item["detectedFormat"] = item.get("detected_format")
     item["inspectResult"] = item.get("inspect_result")
     item["successRate"] = item.get("success_rate") or 0
+    item["catalogReady"] = source_catalog_ready(item)
+    item["downloadCapable"] = source_download_capable(item)
+    item["accessGranted"] = bool(item.get("enabled") and (item.get("inspectResult") or {}).get("ok"))
     item.pop("stored_path", None)
     return item
 
 
+def _auto_enable_legacy_validated_sources():
+    candidates = rows("SELECT * FROM source_plugins WHERE enabled=0")
+    for raw in candidates:
+        source = _decode(raw)
+        if not (source.get("inspectResult") or {}).get("ok"):
+            continue
+        explicitly_disabled = row(
+            "SELECT 1 AS found FROM source_logs WHERE source_id=? AND action='disable' LIMIT 1",
+            (source["id"],),
+        )
+        if explicitly_disabled:
+            continue
+        status = "inspect_ok" if source.get("detectedFormat") == "lx-event" else "partial"
+        with transaction() as conn:
+            conn.execute(
+                "UPDATE source_plugins SET enabled=1,status=?,updated_at=? WHERE id=?",
+                (status, now(), source["id"]),
+            )
+        add_log(
+            source["id"],
+            "info",
+            "auto_enable",
+            "升级后已将通过格式校验且未被手动禁用的音乐源设为启用。",
+        )
+
+
 def list_sources():
+    _auto_enable_legacy_validated_sources()
     return [_decode(item) for item in rows("SELECT * FROM source_plugins ORDER BY created_at DESC")]
 
 
@@ -216,7 +266,12 @@ def _persist_source(data: bytes, *, name: str, source_type: str, original_url=No
         inspection = inspect_source(source_id)
         if not inspection["ok"]:
             return {"ok": False, "source": get_source(source_id), "error_code": "SOURCE_FORMAT_UNKNOWN", "message": inspection["message"]}
-        return {"ok": True, "source": get_source(source_id), "inspection": inspection, "message": "音乐源已导入，格式已通过真实 sandbox 检测。"}
+        return {
+            "ok": True,
+            "source": get_source(source_id),
+            "inspection": inspection,
+            "message": "音乐源已导入并默认启用，格式已通过隔离校验。",
+        }
     except Exception as exc:
         error = _as_source_error(exc)
         _mark_error(source_id, error, action="validate")
@@ -239,13 +294,14 @@ def _as_source_error(exc: Exception) -> SourceError:
 
 def _inspect_path(path: Path) -> dict:
     inspector = Path(__file__).resolve().parents[1] / "source_inspector.mjs"
-    node_binary = shutil.which("node", path="/usr/local/bin:/usr/bin:/bin") or shutil.which("node")
+    node_binary = settings.resolved_node_binary
     if not node_binary:
         raise SourceError("SOURCE_RUNTIME_MISSING", "容器内没有 Node.js，无法检查音乐源格式。", 500)
     try:
         completed = subprocess.run(
             [node_binary, "--max-old-space-size=128", str(inspector), str(path)], stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, timeout=15, check=False, env={"PATH": "/usr/local/bin:/usr/bin:/bin"},
+            stderr=subprocess.PIPE, timeout=15, check=False,
+            env={**os.environ, "PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin")},
         )
     except subprocess.TimeoutExpired as exc:
         raise SourceError("SOURCE_INSPECT_TIMEOUT", "音乐源格式检查超时，脚本可能包含死循环。") from exc
@@ -299,19 +355,19 @@ def inspect_source(source_id: str):
     ok = bool(result.get("ok"))
     if detected == "lx-event" and methods.get("resolve"):
         status = "inspect_ok"
-        message = "已识别为洛雪事件协议源；搜索由音屿目录适配器提供，下载地址由该源解析。"
+        message = "已识别音乐接口并默认启用；搜索与下载权限已开放，实际地址会在使用时验证。"
     elif ok:
-        status = "partial"
-        message = f"已识别为 {detected}，但当前仅提供部分兼容能力。"
+        status = "inspect_ok"
+        message = f"已识别为 {detected} 音乐接口并默认启用；具体能力会在实际使用时验证。"
     else:
         status = "unavailable"
         message = "音乐源已加载，但没有检测到可识别的搜索或解析方法。"
     stamp = now()
     with transaction() as conn:
         conn.execute(
-            """UPDATE source_plugins SET status=?,detected_format=?,compatibility=?,inspect_result=?,
+            """UPDATE source_plugins SET enabled=?,status=?,detected_format=?,compatibility=?,inspect_result=?,
             supported_platforms=?,supported_qualities=?,last_test_at=?,last_error_code=?,last_error_message=?,updated_at=? WHERE id=?""",
-            (status, detected, compatibility, json.dumps(result, ensure_ascii=False), json.dumps(platforms, ensure_ascii=False),
+            (1 if ok else 0, status, detected, compatibility, json.dumps(result, ensure_ascii=False), json.dumps(platforms, ensure_ascii=False),
              json.dumps(qualities, ensure_ascii=False), stamp, None if ok else "SOURCE_FORMAT_UNKNOWN",
              None if ok else message, stamp, str(source_id)),
         )
@@ -323,24 +379,38 @@ def inspect_source(source_id: str):
             "debug": {"export_type": result.get("export_type"), "global_keys": result.get("global_keys"), "load_error": result.get("load_error")}}
 
 
-def _mark_error(source_id: str, error: SourceError, *, action: str):
+def _mark_error(
+    source_id: str,
+    error: SourceError,
+    *,
+    action: str,
+    preserve_validation: bool = False,
+):
     with transaction() as conn:
+        status = "degraded" if preserve_validation else "unavailable"
         conn.execute(
-            """UPDATE source_plugins SET status='unavailable',success_rate=MAX(0,success_rate*0.8),last_test_at=?,last_error_code=?,last_error_message=?,updated_at=? WHERE id=?""",
-            (now(), error.code, error.message, now(), str(source_id)),
+            """UPDATE source_plugins SET status=?,success_rate=MAX(0,success_rate*0.8),last_test_at=?,
+            last_error_code=?,last_error_message=?,updated_at=? WHERE id=?""",
+            (status, now(), error.code, error.message, now(), str(source_id)),
         )
     add_log(source_id, "error", action, error.message, {"error_code": error.code})
 
 
 def set_enabled(source_id: str, enabled: bool):
     source = get_source(source_id)
-    if enabled and source["status"] not in ("search_ok", "resolve_ok"):
-        raise SourceError("SOURCE_NOT_TESTED", "请先完成测试搜索，再启用该音乐源。")
+    inspected = bool((source.get("inspectResult") or {}).get("ok"))
+    if enabled and not inspected:
+        raise SourceError(
+            "SOURCE_NOT_VALIDATED",
+            "该音乐源尚未通过格式与安全校验，不能启用。",
+        )
     status = source["status"] if enabled else "disabled"
     if enabled and source["resolve_ok"]:
         status = "resolve_ok"
     elif enabled and source["search_ok"]:
         status = "search_ok"
+    elif enabled:
+        status = "inspect_ok"
     with transaction() as conn:
         conn.execute("UPDATE source_plugins SET enabled=?,status=?,updated_at=? WHERE id=?", (1 if enabled else 0, status, now(), str(source_id)))
     add_log(source_id, "info", "enable" if enabled else "disable", "音乐源已启用。" if enabled else "音乐源已禁用。")
@@ -375,7 +445,12 @@ def test_search(source_id: str, keyword: str, platform: str | None = None):
     selected = platform if platform in supported else next((value for value in ("tx", "wy") if value in supported), None)
     if not selected:
         error = SourceError("SOURCE_PLATFORM_UNSUPPORTED", "该音乐源没有声明 QQ 音乐或网易云平台支持。")
-        _mark_error(source_id, error, action="test_search")
+        _mark_error(
+            source_id,
+            error,
+            action="test_search",
+            preserve_validation=True,
+        )
         raise error
     try:
         results = [normalize_result(item, source) for item in catalog_search(keyword, selected)]
@@ -393,7 +468,7 @@ def test_search(source_id: str, keyword: str, platform: str | None = None):
         return {"ok": True, "source_id": source_id, "platform": selected, "count": len(results), "results": results}
     except Exception as exc:
         error = _as_source_error(exc) if not isinstance(exc, (httpx.HTTPError,)) else SourceError("SOURCE_SEARCH_FAILED", f"测试搜索失败：{exc}")
-        _mark_error(source_id, error, action="test_search")
+        _mark_error(source_id, error, action="test_search", preserve_validation=True)
         raise error
 
 
@@ -462,35 +537,54 @@ def _probe_audio(resolved: dict):
         raise SourceError("SOURCE_RESOLVE_URL_UNREACHABLE", f"源返回的下载地址无法访问：{exc}") from exc
 
 
+def _record_resolve_success(source_id: str, quality: str, probe: dict, action: str):
+    stamp = now()
+    source = get_source(source_id)
+    qualities = sorted(
+        set(source["supportedQualities"] + [quality]),
+        key=lambda value: QUALITY_ORDER.index(value)
+        if value in QUALITY_ORDER
+        else 99,
+    )
+    with transaction() as conn:
+        conn.execute(
+            """UPDATE source_plugins SET resolve_ok=1,search_ok=1,status='resolve_ok',success_rate=100,supported_qualities=?,
+            last_test_at=?,last_success_at=?,last_error_code=NULL,last_error_message=NULL,updated_at=? WHERE id=?""",
+            (
+                json.dumps(qualities, ensure_ascii=False),
+                stamp,
+                stamp,
+                stamp,
+                str(source_id),
+            ),
+        )
+    add_log(
+        source_id,
+        "success",
+        action,
+        f"{quality} 下载地址解析与音频探测成功。",
+        probe,
+    )
+
+
 def test_resolve(source_id: str, track: dict, quality: str):
     try:
         resolved = resolve_track(source_id, track, quality)
         probe = _probe_audio(resolved)
-        stamp = now()
-        source = get_source(source_id)
-        qualities = sorted(set(source["supportedQualities"] + [quality]), key=lambda value: QUALITY_ORDER.index(value) if value in QUALITY_ORDER else 99)
-        with transaction() as conn:
-            conn.execute(
-                """UPDATE source_plugins SET resolve_ok=1,search_ok=1,status='resolve_ok',success_rate=100,supported_qualities=?,
-                last_test_at=?,last_success_at=?,last_error_code=NULL,last_error_message=NULL,updated_at=? WHERE id=?""",
-                (json.dumps(qualities, ensure_ascii=False), stamp, stamp, stamp, str(source_id)),
-            )
-        add_log(source_id, "success", "test_resolve", f"{quality} 下载地址解析与音频探测成功。", probe)
+        _record_resolve_success(source_id, quality, probe, "test_resolve")
         safe_result = {key: value for key, value in resolved.items() if key != "url"}
         safe_result.update(probe)
         return {"ok": True, "message": "下载地址解析可用。", "resolved": safe_result, "source": get_source(source_id)}
     except Exception as exc:
         error = _as_source_error(exc)
-        _mark_error(source_id, error, action="test_resolve")
+        _mark_error(source_id, error, action="test_resolve", preserve_validation=True)
         raise error
 
 
 def preflight_download(source_id: str, track: dict, quality: str):
-    source = get_source(source_id)
-    if not source["enabled"] or not source["resolveOk"]:
-        raise SourceError("SOURCE_NOT_DOWNLOAD_READY", "该音乐源尚未启用或没有通过下载地址解析测试。")
     resolved = resolve_track(source_id, track, quality, require_enabled=True)
     probe = _probe_audio(resolved)
+    _record_resolve_success(source_id, quality, probe, "download_preflight")
     return {"contentType": probe["contentType"], "size": probe["size"], "sampleBytes": probe["sampleBytes"]}
 
 
@@ -504,7 +598,7 @@ def validate_source(script_path: Path):
 
 def _bridge(script_path: Path, payload: dict):
     bridge = Path(__file__).resolve().parents[1] / "lx_bridge.mjs"
-    node_binary = shutil.which("node", path="/usr/local/bin:/usr/bin:/bin") or shutil.which("node")
+    node_binary = settings.resolved_node_binary
     if not node_binary:
         raise SourceError("SOURCE_RUNTIME_MISSING", "容器内没有 Node.js，无法运行音乐源。", 500)
     try:
@@ -512,7 +606,11 @@ def _bridge(script_path: Path, payload: dict):
             [node_binary, "--max-old-space-size=128", str(bridge), str(script_path)],
             input=json.dumps(payload, ensure_ascii=False).encode(), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             timeout=settings.source_timeout_seconds, check=False,
-            env={"PATH": "/usr/local/bin:/usr/bin:/bin", "ALLOW_PROXY_FAKE_IPS": "true" if settings.allow_proxy_fake_ips else "false"},
+            env={
+                **os.environ,
+                "PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"),
+                "ALLOW_PROXY_FAKE_IPS": "true" if settings.allow_proxy_fake_ips else "false",
+            },
         )
     except subprocess.TimeoutExpired as exc:
         raise SourceError("SOURCE_LOAD_TIMEOUT", "音乐源脚本执行超时。") from exc

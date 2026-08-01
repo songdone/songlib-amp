@@ -95,6 +95,14 @@ def _inside_music(path: Path) -> Path:
     return resolved
 
 
+def _inside_download(path: Path) -> Path:
+    resolved = path.resolve()
+    root = settings.download_mount.resolve()
+    if resolved != root and root not in resolved.parents:
+        raise ValueError("文件路径超出下载目录")
+    return resolved
+
+
 def _quick_hash(path: Path) -> str:
     digest = hashlib.sha256()
     size = path.stat().st_size
@@ -506,10 +514,18 @@ class LocalLibraryService:
                 if value: audio.tags[key] = value
                 else: audio.tags.pop(key, None)
             audio.save()
-        elif operation["action"] in ("organize_move", "download_ingest"):
+        elif operation["action"] == "organize_move":
             source = _inside_music(Path(data["from"])); target = _inside_music(Path(data["to"]))
             if not source.exists(): raise ValueError("回滚源文件已经不存在")
             if target.exists(): raise ValueError("原位置已有文件，无法安全回滚")
+            target.parent.mkdir(parents=True, exist_ok=True); shutil.move(str(source), str(target))
+            source_lrc = source.with_suffix('.lrc')
+            if source_lrc.exists(): shutil.move(str(source_lrc), str(target.with_suffix('.lrc')))
+        elif operation["action"] in ("download_ingest", "download_inbox_ingest"):
+            source = _inside_music(Path(data["from"]))
+            target = _inside_download(Path(data["to"]))
+            if not source.exists(): raise ValueError("回滚源文件已经不存在")
+            if target.exists(): raise ValueError("下载目录原位置已有文件，无法安全回滚")
             target.parent.mkdir(parents=True, exist_ok=True); shutil.move(str(source), str(target))
             source_lrc = source.with_suffix('.lrc')
             if source_lrc.exists(): shutil.move(str(source_lrc), str(target.with_suffix('.lrc')))

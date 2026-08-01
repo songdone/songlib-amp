@@ -197,12 +197,19 @@ def match_external_tracks(tracks: list[dict], scopes=None) -> list[dict]:
     for item in tracks:
         title = clean_track_title(item.get("title") or item.get("name") or "")
         artist = str(item.get("artist") or "").strip()
+        primary_artist = re.split(r"\s*(?:/|&|、|,|，| feat\.? | ft\.? )\s*", artist, maxsplit=1, flags=re.I)[0].strip()
         key = (normalize(title), normalize(artist))
         entity = strong.get(key)
+        if not entity and primary_artist and normalize(primary_artist) != key[1]:
+            entity = strong.get((key[0], normalize(primary_artist)))
         if not entity:
             candidates = title_only.get(key[0]) or []
-            if len(candidates) == 1:
+            if not artist and len(candidates) == 1:
                 entity = candidates[0]
+        wanted_duration = int(item.get("duration") or 0)
+        actual_duration = int((entity or {}).get("duration") or 0)
+        if entity and wanted_duration and actual_duration and abs(wanted_duration - actual_duration) > 4:
+            entity = None
         output.append({
             **item,
             "title": title,

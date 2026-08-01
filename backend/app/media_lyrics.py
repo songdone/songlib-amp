@@ -102,4 +102,3 @@ def read_local_lyrics(audio_path: Path) -> dict[str, str]:
             "source": "embedded",
         }
     return {"lyrics": "", "format": "none", "source": ""}
-

@@ -1,0 +1,95 @@
+export const csrfFromCookie = (cookie = "") => {
+  const value = String(cookie)
+    .split("; ")
+    .find((item) => item.startsWith("songlib_csrf="))
+    ?.split("=")
+    .slice(1)
+    .join("=");
+  return value ? decodeURIComponent(value) : "";
+};
+
+const plexReference = (item = {}) => {
+  const ratingKey = item.plexRatingKey || item.ratingKey;
+  return ratingKey ? `plex:${ratingKey}` : null;
+};
+
+export const playbackDurationSeconds = (value) => {
+  const duration = Number(value || 0);
+  if (!Number.isFinite(duration) || duration <= 0) return 0;
+  return duration > 60 * 60 * 6 ? duration / 1000 : duration;
+};
+
+export const playlistTrackPayload = (item = {}) => ({
+  fileId: item.file_id || item.fileId || item.localFileId || null,
+  externalRef:
+    item.external_ref ||
+    item.externalRef ||
+    (item.sourceType === "plex_item" || item.source === "plex_item"
+      ? plexReference(item)
+      : null),
+  title: item.title || "",
+  artist: item.artist || "",
+  album: item.album || "",
+  duration: playbackDurationSeconds(item.duration),
+  path: item.path || item.file || null,
+});
+
+export const playlistPlaybackInput = (item = {}) => {
+  const localFileId = item.file_id || item.fileId || item.localFileId;
+  if (localFileId) {
+    return {
+      source: "local_file",
+      localFileId,
+      title: item.title || "",
+      artist: item.artist || "",
+      album: item.album || "",
+      duration: playbackDurationSeconds(item.duration),
+    };
+  }
+  const reference = String(item.external_ref || item.externalRef || "");
+  const plexRatingKey = reference.match(/^plex[:-](.+)$/)?.[1];
+  if (!plexRatingKey) return null;
+  return {
+    source: "plex_item",
+    ratingKey: plexRatingKey,
+    title: item.title || "",
+    artist: item.artist || "",
+    album: item.album || "",
+    duration: playbackDurationSeconds(item.duration),
+  };
+};
+
+export const servicePlaylistPlaybackItems = (service, items = []) => {
+  if (service !== "plex") return [];
+  return items
+    .map((item) => {
+      const ratingKey = item.ratingKey || item.plexRatingKey || item.id;
+      if (!ratingKey) return null;
+      return {
+        ...item,
+        source: "plex_item",
+        sourceType: "plex_item",
+        ratingKey: String(ratingKey),
+        title: item.title || "",
+        artist: item.artist || item.grandparentTitle || "",
+        album: item.album || item.parentTitle || "",
+        coverUrl: item.coverUrl || item.thumbUrl || "",
+        duration: playbackDurationSeconds(item.duration),
+      };
+    })
+    .filter(Boolean);
+};
+
+export const recommendationPlaybackInput = (item = {}) => {
+  const reference = String(item.external_ref || item.externalRef || "");
+  if (!item.inLibrary || !reference.startsWith("local:")) return null;
+  const localFileId = reference.slice(6);
+  if (!localFileId) return null;
+  return {
+    source: "local_file",
+    localFileId,
+    title: item.title || "",
+    artist: item.artist || "",
+    album: item.album || "",
+  };
+};

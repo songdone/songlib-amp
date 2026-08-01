@@ -1,4 +1,5 @@
 import React, {
+  useCallback,
   createContext,
   useContext,
   useEffect,
@@ -11,6 +12,7 @@ import { motion } from "motion/react";
 import {
   Activity,
   Album,
+  ArrowLeft,
   ArrowDownToLine,
   BookOpenText,
   Check,
@@ -73,20 +75,57 @@ import {
   Zap,
 } from "lucide-react";
 import "./styles.css";
+import "./commercial.css";
 import { BRAND } from "./config/brand";
+import {
+  csrfFromCookie,
+  playbackDurationSeconds,
+  playlistPlaybackInput,
+  playlistTrackPayload,
+  recommendationPlaybackInput,
+  servicePlaylistPlaybackItems,
+} from "./lib/contracts";
+import {
+  knownPage,
+  libraryDetailFromPath,
+  libraryTabFromPath,
+  pageFromPath,
+  pathForLibraryDetail,
+  pathForLibraryTab,
+  pathForPage,
+  pathForPlaylist,
+  playlistIdFromPath,
+} from "./lib/routes";
+import {
+  mobileNavigationIds,
+  mobileNavigationTarget,
+} from "./lib/navigation";
+import { sourceCatalogReady } from "./lib/sources";
+import { buildAmbientDeck } from "./lib/ambient";
+import { pwaInstallGuidance, pwaSecureOrigin } from "./lib/pwa";
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {});
+    navigator.serviceWorker
+      .register("/sw.js", { updateViaCache: "none" })
+      .then((registration) => registration.update())
+      .catch(() => {});
   });
 }
 
 const api = async (path, options = {}) => {
   const isForm = options.body instanceof FormData;
+  const csrfToken = csrfFromCookie(document.cookie);
+  const unsafe = !["GET", "HEAD", "OPTIONS"].includes(
+    String(options.method || "GET").toUpperCase(),
+  );
   const response = await fetch(path, {
     credentials: "include",
     headers: {
       ...(isForm ? {} : { "Content-Type": "application/json" }),
+      ...(unsafe && csrfToken
+        ? { "X-CSRF-Token": csrfToken }
+        : {}),
       ...(options.headers || {}),
     },
     ...options,
@@ -105,13 +144,13 @@ const api = async (path, options = {}) => {
 };
 
 const nav = [
-  { id: "home", label: "首页", icon: Home },
-  { id: "manage", label: "管理中心", icon: Gauge, admin: true },
-  { id: "library", label: "音乐库", icon: Library },
-  { id: "player", label: "播放器", icon: Play },
-  { id: "discover", label: "发现", icon: Sparkles },
-  { id: "me", label: "我的", icon: UserRound },
-  { id: "settings", label: "设置", icon: Settings },
+  { id: "home", label: "首页", icon: Home, group: "发现" },
+  { id: "discover", label: "为你推荐", icon: Sparkles, group: "发现" },
+  { id: "library", label: "音乐库", icon: Library, group: "资料库" },
+  { id: "playlists", label: "歌单", icon: ListMusic, group: "资料库" },
+  { id: "me", label: "收藏与历史", icon: Heart, group: "资料库" },
+  { id: "manage", label: "管理中心", icon: Gauge, admin: true, group: "系统" },
+  { id: "settings", label: "设置", icon: Settings, group: "系统" },
 ];
 
 const managementNav = [
@@ -119,7 +158,7 @@ const managementNav = [
     id: "local",
     label: "本地曲库",
     icon: FolderTree,
-    desc: "真实 NAS 文件、分类、标签与回滚",
+    desc: "浏览文件、编辑标签并撤销整理操作",
   },
   {
     id: "scrape",
@@ -137,7 +176,7 @@ const managementNav = [
     id: "sources",
     label: "音乐源管理",
     icon: Wifi,
-    desc: "导入、隔离校验、启停与日志",
+    desc: "添加授权来源并检查连接状态",
   },
   {
     id: "tasks",
@@ -155,6 +194,13 @@ const managementNav = [
 
 const fmt = (value) => new Intl.NumberFormat("zh-CN").format(value || 0);
 const pct = (value, total) => (total ? Math.round((value / total) * 100) : 0);
+const durationLabel = (value) => {
+  const seconds = Math.floor(Number(value || 0) / 1000);
+  if (!seconds) return "";
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return hours ? `${hours} 小时 ${minutes} 分钟` : `${minutes} 分钟`;
+};
 const timeAgo = (value) => {
   if (!value) return "刚刚";
   const seconds = Math.floor((Date.now() - new Date(value).getTime()) / 1000);
@@ -162,39 +208,6 @@ const timeAgo = (value) => {
   if (seconds < 3600) return `${Math.floor(seconds / 60)} 分钟前`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)} 小时前`;
   return new Date(value).toLocaleDateString("zh-CN");
-};
-
-const dashboardGreeting = () => {
-  const hour = new Date().getHours();
-  if (hour >= 5 && hour < 11)
-    return [
-      "早上好，",
-      "今天想听点什么？",
-      "今天适合先扫描曲库，再补齐缺失的封面和歌词。",
-    ];
-  if (hour >= 11 && hour < 14)
-    return [
-      "中午好，",
-      "看看最近入库的音乐。",
-      "午间整理一下下载和待入库内容，曲库会更清爽。",
-    ];
-  if (hour >= 14 && hour < 18)
-    return [
-      "下午好，",
-      "让曲库保持完整。",
-      "适合处理缺失歌词、封面和目录规范这些细活。",
-    ];
-  if (hour >= 18 && hour < 23)
-    return [
-      "晚上好，",
-      "让音乐库保持漂亮而完整。",
-      "今晚可以从待入库、最近任务和缺失信息开始收尾。",
-    ];
-  return [
-    "夜深了，",
-    "适合整理一些安静的歌。",
-    "轻一点地整理封面、歌词和最近下载的音乐。",
-  ];
 };
 
 const VISUAL_FALLBACKS = Object.freeze({
@@ -257,20 +270,26 @@ function useMediaQuery(query) {
 }
 
 const isPlayableDuration = (track) => {
-  const seconds = Number(track?.duration || 0);
+  const seconds = playbackDurationSeconds(track?.duration);
   if (!seconds) return true;
   return seconds > 5 && seconds < 60 * 60 * 6;
 };
 
 const sanitizeQueue = (items = [], current = null) => {
   const seen = new Set(current ? [trackIdentity(current)] : []);
-  return (items || []).filter(Boolean).filter((item) => {
-    if (!isPlayableDuration(item)) return false;
-    const key = trackIdentity(item);
-    if (!key || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  return (items || [])
+    .filter(Boolean)
+    .map((item) => ({
+      ...item,
+      duration: playbackDurationSeconds(item.duration),
+    }))
+    .filter((item) => {
+      if (!isPlayableDuration(item)) return false;
+      const key = trackIdentity(item);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
 };
 
 const persistableTrack = (track) => {
@@ -289,7 +308,9 @@ const storedJson = (key, fallback) => {
 
 const userIsAdmin = (user) => ["admin", "owner"].includes(user?.role);
 const activeNavId = (active) =>
-  managementNav.some((item) => item.id === active) ? "manage" : active;
+  active !== "settings" && managementNav.some((item) => item.id === active)
+    ? "manage"
+    : active;
 
 function Brand({ compact = false }) {
   return (
@@ -311,21 +332,15 @@ function AppBackdrop({
   fallback = VISUAL_FALLBACKS.artist,
 }) {
   const resolved = image || fallback;
-  const [current, setCurrent] = useState(resolved);
-  const [previous, setPrevious] = useState("");
-  useEffect(() => {
-    if (!resolved || resolved === current) return;
-    setPrevious(current);
-    setCurrent(resolved);
-    const timer = setTimeout(() => setPrevious(""), 3200);
-    return () => clearTimeout(timer);
-  }, [resolved, current]);
   return (
     <div className={`app-backdrop ${variant}`} aria-hidden="true">
-      {previous && (
-        <img className="backdrop-image previous" src={previous} alt="" />
-      )}
-      <img className="backdrop-image current" src={current} alt="" />
+      <img
+        key={resolved}
+        className="backdrop-image current"
+        src={resolved}
+        alt=""
+        decoding="async"
+      />
       <i className="backdrop-vignette" />
       <i className="backdrop-aurora" />
     </div>
@@ -501,46 +516,65 @@ function Spectrum({ bars = 42 }) {
 function PwaInstallPrompt() {
   const [event, setEvent] = useState(null),
     [visible, setVisible] = useState(false),
-    [manual, setManual] = useState(false);
+    [helpOpen, setHelpOpen] = useState(false),
+    [status, setStatus] = useState("");
   const standalone =
     window.matchMedia?.("(display-mode: standalone)")?.matches ||
     window.navigator.standalone;
+  const secureOrigin = pwaSecureOrigin({
+    protocol: window.location.protocol,
+    hostname: window.location.hostname,
+    isSecureContext: window.isSecureContext,
+  });
+  const guidance = pwaInstallGuidance({
+    hasPrompt: Boolean(event),
+    secureOrigin,
+    userAgent: window.navigator.userAgent,
+  });
   useEffect(() => {
     if (standalone || localStorage.getItem("songlib-pwa-dismissed") === "1")
       return;
-    const timer = setTimeout(() => {
-      setVisible(true);
-      setManual(true);
-    }, 2600);
+    const timer = setTimeout(() => setVisible(true), 2600);
     const onPrompt = (e) => {
       e.preventDefault();
       setEvent(e);
       setVisible(true);
-      setManual(false);
+      setHelpOpen(false);
       clearTimeout(timer);
     };
-    window.addEventListener("beforeinstallprompt", onPrompt);
-    window.addEventListener("appinstalled", () => {
+    const onInstalled = () => {
       setVisible(false);
+      setEvent(null);
       localStorage.setItem("songlib-pwa-dismissed", "1");
-    });
+    };
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    window.addEventListener("appinstalled", onInstalled);
     return () => {
       clearTimeout(timer);
       window.removeEventListener("beforeinstallprompt", onPrompt);
+      window.removeEventListener("appinstalled", onInstalled);
     };
-  }, []);
+  }, [standalone]);
   if (!visible || standalone) return null;
   const install = async () => {
     if (event) {
-      event.prompt();
+      setStatus("");
+      await event.prompt();
       const result = await event.userChoice.catch(() => ({
         outcome: "dismissed",
       }));
+      setEvent(null);
       if (result.outcome === "accepted") {
         localStorage.setItem("songlib-pwa-dismissed", "1");
         setVisible(false);
+      } else {
+        setStatus("安装已取消。浏览器再次允许安装时，这里会重新出现安装入口。");
+        setHelpOpen(true);
       }
-    } else setManual(true);
+    } else {
+      setHelpOpen((value) => !value);
+      setStatus("");
+    }
   };
   const dismiss = () => {
     localStorage.setItem("songlib-pwa-dismissed", "1");
@@ -556,15 +590,17 @@ function PwaInstallPrompt() {
       </div>
       <div>
         <strong>安装音屿轻应用</strong>
-        <p>
-          {manual
-            ? "Mac Safari 可在“文件/分享”菜单选择添加到 Dock；Chrome/Edge 可点地址栏安装图标，或点下方按钮尝试安装。"
-            : "把音屿安装到桌面，像原生 App 一样打开。"}
-        </p>
+        <p>{guidance.summary}</p>
+        {helpOpen && (
+          <div className="pwa-install-help" role="status">
+            {guidance.detail}
+          </div>
+        )}
+        {status && <div className="pwa-install-status" role="status">{status}</div>}
         <div>
           <button className="primary small" onClick={install}>
-            <Download />
-            安装应用
+            {event ? <Download /> : <BookOpenText />}
+            {guidance.actionLabel}
           </button>
           <button className="secondary small" onClick={dismiss}>
             稍后再说
@@ -579,7 +615,6 @@ function Login({ onLogin }) {
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [remember, setRemember] = useState(true);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const submit = async (event) => {
@@ -632,7 +667,7 @@ function Login({ onLogin }) {
               >
                 <h3>
                   <span />
-                  PRIVATE MUSIC OPERATIONS
+                  YOUR MUSIC, AT HOME
                 </h3>
                 <h2>
                   让散落的音乐,
@@ -640,8 +675,8 @@ function Login({ onLogin }) {
                   回到自己的<span>岛屿。</span>
                 </h2>
                 <p>
-                  连接 NAS、Plex
-                  与本地音乐库，建立属于你的私有音乐运营中枢，掌控每一刻旋律。
+                  一处收藏、整理和播放 NAS
+                  里的音乐，也能与 Plex 保持同步。
                 </p>
               </motion.div>
               <motion.div
@@ -653,26 +688,26 @@ function Login({ onLogin }) {
                 <LoginFeatureCard
                   delay={0.3}
                   icon={Server}
-                  title="连接 NAS"
-                  desc="集中管理音乐资料"
+                  title="私人曲库"
+                  desc="音乐始终留在家中"
                 />
                 <LoginFeatureCard
                   delay={0.4}
                   icon={Play}
-                  title="连接 Plex"
-                  desc="同步媒体与播放"
+                  title="连续播放"
+                  desc="歌曲、队列与歌词相伴"
                 />
                 <LoginFeatureCard
                   delay={0.5}
                   icon={ShieldCheck}
-                  title="私有安全"
-                  desc="您的数据，您掌控"
+                  title="本地优先"
+                  desc="听歌记录由你掌控"
                 />
                 <LoginFeatureCard
                   delay={0.6}
                   icon={Activity}
-                  title="运营洞察"
-                  desc="深度分析音乐资产"
+                  title="为你发现"
+                  desc="从熟悉走向新的旋律"
                 />
               </motion.div>
             </div>
@@ -732,22 +767,12 @@ function Login({ onLogin }) {
                     </button>
                   </div>
                   <div className="login-motion-row">
-                    <label className="login-motion-remember">
-                      <input
-                        type="checkbox"
-                        checked={remember}
-                        onChange={(e) => setRemember(e.target.checked)}
-                      />
-                      <i>
-                        <Check />
-                      </i>
-                      <span>保持登录</span>
-                    </label>
+                    <span>会话仅保存在当前浏览器</span>
                     <button
                       type="button"
                       onClick={() =>
                         setError(
-                          "请在 NAS 容器内执行：docker exec songlib-amp python -m app.cli reset-admin --from-env，使用 .env 中的 APP_PASSWORD 安全重置。",
+                          "请联系这台音屿实例的管理员，按部署文档中的“恢复管理员访问”流程重置密码。",
                         )
                       }
                     >
@@ -769,15 +794,6 @@ function Login({ onLogin }) {
                   </button>
                 </form>
 
-                <div className="login-motion-divider">
-                  <span />
-                  或使用
-                  <span />
-                </div>
-                <button className="login-motion-sso" disabled>
-                  <Fingerprint />
-                  SSO 单点登录（企业）
-                </button>
                 <footer>
                   <span className="status-dot" />
                   NAS 本地运行 · 数据不会上传云端
@@ -787,6 +803,77 @@ function Login({ onLogin }) {
           </section>
         </div>
       </div>
+    </main>
+  );
+}
+
+function SetupWizard({ onComplete }) {
+  const [form, setForm] = useState({
+    username: "admin",
+    displayName: "",
+    password: "",
+    confirmPassword: "",
+  });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const submit = async (event) => {
+    event.preventDefault();
+    if (form.password !== form.confirmPassword) {
+      setError("两次输入的密码不一致");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      await api("/api/setup/complete", {
+        method: "POST",
+        body: JSON.stringify({
+          username: form.username,
+          displayName: form.displayName,
+          password: form.password,
+        }),
+      });
+      onComplete();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <main className="setup-page">
+      <LoginMotionBackdrop />
+      <section className="setup-card panel">
+        <Brand />
+        <span className="eyebrow"><ShieldCheck />首次设置</span>
+        <h1>创建这座音乐岛的主人账号</h1>
+        <p>账号、画像和播放记录只保存在这台设备。完成后可继续连接音乐目录或 Plex。</p>
+        <form onSubmit={submit}>
+          <label>
+            <span>用户名</span>
+            <input autoFocus value={form.username} onChange={(event) => update("username", event.target.value)} />
+          </label>
+          <label>
+            <span>显示名称</span>
+            <input value={form.displayName} onChange={(event) => update("displayName", event.target.value)} placeholder="例如：我的音屿" />
+          </label>
+          <label>
+            <span>管理员密码</span>
+            <input type="password" value={form.password} onChange={(event) => update("password", event.target.value)} placeholder="至少 12 个字符" />
+          </label>
+          <label>
+            <span>确认密码</span>
+            <input type="password" value={form.confirmPassword} onChange={(event) => update("confirmPassword", event.target.value)} />
+          </label>
+          {error && <div className="form-error"><CircleAlert />{error}</div>}
+          <button className="primary" disabled={busy || form.password.length < 12}>
+            {busy ? <LoaderCircle className="spin" /> : <ChevronRight />}
+            创建账号并进入
+          </button>
+        </form>
+        <footer><ShieldCheck />不会创建默认弱密码，也不会把密码写入页面或日志。</footer>
+      </section>
     </main>
   );
 }
@@ -858,6 +945,7 @@ function Sidebar({
 }) {
   const visibleNav = nav.filter((item) => !item.admin || isAdmin);
   const highlighted = activeNavId(active);
+  const groups = ["发现", "资料库", "系统"];
   return (
     <>
       <aside className={`sidebar ${open ? "open" : ""}`}>
@@ -867,36 +955,37 @@ function Sidebar({
             <X />
           </button>
         </div>
-        <div className="side-version">v{version || BRAND.version}</div>
-        <nav>
-          {visibleNav.map((item) => (
-            <button
-              key={item.id}
-              className={highlighted === item.id ? "active" : ""}
-              onClick={() => {
-                onChange(item.id);
-                close();
-              }}
-            >
-              <item.icon />
-              <span>{item.label}</span>
-              {highlighted === item.id && <i />}
-            </button>
+        <nav aria-label="主导航">
+          {groups.map((group) => (
+            <div className="nav-group" key={group}>
+              <span className="nav-group-label">{group}</span>
+              {visibleNav
+                .filter((item) => item.group === group)
+                .map((item) => (
+                  <button
+                    key={item.id}
+                    className={highlighted === item.id ? "active" : ""}
+                    onClick={() => {
+                      onChange(item.id);
+                      close();
+                    }}
+                  >
+                    <item.icon />
+                    <span>{item.label}</span>
+                    {highlighted === item.id && <i />}
+                  </button>
+                ))}
+            </div>
           ))}
         </nav>
-        <div className="side-health">
-          <div className="health-icon">
-            <Wifi size={17} />
-          </div>
-          <div>
-            <strong>本地运行中</strong>
-            <span>NAS 曲库 · Plex 联动</span>
-          </div>
+        <div className="sidebar-footer">
+          <SidebarMiniPlayer openPlayer={openPlayer} />
+          <div className="side-version">v{version || BRAND.version}</div>
+          <button className="logout" onClick={logout}>
+            <LogOut size={18} />
+            退出登录
+          </button>
         </div>
-        <button className="logout" onClick={logout}>
-          <LogOut size={18} />
-          退出登录
-        </button>
       </aside>
       {open && <button className="backdrop mobile-only" onClick={close} />}
     </>
@@ -935,13 +1024,15 @@ function Topbar({ title, subtitle, openMenu, onNavigate, logout, profile }) {
           />
           <kbd>↵</kbd>
         </form>
-        <button
+        <div
           className="brand-status"
           title={`${BRAND.fullName} · 音屿正在本地运行`}
+          role="status"
+          aria-label="音屿正在本地运行"
         >
           <img src={BRAND.mark} alt="" />
           <span />
-        </button>
+        </div>
         <button
           className="icon-button notification"
           onClick={() => onNavigate("tasks")}
@@ -1013,14 +1104,6 @@ function StatCard({
         <strong>{fmt(value)}</strong>
         <small>{detail}</small>
       </div>
-      <svg
-        className={`sparkline ${tone}`}
-        viewBox="0 0 120 36"
-        preserveAspectRatio="none"
-        aria-hidden="true"
-      >
-        <path d="M2 27 C14 20 20 24 30 16 S48 22 58 12 S76 18 86 9 S104 18 118 11" />
-      </svg>
       {progress !== undefined && (
         <div className="mini-progress">
           <i style={{ width: `${progress}%` }} />
@@ -1055,231 +1138,234 @@ function Empty({ icon: Icon = Music2, title, text }) {
 }
 
 function Dashboard({ stats, jobs, loading, navigate, runJob, isAdmin = true }) {
-  const heroImages = stats?.heroImages || [];
-  const [heroIndex, setHeroIndex] = useState(0);
+  const player = usePlayer();
+  const [home, setHome] = useState({
+    artists: [],
+    albums: [],
+    tracks: [],
+    playlists: [],
+    recommendations: [],
+  });
+  const [contentLoading, setContentLoading] = useState(true);
   useEffect(() => {
-    if (heroImages.length < 2) return;
-    const timer = setInterval(
-      () => setHeroIndex((value) => (value + 1) % heroImages.length),
-      18000,
-    );
-    return () => clearInterval(timer);
-  }, [heroImages.length]);
+    Promise.all([
+      api("/api/library/artists?pageSize=12").catch(() => ({ items: [] })),
+      api("/api/library/albums?pageSize=12").catch(() => ({ items: [] })),
+      api("/api/library/tracks?pageSize=12").catch(() => ({ items: [] })),
+      api("/api/playlists").catch(() => ({ items: [] })),
+      api("/api/recommendations").catch(() => ({ items: [] })),
+    ])
+      .then(([artists, albums, tracks, playlists, recommendations]) =>
+        setHome({
+          artists: artists.items || [],
+          albums: albums.items || [],
+          tracks: tracks.items || [],
+          playlists: playlists.items || [],
+          recommendations: recommendations.items || [],
+        }),
+      )
+      .finally(() => setContentLoading(false));
+  }, []);
   if (loading) return <PageLoader />;
-  const artistCoverage = pct(stats.artistPosters, stats.artists);
-  const albumCoverage = pct(stats.albumCovers, stats.albums);
-  const lyricCoverage = pct(stats.localLyrics, stats.tracks);
-  const [greeting, greetingAccent] = dashboardGreeting();
-  const hero = heroImages[heroIndex % Math.max(heroImages.length, 1)];
+  const hour = new Date().getHours();
+  const greeting = hour < 6 ? "夜深了" : hour < 12 ? "早上好" : hour < 18 ? "下午好" : "晚上好";
+  const history = (player.history || []).slice(0, 6);
+  const continueItems = history.length ? history : home.tracks.slice(0, 6);
+  const playItems = (items, index = 0) => {
+    const playable = items
+      .map((item) => ({
+        ...item,
+        source: item.source || (item.ratingKey ? "plex_item" : item.source),
+      }))
+      .filter((item) => item.ratingKey || item.audioUrl || item.path || item.file);
+    if (playable[index]) player.play(playable[index], playable.slice(index + 1));
+  };
+  const openAlbum = async (album) => {
+    const result = await api(
+      `/api/library/albums/${encodeURIComponent(album.ratingKey)}`,
+    );
+    playItems(result.tracks || []);
+  };
+  const heroAlbum = home.albums[0];
+  const heroArtist =
+    home.artists.find(
+      (artist) =>
+        artist.ratingKey === heroAlbum?.parentRatingKey ||
+        artist.title === heroAlbum?.parentTitle,
+    ) || home.artists[0];
+  const heroCover = heroArtist?.thumbUrl || heroAlbum?.thumbUrl || "";
   return (
-    <div className="page dashboard-page">
-      <section className="hero-panel">
-        <div className="hero-glow" />
-        <div className="hero-content">
-          <span className="eyebrow">
-            <Sparkles size={14} />
-            PRIVATE MUSIC UNIVERSE
-          </span>
-          <small className="hero-kicker">
-            {greeting}
-            {greetingAccent}
-          </small>
-          <h1>
-            先把<span>曲库健康</span>做完整
-          </h1>
+    <div className="page dashboard-page home-v2">
+      <header className="home-heading">
+        <div>
+          <span>{greeting}</span>
+          <h1>听点喜欢的</h1>
+        </div>
+        <button className="home-search-shortcut" onClick={() => navigate("search")}>
+          <Search />
+          <span>搜索歌曲、艺人或专辑</span>
+          <kbd>↵</kbd>
+        </button>
+      </header>
+
+      <section className="home-focus">
+        <div className="home-focus-copy">
+          <span className="home-focus-label">最近加入</span>
+          <h2>{heroAlbum?.title || "你的私人音乐库"}</h2>
           <p>
-            Plex {stats.plexConnected ? "已连接" : "暂不可用"}，已读取 {fmt(stats.tracks)} 首曲目；
-            先处理缺失资料、失败任务和待入库内容。
+            {heroAlbum?.parentTitle || "随时从自己的 NAS 继续播放"}
+            <span>
+              {fmt(stats?.tracks || home.tracks.length)} 首歌曲 ·{" "}
+              {fmt(stats?.albums || home.albums.length)} 张专辑
+            </span>
           </p>
-          <div className="hero-actions">
+          <div className="home-focus-actions">
             <button
-              className="primary"
-              onClick={() => runJob("plex_sync")}
+              className="primary home-play-button"
+              disabled={!heroAlbum && !home.tracks.length}
+              onClick={() => (heroAlbum ? openAlbum(heroAlbum) : playItems(home.tracks))}
             >
-              <RefreshCw />
-              同步 Plex
+              <Play fill="currentColor" />
+              播放
             </button>
-            <button className="secondary" onClick={() => runJob("local_scan")}>
-              <FolderTree />
-              扫描本地曲库
+            <button className="secondary" onClick={() => navigate("library")}>
+              查看音乐库
             </button>
           </div>
         </div>
-        <div className="hero-disc hero-artist-card">
-          <div
-            className={`vinyl ${hero?.coverUrl || hero?.imageUrl ? "with-cover" : ""}`}
-          >
-            {hero?.coverUrl || hero?.imageUrl ? (
-              <img src={hero.coverUrl || hero.imageUrl} alt="" />
-            ) : (
-              <span>
-                <Music2 />
-              </span>
-            )}
-          </div>
-          <div className="now-playing">
+        <div className="home-focus-visual" aria-hidden="true">
+          <span className="home-focus-shadow" />
+          <span className="home-focus-disc">
+            <i className="home-focus-grooves" />
+            <span className="home-focus-cover">
+              {heroCover ? <img src={heroCover} alt="" /> : <Disc3 />}
+            </span>
+            <b className="home-focus-spindle" />
+          </span>
+          <span className="home-focus-tonearm">
             <i />
-            <div>
-              <small>Plex 连接状态</small>
-              <b>{stats.plexConnected ? "已连接" : "需要检查"}</b>
-            </div>
-            <button onClick={() => navigate("settings")}>
-              <Settings />
-            </button>
-          </div>
+            <b />
+          </span>
         </div>
       </section>
-      {isAdmin && (
-        <section className="task-summary dashboard-status-summary">
-          <button onClick={() => navigate("settings")}>
-            <Server /><strong>{stats.plexConnected ? "正常" : "异常"}</strong><span>Plex 连接</span>
-          </button>
-          <button onClick={() => navigate("local")}>
-            <FolderTree /><strong>{fmt(stats.localTracks)}</strong><span>{stats.localLastScanAt ? `本地扫描 ${timeAgo(stats.localLastScanAt)}` : "尚未本地扫描"}</span>
-          </button>
-          <button onClick={() => navigate("download")}>
-            <ArrowDownToLine /><strong>{stats.waitingIngest || 0}</strong><span>待入库</span>
-          </button>
-          <button onClick={() => navigate("tasks")}>
-            <CircleAlert /><strong>{stats.failedTasks || 0}</strong><span>失败任务</span>
-          </button>
-        </section>
-      )}
+
       <SectionHead
-        title="曲库健康"
-        note="封面、歌词和本地文件完整度"
+        title="继续播放"
         action={
-          isAdmin ? (
-            <button className="text-button" onClick={() => navigate("manage")}>
-              进入管理中心
-              <ChevronRight />
-            </button>
-          ) : null
+          <button className="text-button" onClick={() => navigate("me")}>
+            播放记录
+            <ChevronRight />
+          </button>
         }
       />
-      <section className="stats-grid">
-        <StatCard
-          icon={UsersRound}
-          label="歌手"
-          value={stats.artists}
-          detail={`${stats.artistPosters} 位已有海报`}
-          tone="amber"
-          progress={artistCoverage}
-        />
-        <StatCard
-          icon={Album}
-          label="专辑"
-          value={stats.albums}
-          detail={`${albumCoverage}% 封面完整`}
-          tone="violet"
-          progress={albumCoverage}
-        />
-        <StatCard
-          icon={Music2}
-          label="单曲"
-          value={stats.tracks}
-          detail={
-            stats.plexConnected || stats.plexAvailable !== false
-              ? "Plex 已收录"
-              : "本地文件已索引"
-          }
-          tone="blue"
-        />
-        <StatCard
-          icon={BookOpenText}
-          label="本地歌词"
-          value={stats.localLyrics}
-          detail={`${stats.missingLyrics} 首待补`}
-          tone="green"
-          progress={lyricCoverage}
-        />
+      <section className="home-listening-grid">
+        {continueItems.length ? (
+          continueItems.map((item, index) => (
+            <button
+              className="continue-card"
+              key={`${item.id || item.ratingKey || item.title}-${index}`}
+              onClick={() => playItems(continueItems, index)}
+            >
+              <span className="continue-art">
+                {coverUrlFor(item) ? <img src={coverUrlFor(item)} alt="" /> : <Music2 />}
+                <i><Play fill="currentColor" /></i>
+              </span>
+              <span className="continue-copy">
+                <strong>{item.title || "未命名歌曲"}</strong>
+                <small>{item.artist || item.grandparentTitle || "未知艺人"}</small>
+              </span>
+              <span className="continue-time">{item.playedAt ? timeAgo(item.playedAt) : "播放"}</span>
+            </button>
+          ))
+        ) : contentLoading ? (
+          <PageLoader />
+        ) : (
+          <Empty icon={Music2} title="还没有播放记录" text="从音乐库挑一首开始吧。" />
+        )}
       </section>
-      {isAdmin && (
-        <section className="dashboard-quick panel">
-          <SectionHead title="管理快捷操作" note="选择要处理的内容" />
-          <div>
-            {[
-              ["同步 Plex", RefreshCw, () => runJob("plex_sync")],
-              ["扫描本地曲库", FolderTree, () => runJob("local_scan")],
-              ["补齐缺失资料", WandSparkles, () => navigate("scrape")],
-              ["查看待入库", ArrowDownToLine, () => navigate("download")],
-              ["失败任务", CircleAlert, () => navigate("tasks")],
-              ["备份与日志", ShieldCheck, () => navigate("settings")],
-            ].map(([label, Icon, action]) => (
-              <button key={label} onClick={action}>
-                <Icon />
-                <span>{label}</span>
+
+      <SectionHead
+        title="最近加入"
+        action={<button className="text-button" onClick={() => navigate("library")}>查看全部<ChevronRight /></button>}
+      />
+      <section className="home-album-grid">
+        {home.albums.slice(0, 8).map((item) => (
+          <button className="home-album-card" key={item.ratingKey} onClick={() => openAlbum(item)}>
+            <span>
+              {item.thumbUrl ? <img src={item.thumbUrl} alt="" /> : <Disc3 />}
+              <i><Play fill="currentColor" /></i>
+            </span>
+            <strong>{item.title || "未命名专辑"}</strong>
+            <small>{item.parentTitle || item.year || "未知艺人"}</small>
+          </button>
+        ))}
+      </section>
+
+      <div className="home-two-column">
+        <section>
+          <SectionHead
+            title="你的歌单"
+            action={<button className="text-button" onClick={() => navigate("playlists")}>全部歌单<ChevronRight /></button>}
+          />
+          <div className="home-playlist-stack">
+            {home.playlists.slice(0, 4).map((item, index) => (
+              <button key={item.id} onClick={() => navigate("playlists")}>
+                <span className={`playlist-tile tone-${index % 4}`}><ListMusic /></span>
+                <span><strong>{item.name}</strong><small>{item.itemCount || 0} 首歌曲</small></span>
+                <ChevronRight />
               </button>
             ))}
+            {!home.playlists.length && !contentLoading && (
+              <button onClick={() => navigate("playlists")}>
+                <span className="playlist-tile"><Plus /></span>
+                <span><strong>创建第一张歌单</strong><small>也可导入 M3U 或平台分享链接</small></span>
+                <ChevronRight />
+              </button>
+            )}
           </div>
         </section>
-      )}
-      {isAdmin && (
-        <div className="dashboard-columns">
-          <section className="panel coverage-panel">
-            <SectionHead title="完整度雷达" note="当前音乐库的关键资料覆盖率" />
-            <div className="coverage-list">
-              {[
-                ["歌手海报", artistCoverage, Image, "amber"],
-                [
-                  "歌手背景",
-                  pct(stats.artistBackgrounds, stats.artists),
-                  Palette,
-                  "violet",
-                ],
-                [
-                  "中文简介",
-                  pct(stats.chineseBios, stats.artists),
-                  FileAudio,
-                  "blue",
-                ],
-                ["专辑封面", albumCoverage, Album, "green"],
-                ["时间轴歌词", lyricCoverage, BookOpenText, "pink"],
-              ].map(([label, value, Icon, tone]) => (
-                <div className="coverage-row" key={label}>
-                  <div className={`tiny-icon ${tone}`}>
-                    <Icon />
-                  </div>
-                  <div className="coverage-main">
-                    <div>
-                      <span>{label}</span>
-                      <b>{value}%</b>
-                    </div>
-                    <div className="bar">
-                      <i className={tone} style={{ width: `${value}%` }} />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-          <section className="panel recent-panel">
-            <SectionHead
-              title="最近任务"
-              note="下载、整理、刮削与扫描记录"
-              action={
-                <button
-                  className="text-button"
-                  onClick={() => navigate("tasks")}
-                >
-                  查看全部
-                  <ChevronRight />
-                </button>
-              }
-            />
-            <div className="job-list">
-              {jobs.length ? (
-                jobs.slice(0, 5).map((job) => <JobRow job={job} key={job.id} />)
-              ) : (
-                <Empty
-                  icon={Clock3}
-                  title="暂无任务记录"
-                  text="扫描曲库或补齐资料后，会生成可追踪的任务记录。"
-                />
-              )}
-            </div>
-          </section>
-        </div>
+        <section>
+          <SectionHead
+            title="为你发现"
+            action={<button className="text-button" onClick={() => navigate("discover")}>更多推荐<ChevronRight /></button>}
+          />
+          <div className="home-discovery-list">
+            {home.recommendations.slice(0, 4).map((item, index) => (
+              <button
+                key={item.id || `${item.title}-${index}`}
+                onClick={() => {
+                  const target = recommendationPlaybackInput(item);
+                  if (target) player.play(target);
+                  else navigate("discover");
+                }}
+              >
+                <span className="discovery-number">{String(index + 1).padStart(2, "0")}</span>
+                <span><strong>{item.title}</strong><small>{item.artist || "未知艺人"}</small></span>
+                <span className="discovery-reason">{(item.reasons || [item.inLibrary ? "曲库精选" : "新发现"])[0]}</span>
+              </button>
+            ))}
+            {!home.recommendations.length && !contentLoading && (
+              <button onClick={() => navigate("discover")}>
+                <span className="discovery-number"><Sparkles /></span>
+                <span><strong>开始形成你的推荐</strong><small>播放、收藏或跳过几首歌曲</small></span>
+                <ChevronRight />
+              </button>
+            )}
+          </div>
+        </section>
+      </div>
+
+      {isAdmin && (stats.failedTasks > 0 || stats.waitingIngest > 0) && (
+        <button className="home-admin-notice" onClick={() => navigate("manage")}>
+          <CircleAlert />
+          <span>
+            <strong>有内容需要确认</strong>
+            <small>
+              {stats.waitingIngest || 0} 个待入库，{stats.failedTasks || 0} 个任务失败
+            </small>
+          </span>
+          <ChevronRight />
+        </button>
       )}
     </div>
   );
@@ -1325,42 +1411,182 @@ function JobRow({ job }) {
   );
 }
 
-function MediaLibrary({ initialTab = "artists", play, previewBackdrop }) {
+function MediaLibrary({
+  initialTab = "artists",
+  initialDetail = null,
+  play,
+  previewBackdrop,
+  onDetailBackdrop,
+  onTabChange,
+  onDetailChange,
+}) {
   const [tab, setTab] = useState(initialTab);
+  const [detail, setDetail] = useState(initialDetail);
+  const [detailData, setDetailData] = useState(null);
   const [search, setSearch] = useState(
     () => localStorage.getItem("songlib-global-search") || "",
   );
   const [data, setData] = useState({ items: [], total: 0 });
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const libraryRequestRef = useRef(0);
   useEffect(() => {
     if (search) localStorage.removeItem("songlib-global-search");
   }, []);
-  const load = async () => {
+  useEffect(() => {
+    if (initialTab !== tab) setTab(initialTab);
+  }, [initialTab]);
+  useEffect(() => {
+    setDetail(initialDetail);
+  }, [initialDetail?.type, initialDetail?.ratingKey]);
+  const load = async (requestId) => {
     setLoading(true);
+    setLoadingMore(false);
     try {
-      setData(
-        await api(
-          `/api/library/${tab}?pageSize=100&search=${encodeURIComponent(search)}`,
-        ),
+      const first = await api(
+        `/api/library/${tab}?page=1&pageSize=200&search=${encodeURIComponent(search)}`,
       );
-    } finally {
+      if (requestId !== libraryRequestRef.current) return;
+      setData(first);
       setLoading(false);
+      if (tab === "tracks" || first.items.length >= first.total) {
+        return;
+      }
+      const pages = Math.ceil(first.total / first.pageSize);
+      setLoadingMore(true);
+      for (let page = 2; page <= pages; page += 4) {
+        const batch = await Promise.all(
+          Array.from(
+            { length: Math.min(4, pages - page + 1) },
+            (_, offset) =>
+              api(
+                `/api/library/${tab}?page=${page + offset}&pageSize=200&search=${encodeURIComponent(search)}`,
+              ),
+          ),
+        );
+        if (requestId !== libraryRequestRef.current) return;
+        const items = batch.flatMap((result) => result.items || []);
+        setData((value) => ({ ...first, items: [...value.items, ...items] }));
+      }
+    } finally {
+      if (requestId === libraryRequestRef.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   };
   useEffect(() => {
-    const timer = setTimeout(load, 180);
-    return () => clearTimeout(timer);
+    const requestId = ++libraryRequestRef.current;
+    const timer = setTimeout(() => load(requestId), 180);
+    return () => {
+      clearTimeout(timer);
+      if (libraryRequestRef.current === requestId)
+        libraryRequestRef.current += 1;
+    };
   }, [tab, search]);
+  useEffect(() => {
+    if (!detail?.ratingKey) {
+      setDetailData(null);
+      return;
+    }
+    let cancelled = false;
+    setDetailData(null);
+    api(
+      `/api/library/${detail.type}/${encodeURIComponent(detail.ratingKey)}`,
+    )
+      .then((result) => {
+        if (!cancelled) setDetailData(result);
+      })
+      .catch(() => {
+        if (!cancelled) setDetailData({ error: "无法读取这项资料，请稍后重试。" });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [detail?.type, detail?.ratingKey]);
+  useEffect(() => {
+    if (!detail) {
+      onDetailBackdrop?.(null);
+      return;
+    }
+    if (!detailData || detailData.error) return;
+    const artist = detailData.artist;
+    const subject =
+      detail.type === "artists" ? detailData.artist : detailData.album;
+    const imageUrl = artist?.backgroundUrl || VISUAL_FALLBACKS.artist;
+    onDetailBackdrop?.({
+      imageUrl,
+      coverUrl: subject?.thumbUrl || artist?.thumbUrl || "",
+      title: subject?.title || artist?.title || "",
+      subtitle:
+        detail.type === "artists" ? "当前歌手背景" : "当前专辑背景",
+    });
+  }, [
+    detail?.type,
+    detail?.ratingKey,
+    detailData,
+    onDetailBackdrop,
+  ]);
+  useEffect(
+    () => () => {
+      onDetailBackdrop?.(null);
+    },
+    [onDetailBackdrop],
+  );
+  const openDetail = (type, item) => {
+    const next = { type, ratingKey: item.ratingKey };
+    setDetail(next);
+    onDetailChange?.(next);
+  };
+  const closeDetail = () => {
+    setDetail(null);
+    setDetailData(null);
+    onDetailChange?.(null, tab);
+  };
+  const loadMore = async () => {
+    if (loadingMore || data.items.length >= data.total) return;
+    setLoadingMore(true);
+    try {
+      const page = Math.floor(data.items.length / 200) + 1;
+      const next = await api(
+        `/api/library/${tab}?page=${page}&pageSize=200&search=${encodeURIComponent(search)}`,
+      );
+      setData((value) => ({
+        ...next,
+        items: [...value.items, ...(next.items || [])],
+      }));
+    } finally {
+      setLoadingMore(false);
+    }
+  };
   const showTracks = (item) => {
     setTab("tracks");
     setSearch(item.title || "");
+    onTabChange?.("tracks");
   };
   const playFirst = async (item) => {
-    const query = encodeURIComponent(item.title || "");
-    const result = await api(`/api/library/tracks?pageSize=8&search=${query}`);
-    const first = result.items?.[0];
-    if (first) play?.({ ...first, source: "plex_item" });
+    const type = item.type === "artist" ? "artists" : "albums";
+    const result = await api(
+      `/api/library/${type}/${encodeURIComponent(item.ratingKey)}`,
+    );
+    const items = result.popularTracks || result.tracks || [];
+    if (items[0])
+      play?.(
+        { ...items[0], source: "plex_item" },
+        items.slice(1).map((track) => ({ ...track, source: "plex_item" })),
+      );
   };
+  if (detail) {
+    return (
+      <LibraryDetailPage
+        type={detail.type}
+        data={detailData}
+        back={closeDetail}
+        play={play}
+        openDetail={openDetail}
+      />
+    );
+  }
   return (
     <div className="page library-page">
       <div className="library-toolbar">
@@ -1372,7 +1598,11 @@ function MediaLibrary({ initialTab = "artists", play, previewBackdrop }) {
           ].map(([id, label]) => (
             <button
               className={tab === id ? "active" : ""}
-              onClick={() => setTab(id)}
+              onClick={() => {
+                setTab(id);
+                setDetail(null);
+                onTabChange?.(id);
+              }}
               key={id}
             >
               {label}
@@ -1387,7 +1617,9 @@ function MediaLibrary({ initialTab = "artists", play, previewBackdrop }) {
             placeholder={`搜索${tab === "artists" ? "歌手" : tab === "albums" ? "专辑" : "单曲"}…`}
           />
         </div>
-        <span className="result-count">{fmt(data.total)} 项</span>
+        <span className="result-count">
+          {fmt(data.items.length)} / {fmt(data.total)} 项
+        </span>
       </div>
       {loading ? (
         <PageLoader />
@@ -1402,24 +1634,53 @@ function MediaLibrary({ initialTab = "artists", play, previewBackdrop }) {
               key={item.ratingKey}
               showTracks={showTracks}
               playFirst={playFirst}
+              openDetail={openDetail}
               previewBackdrop={previewBackdrop}
             />
           ))}
+        </div>
+      )}
+      {!loading && data.items.length < data.total && (
+        <div className="library-load-more">
+          <button className="secondary" onClick={loadMore} disabled={loadingMore}>
+            {loadingMore ? <LoaderCircle className="spin" /> : <Plus />}
+            {loadingMore
+              ? `正在载入剩余 ${fmt(data.total - data.items.length)} 项`
+              : `继续载入剩余 ${fmt(data.total - data.items.length)} 项`}
+          </button>
         </div>
       )}
     </div>
   );
 }
 
-function MediaCard({ item, type, showTracks, playFirst, previewBackdrop }) {
+function MediaCard({
+  item,
+  type,
+  showTracks,
+  playFirst,
+  openDetail,
+  previewBackdrop,
+}) {
   const isArtist = type === "artists";
   const isAlbum = type === "albums";
   const canBackdrop = isArtist && item.artUrl;
   return (
-    <article className="media-card">
+    <article
+      className="media-card"
+      role="button"
+      tabIndex={0}
+      onClick={() => openDetail?.(type, item)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openDetail?.(type, item);
+        }
+      }}
+    >
       <div className="media-art">
         {item.thumbUrl ? (
-          <img src={item.thumbUrl} loading="lazy" />
+          <img src={item.thumbUrl} alt="" loading="lazy" />
         ) : (
           <div className="art-placeholder">
             {isArtist ? <UserRound /> : <Disc3 />}
@@ -1427,27 +1688,34 @@ function MediaCard({ item, type, showTracks, playFirst, previewBackdrop }) {
         )}
         <div className="media-overlay media-actions">
           <button
-            onClick={() => playFirst?.(item)}
+            onClick={(event) => {
+              event.stopPropagation();
+              playFirst?.(item);
+            }}
             title={isArtist ? "播放这个歌手的曲目" : "播放这张专辑"}
           >
             <Play fill="currentColor" />
           </button>
           <button
-            onClick={() => showTracks?.(item)}
+            onClick={(event) => {
+              event.stopPropagation();
+              showTracks?.(item);
+            }}
             title={isArtist ? "查看歌手曲目" : "查看专辑曲目"}
           >
             <ListMusic />
           </button>
           {canBackdrop && (
             <button
-              onClick={() =>
+              onClick={(event) => {
+                event.stopPropagation();
                 previewBackdrop?.({
                   imageUrl: item.artUrl,
                   coverUrl: item.thumbUrl || item.artUrl,
                   title: item.title,
                   subtitle: "手动选择的歌手背景",
-                })
-              }
+                });
+              }}
               title="用作当前背景"
             >
               <Image />
@@ -1472,6 +1740,159 @@ function MediaCard({ item, type, showTracks, playFirst, previewBackdrop }) {
   );
 }
 
+function LibraryDetailPage({ type, data, back, play, openDetail }) {
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
+  const detailKey =
+    data?.artist?.ratingKey || data?.album?.ratingKey || "";
+  useEffect(() => setSummaryExpanded(false), [detailKey]);
+  if (!data) return <PageLoader />;
+  if (data.error)
+    return (
+      <div className="page library-detail-page">
+        <button className="detail-back" onClick={back}>
+          <ArrowLeft />
+          返回音乐库
+        </button>
+        <Empty icon={CircleAlert} title="资料暂时不可用" text={data.error} />
+      </div>
+    );
+  const isArtist = type === "artists";
+  const subject = isArtist ? data.artist : data.album;
+  const tracks = isArtist ? data.popularTracks || [] : data.tracks || [];
+  const albums = isArtist ? data.albums || [] : [];
+  const playAll = () => {
+    if (!tracks.length) return;
+    play?.(
+      { ...tracks[0], source: "plex_item" },
+      tracks.slice(1).map((item) => ({ ...item, source: "plex_item" })),
+    );
+  };
+  const playAlbum = async (album) => {
+    const result = await api(
+      `/api/library/albums/${encodeURIComponent(album.ratingKey)}`,
+    );
+    const items = result.tracks || [];
+    if (!items.length) return;
+    play?.(
+      { ...items[0], source: "plex_item" },
+      items.slice(1).map((item) => ({ ...item, source: "plex_item" })),
+    );
+  };
+  return (
+    <div
+      className={`page library-detail-page ${
+        isArtist ? "artist-profile-page" : "album-profile-page"
+      }`}
+    >
+      <button className="detail-back" onClick={back}>
+        <ArrowLeft />
+        返回{isArtist ? "歌手" : "专辑"}
+      </button>
+      <section
+        className={`library-detail-hero ${
+          isArtist ? "artist-detail-hero" : "album-detail-hero"
+        }`}
+      >
+        <div className="library-detail-content">
+          <div className="library-detail-cover">
+            {subject?.thumbUrl ? (
+              <img src={subject.thumbUrl} alt="" />
+            ) : isArtist ? (
+              <UserRound />
+            ) : (
+              <Disc3 />
+            )}
+          </div>
+          <div className="library-detail-copy">
+            <span>{isArtist ? "艺人" : "专辑"}</span>
+            <h1>{subject?.title || "未命名"}</h1>
+            <p className="library-detail-meta">
+              {isArtist
+                ? [
+                    ...(subject?.tags?.genre || []).slice(0, 3),
+                    `${data.albumCount || albums.length} 张专辑`,
+                    `${data.trackCount || tracks.length} 首歌曲`,
+                  ].join(" · ")
+                : [
+                    subject?.parentTitle || data.artist?.title,
+                    subject?.year,
+                    `${data.trackCount || tracks.length} 首歌曲`,
+                    durationLabel(data.duration),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+            </p>
+            <div className="library-detail-actions">
+              <button className="primary" onClick={playAll} disabled={!tracks.length}>
+                <Play fill="currentColor" />
+                播放
+              </button>
+              {!isArtist && data.artist?.ratingKey && (
+                <button
+                  className="secondary"
+                  onClick={() => openDetail?.("artists", data.artist)}
+                >
+                  <UserRound />
+                  查看艺人
+                </button>
+              )}
+            </div>
+            {subject?.summary && (
+              <div className="library-detail-biography">
+                <p
+                  className={`library-detail-summary ${
+                    summaryExpanded ? "expanded" : ""
+                  }`}
+                >
+                  {subject.summary}
+                </p>
+                {subject.summary.length > 120 && (
+                  <button
+                    className="summary-toggle"
+                    onClick={() => setSummaryExpanded((value) => !value)}
+                    aria-expanded={summaryExpanded}
+                  >
+                    {summaryExpanded ? "收起介绍" : "查看全部"}
+                    <ChevronDown
+                      className={summaryExpanded ? "rotate-180" : ""}
+                    />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+      <SectionHead
+        title={isArtist ? "热门曲目" : "曲目"}
+        note={
+          isArtist
+            ? "根据 Plex 播放数据排列"
+            : `${data.trackCount || tracks.length} 首 · ${durationLabel(data.duration)}`
+        }
+      />
+      <TrackTable items={tracks} play={play} />
+      {isArtist && (
+        <>
+          <SectionHead title={`${data.albumCount || albums.length} 张专辑`} />
+          <div className="media-grid detail-album-grid">
+            {albums.map((item) => (
+              <MediaCard
+                item={item}
+                type="albums"
+                key={item.ratingKey}
+                openDetail={openDetail}
+                playFirst={playAlbum}
+                showTracks={(album) => openDetail?.("albums", album)}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function TrackTable({ items, play }) {
   return (
     <div className="track-table panel">
@@ -1486,7 +1907,14 @@ function TrackTable({ items, play }) {
         <button
           className="track-row track-button"
           key={item.ratingKey}
-          onClick={() => play?.({ ...item, source: "plex_item" })}
+          onClick={() =>
+            play?.(
+              { ...item, source: "plex_item" },
+              items
+                .slice(index + 1)
+                .map((track) => ({ ...track, source: "plex_item" })),
+            )
+          }
         >
           <span>{String(index + 1).padStart(2, "0")}</span>
           <span className="track-title">
@@ -1651,8 +2079,8 @@ function LocalLibraryPage({ runJob, play, notify, navigate }) {
             <FolderTree />
             NAS MUSIC LIBRARY
           </span>
-          <h1>管理 NAS 上的真实音乐文件。</h1>
-          <p>扫描、检查和整理正式音乐库；Plex 用于展示、播放与同步。</p>
+          <h1>让每一首歌都有清晰的位置。</h1>
+          <p>浏览曲库，校对标签和目录，需要时可安全撤销。</p>
         </div>
         <div>
           <button className="secondary" onClick={() => runJob("plex_sync")}>
@@ -2139,7 +2567,7 @@ function DiscoverPage({ play, navigate, isAdmin = true }) {
         <h1>
           从歌单发现，<span>在自己的曲库里播放。</span>
         </h1>
-        <p>歌单只作为发现来源；歌曲会先与本地文件和 Plex 合并匹配。</p>
+        <p>浏览热门歌单，已经收藏在曲库里的歌曲可以直接播放。</p>
       </section>
       {error && (
         <div className="inline-error">
@@ -2373,8 +2801,7 @@ function immediatePlaybackTrack(input, quality = "original") {
     (candidate.ratingKey || candidate.plexRatingKey
       ? "plex_item"
       : "local_file");
-  const rawDuration = Number(candidate.duration || 0);
-  const duration = rawDuration > 60 * 60 * 6 ? rawDuration / 1000 : rawDuration;
+  const duration = playbackDurationSeconds(candidate.duration);
   if (sourceType === "local_file") {
     const id = candidate.localFileId || candidate.id;
     if (!id || (!candidate.path && !candidate.file)) return null;
@@ -2444,7 +2871,12 @@ async function toPlaybackTrack(input, quality = "original") {
       quality,
     );
   }
-  if (input.sourceType && input.audioUrl) return input;
+  if (
+    input.sourceType &&
+    input.audioUrl &&
+    input.sourceType !== "plex_item"
+  )
+    return input;
   const sourceType = input.sourceType || input.source || "local_file";
   if (sourceType === "plex_item") {
     const ratingKey = input.plexRatingKey || input.ratingKey;
@@ -2524,6 +2956,9 @@ async function toPlaybackTrack(input, quality = "original") {
 function PlayerProvider({ children }) {
   const audioRef = useRef(null);
   const hydratedRef = useRef(false);
+  const progressMilestoneRef = useRef(0);
+  const playlistIdsRef = useRef({});
+  const playlistCreateRef = useRef({});
   const [state, setState] = useState({
     currentTrack: null,
     queue: [],
@@ -2549,6 +2984,23 @@ function PlayerProvider({ children }) {
     storedJson("songlib-playlists", {}),
   );
   const currentTrack = state.currentTrack;
+  const sendListeningEvent = (eventType, track, position = 0, duration = 0) => {
+    if (!track) return;
+    api("/api/listening/events", {
+      method: "POST",
+      body: JSON.stringify({
+        eventType,
+        fileId: track.localFileId || (track.sourceType === "local_file" ? track.raw?.id : null),
+        externalRef:
+          track.localFileId || track.sourceType === "local_file"
+            ? null
+            : trackIdentity(track),
+        positionMs: Math.round(Number(position || 0) * 1000),
+        durationMs: Math.round(Number(duration || track.duration || 0) * 1000),
+        context: { sourceType: track.sourceType || "unknown" },
+      }),
+    }).catch(() => {});
+  };
   useEffect(() => {
     let cancelled = false;
     api("/api/player/state")
@@ -2561,7 +3013,10 @@ function PlayerProvider({ children }) {
         if (Object.keys(remote.playlists || {}).length)
           setPlaylists(remote.playlists);
         if ((remote.queue || []).length)
-          setState((value) => ({ ...value, queue: remote.queue }));
+          setState((value) => ({
+            ...value,
+            queue: sanitizeQueue(remote.queue),
+          }));
         if (remote.currentTrack) {
           try {
             const restored = await toPlaybackTrack(
@@ -2582,6 +3037,29 @@ function PlayerProvider({ children }) {
       .finally(() => {
         hydratedRef.current = true;
       });
+    api("/api/playlists")
+      .then(async (data) => {
+        const details = await Promise.all(
+          (data.items || []).map((item) => api(`/api/playlists/${item.id}`)),
+        );
+        const mapped = {};
+        for (const playlist of details) {
+          playlistIdsRef.current[playlist.name] = playlist.id;
+          mapped[playlist.name] = (playlist.items || []).map((item) => ({
+            id: item.file_id ? `local-${item.file_id}` : item.id,
+            sourceType: item.file_id ? "local_file" : "external",
+            localFileId: item.file_id,
+            title: item.title,
+            artist: item.artist,
+            album: item.album,
+            duration: item.duration,
+            file: item.path,
+            externalRef: item.external_ref,
+          }));
+        }
+        if (!cancelled) setPlaylists(mapped);
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -2660,8 +3138,10 @@ function PlayerProvider({ children }) {
         ),
       ].slice(0, 100);
     });
+    progressMilestoneRef.current = 0;
+    sendListeningEvent("start", track, 0, track.duration);
   };
-  const play = async (input, queue = []) => {
+  const play = async (input, queue) => {
     setState((s) => ({ ...s, loading: true, error: "" }));
     try {
       const immediate = immediatePlaybackTrack(input, state.quality);
@@ -2669,7 +3149,7 @@ function PlayerProvider({ children }) {
         if (!isPlayableDuration(immediate))
           throw new Error("这首歌的时长异常，已阻止播放并避免污染队列。");
         const nextQueue = sanitizeQueue(
-          queue.length ? queue : state.queue,
+          Array.isArray(queue) ? queue : state.queue,
           immediate,
         );
         remember(immediate);
@@ -2722,7 +3202,7 @@ function PlayerProvider({ children }) {
       if (!isPlayableDuration(track))
         throw new Error("这首歌的时长异常，已阻止播放并避免污染队列。");
       const nextQueue = sanitizeQueue(
-        queue.length ? queue : state.queue,
+        Array.isArray(queue) ? queue : state.queue,
         track,
       );
       remember(track);
@@ -2828,6 +3308,7 @@ function PlayerProvider({ children }) {
   const toggleFavorite = (track) => {
     const id = favoriteId(track);
     if (!id) return;
+    const removing = isFavorite(track);
     setFavorites((value) => {
       const next = { ...value };
       next[id]
@@ -2841,34 +3322,85 @@ function PlayerProvider({ children }) {
           });
       return next;
     });
+    sendListeningEvent(removing ? "unfavorite" : "favorite", track, state.currentTime, state.duration);
+  };
+  const ensureServerPlaylist = async (name) => {
+    if (playlistIdsRef.current[name]) return playlistIdsRef.current[name];
+    if (!playlistCreateRef.current[name]) {
+      playlistCreateRef.current[name] = api("/api/playlists", {
+        method: "POST",
+        body: JSON.stringify({ name, description: "", items: [] }),
+      })
+        .catch(async (err) => {
+          if (!err.message.includes("同名")) throw err;
+          const data = await api("/api/playlists");
+          const existing = (data.items || []).find((item) => item.name === name);
+          if (!existing) throw err;
+          return existing;
+        })
+        .then((item) => {
+          playlistIdsRef.current[name] = item.id;
+          return item.id;
+        })
+        .finally(() => {
+          delete playlistCreateRef.current[name];
+        });
+    }
+    return playlistCreateRef.current[name];
   };
   const createPlaylist = (name) => {
     const clean = String(name || "").trim();
     if (!clean) return;
     setPlaylists((value) => (value[clean] ? value : { ...value, [clean]: [] }));
+    ensureServerPlaylist(clean).catch((err) =>
+      setState((value) => ({ ...value, error: err.message })),
+    );
   };
-  const deletePlaylist = (name) =>
+  const deletePlaylist = (name) => {
+    const playlistId = playlistIdsRef.current[name];
     setPlaylists((value) => {
       const next = { ...value };
       delete next[name];
       return next;
     });
+    if (playlistId) {
+      api(`/api/playlists/${playlistId}`, { method: "DELETE" })
+        .then(() => {
+          delete playlistIdsRef.current[name];
+        })
+        .catch((err) => setState((value) => ({ ...value, error: err.message })));
+    }
+  };
   const addToPlaylist = (name, track) => {
     if (!name || !track) return;
     setPlaylists((value) => {
       const items = value[name] || [];
       if (items.some((item) => trackIdentity(item) === trackIdentity(track)))
         return value;
+      const nextItems = [...items, persistableTrack(track)].filter(Boolean);
+      const updateServer = async () => {
+        const playlistId = await ensureServerPlaylist(name);
+        await api(`/api/playlists/${playlistId}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            items: nextItems.map(playlistTrackPayload),
+          }),
+        });
+      };
+      updateServer().catch((err) =>
+        setState((current) => ({ ...current, error: err.message })),
+      );
       return {
         ...value,
-        [name]: [...items, persistableTrack(track)].filter(Boolean),
+        [name]: nextItems,
       };
     });
   };
-  const next = () => {
+  const next = (completed = false) => {
+    if (!completed && currentTrack && state.duration && state.currentTime / state.duration < 0.85)
+      sendListeningEvent("skip", currentTrack, state.currentTime, state.duration);
     const nextTrack = state.queue[0];
     if (nextTrack) {
-      setState((s) => ({ ...s, queue: s.queue.slice(1) }));
       play(nextTrack, state.queue.slice(1));
     }
   };
@@ -2925,6 +3457,12 @@ function PlayerProvider({ children }) {
             currentTime,
             duration: duration || s.duration,
           }));
+          const ratio = duration ? currentTime / duration : 0;
+          const milestone = ratio >= 0.75 ? 75 : ratio >= 0.5 ? 50 : ratio >= 0.25 ? 25 : 0;
+          if (milestone > progressMilestoneRef.current) {
+            progressMilestoneRef.current = milestone;
+            sendListeningEvent("progress", currentTrack, currentTime, duration);
+          }
         }}
         onLoadedMetadata={(e) => {
           const duration = Number.isFinite(e.currentTarget.duration)
@@ -2944,7 +3482,14 @@ function PlayerProvider({ children }) {
         }}
         onPlay={() => setState((s) => ({ ...s, isPlaying: true, error: "" }))}
         onPause={() => setState((s) => ({ ...s, isPlaying: false }))}
-        onEnded={() => (state.playMode === "repeat_one" ? seek(0) : next())}
+        onEnded={() => {
+          sendListeningEvent("complete", currentTrack, state.duration, state.duration);
+          if (state.playMode === "repeat_one") {
+            sendListeningEvent("replay", currentTrack, 0, state.duration);
+            seek(0);
+            audioRef.current?.play().catch(() => {});
+          } else next(true);
+        }}
       />
     </PlayerContext.Provider>
   );
@@ -2954,6 +3499,10 @@ function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
   const player = usePlayer(),
     current = player.currentTrack;
   const [lyricsFull, setLyricsFull] = useState(false);
+  const [resolvedLyrics, setResolvedLyrics] = useState("");
+  const [lyricsLoading, setLyricsLoading] = useState(false);
+  const [lyricsError, setLyricsError] = useState("");
+  const [lyricsRequest, setLyricsRequest] = useState(0);
   const [seeds, setSeeds] = useState([]),
     [seedLoading, setSeedLoading] = useState(false);
   useEffect(() => {
@@ -2976,8 +3525,48 @@ function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
       })
       .finally(() => setSeedLoading(false));
   }, [current, seeds.length, seedLoading]);
-  const parsedLyrics = parseLrc(current?.lyrics || "");
-  const displayLyrics = displayLyricsFor(current, parsedLyrics);
+  useEffect(() => {
+    setResolvedLyrics("");
+    setLyricsError("");
+    if (!current || String(current.lyrics || "").trim()) {
+      setLyricsLoading(false);
+      return;
+    }
+    const key =
+      current.sourceType === "plex_item"
+        ? current.plexRatingKey || current.raw?.ratingKey
+        : current.sourceType === "local_file"
+          ? current.localFileId || current.raw?.id
+          : "";
+    if (!key) {
+      setLyricsLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLyricsLoading(true);
+    api(
+      current.sourceType === "plex_item"
+        ? `/api/player/plex/${encodeURIComponent(key)}/lyrics`
+        : `/api/player/local/${encodeURIComponent(key)}/lyrics`,
+    )
+      .then((data) => {
+        if (!cancelled) setResolvedLyrics(String(data.lyrics || "").trim());
+      })
+      .catch((error) => {
+        if (!cancelled)
+          setLyricsError(error.message || "暂时无法获取歌词");
+      })
+      .finally(() => {
+        if (!cancelled) setLyricsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [current?.id, current?.lyrics, lyricsRequest]);
+  const lyricsText = String(current?.lyrics || "").trim() || resolvedLyrics;
+  const lyricsTrack = current ? { ...current, lyrics: lyricsText } : current;
+  const parsedLyrics = parseLrc(lyricsText);
+  const displayLyrics = displayLyricsFor(lyricsTrack, parsedLyrics);
   const activeLine = displayLyrics.reduce(
     (acc, line, index) => (line.time <= player.currentTime ? index : acc),
     0,
@@ -3313,7 +3902,7 @@ function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
                 )
               }
             />
-            <button className="queue-item active" onClick={() => {}}>
+            <div className="queue-item active" aria-current="true">
               <div className="queue-thumb">
                 {cover ? <img src={cover} alt="" /> : <Music2 />}
               </div>
@@ -3327,7 +3916,7 @@ function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
                 <i />
               </span>
               <em>{formatTime(player.duration)}</em>
-            </button>
+            </div>
             {queue.length ? (
               queue.map((item, index) => (
                 <button
@@ -3336,7 +3925,7 @@ function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
                   onClick={() =>
                     player.play(
                       item,
-                      queue.filter((_, i) => i !== index),
+                      queue.slice(index + 1),
                     )
                   }
                 >
@@ -3380,15 +3969,20 @@ function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
                       <Maximize2 />
                       全屏歌词
                     </button>
-                  ) : isAdmin ? (
+                  ) : lyricsLoading ? (
+                    <span className="lyrics-fetching">
+                      <LoaderCircle className="spin" />
+                      正在匹配
+                    </span>
+                  ) : (
                     <button
                       className="lyrics-fullscreen-button"
-                      onClick={() => navigate?.("scrape")}
+                      onClick={() => setLyricsRequest((value) => value + 1)}
                     >
-                      <WandSparkles />
-                      补歌词
+                      <RefreshCw />
+                      重新获取
                     </button>
-                  ) : null}
+                  )}
                 </div>
               </div>
               {displayLyrics.length ? (
@@ -3403,11 +3997,20 @@ function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
               ) : (
                 <Empty
                   icon={Mic2}
-                  title="这首歌还没有可用歌词"
+                  title={
+                    lyricsLoading
+                      ? "正在匹配歌词"
+                      : lyricsError
+                        ? "歌词获取失败"
+                        : "这首歌还没有可用歌词"
+                  }
                   text={
-                    isAdmin
-                      ? "可去刮削中心补齐时间轴歌词。"
-                      : "管理员补齐歌词后会自动显示。"
+                    lyricsLoading
+                      ? "正在按歌曲、艺人和时长核验可用歌词。"
+                      : lyricsError ||
+                        (isAdmin
+                          ? "没有找到通过校验的版本，可在资料补全中继续处理。"
+                          : "暂时没有找到通过校验的歌词。")
                   }
                 />
               )}
@@ -3425,7 +4028,7 @@ function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
       </section>
       {lyricsFull && showLyrics && (
         <LyricsFullscreenOverlay
-          current={current}
+          current={lyricsTrack}
           cover={cover}
           bg={bg}
           lines={displayLyrics}
@@ -3958,8 +4561,9 @@ const SOURCE_STATES = {
   unverified: ["未验证", "muted"],
   imported: ["已导入", "amber"],
   search_ok: ["搜索可用", "blue"],
-  inspect_ok: ["格式已识别", "amber"],
-  partial: ["部分可用", "amber"],
+  inspect_ok: ["接口已授权", "green"],
+  partial: ["接口已授权", "green"],
+  degraded: ["已授权 · 运行异常", "amber"],
   resolve_ok: ["解析可用", "green"],
   unavailable: ["不可用", "red"],
   disabled: ["已禁用", "muted"],
@@ -4112,7 +4716,7 @@ function SourceManager({ sources, refreshSources, notify }) {
         <form className="panel source-import" onSubmit={importSource}>
           <SectionHead
             title="导入音乐源"
-            note="URL、本地文件与源码都会先隔离校验"
+            note="识别到音乐接口后会立即启用"
           />
           <div className="import-tabs">
             {[
@@ -4181,7 +4785,7 @@ function SourceManager({ sources, refreshSources, notify }) {
             不内置第三方音乐源。仅导入你信任且有权使用的脚本；音屿不绕过 DRM。
           </p>
           <button className="primary full" disabled={busy}>
-            {busy ? <LoaderCircle className="spin" /> : <Plus />}导入并隔离校验
+            {busy ? <LoaderCircle className="spin" /> : <Plus />}导入并启用
           </button>
         </form>
         <section className="panel source-guide">
@@ -4189,22 +4793,22 @@ function SourceManager({ sources, refreshSources, notify }) {
             <TestTube2 />
             SOURCE CHECK
           </span>
-          <h3>验证通过后再启用。</h3>
+          <h3>识别通过，立即可用。</h3>
           <p>
-            音屿会依次检查格式、搜索能力与真实音频地址解析，状态清晰后再用于下载。
+            导入时完成结构与安全校验，通过后默认启用；搜索和音频解析测试用于确认具体能力，不会阻止你启用音乐源。
           </p>
           <ol>
             <li>
               <b>01</b> 导入并检查脚本结构
             </li>
             <li>
-              <b>02</b> 测试目录搜索
+              <b>02</b> 校验通过后自动启用
             </li>
             <li>
-              <b>03</b> 测试播放地址解析
+              <b>03</b> 搜索与下载权限立即开放
             </li>
             <li>
-              <b>04</b> 启用后进入下载页
+              <b>04</b> 实际使用时记录接口状态
             </li>
           </ol>
         </section>
@@ -4251,10 +4855,20 @@ function SourceManager({ sources, refreshSources, notify }) {
                       </dd>
                     </div>
                     <div>
-                      <dt>搜索 / 解析</dt>
+                      <dt>使用权限</dt>
                       <dd>
-                        {source.searchOk ? "可用" : "未通过"} /{" "}
-                        {source.resolveOk ? "可用" : "未通过"}
+                        {source.accessGranted
+                          ? "搜索与下载已开放"
+                          : source.enabled
+                            ? "等待接口识别"
+                            : "已停用"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>运行验证</dt>
+                      <dd>
+                        搜索 {source.searchOk ? "成功" : "待运行"} · 解析{" "}
+                        {source.resolveOk ? "成功" : "待运行"}
                       </dd>
                     </div>
                     <div>
@@ -4502,14 +5116,105 @@ function SourceManager({ sources, refreshSources, notify }) {
   );
 }
 
+function DownloadInboxPanel({ notify, navigate }) {
+  const [data, setData] = useState({ items: [], errors: [], summary: {} });
+  const [selected, setSelected] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const load = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const result = await api("/api/local/download-inbox");
+      setData(result);
+      setSelected(
+        (result.items || [])
+          .filter((item) => !item.conflict && !item.needsReview)
+          .map((item) => item.sourcePath),
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  useEffect(() => {
+    load();
+  }, []);
+  const toggle = (path) =>
+    setSelected((value) =>
+      value.includes(path) ? value.filter((item) => item !== path) : [...value, path],
+    );
+  const ingest = async () => {
+    const items = data.items.filter((item) => selected.includes(item.sourcePath));
+    if (!items.length) return;
+    if (!confirm(`确认整理并入库 ${items.length} 首歌曲？\n\n文件会从独立下载目录移动到正式音乐库，原路径会写入回滚记录。`)) return;
+    setBusy(true);
+    try {
+      await api("/api/local/download-inbox/ingest", {
+        method: "POST",
+        body: JSON.stringify({ items }),
+      });
+      notify?.(`${items.length} 首歌曲已进入整理队列`);
+      navigate?.("tasks");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="panel download-inbox-panel">
+      <SectionHead
+        title="下载目录"
+        note="先预览规范命名与目标层级，再移动到正式音乐库"
+        action={
+          <div className="pending-actions">
+            <button className="secondary small" onClick={load} disabled={busy}><RefreshCw className={busy ? "spin" : ""} />重新扫描</button>
+            <button className="primary small" onClick={ingest} disabled={busy || !selected.length}><FolderTree />整理入库 ({selected.length})</button>
+          </div>
+        }
+      />
+      <div className="inbox-roots">
+        <span><Download />下载目录 <code>{data.downloadRoot || "/downloads"}</code></span>
+        <ChevronRight />
+        <span><Library />音乐库 <code>{data.musicRoot || "/music"}</code></span>
+      </div>
+      {error && <div className="inline-error"><CircleAlert />{error}</div>}
+      {data.items?.length ? (
+        <div className="inbox-table">
+          {data.items.map((item) => (
+            <label className={item.conflict ? "conflict" : item.needsReview ? "review" : ""} key={item.sourcePath}>
+              <input type="checkbox" checked={selected.includes(item.sourcePath)} disabled={item.conflict} onChange={() => toggle(item.sourcePath)} />
+              <div>
+                <strong>{item.title}</strong>
+                <small>{item.artist} · {item.album}</small>
+              </div>
+              <div className="inbox-paths">
+                <code>{item.sourcePath}</code>
+                <ChevronRight />
+                <code>{item.targetPath}</code>
+              </div>
+              <em>{item.conflict ? "目标冲突" : item.needsReview ? "请核对信息" : "可入库"}</em>
+            </label>
+          ))}
+        </div>
+      ) : busy ? <PageLoader /> : (
+        <Empty icon={Download} title="下载目录是空的" text="放入这里的音频会先经过标签、命名和路径预览。" />
+      )}
+    </section>
+  );
+}
+
 function DownloadCenter({
   sources,
+  refreshSources,
   createDownload,
   navigate,
   playPreview,
   notify,
 }) {
-  const ready = sources.filter((source) => source.enabled && source.searchOk);
+  const ready = sources.filter(sourceCatalogReady);
   const [query, setQuery] = useState(
       () => localStorage.getItem("songlib-download-query") || "",
     ),
@@ -4538,6 +5243,19 @@ function DownloadCenter({
     loadPending();
     localStorage.removeItem("songlib-download-query");
   }, []);
+  useEffect(() => {
+    const refresh = () => refreshSources?.().catch(() => {});
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    refresh();
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [refreshSources]);
   const submit = async (event) => {
     event.preventDefault();
     if (!query.trim() || !sourceId) return;
@@ -4552,6 +5270,7 @@ function DownloadCenter({
         }),
       });
       setResults(data.results || []);
+      await refreshSources?.();
     } catch (err) {
       setError(`搜索失败：${err.message}`);
     } finally {
@@ -4619,7 +5338,7 @@ function DownloadCenter({
     const verb = action === "confirm" ? "确认入库" : "删除下载文件";
     if (
       !confirm(
-        `${verb} ${ids.length} 首待入库歌曲？\n\n音屿会创建任务并写入操作记录，确认入库后会触发 Plex 扫描；删除会移入曲库回收区。`,
+        `${verb} ${ids.length} 首待入库歌曲？\n\n音屿会创建任务并写入操作记录，确认入库后会触发 Plex 扫描；删除会移入下载回收区。`,
       )
     )
       return;
@@ -4641,20 +5360,21 @@ function DownloadCenter({
               MUSIC DOWNLOAD
             </span>
             <h1>搜索音乐，保存到你的 NAS。</h1>
-            <p>启用可搜索、可解析的音乐源后即可下载。</p>
+            <p>导入并识别音乐接口后即可搜索与下载。</p>
           </div>
         </section>
         <section className="panel download-empty">
           <Empty
             icon={Wifi}
             title="暂无可用音乐源"
-            text="请在“音乐源管理”中完成格式检查、搜索测试与解析测试。"
+            text="导入音乐源并识别到接口后会自动启用，无需先做搜索或解析测试。"
           />
           <button className="primary" onClick={() => navigate("sources")}>
             <Wifi />
             去音乐源管理
           </button>
         </section>
+        <DownloadInboxPanel notify={notify} navigate={navigate} />
       </div>
     );
   return (
@@ -4695,8 +5415,8 @@ function DownloadCenter({
             <strong>{ready.length} 个已启用来源</strong>
             <span>
               {selected?.resolveOk
-                ? "下载地址解析可用"
-                : "该来源尚未通过解析测试"}
+                ? "最近一次地址解析成功"
+                : "接口已授权，下载时实时解析"}
             </span>
           </div>
         </div>
@@ -4811,7 +5531,6 @@ function DownloadCenter({
                     </button>
                     <button
                       className="primary small"
-                      disabled={!selected?.resolveOk}
                       onClick={() => downloadMany(group.tracks)}
                     >
                       <Download />
@@ -4863,13 +5582,10 @@ function DownloadCenter({
                     </button>
                     <button
                       title={
-                        selected?.resolveOk
-                          ? target === "device"
-                            ? "下载到当前设备"
-                            : "下载并加入待入库"
-                          : "请先测试解析"
+                        target === "device"
+                          ? "下载到当前设备"
+                          : "下载并加入待入库"
                       }
-                      disabled={!selected?.resolveOk}
                       onClick={() => downloadOne(item)}
                     >
                       <Download />
@@ -5277,7 +5993,13 @@ function Tasks({ jobs, refresh, navigate }) {
   );
 }
 
-function SettingsPage({ settings, logout, navigate, isAdmin = true }) {
+function SettingsPage({
+  settings,
+  logout,
+  navigate,
+  isAdmin = true,
+  onSettingsChange,
+}) {
   const [current, setCurrent] = useState(""),
     [next, setNext] = useState(""),
     [message, setMessage] = useState("");
@@ -5288,6 +6010,13 @@ function SettingsPage({ settings, logout, navigate, isAdmin = true }) {
   const [profile, setProfile] = useState(settings.user || {}),
     [logs, setLogs] = useState(null),
     [logsLoading, setLogsLoading] = useState(false);
+  const [fnosDraft, setFnosDraft] = useState({
+    serverUrl: settings.fnosMusic?.serverUrl || "",
+    authMode: settings.fnosMusic?.authMode || "password",
+    username: settings.fnosMusic?.accountLabel || "",
+    password: "",
+    token: "",
+  });
   const [backups, setBackups] = useState([]),
     [backupBusy, setBackupBusy] = useState("");
   const defaultPlayerPrefs = {
@@ -5306,6 +6035,14 @@ function SettingsPage({ settings, logout, navigate, isAdmin = true }) {
     setDraft(settings || {});
     setPlex(settings.plex || {});
     setProfile(settings.user || {});
+    setFnosDraft((value) => ({
+      ...value,
+      serverUrl: settings.fnosMusic?.serverUrl || "",
+      authMode: settings.fnosMusic?.authMode || "password",
+      username: settings.fnosMusic?.accountLabel || "",
+      password: "",
+      token: "",
+    }));
     setPlayerPrefs({ ...defaultPlayerPrefs, ...(settings.player || {}) });
   }, [settings]);
   useEffect(() => {
@@ -5351,6 +6088,7 @@ function SettingsPage({ settings, logout, navigate, isAdmin = true }) {
       body: JSON.stringify({ values }),
     });
     setProfile(result.profile);
+    onSettingsChange?.((value) => ({ ...value, user: result.profile }));
     setMessage("个人资料已保存");
   };
   const uploadAvatar = async (event) => {
@@ -5443,6 +6181,37 @@ function SettingsPage({ settings, logout, navigate, isAdmin = true }) {
       });
       setMessage(result.message || "Plex 连接成功");
       await refreshPlex();
+    } catch (err) {
+      setMessage(err.message);
+    }
+  };
+  const testFnosMusic = async () => {
+    try {
+      const result = await api("/api/settings/fnos/test", { method: "POST" });
+      setMessage(result.message || "飞牛音乐连接成功");
+    } catch (err) {
+      setMessage(err.message);
+    }
+  };
+  const saveFnosMusic = async () => {
+    if (!isAdmin) return setMessage("当前账号没有修改连接的权限");
+    try {
+      const result = await api("/api/settings/fnos", {
+        method: "POST",
+        body: JSON.stringify(fnosDraft),
+      });
+      setFnosDraft((value) => ({
+        ...value,
+        password: "",
+        token: "",
+        ...result.fnosMusic,
+        username: result.fnosMusic?.accountLabel || value.username,
+      }));
+      onSettingsChange?.((value) => ({
+        ...value,
+        fnosMusic: result.fnosMusic,
+      }));
+      setMessage(result.message || "飞牛音乐连接已保存");
     } catch (err) {
       setMessage(err.message);
     }
@@ -5602,6 +6371,142 @@ function SettingsPage({ settings, logout, navigate, isAdmin = true }) {
               )}
             </SettingBlock>
             <SettingBlock
+              icon={Radio}
+              title="飞牛音乐"
+              note="连接后可将歌单按原顺序同步到飞牛音乐。"
+            >
+              <dl>
+                <div>
+                  <dt>服务地址</dt>
+                  <dd>{settings.fnosMusic?.serverUrl || "未配置"}</dd>
+                </div>
+                <div>
+                  <dt>连接状态</dt>
+                  <dd>{settings.fnosMusic?.configured ? "已连接" : "待配置"}</dd>
+                </div>
+                <div>
+                  <dt>认证方式</dt>
+                  <dd>
+                    {settings.fnosMusic?.configured
+                      ? settings.fnosMusic?.authMode === "password"
+                        ? "飞牛音乐账号"
+                        : "服务令牌"
+                      : "飞牛音乐账号或服务令牌"}
+                  </dd>
+                </div>
+              </dl>
+              <div className="fnos-config-form">
+                <label>
+                  服务地址
+                  <input
+                    value={fnosDraft.serverUrl}
+                    placeholder="http://NAS地址:5666"
+                    onChange={(event) =>
+                      setFnosDraft((value) => ({
+                        ...value,
+                        serverUrl: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label>
+                  认证方式
+                  <select
+                    value={fnosDraft.authMode}
+                    onChange={(event) =>
+                      setFnosDraft((value) => ({
+                        ...value,
+                        authMode: event.target.value,
+                        password: "",
+                        token: "",
+                      }))
+                    }
+                  >
+                    <option value="password">飞牛音乐账号</option>
+                    <option value="token">服务令牌</option>
+                  </select>
+                </label>
+                {fnosDraft.authMode === "password" ? (
+                  <>
+                    <label>
+                      飞牛音乐账号
+                      <input
+                        autoComplete="username"
+                        value={fnosDraft.username}
+                        onChange={(event) =>
+                          setFnosDraft((value) => ({
+                            ...value,
+                            username: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                    <label>
+                      飞牛音乐密码
+                      <input
+                        type="password"
+                        autoComplete="current-password"
+                        value={fnosDraft.password}
+                        placeholder={
+                          settings.fnosMusic?.configured
+                            ? "重新连接时输入"
+                            : "仅用于换取服务会话"
+                        }
+                        onChange={(event) =>
+                          setFnosDraft((value) => ({
+                            ...value,
+                            password: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                  </>
+                ) : (
+                  <label className="fnos-token-field">
+                    服务令牌
+                    <input
+                      type="password"
+                      autoComplete="off"
+                      value={fnosDraft.token}
+                      placeholder={
+                        settings.fnosMusic?.configured
+                          ? "如需替换请输入新令牌"
+                          : "music-token"
+                      }
+                      onChange={(event) =>
+                        setFnosDraft((value) => ({
+                          ...value,
+                          token: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                )}
+              </div>
+              <p className="setting-explainer">
+                账号密码只用于向飞牛音乐换取服务会话，密码不会保存。派生令牌保存在
+                NAS 的受保护数据目录中，也不会回显到页面。
+              </p>
+              <div className="setting-actions">
+                <button className="primary small" onClick={saveFnosMusic}>
+                  <Check />
+                  保存并连接
+                </button>
+                <button
+                  className="secondary small"
+                  onClick={testFnosMusic}
+                  disabled={!settings.fnosMusic?.configured}
+                >
+                  <TestTube2 />
+                  测试连接
+                </button>
+                <button className="secondary small" onClick={() => navigate?.("playlists")}>
+                  <ListMusic />
+                  打开歌单
+                </button>
+              </div>
+            </SettingBlock>
+            <SettingBlock
               icon={Activity}
               title="系统信息"
               note="当前部署版本与运行限制。"
@@ -5632,7 +6537,7 @@ function SettingsPage({ settings, logout, navigate, isAdmin = true }) {
             <SettingBlock
               icon={FolderTree}
               title="本地路径"
-              note="NAS 本地音乐文件是源数据层。"
+              note="这里显示音屿可以读取和整理的音乐目录。"
             >
               <dl>
                 <div>
@@ -5640,20 +6545,24 @@ function SettingsPage({ settings, logout, navigate, isAdmin = true }) {
                   <dd>{settings.musicRoot}</dd>
                 </div>
                 <div>
-                  <dt>下载临时目录</dt>
+                  <dt>授权下载暂存区</dt>
                   <dd>{settings.downloadTempDir}</dd>
                 </div>
                 <div>
-                  <dt>入库临时区</dt>
+                  <dt>下载处理中转区</dt>
                   <dd>{settings.incomingDir}</dd>
                 </div>
                 <div>
-                  <dt>手动下载目录</dt>
+                  <dt>下载接收目录</dt>
                   <dd>{settings.manualDownloadDir}</dd>
                 </div>
                 <div>
-                  <dt>回收站</dt>
+                  <dt>音乐库回收站</dt>
                   <dd>{settings.trashDir}</dd>
+                </div>
+                <div>
+                  <dt>下载回收站</dt>
+                  <dd>{settings.downloadTrashDir}</dd>
                 </div>
               </dl>
             </SettingBlock>
@@ -5958,6 +6867,22 @@ function SettingsPage({ settings, logout, navigate, isAdmin = true }) {
                     <option value="320k">320K</option>
                     <option value="flac">FLAC</option>
                     <option value="flac24bit">Hi-Res</option>
+                  </select>
+                </label>
+                <label>
+                  界面字号
+                  <select
+                    value={profile?.fontSize || "standard"}
+                    onChange={(e) =>
+                      setProfile((value) => ({
+                        ...value,
+                        fontSize: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value="compact">紧凑</option>
+                    <option value="standard">标准</option>
+                    <option value="large">大号</option>
                   </select>
                 </label>
                 <button
@@ -6298,7 +7223,7 @@ function PlexSettingsModal({ initial, onClose, onSaved }) {
               <input
                 value={draft.serverUrl}
                 onChange={(e) => setField("serverUrl", e.target.value)}
-                placeholder="http://192.168.31.185:32400"
+                placeholder="http://nas-address:32400"
               />
             </label>
             <label>
@@ -6781,11 +7706,8 @@ function UserAccounts() {
         </button>
       </form>
       <p className="setting-copy">
-        安全重置命令：
-        <code>
-          docker exec songlib-amp python -m app.cli reset-admin --from-env
-        </code>
-        。这会把 admin 密码恢复为 NAS `.env` 里的 APP_PASSWORD。
+        忘记主人账号密码时，请由设备管理员按照部署文档中的“恢复管理员访问”
+        流程操作；恢复会使现有会话失效。
       </p>
       {resetting && (
         <div className="modal-wrap">
@@ -7130,41 +8052,42 @@ function MePage({ navigate }) {
   });
   const maxDay = Math.max(1, ...recentDays.map((item) => item.count));
   return (
-    <div className="page me-page">
+    <div className="page me-page refined-me-page">
       <section className="page-intro">
         <span className="eyebrow">
           <UserRound />
           MY MUSIC
         </span>
         <h1>我的音乐</h1>
-        <p>收藏、最近播放、下载记录和个人偏好集中在这里。</p>
+        <p>收藏、回听与个人歌单，按你的聆听习惯自然汇集。</p>
       </section>
-      <div className="me-grid">
-        <section className="panel">
-          <SectionHead title="听歌报告" note="基于本机播放历史生成" />
-          <div className="report-cards">
-            <StatCard
-              icon={Play}
-              label="播放记录"
-              value={events.length}
-              detail="实际播放次数"
-            />
-            <StatCard
-              icon={Clock3}
-              label="累计时长"
-              value={totalMinutes}
-              detail="分钟"
-            />
-            <StatCard
-              icon={Heart}
-              label="收藏歌曲"
-              value={favorites.length}
-              detail="本地账号"
-            />
-          </div>
-          <div className="listening-insights">
+      <div className="me-dashboard">
+        <section className="me-listening-surface">
+          <header className="me-section-head">
             <div>
-              <h4>近 7 天</h4>
+              <span>本地聆听报告</span>
+              <h2>最近的音乐足迹</h2>
+            </div>
+            <small>仅根据本机记录生成</small>
+          </header>
+          <div className="me-metric-strip">
+            {[
+              [Play, "播放", events.length, "次"],
+              [Clock3, "时长", totalMinutes, "分钟"],
+              [Heart, "收藏", favorites.length, "首"],
+            ].map(([Icon, label, value, unit]) => (
+              <div className="me-metric" key={label}>
+                <span><Icon /></span>
+                <div>
+                  <small>{label}</small>
+                  <strong>{fmt(value)} <em>{unit}</em></strong>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="me-insights">
+            <div className="me-weekly">
+              <h3>近 7 天</h3>
               <div className="listening-bars">
                 {recentDays.map((item) => (
                   <span key={item.label}>
@@ -7179,25 +8102,35 @@ function MePage({ navigate }) {
                 ))}
               </div>
             </div>
-            <div>
-              <h4>常听歌手</h4>
-              <ol>
-                {topArtists.map(([name, count], index) => (
-                  <li key={name}>
-                    <b>{index + 1}</b>
-                    <span>{name}</span>
-                    <em>{count} 次</em>
-                  </li>
-                ))}
-              </ol>
+            <div className="me-artists">
+              <h3>常听音乐人</h3>
+              {topArtists.length ? (
+                <ol>
+                  {topArtists.map(([name, count], index) => (
+                    <li key={name}>
+                      <b>{String(index + 1).padStart(2, "0")}</b>
+                      <span>{name}</span>
+                      <em>{count} 次</em>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p>播放几首歌曲后，这里会出现你的常听音乐人。</p>
+              )}
             </div>
           </div>
         </section>
-        <section className="panel">
-          <SectionHead title="我喜欢" note={`${favorites.length} 首收藏`} />
+        <section className="me-collection-surface">
+          <header className="me-section-head">
+            <div>
+              <span>收藏</span>
+              <h2>我喜欢</h2>
+            </div>
+            <small>{favorites.length} 首</small>
+          </header>
           {favorites.length ? (
-            <div className="favorite-list">
-              {favorites.slice(0, 12).map((item) => (
+            <div className="favorite-list me-track-list">
+              {favorites.slice(0, 8).map((item) => (
                 <button
                   key={trackIdentity(item)}
                   onClick={() => player.play(item)}
@@ -7214,18 +8147,28 @@ function MePage({ navigate }) {
               ))}
             </div>
           ) : (
-            <Empty
-              icon={Heart}
-              title="还没有收藏"
-              text="播放时点击喜欢，歌曲会出现在这里。"
-            />
+            <div className="me-empty-inline">
+              <span><Heart /></span>
+              <div>
+                <strong>还没有收藏</strong>
+                <p>播放歌曲时点亮喜欢，它就会留在这里。</p>
+              </div>
+            </div>
           )}
         </section>
-        <section className="panel">
-          <SectionHead title="最近播放" note="可一键继续播放" />
+      </div>
+      <div className="me-lower-grid">
+        <section className="me-list-surface">
+          <header className="me-section-head">
+            <div>
+              <span>继续聆听</span>
+              <h2>最近播放</h2>
+            </div>
+            <small>{history.length} 条</small>
+          </header>
           {history.length ? (
-            <div className="favorite-list">
-              {history.slice(0, 12).map((item) => (
+            <div className="favorite-list me-track-list">
+              {history.slice(0, 10).map((item) => (
                 <button
                   key={`${trackIdentity(item)}-${item.playedAt}`}
                   onClick={() => player.play(item)}
@@ -7242,26 +8185,28 @@ function MePage({ navigate }) {
               ))}
             </div>
           ) : (
-            <Empty
-              icon={Play}
-              title="暂无播放记录"
-              text="从音乐库或发现页播放一首歌即可生成。"
-            />
+            <div className="me-empty-inline">
+              <span><Play /></span>
+              <div>
+                <strong>暂无播放记录</strong>
+                <p>从音乐库开始播放，最近听过的内容会保留在这里。</p>
+              </div>
+            </div>
           )}
         </section>
-        <section className="panel">
-          <SectionHead
-            title="我的歌单"
-            note={`${Object.keys(playlists).length} 个歌单`}
-            action={
-              <button className="secondary small" onClick={newPlaylist}>
-                <Plus />
-                新建歌单
-              </button>
-            }
-          />
+        <section className="me-list-surface">
+          <header className="me-section-head">
+            <div>
+              <span>我的收藏夹</span>
+              <h2>歌单</h2>
+            </div>
+            <button className="secondary small" onClick={newPlaylist}>
+              <Plus />
+              新建歌单
+            </button>
+          </header>
           {Object.keys(playlists).length ? (
-            <div className="playlist-library">
+            <div className="playlist-library me-playlist-list">
               {Object.entries(playlists).map(([name, tracks]) => (
                 <article key={name}>
                   <button
@@ -7282,6 +8227,7 @@ function MePage({ navigate }) {
                       confirm(`删除歌单“${name}”？歌曲文件不会被删除。`) &&
                       player.deletePlaylist(name)
                     }
+                    aria-label={`删除歌单 ${name}`}
                   >
                     <Trash2 />
                   </button>
@@ -7289,35 +8235,765 @@ function MePage({ navigate }) {
               ))}
             </div>
           ) : (
-            <Empty
-              icon={ListMusic}
-              title="还没有歌单"
-              text="在播放器中把喜欢的歌曲加入新歌单。"
-            />
+            <div className="me-empty-inline">
+              <span><ListMusic /></span>
+              <div>
+                <strong>还没有歌单</strong>
+                <p>新建歌单，把想反复听的歌曲放在一起。</p>
+              </div>
+            </div>
           )}
         </section>
-        <section className="panel">
-          <SectionHead title="我的入口" note="常用个人操作" />
-          <div className="quick-grid small">
-            <button onClick={() => navigate("library")}>
-              <Library />
-              打开音乐库
-            </button>
-            <button onClick={() => navigate("discover")}>
-              <Sparkles />
-              今日推荐
-            </button>
-            <button onClick={() => navigate("player")}>
-              <Play />
-              播放器
-            </button>
-            <button onClick={() => navigate("settings")}>
-              <Settings />
-              偏好设置
-            </button>
+      </div>
+    </div>
+  );
+}
+
+function PlaylistsPage({
+  play,
+  notify,
+  initialPlaylistId = "",
+  onPlaylistChange,
+}) {
+  const [items, setItems] = useState([]);
+  const [servicePlaylists, setServicePlaylists] = useState({
+    plex: { configured: false, items: [], error: null },
+    fnos: { configured: false, items: [], error: null },
+  });
+  const [serviceBusy, setServiceBusy] = useState(false);
+  const [servicePlaying, setServicePlaying] = useState("");
+  const [selected, setSelected] = useState(null);
+  const [newName, setNewName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [shareUrl, setShareUrl] = useState("");
+  const [migration, setMigration] = useState(null);
+  const [migrationBusy, setMigrationBusy] = useState("");
+  const [migrationTargets, setMigrationTargets] = useState(["songlib"]);
+  const [downloadMissing, setDownloadMissing] = useState(false);
+  const [migrationSource, setMigrationSource] = useState("");
+  const [migrationQuality, setMigrationQuality] = useState("320k");
+  const fileRef = useRef(null);
+  const loadServices = async () => {
+    setServiceBusy(true);
+    try {
+      const connected = await api("/api/playlists/services");
+      setServicePlaylists(connected);
+    } catch (err) {
+      setServicePlaylists({
+        plex: { configured: false, items: [], error: err.message },
+        fnos: { configured: false, items: [], error: err.message },
+      });
+    } finally {
+      setServiceBusy(false);
+    }
+  };
+  const load = async (preferredId, { replace = false } = {}) => {
+    const [data] = await Promise.all([
+      api("/api/playlists"),
+      loadServices(),
+    ]);
+    setItems(data.items || []);
+    const id = preferredId || selected?.id || data.items?.[0]?.id;
+    if (id) {
+      const detail = await api(`/api/playlists/${id}`);
+      setSelected(detail);
+      onPlaylistChange?.(id, { replace });
+    } else {
+      setSelected(null);
+      onPlaylistChange?.("", { replace: true });
+    }
+  };
+  useEffect(() => {
+    load(initialPlaylistId, { replace: !initialPlaylistId }).catch((err) =>
+      setError(err.message),
+    );
+  }, []);
+  const create = async (event) => {
+    event.preventDefault();
+    if (!newName.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      const created = await api("/api/playlists", {
+        method: "POST",
+        body: JSON.stringify({ name: newName.trim(), description: "", items: [] }),
+      });
+      setNewName("");
+      await load(created.id);
+      notify("歌单已创建");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const importFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await api("/api/playlists/import/m3u", {
+        method: "POST",
+        body: JSON.stringify({
+          name: file.name.replace(/\.(m3u8?|txt)$/i, ""),
+          content: await file.text(),
+          pathMappings: [],
+        }),
+      });
+      await load(result.playlist.id);
+      notify(`已导入 ${result.matched} 首，${result.unmatched.length} 首需要匹配`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const remove = async () => {
+    if (!selected || !window.confirm(`删除歌单“${selected.name}”？歌曲文件不会被删除。`)) return;
+    setBusy(true);
+    try {
+      await api(`/api/playlists/${selected.id}`, { method: "DELETE" });
+      setSelected(null);
+      await load();
+      notify("歌单已删除");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const move = async (index, delta) => {
+    const next = [...selected.items];
+    const target = index + delta;
+    if (target < 0 || target >= next.length) return;
+    [next[index], next[target]] = [next[target], next[index]];
+    setBusy(true);
+    try {
+      const updated = await api(`/api/playlists/${selected.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          items: next.map(playlistTrackPayload),
+        }),
+      });
+      setSelected(updated);
+      await load(updated.id);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const playable = playlistPlaybackInput;
+  const playAll = () => {
+    const queue = (selected?.items || []).map(playable).filter(Boolean);
+    if (queue.length) play(queue[0], queue.slice(1));
+  };
+  const playSelectedFrom = (index) => {
+    const queue = (selected?.items || [])
+      .slice(index)
+      .map(playable)
+      .filter(Boolean);
+    if (queue.length) play(queue[0], queue.slice(1));
+  };
+  const playServicePlaylist = async (serviceId, item) => {
+    if (serviceId !== "plex") {
+      setError("飞牛音乐歌单播放需要服务返回可播放曲目；当前连接可用于歌单同步。");
+      return;
+    }
+    const busyKey = `${serviceId}:${item.id}`;
+    setServicePlaying(busyKey);
+    setError("");
+    try {
+      const detail = await api(
+        `/api/playlists/services/${serviceId}/${encodeURIComponent(item.id)}`,
+      );
+      const queue = servicePlaylistPlaybackItems(serviceId, detail.items);
+      if (!queue.length) throw new Error("这个歌单里没有可播放曲目");
+      await play(queue[0], queue.slice(1));
+      notify(`正在播放“${item.name}”，共 ${queue.length} 首`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setServicePlaying("");
+    }
+  };
+  const syncSelected = async (target) => {
+    if (!selected) return;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await api(`/api/playlists/${selected.id}/sync`, {
+        method: "POST",
+        body: JSON.stringify({ targets: [target] }),
+      });
+      const synced = result[target];
+      if (synced?.ok === false) throw new Error(synced.error || "同步失败");
+      notify(
+        target === "plex"
+          ? `已同步到 Plex，共 ${synced?.itemCount || 0} 首`
+          : `已同步到飞牛音乐，共 ${synced?.matched || 0} 首`,
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const previewMigration = async (event) => {
+    event.preventDefault();
+    if (!shareUrl.trim()) return;
+    setMigrationBusy("preview");
+    setError("");
+    try {
+      const result = await api("/api/playlists/migrate/preview", {
+        method: "POST",
+        body: JSON.stringify({ shareUrl: shareUrl.trim() }),
+      });
+      setMigration(result);
+      setMigrationTargets(["songlib"]);
+      setDownloadMissing(false);
+      setMigrationSource(result.downloadSources?.[0]?.id || "");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setMigrationBusy("");
+    }
+  };
+  const toggleMigrationTarget = (target) => {
+    setMigrationTargets((value) =>
+      value.includes(target)
+        ? value.filter((item) => item !== target)
+        : [...value, target],
+    );
+  };
+  const executeMigration = async () => {
+    if (!migrationTargets.length) {
+      setError("请至少选择一个迁移目标");
+      return;
+    }
+    setMigrationBusy("execute");
+    setError("");
+    try {
+      const result = await api("/api/playlists/migrate/execute", {
+        method: "POST",
+        body: JSON.stringify({
+          sourceUrl: migration.sourceUrl,
+          targets: migrationTargets,
+          downloadMissing,
+          sourceId: downloadMissing ? migrationSource : null,
+          quality: migrationQuality,
+        }),
+      });
+      if (result.songlib?.id) await load(result.songlib.id);
+      const details = [
+        result.songlib ? `音屿 ${result.songlib.itemCount} 首` : "",
+        result.plex?.ratingKey ? `Plex ${result.plex.itemCount} 首` : "",
+        result.fnos?.ok ? `飞牛音乐 ${result.fnos.matched} 首` : "",
+        result.downloads?.created ? `${result.downloads.created} 首进入下载队列` : "",
+      ].filter(Boolean);
+      notify(details.length ? `迁移完成：${details.join("，")}` : "迁移任务已处理");
+      setMigration(null);
+      setShareUrl("");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setMigrationBusy("");
+    }
+  };
+  return (
+    <div className="page playlists-page">
+      <section className="page-intro playlist-intro">
+        <div>
+          <span className="eyebrow"><ListMusic />我的歌单</span>
+          <h1>把喜欢的歌带回来</h1>
+          <p>创建歌单，导入文件，或从常用音乐平台迁移。</p>
+        </div>
+        <div className="playlist-actions">
+          <button className="secondary" onClick={() => fileRef.current?.click()} disabled={busy}>
+            <FileUp />导入 M3U
+          </button>
+          <input ref={fileRef} hidden type="file" accept=".m3u,.m3u8,audio/x-mpegurl" onChange={importFile} />
+          {selected && (
+            <a className="secondary button-link" href={`/api/playlists/${selected.id}/export.m3u`}>
+              <Download />导出
+            </a>
+          )}
+        </div>
+      </section>
+      <section className="playlist-migration panel">
+        <div className="migration-heading">
+          <span><Link2 /></span>
+          <div>
+            <strong>从分享链接迁移</strong>
+            <small>支持 QQ 音乐、网易云音乐公开歌单</small>
           </div>
+        </div>
+        <form onSubmit={previewMigration}>
+          <input
+            type="url"
+            value={shareUrl}
+            onChange={(event) => setShareUrl(event.target.value)}
+            placeholder="粘贴歌单分享链接"
+          />
+          <button className="primary" disabled={!shareUrl.trim() || migrationBusy === "preview"}>
+            {migrationBusy === "preview" ? <LoaderCircle className="spin" /> : <Search />}
+            读取歌单
+          </button>
+        </form>
+        <p className="migration-privacy">只读取公开歌单信息，不需要第三方账号密码。</p>
+      </section>
+      {migration && (
+        <section className="migration-preview panel">
+          <header>
+            <div className="migration-cover">
+              {migration.coverUrl ? <img src={migration.coverUrl} alt="" /> : <ListMusic />}
+            </div>
+            <div>
+              <span>{migration.platformLabel}</span>
+              <h2>{migration.name}</h2>
+              <p>
+                {migration.summary.total} 首 · {migration.summary.matched} 首已匹配 ·{" "}
+                {migration.summary.missing} 首待补全
+              </p>
+            </div>
+            <button className="icon-button" onClick={() => setMigration(null)} aria-label="关闭迁移预览"><X /></button>
+          </header>
+          <div className="migration-targets">
+            {[
+              ["songlib", "音屿歌单", Music2],
+              ["plex", "Plex", Server],
+              ["fnos", "飞牛音乐", Radio],
+            ].map(([id, label, Icon]) => {
+              const available = migration.targets?.[id]?.available !== false;
+              const selectedTarget = migrationTargets.includes(id);
+              return (
+                <button
+                  key={id}
+                  className={selectedTarget ? "active" : ""}
+                  disabled={!available}
+                  onClick={() => toggleMigrationTarget(id)}
+                >
+                  <Icon />
+                  <span><strong>{label}</strong><small>{available ? (selectedTarget ? "已选择" : "可迁移") : "需要先配置连接"}</small></span>
+                  <i>{selectedTarget ? <Check /> : <Plus />}</i>
+                </button>
+              );
+            })}
+          </div>
+          {migration.summary.missing > 0 && (
+            <div className="migration-download-option">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={downloadMissing}
+                  disabled={!migration.downloadSources?.length}
+                  onChange={(event) => setDownloadMissing(event.target.checked)}
+                />
+                <span><strong>补全缺失歌曲</strong><small>只采用标题、主要艺人和时长全部通过校验的版本</small></span>
+              </label>
+              {downloadMissing && (
+                <div>
+                  <select value={migrationSource} onChange={(event) => setMigrationSource(event.target.value)}>
+                    {(migration.downloadSources || []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                  </select>
+                  <select value={migrationQuality} onChange={(event) => setMigrationQuality(event.target.value)}>
+                    <option value="flac">优先无损</option>
+                    <option value="320k">高品质 320K</option>
+                    <option value="128k">标准 128K</option>
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+          <div className="migration-track-preview">
+            {(migration.tracks || []).slice(0, 12).map((item, index) => (
+              <div key={`${item.externalRef}-${index}`} className={item.matchStatus === "matched" ? "matched" : "missing"}>
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                <div><strong>{item.title}</strong><small>{item.artist || "未知艺人"} · {item.album || "未知专辑"}</small></div>
+                <em>{item.matchStatus === "matched" ? "已匹配" : "待补全"}</em>
+              </div>
+            ))}
+            {migration.summary.total > 12 && <p>另有 {migration.summary.total - 12} 首，将按原顺序处理</p>}
+          </div>
+          <footer>
+            <span>执行前只显示预览；迁移结果和未匹配项会保留记录。</span>
+            <button className="primary" disabled={migrationBusy === "execute" || !migrationTargets.length || (downloadMissing && !migrationSource)} onClick={executeMigration}>
+              {migrationBusy === "execute" ? <LoaderCircle className="spin" /> : <ArrowDownToLine />}
+              开始迁移
+            </button>
+          </footer>
+        </section>
+      )}
+      {error && <div className="form-error"><CircleAlert />{error}</div>}
+      <section className="connected-playlists panel">
+        <header>
+          <div>
+            <span>已连接的音乐服务</span>
+            <h2>服务歌单</h2>
+            <p>Plex 与飞牛音乐中的歌单会在这里汇总显示。</p>
+          </div>
+          <button
+            className="secondary small"
+            onClick={loadServices}
+            disabled={serviceBusy}
+          >
+            <RefreshCw className={serviceBusy ? "spin" : ""} />
+            刷新
+          </button>
+        </header>
+        <div className="service-playlist-grid">
+          {[
+            ["plex", "Plex", Server],
+            ["fnos", "飞牛音乐", Radio],
+          ].map(([id, label, Icon]) => {
+            const service = servicePlaylists[id] || {};
+            return (
+              <article className="service-playlist-column" key={id}>
+                <header>
+                  <span><Icon /></span>
+                  <div>
+                    <strong>{label}</strong>
+                    <small>
+                      {service.configured
+                        ? `${service.items?.length || 0} 个歌单`
+                        : "尚未连接"}
+                    </small>
+                  </div>
+                </header>
+                {service.error ? (
+                  <div className="service-playlist-message error">
+                    <CircleAlert />
+                    <span>{service.error}</span>
+                  </div>
+                ) : !service.configured ? (
+                  <div className="service-playlist-message">
+                    <Link2 />
+                    <span>在设置中完成连接后，歌单会自动出现在这里。</span>
+                  </div>
+                ) : service.items?.length ? (
+                  <div className="service-playlist-list">
+                    {service.items.map((item, index) => (
+                      <button
+                        type="button"
+                        key={`${id}-${item.id}`}
+                        className={id !== "plex" ? "sync-only" : ""}
+                        disabled={
+                          id !== "plex" ||
+                          servicePlaying === `${id}:${item.id}`
+                        }
+                        onClick={() => playServicePlaylist(id, item)}
+                        aria-label={
+                          id === "plex"
+                            ? `播放歌单 ${item.name}`
+                            : `查看飞牛音乐歌单 ${item.name} 的播放能力`
+                        }
+                      >
+                        <span className={`playlist-tile tone-${index % 4}`}>
+                          {item.coverUrl ? (
+                            <img src={item.coverUrl} alt="" />
+                          ) : (
+                            <ListMusic />
+                          )}
+                        </span>
+                        <div>
+                          <strong>{item.name}</strong>
+                          <small>{item.itemCount || 0} 首歌曲</small>
+                        </div>
+                        <em>
+                          {servicePlaying === `${id}:${item.id}` ? (
+                            <LoaderCircle className="spin" />
+                          ) : id === "plex" ? (
+                            <Play fill="currentColor" />
+                          ) : (
+                            label
+                          )}
+                        </em>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="service-playlist-message">
+                    <ListMusic />
+                    <span>服务已连接，暂时没有歌单。</span>
+                  </div>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      </section>
+      <div className="playlist-workspace">
+        <aside className="panel playlist-list">
+          <form onSubmit={create}>
+            <input value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="新歌单名称" />
+            <button className="primary icon-button" disabled={busy || !newName.trim()} aria-label="创建歌单"><Plus /></button>
+          </form>
+          {items.length ? items.map((item) => (
+            <button
+              key={item.id}
+              className={selected?.id === item.id ? "active" : ""}
+              onClick={() => load(item.id).catch((err) => setError(err.message))}
+            >
+              <span><ListMusic /><strong>{item.name}</strong></span>
+              <small>{item.itemCount} 首</small>
+            </button>
+          )) : <Empty icon={ListMusic} title="还没有歌单" text="创建一个空歌单，或导入 M3U/M3U8 文件。" />}
+        </aside>
+        <section className="panel playlist-detail">
+          {!selected ? (
+            <Empty icon={ListMusic} title="选择一个歌单" text="歌单内容、匹配状态和顺序会显示在这里。" />
+          ) : (
+            <>
+              <header>
+                <div>
+                  <span>本地歌单</span>
+                  <h2>{selected.name}</h2>
+                  <p>{selected.description || `${selected.itemCount} 首歌曲`}</p>
+                </div>
+                <div>
+                  <button className="secondary" onClick={() => syncSelected("plex")} disabled={busy || !selected.items.length}>
+                    <Server />同步 Plex
+                  </button>
+                  <button className="secondary" onClick={() => syncSelected("fnos")} disabled={busy || !selected.items.length}>
+                    <Radio />同步飞牛音乐
+                  </button>
+                  <button className="primary" onClick={playAll} disabled={!selected.items.some(playable)}>
+                    <Play />播放全部
+                  </button>
+                  <button className="icon-button danger" onClick={remove} aria-label="删除歌单"><Trash2 /></button>
+                </div>
+              </header>
+              <div className="playlist-tracks">
+                {selected.items.length ? selected.items.map((item, index) => (
+                  <article key={item.id} className={!playable(item) ? "unmatched" : ""}>
+                    <button
+                      className="track-play"
+                      disabled={!playable(item)}
+                      onClick={() => playable(item) && playSelectedFrom(index)}
+                      aria-label={playable(item) ? `播放 ${item.title}` : `${item.title} 尚未匹配`}
+                    >
+                      {item.file_id ? <Play /> : <CircleAlert />}
+                    </button>
+                    <span className="track-position">{index + 1}</span>
+                    <div><strong>{item.title || "未命名歌曲"}</strong><small>{item.artist || "未知艺人"} · {item.album || "未知专辑"}</small></div>
+                    <em>{playable(item) ? "可播放" : "待匹配"}</em>
+                    <div className="track-order">
+                      <button className="icon-button" onClick={() => move(index, -1)} disabled={busy || index === 0} aria-label="上移"><ChevronDown className="rotate-180" /></button>
+                      <button className="icon-button" onClick={() => move(index, 1)} disabled={busy || index === selected.items.length - 1} aria-label="下移"><ChevronDown /></button>
+                    </div>
+                  </article>
+                )) : <Empty icon={Music2} title="空歌单" text="可以先导入 M3U，或从播放器把歌曲加入歌单。" />}
+              </div>
+            </>
+          )}
         </section>
       </div>
+    </div>
+  );
+}
+
+function RecommendationPage({ play, navigate, isAdmin = true }) {
+  const [data, setData] = useState({ profile: {}, items: [], eventCount: 0 });
+  const [exploration, setExploration] = useState(0.35);
+  const [busy, setBusy] = useState(true);
+  const [error, setError] = useState("");
+  const applyRecommendationData = (value = {}) => {
+    const normalized = {
+      profile: value.profile || {},
+      items: Array.isArray(value.items) ? value.items : [],
+      eventCount: Number(value.eventCount || 0),
+    };
+    setData(normalized);
+    return normalized;
+  };
+  const load = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const result = await api("/api/recommendations");
+      const normalized = applyRecommendationData(result);
+      if (!normalized.items.length) {
+        const refreshed = await api("/api/recommendations/refresh", {
+          method: "POST",
+          body: JSON.stringify({ exploration, discoveries: [] }),
+        });
+        applyRecommendationData(refreshed);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  useEffect(() => {
+    load();
+  }, []);
+  const refresh = async () => {
+    setBusy(true);
+    try {
+      applyRecommendationData(
+        await api("/api/recommendations/refresh", {
+          method: "POST",
+          body: JSON.stringify({ exploration, discoveries: [] }),
+        }),
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const profile = data.profile || {};
+  const playRecommendation = (item) => {
+    const target = recommendationPlaybackInput(item);
+    if (target) play(target);
+  };
+  return (
+    <div className="page recommendation-page refined-recommendation-page">
+      <section className="recommendation-intro">
+        <div>
+          <span className="eyebrow"><Sparkles />FOR YOU</span>
+          <h1>为你推荐</h1>
+          <p>
+            {profile.explanation ||
+              "从你的收藏与播放习惯中挑选熟悉的声音，也留出发现新音乐的空间。"}
+          </p>
+        </div>
+        <div className="exploration-control">
+          <div>
+            <span>熟悉度</span>
+            <strong>{100 - Math.round(exploration * 100)}%</strong>
+          </div>
+          <input
+            aria-label="推荐探索比例"
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={exploration}
+            onChange={(event) => setExploration(Number(event.target.value))}
+          />
+          <div>
+            <span>探索度</span>
+            <strong>{Math.round(exploration * 100)}%</strong>
+          </div>
+          <button className="secondary small" onClick={refresh} disabled={busy}>
+            <RefreshCw className={busy ? "spin" : ""} />
+            换一批
+          </button>
+        </div>
+      </section>
+      {error && (
+        <div className="recommendation-error">
+          <CircleAlert />
+          <div>
+            <strong>推荐暂时没有加载成功</strong>
+            <span>{error}</span>
+          </div>
+          <button className="secondary small" onClick={load}>重试</button>
+        </div>
+      )}
+      <section className="recommendation-signals" aria-label="推荐画像摘要">
+        <div>
+          <span>完整听完</span>
+          <strong>{Math.round((profile.completionRate || 0) * 100)}%</strong>
+          <small>完成率</small>
+        </div>
+        <i />
+        <div>
+          <span>快速跳过</span>
+          <strong>{Math.round((profile.skipRate || 0) * 100)}%</strong>
+          <small>跳过率</small>
+        </div>
+        <i />
+        <div>
+          <span>本地行为</span>
+          <strong>{fmt(data.eventCount)}</strong>
+          <small>不会上传完整历史</small>
+        </div>
+      </section>
+      <section className="recommendation-profile">
+        <article>
+          <header>
+            <h2>常听音乐人</h2>
+            <span>收藏与完整播放的权重更高</span>
+          </header>
+          <div className="profile-tags">
+            {(profile.topArtists || []).length ? (
+              profile.topArtists.map((item) => (
+                <span key={item.name}>
+                  {item.name}
+                  <small>{item.score}</small>
+                </span>
+              ))
+            ) : (
+              <p>继续播放与收藏，常听音乐人会逐渐浮现。</p>
+            )}
+          </div>
+        </article>
+        <article>
+          <header>
+            <h2>偏好年代与流派</h2>
+            <span>只根据本地标签与播放行为计算</span>
+          </header>
+          <div className="profile-tags">
+            {[...(profile.favoriteDecades || []), ...(profile.topGenres || [])]
+              .length ? (
+              [
+                ...(profile.favoriteDecades || []),
+                ...(profile.topGenres || []),
+              ].map((item) => (
+                <span key={item.name}>
+                  {item.name}
+                  <small>{item.score}</small>
+                </span>
+              ))
+            ) : (
+              <p>曲库标签越完整，推荐理由会越准确。</p>
+            )}
+          </div>
+        </article>
+      </section>
+      <section className="recommendation-feed">
+        <header className="recommendation-feed-head">
+          <div>
+            <span>今日发现</span>
+            <h2>根据你的口味挑选</h2>
+          </div>
+          <small>已过滤 Live、伴奏、DJ 与重复版本</small>
+        </header>
+        {busy && !data.items.length ? (
+          <PageLoader />
+        ) : data.items.length ? (
+          <div className="recommendation-grid">
+            {data.items.slice(0, 24).map((item) => (
+              <article key={item.id}>
+                <div className="recommendation-cover"><Disc3 /><span>{item.inLibrary ? "库内" : "库外"}</span></div>
+                <div><strong>{item.title}</strong><p>{item.artist}{item.album ? ` · ${item.album}` : ""}</p><small>{(item.reasons || []).join(" · ")}</small></div>
+                {item.inLibrary ? (
+                  <button className="icon-button" onClick={() => playRecommendation(item)} aria-label={`播放 ${item.title}`}><Play /></button>
+                ) : isAdmin ? (
+                  <button className="text-button recommendation-source-link" onClick={() => navigate("download")}>查找授权来源<ChevronRight /></button>
+                ) : <em>可向管理员申请入库</em>}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="recommendation-empty">
+            <span><Sparkles /></span>
+            <div>
+              <strong>推荐正在认识你的口味</strong>
+              <p>先从曲库播放或收藏几首歌曲，下一次刷新就会有更贴合的结果。</p>
+            </div>
+            <button className="secondary" onClick={() => navigate("library")}>
+              打开音乐库
+            </button>
+          </div>
+        )}
+      </section>
     </div>
   );
 }
@@ -7334,51 +9010,75 @@ function ManagementHub({ navigate, stats, jobs, permissions = [] }) {
         ? false
         : can("manage_library"),
   );
+  const managementGroups = [
+    {
+      id: "catalog",
+      eyebrow: "曲库与内容",
+      title: "整理、补全与入库",
+      items: visibleManagement.filter((item) =>
+        ["local", "scrape", "download"].includes(item.id),
+      ),
+    },
+    {
+      id: "operations",
+      eyebrow: "连接与运行",
+      title: "服务、队列与故障",
+      items: visibleManagement.filter((item) =>
+        ["sources", "tasks"].includes(item.id),
+      ),
+    },
+  ].filter((group) => group.items.length);
+  const metrics = [
+    [Music2, "歌曲", stats?.tracks, "catalog"],
+    [CircleAlert, "待确认", waiting, waiting ? "warning" : "quiet"],
+    [CircleAlert, "失败任务", failed, failed ? "danger" : "quiet"],
+    [BookOpenText, "缺歌词", stats?.missingLyrics, "info"],
+  ];
   return (
-    <div className="page manage-page">
+    <div className="page manage-page refined-manage-page">
       <section className="page-intro">
         <span className="eyebrow">
           <Gauge />
           ADMIN CENTER
         </span>
         <h1>管理中心</h1>
-        <p>
-          整理、刮削、下载、音乐源、任务、回滚与审计集中在这里。播放和日常使用不被管理功能打断。
-        </p>
+        <p>扫描、整理、连接与任务状态集中在一处。</p>
       </section>
-      <section className="manage-overview panel">
-        <StatCard icon={Music2} label="歌曲" value={stats?.tracks} />
-        <StatCard
-          icon={CircleAlert}
-          label="待确认"
-          value={waiting}
-          tone="amber"
-        />
-        <StatCard
-          icon={CircleAlert}
-          label="失败任务"
-          value={failed}
-          tone="pink"
-        />
-        <StatCard
-          icon={BookOpenText}
-          label="缺歌词"
-          value={stats?.missingLyrics}
-          tone="blue"
-        />
+      <section className="manage-metrics" aria-label="曲库状态摘要">
+        {metrics.map(([Icon, label, value, tone]) => (
+          <article className={`manage-metric ${tone}`} key={label}>
+            <span className="manage-metric-icon"><Icon /></span>
+            <div>
+              <small>{label}</small>
+              <strong>{fmt(value)}</strong>
+            </div>
+          </article>
+        ))}
       </section>
-      <section className="manage-grid">
-        {visibleManagement.map((item) => (
-          <button
-            className="panel manage-card"
-            key={item.id}
-            onClick={() => navigate(item.id)}
-          >
-            <item.icon />
-            <strong>{item.label}</strong>
-            <span>{item.desc}</span>
-            <ChevronRight />
-          </button>
+      <section className="manage-workspace">
+        {managementGroups.map((group) => (
+          <article className="manage-section" key={group.id}>
+            <header>
+              <span>{group.eyebrow}</span>
+              <h2>{group.title}</h2>
+            </header>
+            <div className="manage-menu">
+              {group.items.map((item) => (
+                <button
+                  className="manage-menu-row"
+                  key={item.id}
+                  onClick={() => navigate(item.id)}
+                >
+                  <span className="manage-menu-icon"><item.icon /></span>
+                  <span className="manage-menu-copy">
+                    <strong>{item.label}</strong>
+                    <small>{item.desc}</small>
+                  </span>
+                  <ChevronRight />
+                </button>
+              ))}
+            </div>
+          </article>
         ))}
       </section>
     </div>
@@ -7386,26 +9086,31 @@ function ManagementHub({ navigate, stats, jobs, permissions = [] }) {
 }
 
 const pageMeta = {
-  home: ["曲库总览", "Plex、本地曲库、资料完整度与待处理任务"],
-  library: ["音乐库", "浏览歌手、专辑与单曲，并直接播放"],
-  player: ["播放器", "播放本地文件、Plex 曲目与下载前试听"],
-  discover: ["发现", "每日推荐、平台歌单分类与本地冷门重听"],
-  me: ["我的", "收藏、最近播放、听歌报告与个人偏好"],
-  manage: ["管理中心", "刮削、下载、任务、回滚与日志审计"],
-  search: ["全局搜索", "歌曲、艺人、专辑、本地文件与待处理项"],
-  local: ["本地曲库", "扫描、整理并修复 NAS 上的真实音乐文件"],
-  scrape: ["刮削中心", "补齐封面、歌词、背景与中文简介"],
-  download: ["下载入库", "搜索音乐，保存到 NAS 或当前设备"],
-  sources: ["音乐源管理", "导入、检查并测试你的自定义音乐源"],
-  tasks: ["任务中心", "查看下载、整理、刮削与扫描进度"],
-  settings: ["设置", "Plex、本地路径、账号、安全与日志"],
+  home: ["首页", ""],
+  library: ["音乐库", "歌手、专辑与单曲"],
+  playlists: ["歌单", "收藏、导入与迁移"],
+  player: ["正在播放", ""],
+  discover: ["为你推荐", "熟悉的旋律，也有新的发现"],
+  me: ["收藏与历史", "你的音乐足迹"],
+  manage: ["管理中心", "曲库、任务与服务"],
+  search: ["搜索", "歌曲、艺人、专辑与歌单"],
+  local: ["本地曲库", "文件与目录"],
+  scrape: ["资料补全", "封面、歌词与简介"],
+  download: ["下载与入库", "授权来源与待整理文件"],
+  sources: ["音乐源", "连接与可用性"],
+  tasks: ["任务", "进度与历史"],
+  settings: ["设置", "账号、连接与存储"],
 };
 
 function App() {
   const [authenticated, setAuthenticated] = useState(null);
+  const [setupRequired, setSetupRequired] = useState(false);
   useEffect(() => {
     api("/api/auth/status")
-      .then((d) => setAuthenticated(d.authenticated))
+      .then((d) => {
+        setAuthenticated(d.authenticated);
+        setSetupRequired(Boolean(d.setupRequired));
+      })
       .catch(() => setAuthenticated(false));
   }, []);
   if (authenticated === null)
@@ -7414,6 +9119,15 @@ function App() {
         <Brand />
         <LoaderCircle className="spin" />
       </div>
+    );
+  if (setupRequired)
+    return (
+      <SetupWizard
+        onComplete={() => {
+          setSetupRequired(false);
+          setAuthenticated(true);
+        }}
+      />
     );
   if (!authenticated) return <Login onLogin={() => setAuthenticated(true)} />;
   return (
@@ -7425,7 +9139,10 @@ function App() {
 }
 
 function AuthenticatedShell({ setAuthenticated }) {
-  const [active, setActive] = useState("home");
+  const [active, setActive] = useState(() =>
+    pageFromPath(window.location.pathname),
+  );
+  const [routeRevision, setRouteRevision] = useState(0);
   const [menu, setMenu] = useState(false);
   const [stats, setStats] = useState({});
   const [jobs, setJobs] = useState([]);
@@ -7434,8 +9151,22 @@ function AuthenticatedShell({ setAuthenticated }) {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
   const [ambientIndex, setAmbientIndex] = useState(0);
+  const [ambientDeck, setAmbientDeck] = useState([]);
   const [manualBackdrop, setManualBackdrop] = useState(null);
   const player = usePlayer();
+  const updatePath = useCallback((path, { replace = false } = {}) => {
+    if (window.location.pathname === path) return;
+    window.history[replace ? "replaceState" : "pushState"]({}, "", path);
+  }, []);
+  const navigate = useCallback(
+    (page, { replace = false } = {}) => {
+      const target = knownPage(page) ? page : "home";
+      setManualBackdrop(null);
+      setActive(target);
+      updatePath(pathForPage(target), { replace });
+    },
+    [updatePath],
+  );
   const load = async () => {
     setLoading(true);
     try {
@@ -7457,9 +9188,21 @@ function AuthenticatedShell({ setAuthenticated }) {
     }
   };
   const refreshJobs = async () => setJobs(await api("/api/jobs"));
-  const refreshSources = async () => setSources(await api("/api/sources"));
+  const refreshSources = useCallback(
+    async () => setSources(await api("/api/sources")),
+    [],
+  );
   useEffect(() => {
     load();
+  }, []);
+  useEffect(() => {
+    const onPopState = () => {
+      setManualBackdrop(null);
+      setActive(pageFromPath(window.location.pathname));
+      setRouteRevision((value) => value + 1);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
   }, []);
   useEffect(() => {
     const title = pageMeta[active]?.[0];
@@ -7475,20 +9218,33 @@ function AuthenticatedShell({ setAuthenticated }) {
     }, 2500);
     return () => clearInterval(timer);
   }, [settingsData.user?.role, settingsData.user?.permissions?.join("|")]);
-  const ambientImages = stats?.heroImages || [];
+  const ambientImages = useMemo(
+    () => (Array.isArray(stats?.heroImages) ? stats.heroImages : []),
+    [stats?.heroImages],
+  );
   useEffect(() => {
-    if (ambientImages.length && ambientIndex >= ambientImages.length)
-      setAmbientIndex(0);
-  }, [ambientImages.length, ambientIndex]);
+    setAmbientDeck(buildAmbientDeck(ambientImages));
+    setAmbientIndex(0);
+  }, [ambientImages]);
   useEffect(() => {
-    if (active === "player" || manualBackdrop || ambientImages.length < 2)
+    if (active === "player" || manualBackdrop || ambientDeck.length < 2)
       return;
-    const timer = setInterval(
-      () => setAmbientIndex((value) => (value + 1) % ambientImages.length),
-      20000,
-    );
+    const timer = setInterval(() => {
+      if (ambientIndex + 1 < ambientDeck.length) {
+        setAmbientIndex(ambientIndex + 1);
+      } else {
+        setAmbientDeck(buildAmbientDeck(ambientImages));
+        setAmbientIndex(0);
+      }
+    }, 14000);
     return () => clearInterval(timer);
-  }, [active, ambientImages.length, manualBackdrop]);
+  }, [
+    active,
+    ambientDeck,
+    ambientImages,
+    ambientIndex,
+    manualBackdrop,
+  ]);
   const runJob = async (kind, payload = {}) => {
     try {
       await api("/api/jobs", {
@@ -7497,7 +9253,7 @@ function AuthenticatedShell({ setAuthenticated }) {
       });
       setToast({ message: "任务已加入队列" });
       refreshJobs();
-      setActive("tasks");
+      navigate("tasks");
     } catch (err) {
       setToast({ type: "error", message: err.message });
     }
@@ -7520,8 +9276,8 @@ function AuthenticatedShell({ setAuthenticated }) {
     await api("/api/auth/logout", { method: "POST" }).catch(() => {});
     setAuthenticated(false);
   };
-  const playTrack = async (item) => {
-    await player.play(item);
+  const playTrack = async (item, queue = []) => {
+    await player.play(item, queue);
   };
   const isAdmin = userIsAdmin(settingsData.user);
   const permissions = settingsData.user?.permissions || [];
@@ -7530,13 +9286,17 @@ function AuthenticatedShell({ setAuthenticated }) {
   const canOpenManagement = canManageLibrary || canManageSources;
   const isMobile = useMediaQuery("(max-width: 780px)");
   useEffect(() => {
-    if (!canOpenManagement && managementNav.some((item) => item.id === active))
-      setActive("home");
-  }, [canOpenManagement, active]);
+    if (
+      !loading &&
+      !canOpenManagement &&
+      managementNav.some((item) => item.id === active)
+    )
+      navigate("home", { replace: true });
+  }, [loading, canOpenManagement, active, navigate]);
   const [title, subtitle] = pageMeta[active] || pageMeta.home;
   const hero =
     manualBackdrop ||
-    ambientImages[ambientIndex % Math.max(ambientImages.length, 1)] ||
+    ambientDeck[ambientIndex % Math.max(ambientDeck.length, 1)] ||
     {};
   const playerTrack = player.currentTrack || {};
   const shellBackdrop =
@@ -7548,17 +9308,18 @@ function AuthenticatedShell({ setAuthenticated }) {
   return (
     <div
       className={`app-shell visual-shell route-${active} ${showMiniPlayer ? "has-mini-player" : ""}`}
+      data-font-size={settingsData.user?.fontSize || "standard"}
     >
       <Backdrop imageUrl={shellBackdrop} />
       {(!isMobile || menu) && (
         <Sidebar
           active={active}
-          onChange={setActive}
+          onChange={navigate}
           open={menu}
           close={() => setMenu(false)}
           logout={logout}
           version={settingsData.version}
-          openPlayer={() => setActive("player")}
+          openPlayer={() => navigate("player")}
           isAdmin={canOpenManagement}
         />
       )}
@@ -7567,34 +9328,69 @@ function AuthenticatedShell({ setAuthenticated }) {
           title={title}
           subtitle={subtitle}
           openMenu={() => setMenu(true)}
-          onNavigate={setActive}
+          onNavigate={navigate}
           logout={logout}
           profile={settingsData.user}
         />
+        {loading &&
+          (active === "manage" ||
+            managementNav.some(
+              (item) => item.id !== "settings" && item.id === active,
+            )) && (
+          <div className="management-route-loading" aria-label="正在载入管理数据">
+            <PageLoader />
+          </div>
+        )}
         {active === "home" && (
           <Dashboard
             stats={stats}
             jobs={jobs}
             loading={loading}
-            navigate={setActive}
+            navigate={navigate}
             runJob={runJob}
             isAdmin={canManageLibrary}
           />
         )}{" "}
         {active === "library" && (
-          <MediaLibrary play={playTrack} previewBackdrop={setManualBackdrop} />
+          <MediaLibrary
+            key={`library-${routeRevision}`}
+            initialTab={libraryTabFromPath(window.location.pathname)}
+            initialDetail={libraryDetailFromPath(window.location.pathname)}
+            play={playTrack}
+            previewBackdrop={setManualBackdrop}
+            onDetailBackdrop={setManualBackdrop}
+            onTabChange={(tab) => updatePath(pathForLibraryTab(tab))}
+            onDetailChange={(detail, fallbackTab) =>
+              updatePath(
+                detail
+                  ? pathForLibraryDetail(detail.type, detail.ratingKey)
+                  : pathForLibraryTab(fallbackTab || "artists"),
+              )
+            }
+          />
+        )}{" "}
+        {active === "playlists" && (
+          <PlaylistsPage
+            key={`playlists-${routeRevision}`}
+            play={playTrack}
+            notify={(message) => setToast({ message })}
+            initialPlaylistId={playlistIdFromPath(window.location.pathname)}
+            onPlaylistChange={(id, options) =>
+              updatePath(pathForPlaylist(id), options)
+            }
+          />
         )}{" "}
         {active === "search" && (
           <GlobalSearchPage
             play={playTrack}
-            navigate={setActive}
+            navigate={navigate}
             isAdmin={canManageLibrary}
           />
         )}{" "}
-        {active === "me" && <MePage navigate={setActive} />}{" "}
+        {active === "me" && <MePage navigate={navigate} />}{" "}
         {active === "manage" && canOpenManagement && (
           <ManagementHub
-            navigate={setActive}
+            navigate={navigate}
             stats={stats}
             jobs={jobs}
             permissions={
@@ -7609,17 +9405,18 @@ function AuthenticatedShell({ setAuthenticated }) {
             runJob={runJob}
             play={playTrack}
             notify={(message) => setToast({ message })}
-            navigate={setActive}
+            navigate={navigate}
           />
         )}{" "}
         {canManageLibrary && active === "scrape" && (
-          <ScrapeCenter jobs={jobs} navigate={setActive} settings={settingsData} />
+          <ScrapeCenter jobs={jobs} navigate={navigate} settings={settingsData} />
         )}{" "}
         {canManageLibrary && active === "download" && (
           <DownloadCenter
             sources={sources}
+            refreshSources={refreshSources}
             createDownload={createDownload}
-            navigate={setActive}
+            navigate={navigate}
             notify={(message) => setToast({ message })}
             playPreview={playTrack}
           />
@@ -7632,42 +9429,43 @@ function AuthenticatedShell({ setAuthenticated }) {
           />
         )}{" "}
         {active === "discover" && (
-          <DiscoverPage
+          <RecommendationPage
             play={playTrack}
-            navigate={setActive}
+            navigate={navigate}
             isAdmin={canManageLibrary}
           />
         )}{" "}
         {active === "player" && (
           <PlayerPage
-            navigate={setActive}
+            navigate={navigate}
             playerSettings={settingsData.player}
             isAdmin={canManageLibrary}
           />
         )}{" "}
         {canManageLibrary && active === "tasks" && (
-          <Tasks jobs={jobs} refresh={refreshJobs} navigate={setActive} />
+          <Tasks jobs={jobs} refresh={refreshJobs} navigate={navigate} />
         )}{" "}
         {active === "settings" && (
           <SettingsPage
             settings={settingsData}
             logout={logout}
-            navigate={setActive}
+            navigate={navigate}
             isAdmin={isAdmin}
+            onSettingsChange={setSettingsData}
           />
         )}{" "}
         {isMobile && (
           <MobileNav
             active={active}
-            change={setActive}
+            change={navigate}
             isAdmin={canOpenManagement}
           />
         )}
       </main>
       {showMiniPlayer && (
         <MiniPlayer
-          openPlayer={() => setActive("player")}
-          navigate={setActive}
+          openPlayer={() => navigate("player")}
+          navigate={navigate}
         />
       )}
       <Toast toast={toast} clear={() => setToast(null)} />
@@ -7679,17 +9477,19 @@ function MobileNav({ active, change, isAdmin = true }) {
   const labels = {
     home: "首页",
     library: "曲库",
-    player: "播放",
-    discover: "发现",
+    playlists: "歌单",
+    discover: "推荐",
     me: "我的",
-    manage: "管理",
   };
-  const items = nav
-    .filter((item) => labels[item.id] && (!item.admin || isAdmin))
-    .slice(0, 6);
-  const highlighted = activeNavId(active);
+  const items = mobileNavigationIds
+    .map((id) => nav.find((item) => item.id === id))
+    .filter(Boolean);
+  const highlighted = mobileNavigationTarget(
+    active,
+    managementNav.map((item) => item.id),
+  );
   return (
-    <nav className="mobile-nav mobile-only">
+    <nav className="mobile-nav mobile-only" aria-label="移动端主导航">
       {items.map((item) => (
         <button
           className={highlighted === item.id ? "active" : ""}

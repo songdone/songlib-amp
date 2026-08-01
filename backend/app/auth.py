@@ -11,6 +11,7 @@ from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
 from .config import settings
 from .db import get_kv, now, row, rows, set_kv, transaction
+from .security import CSRF_COOKIE, issue_csrf
 
 
 COOKIE_NAME = "songlib_session"
@@ -82,23 +83,45 @@ def _public_user(item: dict | None):
     }
 
 
+def setup_required() -> bool:
+    return row("SELECT 1 AS value FROM users LIMIT 1") is None
+
+
 def ensure_bootstrap_password():
     existing = row("SELECT * FROM users LIMIT 1")
     if existing:
-        return
+        return False
     legacy_hash = get_kv("password_hash")
     password_hash = legacy_hash or (hash_password(settings.app_password) if settings.app_password else "")
     if not password_hash:
-        raise RuntimeError("首次启动必须设置 APP_PASSWORD")
+        return False
     stamp = now()
     with transaction() as conn:
         conn.execute(
             """INSERT INTO users(id,username,display_name,password_hash,role,enabled,created_at,updated_at)
                VALUES(?,?,?,?,?,?,?,?)""",
-            ("admin", "admin", "管理员", password_hash, "admin", 1, stamp, stamp),
+            ("admin", "admin", "管理员", password_hash, "owner", 1, stamp, stamp),
         )
     if not legacy_hash:
         set_kv("password_hash", password_hash)
+    return True
+
+
+def complete_setup(username: str, password: str, display_name: str = ""):
+    username = _normalize_username(username)
+    if len(password or "") < 12:
+        raise HTTPException(status_code=400, detail="密码至少需要 12 个字符")
+    stamp = now()
+    with transaction() as conn:
+        if conn.execute("SELECT 1 FROM users LIMIT 1").fetchone():
+            raise HTTPException(status_code=409, detail="初始设置已经完成")
+        user_id = secrets.token_hex(8)
+        conn.execute(
+            """INSERT INTO users(id,username,display_name,password_hash,role,enabled,created_at,updated_at)
+               VALUES(?,?,?,?,?,?,?,?)""",
+            (user_id, username, display_name.strip() or username, hash_password(password), "owner", 1, stamp, stamp),
+        )
+    return _public_user(row("SELECT * FROM users WHERE id=?", (user_id,)))
 
 
 def login(response: Response, password: str, username: str = "admin"):
@@ -125,13 +148,16 @@ def login(response: Response, password: str, username: str = "admin"):
         max_age=MAX_AGE,
         httponly=True,
         samesite="lax",
-        secure=False,
+        secure=settings.cookie_secure,
         path="/",
     )
+    issue_csrf(response)
+    return _public_user(row("SELECT * FROM users WHERE id=?", (user["id"],)))
 
 
 def logout(response: Response):
-    response.delete_cookie(COOKIE_NAME, path="/")
+    response.delete_cookie(COOKIE_NAME, path="/", secure=settings.cookie_secure, samesite="lax")
+    response.delete_cookie(CSRF_COOKIE, path="/", secure=settings.cookie_secure, samesite="lax")
 
 
 def current_user(request: Request):
@@ -175,6 +201,15 @@ def _route_allowed_for_user(user: dict, request: Request) -> bool:
         or path.startswith("/api/catalog/unified")
         or path.startswith("/api/discovery/playlists/")
         or path.startswith("/api/downloads/device/")
+        or path.startswith("/api/playlists")
+        or path.startswith("/api/recommendations")
+        or path.startswith("/api/listening")
+    ):
+        return True
+    if method in ("POST", "PATCH", "DELETE") and (
+        path.startswith("/api/playlists")
+        or path.startswith("/api/recommendations")
+        or path.startswith("/api/listening")
     ):
         return True
     if method == "POST" and path in ("/api/player/source-preview", "/api/downloads/device-token", "/api/profile/avatar"):
@@ -317,7 +352,7 @@ def reset_admin_from_env():
 
 def _enabled_admin_count(exclude_id: str | None = None) -> int:
     params = []
-    clause = "WHERE role='admin' AND enabled=1"
+    clause = "WHERE role IN ('admin','owner') AND enabled=1"
     if exclude_id:
         clause += " AND id<>?"
         params.append(exclude_id)

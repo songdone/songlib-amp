@@ -1,0 +1,9 @@
+services:
+  songlib:
+    pull_policy: never
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_UID: ${APP_UID:-10001}
+        APP_GID: ${APP_GID:-10001}

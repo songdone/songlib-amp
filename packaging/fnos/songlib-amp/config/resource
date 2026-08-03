@@ -1,0 +1,23 @@
+{
+  "docker-project": {
+    "projects": [
+      {
+        "name": "songlib-amp",
+        "path": "docker"
+      }
+    ]
+  },
+  "data-share": {
+    "shares": [
+      {
+        "name": "songlib-amp"
+      },
+      {
+        "name": "songlib-amp/downloads"
+      },
+      {
+        "name": "songlib-amp/music"
+      }
+    ]
+  }
+}

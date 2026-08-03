@@ -13,3 +13,5 @@ downloads/
 deploy-backups/
 frontend/src/_login_backup_v065/
 screenshots/
+*.fpk
+packaging/fnos/release/

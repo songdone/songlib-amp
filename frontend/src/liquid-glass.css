@@ -15,11 +15,11 @@
   --line: rgba(20, 24, 31, 0.1);
   --line2: rgba(20, 24, 31, 0.15);
   --text: #1d1d1f;
-  --muted: #6e6e73;
-  --dim: #86868b;
+  --muted: #55555b;
+  --dim: #68686f;
   --glass-rgb: 255, 255, 255;
-  --glass-line: rgba(255, 255, 255, 0.8);
-  --glass-highlight: rgba(255, 255, 255, 0.62);
+  --glass-line: rgba(54, 57, 64, 0.16);
+  --glass-highlight: rgba(255, 255, 255, 0.82);
   --glass-shadow: 0 24px 70px rgba(44, 52, 64, 0.12);
   color-scheme: light;
   background: #f5f5f7;
@@ -71,7 +71,383 @@
 }
 
 .visual-shell[data-theme="light"] .main:not(.player-main-shell) {
-  background: linear-gradient(rgba(245, 245, 247, 0.34), rgba(245, 245, 247, 0.5));
+  background: linear-gradient(rgba(245, 245, 247, 0.46), rgba(245, 245, 247, 0.62));
+}
+
+/*
+ * Light mode needs its own contrast hierarchy. Legacy screens contain many
+ * literal dark-theme colours, so the final stylesheet deliberately normalises
+ * text and icons while leaving album art and accent colours untouched.
+ */
+.visual-shell[data-theme="light"]:not(.route-player) {
+  --light-ink: #17171a;
+  --light-copy: #3f3f45;
+  --light-muted: #595960;
+  --light-faint: #6b6b72;
+  --light-gold: #755000;
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) .sidebar-top .brand-mark {
+  padding: 3px;
+  border: 1px solid rgba(117, 80, 0, 0.18);
+  border-radius: 10px;
+  background: rgba(231, 184, 76, 0.12);
+  filter: saturate(1.55) brightness(0.66) contrast(1.22)
+    drop-shadow(0 2px 4px rgba(90, 60, 0, 0.2));
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) .sidebar-top .brand b {
+  color: #382800 !important;
+  font-weight: 800;
+  text-shadow: none;
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) .sidebar-top .brand small {
+  color: #55555b !important;
+  font-weight: 560;
+  opacity: 1;
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) :is(
+  .nav-group-label,
+  .side-version,
+  .logout,
+  .topbar p,
+  .home-heading > div > span,
+  .stat-copy span,
+  .stat-copy small,
+  .continue-copy small,
+  .continue-time,
+  .home-album-card small,
+  .home-playlist-stack small,
+  .home-discovery-list small,
+  .discovery-number,
+  .page-intro p,
+  .section-head p,
+  .result-count,
+  .track-head,
+  .track-row > span,
+  .track-title small,
+  .media-card small,
+  .setting-card p,
+  .appearance-range output,
+  .empty p
+) {
+  color: var(--light-muted) !important;
+  opacity: 1 !important;
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) :is(
+  .page h1,
+  .page h2,
+  .page h3,
+  .page h4,
+  .page strong,
+  .topbar h2,
+  .continue-copy strong,
+  .home-album-card strong,
+  .home-playlist-stack strong,
+  .home-discovery-list strong,
+  .track-title b,
+  .media-card b,
+  .setting-card b
+) {
+  color: var(--light-ink) !important;
+  opacity: 1 !important;
+  text-shadow: none;
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) :is(
+  .sidebar nav button,
+  .logout,
+  .topbar .icon-button,
+  .top-search,
+  .home-search-shortcut,
+  .segmented button,
+  .platform-toggle button
+) {
+  color: #414147 !important;
+  opacity: 1;
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) :is(
+  .sidebar nav button,
+  .logout,
+  .topbar .icon-button,
+  .home-search-shortcut,
+  .text-button
+) svg {
+  color: currentColor !important;
+  opacity: 1 !important;
+  stroke-width: 2;
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) .sidebar nav button:hover {
+  background: rgba(255, 255, 255, 0.72) !important;
+  color: #17171a !important;
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) .sidebar nav button.active {
+  background: linear-gradient(90deg, rgba(211, 151, 29, 0.2), rgba(255, 255, 255, 0.68)) !important;
+  color: #5f4100 !important;
+  box-shadow: inset 0 0 0 1px rgba(160, 106, 0, 0.12);
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) .sidebar nav button.active svg {
+  color: #795200 !important;
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) :is(.top-search, .home-search-shortcut) {
+  background: rgba(255, 255, 255, 0.76) !important;
+  border-color: rgba(35, 38, 44, 0.16) !important;
+  box-shadow: 0 8px 24px rgba(41, 46, 55, 0.08);
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) :is(input, textarea, select) {
+  color: #202024 !important;
+  caret-color: #8a5c00;
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) :is(input, textarea)::placeholder {
+  color: #68686f !important;
+  opacity: 1;
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) .home-focus {
+  border-color: rgba(30, 33, 38, 0.14);
+  background:
+    radial-gradient(circle at 78% 45%, rgba(192, 131, 18, 0.15), transparent 29%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.58), rgba(245, 245, 247, 0.16) 68%);
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) .home-focus-label,
+.visual-shell[data-theme="light"]:not(.route-player) .eyebrow,
+.visual-shell[data-theme="light"]:not(.route-player) .discovery-reason {
+  color: var(--light-gold) !important;
+  opacity: 1;
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) .home-focus-copy p {
+  color: var(--light-copy) !important;
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) .home-focus-copy p span {
+  color: var(--light-muted) !important;
+  border-color: rgba(32, 34, 39, 0.2);
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) :is(
+  .continue-card,
+  .home-playlist-stack > button,
+  .home-discovery-list > button,
+  .service-playlist-list > button,
+  .track-row
+) {
+  color: var(--light-ink) !important;
+  border-color: rgba(38, 41, 47, 0.12) !important;
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) :is(
+  .continue-card,
+  .home-playlist-stack > button,
+  .home-discovery-list > button,
+  .service-playlist-list > button,
+  .track-row
+):hover {
+  background: rgba(255, 255, 255, 0.56) !important;
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) .text-button {
+  min-height: 32px;
+  padding: 0 11px !important;
+  border: 1px solid rgba(117, 80, 0, 0.18) !important;
+  border-radius: 999px;
+  background: rgba(255, 252, 244, 0.76) !important;
+  color: #704b00 !important;
+  font-weight: 720;
+  box-shadow: 0 7px 20px rgba(67, 51, 18, 0.08);
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) .text-button:hover {
+  background: #fff8e8 !important;
+  border-color: rgba(117, 80, 0, 0.32) !important;
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) :is(.secondary, .icon-button) {
+  font-weight: 650;
+  box-shadow: 0 7px 20px rgba(41, 46, 55, 0.07);
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) :is(.bar, .mini-progress) {
+  background: rgba(40, 43, 49, 0.12);
+}
+
+/* Make every appearance control observable across the complete application. */
+.visual-shell:not(.route-player) .app-backdrop .backdrop-image,
+.visual-shell:not(.route-player) .artist-backdrop .backdrop-image {
+  opacity: var(--backdrop-user-opacity, 0.58) !important;
+  filter:
+    blur(var(--backdrop-user-blur, 14px))
+    saturate(var(--glass-saturation, 145%))
+    brightness(0.68)
+    contrast(1.06) !important;
+  transform: scale(1.065) !important;
+}
+
+.visual-shell :is(
+  .panel,
+  .glass,
+  .setting-card,
+  .settings-sidebar,
+  .sources-card,
+  .manage-card,
+  .stat-card,
+  .source-strip,
+  .modal,
+  .mini-player,
+  .track-table,
+  .media-art,
+  .local-hero,
+  .manage-metrics,
+  .me-listening-surface,
+  .me-collection-surface,
+  .me-list-surface,
+  .connected-playlists,
+  .playlist-migration,
+  .appearance-live-preview
+) {
+  border-radius: var(--ui-radius, 22px) !important;
+  backdrop-filter:
+    blur(var(--glass-blur, 24px))
+    saturate(var(--glass-saturation, 145%)) !important;
+  -webkit-backdrop-filter:
+    blur(var(--glass-blur, 24px))
+    saturate(var(--glass-saturation, 145%)) !important;
+}
+
+.visual-shell :is(
+  .panel,
+  .glass,
+  .setting-card,
+  .settings-sidebar,
+  .sources-card,
+  .manage-card,
+  .stat-card,
+  .source-strip,
+  .modal,
+  .mini-player,
+  .track-table,
+  .local-hero,
+  .manage-metrics,
+  .me-listening-surface,
+  .me-collection-surface,
+  .me-list-surface,
+  .connected-playlists,
+  .playlist-migration
+) {
+  background:
+    linear-gradient(
+      145deg,
+      rgba(var(--glass-rgb), calc(var(--glass-opacity, 0.52) + 0.1)),
+      rgba(var(--glass-rgb), calc(var(--glass-opacity, 0.52) * 0.88)) 46%,
+      rgba(var(--glass-rgb), calc(var(--glass-opacity, 0.52) * 0.68))
+    ) !important;
+}
+
+.visual-shell .home-focus-disc {
+  animation-duration: calc(1ms + 8s * var(--motion-scale, 1));
+}
+
+.visual-shell :is(.home-focus-grooves, .home-focus-cover) {
+  animation-duration: calc(1ms + 28s * var(--motion-scale, 1));
+}
+
+.visual-shell .home-focus-tonearm {
+  animation-duration: calc(1ms + 9s * var(--motion-scale, 1));
+}
+
+.appearance-live-preview {
+  position: relative;
+  min-height: 178px;
+  display: grid;
+  align-items: end;
+  overflow: hidden;
+  isolation: isolate;
+  margin: 22px 0 4px;
+  border: 1px solid var(--glass-line);
+  background:
+    radial-gradient(circle at 76% 24%, #cb80a9 0 10%, transparent 34%),
+    radial-gradient(circle at 22% 76%, #4d8a94 0 8%, transparent 38%),
+    linear-gradient(135deg, #6f4b38, #222934 56%, #4f3048);
+  box-shadow: var(--glass-shadow);
+}
+
+.appearance-live-preview::before {
+  content: "";
+  position: absolute;
+  inset: -12%;
+  z-index: -2;
+  background:
+    repeating-linear-gradient(118deg, rgba(255,255,255,.13) 0 2px, transparent 2px 28px),
+    radial-gradient(circle at 70% 25%, rgba(255,255,255,.44), transparent 22%);
+  filter: blur(var(--backdrop-user-blur, 14px)) saturate(var(--glass-saturation, 145%));
+  opacity: var(--backdrop-user-opacity, 0.58);
+  transform: scale(1.08);
+  transition: filter calc(180ms * var(--motion-scale, 1)), opacity calc(180ms * var(--motion-scale, 1));
+}
+
+.appearance-preview-panel {
+  width: min(620px, calc(100% - 28px));
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+  margin: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--glass-line);
+  border-radius: calc(var(--ui-radius, 22px) * 0.72);
+  background: rgba(var(--glass-rgb), var(--glass-opacity, 0.52));
+  box-shadow: 0 18px 55px rgba(0,0,0,.2), inset 0 1px rgba(255,255,255,.2);
+  backdrop-filter: blur(var(--glass-blur, 24px)) saturate(var(--glass-saturation, 145%));
+  -webkit-backdrop-filter: blur(var(--glass-blur, 24px)) saturate(var(--glass-saturation, 145%));
+}
+
+.appearance-preview-icon {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: calc(var(--ui-radius, 22px) * 0.5);
+  background: rgba(230, 176, 70, 0.18);
+  color: #f0bd58;
+}
+
+.appearance-preview-icon svg { width: 21px; }
+.appearance-preview-copy strong,
+.appearance-preview-copy small { display: block; }
+.appearance-preview-copy strong { font-size: calc(14px + var(--font-delta, 0px)); }
+.appearance-preview-copy small {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: calc(10px + var(--font-delta, 0px));
+}
+.appearance-preview-chip {
+  padding: 7px 10px;
+  border: 1px solid var(--glass-line);
+  border-radius: 999px;
+  color: #f0bd58;
+  background: rgba(var(--glass-rgb), calc(var(--glass-opacity, 0.52) * .72));
+  font-size: calc(10px + var(--font-delta, 0px));
+  font-weight: 700;
+}
+
+[data-theme="light"] .appearance-preview-panel {
+  color: var(--light-ink);
+}
+
+[data-theme="light"] .appearance-preview-icon,
+[data-theme="light"] .appearance-preview-chip {
+  color: #704b00;
 }
 
 .visual-shell[data-theme="light"] .settings-tabs button {

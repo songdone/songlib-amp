@@ -2,7 +2,7 @@
 
 ## 应用名称
 
-SongLib Amp｜音屿
+SongLib Amp
 
 ## 简短介绍
 

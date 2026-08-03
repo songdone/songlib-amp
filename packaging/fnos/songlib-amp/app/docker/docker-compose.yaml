@@ -1,0 +1,29 @@
+services:
+  songlib:
+    image: 666uos/songlib-amp:1.0.0-rc.6
+    container_name: songlib-amp-fnos
+    restart: unless-stopped
+    user: "${TRIM_UID}:${TRIM_GID}"
+    environment:
+      TZ: Asia/Shanghai
+      APP_ENV: production
+      WORKER_MODE: embedded
+      PORT: "8080"
+    ports:
+      - "${wizard_port}:8080"
+    volumes:
+      - "${TRIM_PKGVAR}:/data"
+      - "/var/apps/songlib-amp/shares/songlib-amp/downloads:/downloads"
+      - "/var/apps/songlib-amp/shares/songlib-amp/music:/music"
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/api/health/ready', timeout=3)
+      interval: 30s
+      timeout: 5s
+      start_period: 25s
+      retries: 3

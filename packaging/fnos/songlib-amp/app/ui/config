@@ -1,0 +1,13 @@
+{
+  ".url": {
+    "songlib-amp.main": {
+      "title": "SongLib Amp｜音屿",
+      "icon": "images/icon_{0}.png",
+      "type": "url",
+      "protocol": "http",
+      "port": "${wizard_port}",
+      "url": "/",
+      "allUsers": true
+    }
+  }
+}

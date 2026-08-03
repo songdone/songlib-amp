@@ -41,7 +41,7 @@ from . import recommendations as recommendation_service
 from .unified_catalog import match_external_tracks, normalize as normalize_catalog_text, unified_tracks
 from .sources import (
     SourceError, delete_source, get_source, import_code, import_file, import_url, list_sources,
-    inspect_source, resolve_track, set_enabled, source_catalog_ready,
+    inspect_source, resolve_track, resolve_track_with_fallback, set_enabled, source_catalog_ready,
     source_logs, test_resolve, test_search,
 )
 from mutagen import File as MutagenFile
@@ -1251,16 +1251,19 @@ def _download_filename(item: dict, quality: str, content_type: str = "") -> str:
 @app.post("/api/downloads/device-token", dependencies=[Depends(auth.current_user)])
 def device_download_token(body: DownloadBody):
     try:
-        resolved = resolve_track(body.sourceId, body.item, body.quality, require_enabled=True)
+        resolved = resolve_track_with_fallback(body.sourceId, body.item, body.quality, require_enabled=True)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"当前设备下载地址解析失败：{exc}") from exc
-    filename = _download_filename(body.item, body.quality)
+    resolved_quality = resolved.get("quality") or body.quality
+    filename = _download_filename(body.item, resolved_quality)
     token = _issue_stream_token(resolved, filename=filename, ttl=60 * 30)
     return {
         "ok": True,
         "filename": filename,
         "size": None,
         "contentType": None,
+        "quality": resolved_quality,
+        "qualityFallback": resolved_quality != body.quality,
         "downloadUrl": f"/api/downloads/device/{quote(token, safe='')}",
     }
 
@@ -1547,10 +1550,10 @@ def plex_lyrics(rating_key: str):
 @app.post("/api/player/source-preview", dependencies=[Depends(auth.current_user)])
 def source_preview(body: SourcePreviewBody):
     try:
-        resolved = resolve_track(body.sourceId, body.item, body.quality, require_enabled=False)
+        resolved = resolve_track_with_fallback(body.sourceId, body.item, body.quality, require_enabled=False)
         token = _issue_stream_token(
             resolved,
-            filename=_download_filename(body.item, body.quality),
+            filename=_download_filename(body.item, resolved.get("quality") or body.quality),
             ttl=60 * 30,
         )
     except Exception as exc:
@@ -1562,7 +1565,8 @@ def source_preview(body: SourcePreviewBody):
         "album": body.item.get("album") or "",
         "coverUrl": body.item.get("coverUrl") or body.item.get("cover") or "",
         "streamUrl": f"/api/player/source-preview/{quote(token, safe='')}/stream",
-        "quality": body.quality,
+        "quality": resolved.get("quality") or body.quality,
+        "qualityFallback": bool(resolved.get("qualityFallback")),
         "item": body.item,
     }
 

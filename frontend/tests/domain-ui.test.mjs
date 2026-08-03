@@ -26,6 +26,12 @@ import {
 import { sourceCatalogReady } from "../src/lib/sources.js";
 import { pwaInstallGuidance, pwaSecureOrigin } from "../src/lib/pwa.js";
 import { buildAmbientDeck } from "../src/lib/ambient.js";
+import {
+  appearanceStyle,
+  normalizeAppearance,
+  resolvedTheme,
+} from "../src/lib/appearance.js";
+import { clearFastCache, readFastCache, writeFastCache } from "../src/lib/cache.js";
 
 test("unsafe requests can recover the encoded CSRF cookie", () => {
   assert.equal(
@@ -33,6 +39,33 @@ test("unsafe requests can recover the encoded CSRF cookie", () => {
     "abc/def=",
   );
   assert.equal(csrfFromCookie("theme=dark"), "");
+});
+
+test("appearance preferences are bounded and become live CSS variables", () => {
+  const value = normalizeAppearance({
+    theme: "light",
+    glassBlur: 500,
+    backdropOpacity: 0,
+    fontScale: 1.12,
+  });
+  assert.equal(value.glassBlur, 44);
+  assert.equal(value.backdropOpacity, 0.18);
+  assert.equal(resolvedTheme(value.theme, true), "light");
+  assert.equal(appearanceStyle(value)["--ui-font-scale"], 1.12);
+});
+
+test("fast cache hydrates the shell and can be cleared on logout", () => {
+  const values = new Map();
+  const storage = {
+    getItem: (key) => values.get(key) || null,
+    setItem: (key, value) => values.set(key, value),
+    removeItem: (key) => values.delete(key),
+    keys: () => values.keys(),
+  };
+  writeFastCache("dashboard", { tracks: 4028 }, storage);
+  assert.deepEqual(readFastCache("dashboard", {}, storage), { tracks: 4028 });
+  clearFastCache(storage);
+  assert.deepEqual(readFastCache("dashboard", {}, storage), {});
 });
 
 test("playlist items preserve their stable local identity", () => {

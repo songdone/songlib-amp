@@ -23,6 +23,7 @@ from app.sources import (
     delete_source,
     import_file,
     list_sources,
+    quality_candidates,
     set_enabled,
     source_catalog_ready,
     source_download_capable,
@@ -71,6 +72,14 @@ class CoreTests(unittest.TestCase):
         with self.assertRaises(SourceError) as raised:
             _validate_script_bytes(b"<!doctype html><html>not javascript</html>")
         self.assertEqual(raised.exception.code, "SOURCE_URL_RETURNED_HTML")
+
+    def test_download_quality_falls_back_to_declared_lower_variants(self):
+        track = {
+            "qualities": ["128k", "320k", "flac"],
+            "musicInfo": {"source": "tx"},
+        }
+        self.assertEqual(quality_candidates(track, "flac"), ["flac", "320k", "128k"])
+        self.assertEqual(quality_candidates(track, "320k"), ["320k", "128k"])
 
     def test_fixture_source_loads_in_isolated_bridge(self):
         fixture = Path(__file__).parent / "fixtures" / "test-source.js"

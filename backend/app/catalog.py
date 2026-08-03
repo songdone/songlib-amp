@@ -56,7 +56,10 @@ def search_qq(query: str):
             "songmid": detail.get("mid"),
             "songId": detail.get("id"),
             "albumId": album.get("mid") or album.get("id"),
+            "albumName": album.get("name", ""),
+            "img": f"https://y.gtimg.cn/music/photo_new/T002R800x800M000{album.get('mid')}.jpg" if album.get("mid") else "",
             "strMediaMid": file_info.get("media_mid") or detail.get("mid"),
+            "types": [{"type": q["type"], "size": str(q["size"])} for q in qualitys],
             "meta": {
                 "songId": detail.get("mid"),
                 "id": detail.get("id"),
@@ -104,6 +107,9 @@ def search_netease(query: str):
             "interval": f"{int(duration_ms/1000)//60:02d}:{int(duration_ms/1000)%60:02d}",
             "songmid": item.get("id"),
             "albumId": album.get("id"),
+            "albumName": album.get("name", ""),
+            "img": album.get("picUrl", ""),
+            "types": [{"type": quality, "size": None} for quality in qualitys],
             "meta": {
                 "songId": item.get("id"),
                 "albumName": album.get("name", ""),

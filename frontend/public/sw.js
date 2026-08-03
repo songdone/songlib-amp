@@ -1,4 +1,4 @@
-const CACHE_NAME = 'songlib-amp-static-v16'
+const CACHE_NAME = 'songlib-amp-static-v17'
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -31,20 +31,34 @@ self.addEventListener('install', event => {
 })
 
 self.addEventListener('activate', event => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim()))
+  event.waitUntil(Promise.all([
+    caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))),
+    self.registration.navigationPreload?.enable(),
+  ]).then(() => self.clients.claim()))
 })
 
 self.addEventListener('fetch', event => {
   const { request } = event
   if (request.method !== 'GET' || isMusicOrMutableRequest(request)) return
   const url = new URL(request.url)
-  const isAppShell = request.mode === 'navigate' || ['.html', '.js', '.css'].some(ext => url.pathname.endsWith(ext))
+  const isNavigation = request.mode === 'navigate' || url.pathname.endsWith('.html')
+  const isVersionedAsset = url.origin === self.location.origin && ['/assets/', '.js', '.css'].some(value => url.pathname.includes(value))
   if (url.pathname.startsWith('/api/')) {
-    event.respondWith(fetch(request).catch(() => caches.match(request)))
+    event.respondWith(fetch(request))
     return
   }
-  if (isAppShell) {
-    event.respondWith(fetch(request, { cache: 'no-store' }).then(response => {
+  if (isVersionedAsset) {
+    event.respondWith(caches.match(request).then(cached => {
+      const update = fetch(request).then(response => {
+        if (response.ok) caches.open(CACHE_NAME).then(cache => cache.put(request, response.clone()))
+        return response
+      })
+      return cached || update
+    }))
+    return
+  }
+  if (isNavigation) {
+    event.respondWith((event.preloadResponse || Promise.resolve()).then(preloaded => preloaded || fetch(request, { cache: 'no-store' })).then(response => {
       const copy = response.clone()
       caches.open(CACHE_NAME).then(cache => cache.put(request, copy))
       return response

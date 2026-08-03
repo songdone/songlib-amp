@@ -6828,6 +6828,16 @@ function SettingsPage({
                   );
                 })}
               </div>
+              <div className="appearance-live-preview" aria-label="外观设置实时预览">
+                <div className="appearance-preview-panel">
+                  <span className="appearance-preview-icon"><Music2 /></span>
+                  <span className="appearance-preview-copy">
+                    <strong>实时预览</strong>
+                    <small>拖动滑块时，模糊、透明度、字号、圆角与色彩会立即变化</small>
+                  </span>
+                  <span className="appearance-preview-chip">正在生效</span>
+                </div>
+              </div>
               <div className="setting-actions">
                 <button
                   className="secondary small"

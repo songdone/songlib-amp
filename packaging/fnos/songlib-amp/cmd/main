@@ -1,0 +1,28 @@
+#!/bin/bash
+
+CONTAINER_NAME="songlib-amp-fnos"
+
+is_running() {
+    docker inspect "$CONTAINER_NAME" 2>/dev/null | grep -q '"Status": "running"'
+}
+
+case "$1" in
+start)
+    # Docker 项目由飞牛应用中心启动。
+    exit 0
+    ;;
+stop)
+    # Docker 项目由飞牛应用中心停止。
+    exit 0
+    ;;
+status)
+    if is_running; then
+        exit 0
+    fi
+    exit 3
+    ;;
+*)
+    echo "不支持的运行操作：$1" > "$TRIM_TEMP_LOGFILE"
+    exit 1
+    ;;
+esac

@@ -87,6 +87,14 @@ docker compose ps
 
 浏览器原生 PWA 安装要求 HTTPS。普通 HTTP 局域网地址仍可完整使用网页功能，但安装提示会明确展示 HTTPS 要求；需要桌面或主屏幕安装时，请先通过 NAS 反向代理配置可信 HTTPS，再用 HTTPS 地址访问。
 
+### 飞牛应用中心安装包
+
+仓库同时提供飞牛 fnOS 原生 `.fpk` 应用包工程。安装后由飞牛应用中心管理容器，不需要手写 Compose；系统会自动创建相互独立的 `songlib-amp/music` 与 `songlib-amp/downloads` 共享目录，首次安装只需确认访问端口。
+
+- [飞牛应用中心发布与安装说明](docs/FNOS-APP-STORE.md)
+- [应用包构建说明](packaging/fnos/README.md)
+- 应用包源码：`packaging/fnos/songlib-amp`
+
 升级时先备份 `data` 目录，再执行：
 
 ```bash

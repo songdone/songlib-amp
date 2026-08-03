@@ -450,6 +450,55 @@
   color: #704b00;
 }
 
+.visual-shell[data-theme="light"]:not(.route-player) .theme-choice button {
+  color: #3f3f45 !important;
+  font-weight: 650;
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) .theme-choice button.active {
+  color: #664500 !important;
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) .avatar {
+  border-color: rgba(35, 38, 44, 0.16) !important;
+  background: rgba(255, 255, 255, 0.78) !important;
+  color: #38383d !important;
+  box-shadow: 0 7px 20px rgba(41, 46, 55, 0.08);
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) .avatar svg {
+  color: #38383d !important;
+  opacity: 1 !important;
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) .mini-player {
+  color: #202024 !important;
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) .mini-player strong {
+  color: #202024 !important;
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) .mini-player :is(span, small) {
+  color: #595960 !important;
+  opacity: 1 !important;
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) .mini-player :is(button, svg) {
+  color: #44444a !important;
+  opacity: 1 !important;
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) .mini-player .mini-controls button:nth-child(2) {
+  background: linear-gradient(135deg, #f7c75e, #d99b2f) !important;
+  color: #19140a !important;
+  border-color: rgba(139, 91, 0, 0.24) !important;
+}
+
+.visual-shell[data-theme="light"]:not(.route-player) .mini-player .mini-controls button:nth-child(2) svg {
+  color: #19140a !important;
+}
+
 .visual-shell[data-theme="light"] .settings-tabs button {
   background: rgba(255, 255, 255, 0.56);
   color: #515154;

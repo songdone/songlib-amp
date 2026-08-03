@@ -1,5 +1,5 @@
 export const DEFAULT_APPEARANCE = Object.freeze({
-  theme: "system",
+  theme: "dark",
   glassBlur: 24,
   glassOpacity: 0.52,
   backdropBlur: 14,

@@ -1,0 +1,16 @@
+appname=songlib-amp
+version=1.0.0-rc.6
+display_name=SongLib Amp｜音屿
+desc=本地优先的 NAS 音乐管理与播放平台，支持 Plex 曲库与歌单、歌词与封面、授权下载入库、音乐整理、推荐和响应式播放器。
+source=thirdparty
+platform=all
+maintainer=SongDone
+maintainer_url=https://github.com/songdone/songlib-amp
+distributor=SongDone
+distributor_url=https://github.com/songdone/songlib-amp
+desktop_uidir=ui
+desktop_applaunchname=songlib-amp.main
+ctl_stop=true
+checkport=false
+disable_authorization_path=true
+changelog=新增飞牛 fnOS 应用中心安装包、独立音乐与下载共享目录、桌面入口及多架构 Docker 部署。

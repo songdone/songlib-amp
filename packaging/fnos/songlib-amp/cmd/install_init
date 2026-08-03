@@ -1,0 +1,15 @@
+#!/bin/bash
+
+case "$wizard_port" in
+    ''|*[!0-9]*)
+        echo "访问端口必须是数字。" > "$TRIM_TEMP_LOGFILE"
+        exit 1
+        ;;
+esac
+
+if [ "$wizard_port" -lt 1024 ] || [ "$wizard_port" -gt 65535 ]; then
+    echo "访问端口必须介于 1024 和 65535 之间。" > "$TRIM_TEMP_LOGFILE"
+    exit 1
+fi
+
+exit 0

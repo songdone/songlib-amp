@@ -18,7 +18,7 @@ from .catalog import lyrics_for
 from .config import settings
 from .network import validate_public_url
 from .plex import plex
-from .sources import resolve_track
+from .sources import resolve_track_with_fallback
 from .db import now, transaction
 
 
@@ -41,13 +41,14 @@ def safe_name(value: str, fallback="Unknown"):
     return value[:150] or fallback
 
 
-def streamed_download(url: str, temp_path: Path, progress, extra_headers=None):
+def streamed_download(url: str, temp_path: Path, progress, extra_headers=None, platform=""):
     max_bytes = settings.max_download_mb * 1024 * 1024
     current = url
     with httpx.Client(timeout=httpx.Timeout(30, read=120), follow_redirects=False) as client:
         for _ in range(6):
             validate_public_url(current, label="下载地址")
-            headers = {"User-Agent": "Mozilla/5.0", "Referer": "https://y.qq.com/", **(extra_headers or {})}
+            referer = "https://music.163.com/" if platform == "wy" else "https://y.qq.com/"
+            headers = {"User-Agent": "Mozilla/5.0", "Referer": referer, **(extra_headers or {})}
             with client.stream("GET", current, headers=headers) as response:
                 if response.status_code in (301, 302, 303, 307, 308):
                     location = response.headers.get("location")
@@ -160,7 +161,8 @@ def download_song(payload: dict, progress):
     quality = payload.get("quality") or "320k"
     item = payload["item"]
     progress(3, "开始解析音乐源下载地址")
-    resolved = resolve_track(source_id, item, quality, require_enabled=True)
+    resolved = resolve_track_with_fallback(source_id, item, quality, require_enabled=True)
+    resolved_quality = resolved.get("quality") or quality
     progress(8, "下载地址解析成功，准备写入临时区")
     settings.incoming_dir.mkdir(parents=True, exist_ok=True)
     token = safe_name(f"{item.get('artist')} - {item.get('title')}", "download") + f"-{uuid.uuid4().hex[:10]}"
@@ -170,8 +172,10 @@ def download_song(payload: dict, progress):
     staged_cover = None
     keep_staged = False
     try:
-        final_url, content_type, size = streamed_download(resolved["url"], temp_path, progress, resolved.get("headers"))
-        extension = choose_extension(final_url, content_type, quality)
+        final_url, content_type, size = streamed_download(
+            resolved["url"], temp_path, progress, resolved.get("headers"), resolved.get("platform")
+        )
+        extension = choose_extension(final_url, content_type, resolved_quality)
         staged_path = settings.incoming_dir / (token + extension)
         os.replace(temp_path, staged_path)
         progress(82, "音频下载完成，开始写入基础标签")
@@ -219,14 +223,18 @@ def download_song(payload: dict, progress):
             "preview": {
                 "incomingPath": str(staged_path), "title": item.get("title") or "", "artist": item.get("artist") or "",
                 "album": item.get("album") or "Unknown Album", "year": year, "trackNumber": track, "discNumber": disc,
-                "quality": quality, "targetDirectory": str(album_dir), "targetPath": str(target), "targetFilename": target.name,
+                "quality": resolved_quality, "requestedQuality": quality,
+                "qualityFallback": resolved_quality != quality,
+                "targetDirectory": str(album_dir), "targetPath": str(target), "targetFilename": target.name,
                 "lyricIncomingPath": str(staged_lrc) if staged_lrc else None, "lyricPath": str(target.with_suffix('.lrc')),
                 "coverIncomingPath": str(staged_cover) if staged_cover else None, "coverPath": str(album_dir / 'cover.jpg'),
                 "conflict": requested_target.exists(), "conflictAdjusted": target != requested_target, "overwrite": False,
                 "plexRuleOk": True, "bytes": size,
             },
             "bytes": size,
-            "quality": quality,
+            "quality": resolved_quality,
+            "requestedQuality": quality,
+            "qualityFallback": resolved_quality != quality,
             "source": resolved.get("sourceInfo") or {},
             "tagWarning": tag_warning,
             "lyrics": bool(lyric.strip()),

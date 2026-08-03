@@ -499,7 +499,47 @@ def resolve_track(source_id: str, track: dict, quality: str, *, require_enabled=
     except ValueError as exc:
         raise SourceError("SOURCE_RESOLVE_BLOCKED_URL", str(exc)) from exc
     return {"sourceId": source_id, "trackId": str(track.get("trackId") or track.get("id") or ""), "quality": quality,
-            "url": url, "headers": headers, "sourceInfo": data.get("sourceInfo") or {}}
+            "platform": platform, "url": url, "headers": headers, "sourceInfo": data.get("sourceInfo") or {}}
+
+
+def quality_candidates(track: dict, requested: str) -> list[str]:
+    """Return the requested format followed by compatible lower-bandwidth variants."""
+    music_info = track.get("musicInfo") or (track.get("raw") or {}).get("musicInfo") or {}
+    declared = track.get("qualities") or []
+    if not declared:
+        declared = [item.get("type") for item in music_info.get("types") or [] if isinstance(item, dict)]
+    if not declared:
+        meta = music_info.get("meta") or {}
+        declared = [item.get("type") for item in meta.get("qualitys") or [] if isinstance(item, dict)]
+    normalized = [str(value) for value in declared if value]
+    requested_index = QUALITY_ORDER.index(requested) if requested in QUALITY_ORDER else len(QUALITY_ORDER) - 1
+    lower = [
+        value for value in reversed(QUALITY_ORDER[: requested_index + 1])
+        if value != requested and (not normalized or value in normalized)
+    ]
+    return list(dict.fromkeys([requested, *lower]))
+
+
+def resolve_track_with_fallback(source_id: str, track: dict, quality: str, *, require_enabled=False):
+    attempts = quality_candidates(track, quality)
+    last_error = None
+    for candidate in attempts:
+        try:
+            result = resolve_track(source_id, track, candidate, require_enabled=require_enabled)
+            result.update({
+                "requestedQuality": quality,
+                "quality": candidate,
+                "qualityFallback": candidate != quality,
+                "attemptedQualities": attempts[: attempts.index(candidate) + 1],
+            })
+            return result
+        except SourceError as exc:
+            last_error = exc
+    tried = "、".join(attempts)
+    message = f"音乐源没有返回可用音频地址（已自动尝试 {tried}）"
+    if last_error and last_error.message:
+        message += f"：{last_error.message}"
+    raise SourceError("SOURCE_RESOLVE_ALL_QUALITIES_FAILED", message, 502) from last_error
 
 
 def _probe_audio(resolved: dict):

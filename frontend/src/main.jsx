@@ -76,6 +76,7 @@ import {
 } from "lucide-react";
 import "./styles.css";
 import "./commercial.css";
+import "./liquid-glass.css";
 import { BRAND } from "./config/brand";
 import {
   csrfFromCookie,
@@ -103,6 +104,13 @@ import {
 import { sourceCatalogReady } from "./lib/sources";
 import { buildAmbientDeck } from "./lib/ambient";
 import { pwaInstallGuidance, pwaSecureOrigin } from "./lib/pwa";
+import {
+  appearanceStyle,
+  DEFAULT_APPEARANCE,
+  normalizeAppearance,
+  resolvedTheme,
+} from "./lib/appearance";
+import { clearFastCache, readFastCache, writeFastCache } from "./lib/cache";
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
@@ -148,6 +156,7 @@ const nav = [
   { id: "discover", label: "为你推荐", icon: Sparkles, group: "发现" },
   { id: "library", label: "音乐库", icon: Library, group: "资料库" },
   { id: "playlists", label: "歌单", icon: ListMusic, group: "资料库" },
+  { id: "player", label: "播放器", icon: Play, group: "资料库" },
   { id: "me", label: "收藏与历史", icon: Heart, group: "资料库" },
   { id: "manage", label: "管理中心", icon: Gauge, admin: true, group: "系统" },
   { id: "settings", label: "设置", icon: Settings, group: "系统" },
@@ -3472,12 +3481,16 @@ function PlayerProvider({ children }) {
         }}
         onError={(e) => {
           const error = e.currentTarget.error;
+          const messages = {
+            1: "播放已中止",
+            2: "音频连接中断，请稍后重试",
+            3: "音频格式无法解码",
+            4: "当前音频地址或格式不可播放",
+          };
           setState((s) => ({
             ...s,
             isPlaying: false,
-            error:
-              error?.message ||
-              `音频加载失败（错误码 ${error?.code || "未知"}）`,
+            error: messages[error?.code] || "音频暂时无法播放，请稍后重试",
           }));
         }}
         onPlay={() => setState((s) => ({ ...s, isPlaying: true, error: "" }))}
@@ -3499,6 +3512,7 @@ function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
   const player = usePlayer(),
     current = player.currentTrack;
   const [lyricsFull, setLyricsFull] = useState(false);
+  const [queueOpen, setQueueOpen] = useState(false);
   const [resolvedLyrics, setResolvedLyrics] = useState("");
   const [lyricsLoading, setLyricsLoading] = useState(false);
   const [lyricsError, setLyricsError] = useState("");
@@ -3607,7 +3621,14 @@ function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
   };
   if (!current)
     return (
-      <div className="page player-page">
+      <div className="page player-page standalone-player-page">
+        <button
+          className="player-corner-button player-back-button"
+          onClick={() => navigate?.("home")}
+          aria-label="返回音屿"
+        >
+          <ArrowLeft />
+        </button>
         <section className="player-stage player-pro player-empty-state smart-player-empty">
           <div className="player-bg" />
           <div className="player-bg-gradient" />
@@ -3697,7 +3718,24 @@ function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
       </div>
     );
   return (
-    <div className="page player-page" style={{ "--player-accent": accent }}>
+    <div
+      className="page player-page standalone-player-page"
+      style={{ "--player-accent": accent }}
+    >
+      <button
+        className="player-corner-button player-back-button"
+        onClick={() => navigate?.("home")}
+        aria-label="返回音屿"
+      >
+        <ArrowLeft />
+      </button>
+      <button
+        className="player-corner-button player-fullscreen-corner"
+        onClick={() => document.documentElement.requestFullscreen?.()}
+        aria-label="全屏播放"
+      >
+        <Maximize2 />
+      </button>
       <section className="player-stage player-pro player-immersive">
         <div
           className="player-bg"
@@ -3705,11 +3743,8 @@ function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
         />
         <div className="player-bg-gradient" />
         <div className="player-layout player-immersive-grid">
-          <article className="player-primary-card">
+          <article className="player-primary-card player-control-deck">
             <div className="player-art-wrap">
-              <div className="player-disc-halo">
-                <span />
-              </div>
               <div className="player-cover">
                 {cover ? (
                   <img src={cover} alt={current.title || "专辑封面"} />
@@ -3717,42 +3752,28 @@ function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
                   <Music2 />
                 )}
               </div>
-              <div className="player-badges">
+              <div className="player-badges player-compact-badges">
                 <span>
                   {player.quality === "original"
                     ? "无损原始"
                     : player.quality.toUpperCase()}
                 </span>
                 <span>{sourceLabel(current.sourceType)}</span>
-                <span>FLAC / Plex Ready</span>
               </div>
             </div>
             <div className="player-main">
-              <span className="eyebrow">
-                <Radio />
-                NOW PLAYING
-              </span>
               <h1>{current.title || "未命名歌曲"}</h1>
               <p className="player-artist-line">
                 {current.artist || "未知歌手"}
                 <ChevronRight />
                 {current.album || "未知专辑"}
               </p>
-              <div className="player-meta-line">
-                {meta.map(([label, value, Icon]) => (
-                  <span key={label}>
-                    <Icon />
-                    {label}：{value}
-                  </span>
-                ))}
-              </div>
               {player.error && (
                 <div className="inline-error">
                   <CircleAlert />
                   {player.error}
                 </div>
               )}
-              <Spectrum bars={64} />
               <div className="player-progress">
                 <span>{formatTime(player.currentTime)}</span>
                 <input
@@ -3856,51 +3877,22 @@ function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
                   <ListMusic />
                   加入歌单
                 </button>
-                {isAdmin && (
-                  <button
-                    className="secondary small"
-                    disabled={!current.file}
-                    onClick={() =>
-                      current.file &&
-                      navigator.clipboard?.writeText(current.file)
-                    }
-                  >
-                    <LocateFixed />
-                    定位文件
-                  </button>
-                )}
-                {isAdmin && (
-                  <button
-                    className="secondary small"
-                    disabled={!current.openPlexUrl}
-                    onClick={() =>
-                      current.openPlexUrl &&
-                      window.open(current.openPlexUrl, "_blank")
-                    }
-                  >
-                    <Server />
-                    打开 Plex
-                  </button>
-                )}
               </div>
             </div>
           </article>
-          <aside className="queue-panel">
+          <aside
+            className={`queue-panel player-queue-drawer ${queueOpen ? "open" : ""}`}
+            aria-hidden={!queueOpen}
+          >
             <SectionHead
               title={`播放队列（${queue.length + 1}）`}
               note={`总时长 ${queueTotal ? formatTime(queueTotal) : formatTime(player.duration)}`}
-              action={
-                queue.length ? (
-                  <button
-                    className="text-button"
-                    onClick={() => player.setQueue([])}
-                  >
-                    清空
-                  </button>
-                ) : (
-                  <span className="queue-hint">没有待播歌曲</span>
-                )
-              }
+              action={<div className="queue-drawer-actions">
+                {queue.length ? (
+                  <button className="text-button" onClick={() => player.setQueue([])}>清空</button>
+                ) : <span className="queue-hint">没有待播歌曲</span>}
+                <button className="icon-button" onClick={() => setQueueOpen(false)} aria-label="关闭播放队列"><X /></button>
+              </div>}
             />
             <div className="queue-item active" aria-current="true">
               <div className="queue-thumb">
@@ -4026,6 +4018,14 @@ function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
           )}
         </div>
       </section>
+      <button
+        className="player-queue-fab"
+        onClick={() => setQueueOpen(true)}
+        aria-label={`打开播放队列，共 ${queue.length + 1} 首`}
+      >
+        <ListMusic />
+        <span>{queue.length + 1}</span>
+      </button>
       {lyricsFull && showLyrics && (
         <LyricsFullscreenOverlay
           current={lyricsTrack}
@@ -5226,6 +5226,7 @@ function DownloadCenter({
     [quality, setQuality] = useState("320k"),
     [error, setError] = useState("");
   const [target, setTarget] = useState("nas");
+  const [downloadBusy, setDownloadBusy] = useState("");
   const [pending, setPending] = useState([]),
     [selectedPending, setSelectedPending] = useState([]);
   useEffect(() => {
@@ -5295,36 +5296,60 @@ function DownloadCenter({
     [results],
   );
   const deviceDownload = async (item) => {
-    const data = await api("/api/downloads/device-token", {
-      method: "POST",
-      body: JSON.stringify({ item, sourceId, quality }),
-    });
-    const link = document.createElement("a");
-    link.href = data.downloadUrl;
-    link.download = data.filename || "";
-    link.rel = "noopener";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    notify?.(`已向当前设备下载《${item.title}》`);
+    const frame = document.createElement("iframe");
+    frame.hidden = true;
+    frame.title = `下载 ${item.title || "歌曲"}`;
+    document.body.appendChild(frame);
+    try {
+      const data = await api("/api/downloads/device-token", {
+        method: "POST",
+        body: JSON.stringify({ item, sourceId, quality }),
+      });
+      frame.src = data.downloadUrl;
+      window.setTimeout(() => frame.remove(), 120000);
+      notify?.(
+        `《${item.title}》已开始下载到当前设备${data.qualityFallback ? `（自动使用 ${data.quality}）` : ""}`,
+      );
+    } catch (downloadError) {
+      frame.remove();
+      throw downloadError;
+    }
   };
   const downloadOne = async (item) => {
-    if (target === "device") {
-      await deviceDownload(item);
-      return;
+    const busyKey = `${item.platform}-${item.trackId || item.id}`;
+    setDownloadBusy(busyKey);
+    setError("");
+    try {
+      if (target === "device") {
+        await deviceDownload(item);
+        return;
+      }
+      await createDownload(item, sourceId, quality);
+      await loadPending();
+    } catch (downloadError) {
+      setError(`下载失败：${downloadError.message}`);
+      notify?.(`《${item.title}》下载失败：${downloadError.message}`);
+    } finally {
+      setDownloadBusy("");
     }
-    await createDownload(item, sourceId, quality);
-    await loadPending();
   };
   const downloadMany = async (items) => {
-    if (target === "device") {
-      for (const item of items) await deviceDownload(item);
-      notify?.(`已向当前设备发起 ${items.length} 个下载`);
-      return;
+    setDownloadBusy("batch");
+    setError("");
+    try {
+      if (target === "device") {
+        for (const item of items) await deviceDownload(item);
+        notify?.(`已向当前设备发起 ${items.length} 个下载`);
+        return;
+      }
+      for (const item of items) await createDownload(item, sourceId, quality);
+      await loadPending();
+      notify?.(`已加入 ${items.length} 首歌曲到待入库流程`);
+    } catch (downloadError) {
+      setError(`批量下载中断：${downloadError.message}`);
+    } finally {
+      setDownloadBusy("");
     }
-    for (const item of items) await createDownload(item, sourceId, quality);
-    await loadPending();
-    notify?.(`已加入 ${items.length} 首歌曲到待入库流程`);
   };
   const togglePending = (id) =>
     setSelectedPending((value) =>
@@ -5586,9 +5611,18 @@ function DownloadCenter({
                           ? "下载到当前设备"
                           : "下载并加入待入库"
                       }
+                      disabled={
+                        !!downloadBusy &&
+                        downloadBusy !== `${item.platform}-${item.trackId || item.id}`
+                      }
+                      className="download-action-button"
                       onClick={() => downloadOne(item)}
                     >
-                      <Download />
+                      {downloadBusy === `${item.platform}-${item.trackId || item.id}` ? (
+                        <LoaderCircle className="spin" />
+                      ) : (
+                        <Download />
+                      )}
                     </button>
                   </div>
                 </div>
@@ -5999,11 +6033,13 @@ function SettingsPage({
   navigate,
   isAdmin = true,
   onSettingsChange,
+  appearance = DEFAULT_APPEARANCE,
+  onAppearanceChange,
 }) {
   const [current, setCurrent] = useState(""),
     [next, setNext] = useState(""),
     [message, setMessage] = useState("");
-  const [tab, setTab] = useState(isAdmin ? "plex" : "user"),
+  const [tab, setTab] = useState(isAdmin ? "plex" : "appearance"),
     [draft, setDraft] = useState({}),
     [plexOpen, setPlexOpen] = useState(false),
     [plex, setPlex] = useState(settings.plex || {});
@@ -6031,6 +6067,9 @@ function SettingsPage({
     ...defaultPlayerPrefs,
     ...(settings.player || {}),
   });
+  const appearancePrefs = normalizeAppearance(appearance);
+  const updateAppearance = (key, value) =>
+    onAppearanceChange?.({ ...appearancePrefs, [key]: value });
   useEffect(() => {
     setDraft(settings || {});
     setPlex(settings.plex || {});
@@ -6046,7 +6085,7 @@ function SettingsPage({
     setPlayerPrefs({ ...defaultPlayerPrefs, ...(settings.player || {}) });
   }, [settings]);
   useEffect(() => {
-    if (!isAdmin && tab !== "user") setTab("user");
+    if (!isAdmin && !["appearance", "user"].includes(tab)) setTab("appearance");
   }, [isAdmin, tab]);
   const change = async (event) => {
     event.preventDefault();
@@ -6224,11 +6263,15 @@ function SettingsPage({
         ["scrape", "刮削规则", WandSparkles],
         ["naming", "命名规则", Tags],
         ["exclude", "扫描排除", ShieldCheck],
+        ["appearance", "外观与主题", Palette],
         ["player", "播放器", Play],
         ["user", "用户与安全", UserRound],
         ["logs", "备份与日志", ScrollText],
       ]
-    : [["user", "用户与安全", UserRound]];
+    : [
+        ["appearance", "外观与主题", Palette],
+        ["user", "用户与安全", UserRound],
+      ];
   const templates = draft.namingTemplates || settings.namingTemplates || {};
   const scrapeRules = draft.scrapeRules || settings.scrapeRules || {
     defaultMode: "missing",
@@ -6726,6 +6769,83 @@ function SettingsPage({
               保存排除规则
             </button>
           </SettingBlock>
+        )}
+        {tab === "appearance" && (
+          <div className="settings-grid appearance-settings-grid">
+            <SettingBlock
+              icon={Palette}
+              title="外观与主题"
+              note="调整会即时预览，并保存在当前设备；无需重启服务。"
+            >
+              <div className="theme-choice" role="group" aria-label="界面主题">
+                {[
+                  ["system", "跟随系统"],
+                  ["dark", "深色"],
+                  ["light", "浅色"],
+                ].map(([value, label]) => (
+                  <button
+                    key={value}
+                    className={appearancePrefs.theme === value ? "active" : ""}
+                    onClick={() => updateAppearance("theme", value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="appearance-sliders">
+                {[
+                  ["玻璃模糊度", "glassBlur", 8, 44, 1, "px"],
+                  ["玻璃透明度", "glassOpacity", 0.2, 0.88, 0.01, "%"],
+                  ["背景模糊度", "backdropBlur", 0, 36, 1, "px"],
+                  ["背景图可见度", "backdropOpacity", 0.18, 0.9, 0.01, "%"],
+                  ["字号大小", "fontScale", 0.9, 1.25, 0.01, "%"],
+                  ["圆角大小", "cornerRadius", 12, 32, 1, "px"],
+                  ["色彩饱和度", "saturation", 80, 190, 1, "%"],
+                  ["动效强度", "motion", 0, 1.2, 0.05, "%"],
+                ].map(([label, key, min, max, step, unit]) => {
+                  const value = appearancePrefs[key];
+                  const formatted =
+                    unit === "%"
+                      ? `${Math.round(value * (key === "saturation" ? 1 : 100))}%`
+                      : `${Math.round(value)}${unit}`;
+                  return (
+                    <label className="appearance-range" key={key}>
+                      <span>
+                        <b>{label}</b>
+                        <output>{formatted}</output>
+                      </span>
+                      <input
+                        type="range"
+                        min={min}
+                        max={max}
+                        step={step}
+                        value={value}
+                        onChange={(event) =>
+                          updateAppearance(key, Number(event.target.value))
+                        }
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+              <div className="setting-actions">
+                <button
+                  className="secondary small"
+                  onClick={() => onAppearanceChange?.(DEFAULT_APPEARANCE)}
+                >
+                  <RotateCcw />
+                  恢复推荐值
+                </button>
+                <button
+                  className="primary small"
+                  onClick={() => setMessage("外观偏好已保存在当前设备")}
+                >
+                  <Check />
+                  完成
+                </button>
+              </div>
+            </SettingBlock>
+          </div>
         )}
         {tab === "player" && (
           <SettingBlock
@@ -9144,16 +9264,32 @@ function AuthenticatedShell({ setAuthenticated }) {
   );
   const [routeRevision, setRouteRevision] = useState(0);
   const [menu, setMenu] = useState(false);
-  const [stats, setStats] = useState({});
-  const [jobs, setJobs] = useState([]);
-  const [sources, setSources] = useState([]);
-  const [settingsData, setSettingsData] = useState({});
+  const [stats, setStats] = useState(() => readFastCache("dashboard", {}));
+  const [jobs, setJobs] = useState(() => readFastCache("jobs", []));
+  const [sources, setSources] = useState(() => readFastCache("sources", []));
+  const [settingsData, setSettingsData] = useState(() =>
+    readFastCache("settings", {}),
+  );
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
   const [ambientIndex, setAmbientIndex] = useState(0);
   const [ambientDeck, setAmbientDeck] = useState([]);
   const [manualBackdrop, setManualBackdrop] = useState(null);
+  const [appearance, setAppearance] = useState(() =>
+    normalizeAppearance(storedJson("songlib-appearance", DEFAULT_APPEARANCE)),
+  );
   const player = usePlayer();
+  const prefersDark = useMediaQuery("(prefers-color-scheme: dark)");
+  const theme = resolvedTheme(appearance.theme, prefersDark);
+  const changeAppearance = useCallback((value) => {
+    const normalized = normalizeAppearance(value);
+    setAppearance(normalized);
+    try {
+      localStorage.setItem("songlib-appearance", JSON.stringify(normalized));
+    } catch {
+      // Live preview remains available even when persistent storage is blocked.
+    }
+  }, []);
   const updatePath = useCallback((path, { replace = false } = {}) => {
     if (window.location.pathname === path) return;
     window.history[replace ? "replaceState" : "pushState"]({}, "", path);
@@ -9176,10 +9312,10 @@ function AuthenticatedShell({ setAuthenticated }) {
         api("/api/jobs").catch(() => []),
         api("/api/sources").catch(() => []),
       ]);
-      setStats(s);
-      setSettingsData(cfg);
-      setJobs(Array.isArray(j) ? j : []);
-      setSources(Array.isArray(src) ? src : []);
+      setStats(writeFastCache("dashboard", s));
+      setSettingsData(writeFastCache("settings", cfg));
+      setJobs(writeFastCache("jobs", Array.isArray(j) ? j : []));
+      setSources(writeFastCache("sources", Array.isArray(src) ? src : []));
     } catch (err) {
       if (err.message.includes("登录")) setAuthenticated(false);
       else setToast({ type: "error", message: err.message });
@@ -9187,9 +9323,11 @@ function AuthenticatedShell({ setAuthenticated }) {
       setLoading(false);
     }
   };
-  const refreshJobs = async () => setJobs(await api("/api/jobs"));
+  const refreshJobs = async () =>
+    setJobs(writeFastCache("jobs", await api("/api/jobs")));
   const refreshSources = useCallback(
-    async () => setSources(await api("/api/sources")),
+    async () =>
+      setSources(writeFastCache("sources", await api("/api/sources"))),
     [],
   );
   useEffect(() => {
@@ -9209,15 +9347,21 @@ function AuthenticatedShell({ setAuthenticated }) {
     document.title = title ? `${title} - ${BRAND.fullName}` : BRAND.fullName;
   }, [active]);
   useEffect(() => {
-    const timer = setInterval(() => {
-      if (
-        userIsAdmin(settingsData.user) ||
-        settingsData.user?.permissions?.includes("manage_library")
-      )
-        refreshJobs().catch(() => {});
-    }, 2500);
-    return () => clearInterval(timer);
-  }, [settingsData.user?.role, settingsData.user?.permissions?.join("|")]);
+    const canPoll =
+      userIsAdmin(settingsData.user) ||
+      settingsData.user?.permissions?.includes("manage_library");
+    const jobPages = ["manage", "tasks", "download", "local", "scrape"];
+    if (!canPoll || !jobPages.includes(active)) return undefined;
+    const refreshVisible = () => {
+      if (document.visibilityState === "visible") refreshJobs().catch(() => {});
+    };
+    const timer = setInterval(refreshVisible, 8000);
+    document.addEventListener("visibilitychange", refreshVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", refreshVisible);
+    };
+  }, [active, settingsData.user?.role, settingsData.user?.permissions?.join("|")]);
   const ambientImages = useMemo(
     () => (Array.isArray(stats?.heroImages) ? stats.heroImages : []),
     [stats?.heroImages],
@@ -9274,6 +9418,7 @@ function AuthenticatedShell({ setAuthenticated }) {
   };
   const logout = async () => {
     await api("/api/auth/logout", { method: "POST" }).catch(() => {});
+    clearFastCache();
     setAuthenticated(false);
   };
   const playTrack = async (item, queue = []) => {
@@ -9299,19 +9444,17 @@ function AuthenticatedShell({ setAuthenticated }) {
     ambientDeck[ambientIndex % Math.max(ambientDeck.length, 1)] ||
     {};
   const playerTrack = player.currentTrack || {};
-  const shellBackdrop =
-    active === "player"
-      ? coverUrlFor(playerTrack) || VISUAL_FALLBACKS.player
-      : hero.imageUrl || VISUAL_FALLBACKS.artist;
-  const Backdrop = active === "player" ? PlayerBackdrop : ArtistBackdrop;
+  const shellBackdrop = hero.imageUrl || VISUAL_FALLBACKS.artist;
   const showMiniPlayer = !!player.currentTrack && active !== "player";
   return (
     <div
       className={`app-shell visual-shell route-${active} ${showMiniPlayer ? "has-mini-player" : ""}`}
       data-font-size={settingsData.user?.fontSize || "standard"}
+      data-theme={theme}
+      style={appearanceStyle(appearance)}
     >
-      <Backdrop imageUrl={shellBackdrop} />
-      {(!isMobile || menu) && (
+      {active !== "player" && <ArtistBackdrop imageUrl={shellBackdrop} />}
+      {active !== "player" && (!isMobile || menu) && (
         <Sidebar
           active={active}
           onChange={navigate}
@@ -9323,15 +9466,15 @@ function AuthenticatedShell({ setAuthenticated }) {
           isAdmin={canOpenManagement}
         />
       )}
-      <main className="main">
-        <Topbar
+      <main className={`main ${active === "player" ? "player-main-shell" : ""}`}>
+        {active !== "player" && <Topbar
           title={title}
           subtitle={subtitle}
           openMenu={() => setMenu(true)}
           onNavigate={navigate}
           logout={logout}
           profile={settingsData.user}
-        />
+        />}
         {loading &&
           (active === "manage" ||
             managementNav.some(
@@ -9452,9 +9595,11 @@ function AuthenticatedShell({ setAuthenticated }) {
             navigate={navigate}
             isAdmin={isAdmin}
             onSettingsChange={setSettingsData}
+            appearance={appearance}
+            onAppearanceChange={changeAppearance}
           />
         )}{" "}
-        {isMobile && (
+        {isMobile && active !== "player" && (
           <MobileNav
             active={active}
             change={navigate}

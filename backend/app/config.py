@@ -28,7 +28,7 @@ def _csv_env(name: str) -> tuple[str, ...]:
 @dataclass(frozen=True)
 class Settings:
     app_name: str = os.getenv("APP_NAME", "SongLib Amp｜音屿")
-    app_version: str = os.getenv("APP_VERSION", "1.0.0-rc.5")
+    app_version: str = os.getenv("APP_VERSION", "1.0.0-rc.6")
     environment: str = os.getenv("APP_ENV", "production").strip().lower()
     data_dir: Path = Path(os.getenv("DATA_DIR", "/data"))
     music_root: Path = Path(os.getenv("MUSIC_ROOT", "/music"))

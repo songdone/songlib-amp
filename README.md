@@ -94,7 +94,7 @@ docker compose pull
 docker compose up -d
 ```
 
-`latest` 适合直接获取当前发布版；需要严格锁定或回滚时，把 Compose 的 `image` 改为 `666uos/songlib-amp:1.0.0-rc.5` 等固定标签，再次执行相同命令。仓库内的 [`docker-compose.yml`](docker-compose.yml) 与上面模板一致；只有参与开发时才使用 `docker-compose.build.yml` 在本机编译。
+`latest` 适合直接获取当前发布版；需要严格锁定或回滚时，把 Compose 的 `image` 改为 `666uos/songlib-amp:1.0.0-rc.6` 等固定标签，再次执行相同命令。仓库内的 [`docker-compose.yml`](docker-compose.yml) 与上面模板一致；只有参与开发时才使用 `docker-compose.build.yml` 在本机编译。
 
 默认模板已经包含非 root 用户和 `no-new-privileges`，Compose 会自动创建项目隔离网络。需要只读根文件系统和全部 Linux capability 裁剪时，再叠加可选文件：
 

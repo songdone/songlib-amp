@@ -9,6 +9,12 @@ services:
       APP_ENV: production
       WORKER_MODE: embedded
       PORT: "8080"
+      AIRPLAY_CAST_ENABLED: "true"
+      AIRPLAY_ENCODER: auto
+      AIRPLAY_WIDTH: "1920"
+      AIRPLAY_HEIGHT: "1080"
+      AIRPLAY_FPS: "30"
+      AIRPLAY_LYRIC_ADVANCE_MS: "250"
     ports:
       - "${wizard_port}:8080"
     volumes:

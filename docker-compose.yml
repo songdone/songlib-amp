@@ -8,6 +8,23 @@ services:
       - TZ=Asia/Shanghai
       - APP_ENV=production
       - WORKER_MODE=embedded
+      - AIRPLAY_CAST_ENABLED=${AIRPLAY_CAST_ENABLED:-true}
+      - AIRPLAY_PUBLIC_BASE_URL=${AIRPLAY_PUBLIC_BASE_URL:-}
+      - AIRPLAY_ENCODER=${AIRPLAY_ENCODER:-auto}
+      - AIRPLAY_WIDTH=${AIRPLAY_WIDTH:-1920}
+      - AIRPLAY_HEIGHT=${AIRPLAY_HEIGHT:-1080}
+      - AIRPLAY_FPS=${AIRPLAY_FPS:-30}
+      - AIRPLAY_RENDER_FPS=${AIRPLAY_RENDER_FPS:-5}
+      - AIRPLAY_SEGMENT_SECONDS=${AIRPLAY_SEGMENT_SECONDS:-1}
+      - AIRPLAY_VIDEO_BITRATE=${AIRPLAY_VIDEO_BITRATE:-}
+      - AIRPLAY_LYRIC_ADVANCE_MS=${AIRPLAY_LYRIC_ADVANCE_MS:-250}
+      - AIRPLAY_DRIFT_GAIN=${AIRPLAY_DRIFT_GAIN:-0.35}
+      - AIRPLAY_DRIFT_STEP_MS=${AIRPLAY_DRIFT_STEP_MS:-250}
+      - AIRPLAY_HARD_SYNC_MS=${AIRPLAY_HARD_SYNC_MS:-2000}
+      - AIRPLAY_SESSION_TTL_SECONDS=${AIRPLAY_SESSION_TTL_SECONDS:-14400}
+      - AIRPLAY_STREAM_IDLE_SECONDS=${AIRPLAY_STREAM_IDLE_SECONDS:-90}
+      - AIRPLAY_FONT_PATH=${AIRPLAY_FONT_PATH:-}
+      - FFMPEG_BINARY=${FFMPEG_BINARY:-ffmpeg}
     ports:
       - "32782:8080"
     volumes:
@@ -21,6 +38,13 @@ services:
       # - ./plex-config:/plex-config:ro
     security_opt:
       - no-new-privileges:true
+    # Intel QSV（可选）：确认宿主机存在 /dev/dri 且运行账号属于 render/video
+    # 组后，再取消下面两行注释。未挂载或初始化失败时会自动降级软件编码。
+    # devices:
+    #   - /dev/dri:/dev/dri
+    # group_add:
+    #   - "${RENDER_GID:-109}"
+    #   - "${VIDEO_GID:-44}"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/api/health/ready',timeout=3)"]
       interval: 30s

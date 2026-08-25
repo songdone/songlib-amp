@@ -25,6 +25,16 @@ def _csv_env(name: str) -> tuple[str, ...]:
     return tuple(value.strip().rstrip("/") for value in os.getenv(name, "").split(",") if value.strip())
 
 
+def _float_env(name: str, default: float, minimum: float, maximum: float) -> float:
+    try:
+        value = float(os.getenv(name, str(default)))
+    except ValueError as exc:
+        raise RuntimeError(f"{name} 必须是数字") from exc
+    if not minimum <= value <= maximum:
+        raise RuntimeError(f"{name} 必须在 {minimum} 到 {maximum} 之间")
+    return value
+
+
 @dataclass(frozen=True)
 class Settings:
     app_name: str = os.getenv("APP_NAME", "SongLib Amp｜音屿")
@@ -55,6 +65,23 @@ class Settings:
     allow_proxy_fake_ips: bool = _bool_env("ALLOW_PROXY_FAKE_IPS", False)
     fnos_music_url: str = os.getenv("FNOS_MUSIC_URL", "").strip().rstrip("/")
     fnos_music_token: str = os.getenv("FNOS_MUSIC_TOKEN", "").strip()
+    airplay_cast_enabled: bool = _bool_env("AIRPLAY_CAST_ENABLED", True)
+    airplay_public_base_url: str = os.getenv("AIRPLAY_PUBLIC_BASE_URL", "").strip().rstrip("/")
+    airplay_width: int = _int_env("AIRPLAY_WIDTH", 1920, 640, 3840)
+    airplay_height: int = _int_env("AIRPLAY_HEIGHT", 1080, 360, 2160)
+    airplay_fps: int = _int_env("AIRPLAY_FPS", 30, 24, 30)
+    airplay_render_fps: int = _int_env("AIRPLAY_RENDER_FPS", 5, 2, 15)
+    airplay_segment_seconds: int = _int_env("AIRPLAY_SEGMENT_SECONDS", 1, 1, 3)
+    airplay_encoder: str = os.getenv("AIRPLAY_ENCODER", "auto").strip().lower()
+    airplay_video_bitrate: str = os.getenv("AIRPLAY_VIDEO_BITRATE", "").strip()
+    airplay_lyric_advance_ms: int = _int_env("AIRPLAY_LYRIC_ADVANCE_MS", 250, -3000, 3000)
+    airplay_drift_gain: float = _float_env("AIRPLAY_DRIFT_GAIN", 0.35, 0.05, 1.0)
+    airplay_drift_step_ms: int = _int_env("AIRPLAY_DRIFT_STEP_MS", 250, 25, 2000)
+    airplay_hard_sync_ms: int = _int_env("AIRPLAY_HARD_SYNC_MS", 2000, 250, 10000)
+    airplay_session_ttl_seconds: int = _int_env("AIRPLAY_SESSION_TTL_SECONDS", 14400, 300, 86400)
+    airplay_stream_idle_seconds: int = _int_env("AIRPLAY_STREAM_IDLE_SECONDS", 90, 30, 900)
+    airplay_font_path: str = os.getenv("AIRPLAY_FONT_PATH", "").strip()
+    ffmpeg_binary: str = os.getenv("FFMPEG_BINARY", "ffmpeg").strip() or "ffmpeg"
 
     def validate(self) -> list[str]:
         errors: list[str] = []
@@ -68,6 +95,22 @@ class Settings:
             parsed = urlparse(self.fnos_music_url)
             if parsed.scheme not in {"http", "https"} or not parsed.netloc:
                 errors.append("FNOS_MUSIC_URL 必须是有效的 HTTP(S) 地址")
+        if self.airplay_public_base_url:
+            parsed = urlparse(self.airplay_public_base_url)
+            if (
+                parsed.scheme not in {"http", "https"}
+                or not parsed.netloc
+                or parsed.path not in {"", "/"}
+                or parsed.query
+                or parsed.fragment
+                or parsed.username
+                or parsed.password
+            ):
+                errors.append("AIRPLAY_PUBLIC_BASE_URL 必须是没有路径的 HTTP(S) 站点地址")
+        if self.airplay_encoder not in {"auto", "qsv", "software"}:
+            errors.append("AIRPLAY_ENCODER 只能是 auto、qsv 或 software")
+        if self.airplay_width * 9 != self.airplay_height * 16:
+            errors.append("AIRPLAY_WIDTH 与 AIRPLAY_HEIGHT 必须保持 16:9")
         if self.environment == "production" and self.session_secret and len(self.session_secret) < 32:
             errors.append("生产环境的 SESSION_SECRET 至少需要 32 个字符")
         return errors

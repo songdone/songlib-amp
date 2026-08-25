@@ -187,6 +187,8 @@ def _route_allowed_for_user(user: dict, request: Request) -> bool:
         return method in ("GET", "PATCH", "POST")
     if path == "/api/player/state":
         return method in ("GET", "PATCH")
+    if path.startswith("/api/airplay/cast"):
+        return method in ("GET", "POST", "PATCH", "DELETE") and "listen" in set(user.get("permissions") or [])
     if path in ("/api/dashboard", "/api/discovery/playlists", "/api/settings"):
         return method == "GET"
     if method == "GET" and (

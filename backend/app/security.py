@@ -6,6 +6,7 @@ import threading
 import time
 import uuid
 from collections import defaultdict, deque
+from urllib.parse import urlparse
 
 from fastapi import HTTPException, Request, status
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -77,7 +78,8 @@ class SecurityMiddleware(BaseHTTPMiddleware):
             return JSONResponse(status_code=400, content={"detail": "请求主机不受信任"})
 
         origin = request.headers.get("origin", "").rstrip("/")
-        if origin and not self._origin_allowed(request, origin):
+        public_airplay_stream = request.url.path.startswith("/api/airplay/stream/")
+        if origin and not public_airplay_stream and not self._origin_allowed(request, origin):
             return JSONResponse(status_code=403, content={"detail": "请求来源不受信任"})
         if request.method.upper() == "OPTIONS" and origin:
             response = Response(status_code=204)
@@ -102,8 +104,12 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "same-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        airplay_origin = ""
+        if settings.airplay_public_base_url:
+            parsed = urlparse(settings.airplay_public_base_url)
+            airplay_origin = f" {parsed.scheme}://{parsed.netloc}"
         response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; "
+            f"default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:{airplay_origin}; "
             "style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'"
         )
         if origin and origin in settings.trusted_origins:

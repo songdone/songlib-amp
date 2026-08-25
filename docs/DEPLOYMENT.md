@@ -61,6 +61,8 @@ docker compose -f docker-compose.yml -f docker-compose.hardened.yml up -d
 - 不直接把 Docker 端口暴露到公网。
 - 在代理层配置 TLS、访问控制与请求体上限。
 
+原生 AirPlay 歌词投屏还要求 Apple TV 能解析并访问同一个受信任 HTTPS origin。反代实时 HLS 的缓冲、证书信任、CORS/CSP、QSV/4K 配置和真机验收见 [AIRPLAY-LYRICS-CAST.md](AIRPLAY-LYRICS-CAST.md)。
+
 ## 多架构
 
 Docker Hub 的 `latest` 与固定标签同时发布 `linux/amd64`、`linux/arm64`。NAS 只需执行 `docker compose pull`，不需要本地编译。维护者跨架构发布时使用：

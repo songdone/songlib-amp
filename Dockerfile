@@ -24,6 +24,7 @@ RUN set -eux; \
 FROM python:3.12.10-slim-bookworm AS runtime
 ARG APP_UID=10001
 ARG APP_GID=10001
+ARG TARGETARCH
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
@@ -35,7 +36,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PORT=8080
 COPY --from=node-runtime /usr/local/bin/node /usr/bin/node
 COPY --from=tini-fetch /tini /usr/bin/tini
-RUN node --version \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg fonts-noto-cjk \
+    && if [ "${TARGETARCH}" = "amd64" ]; then apt-get install -y --no-install-recommends intel-media-va-driver; fi \
+    && rm -rf /var/lib/apt/lists/* \
+    && node --version \
+    && ffmpeg -version \
     && tini --version \
     && groupadd --gid "${APP_GID}" songlib \
     && useradd --uid "${APP_UID}" --gid "${APP_GID}" --home-dir /app --no-create-home --shell /usr/sbin/nologin songlib

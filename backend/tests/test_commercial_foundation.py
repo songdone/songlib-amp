@@ -172,6 +172,28 @@ class CommercialFoundationTests(unittest.TestCase):
                 headers={"X-CSRF-Token": token},
             )
             self.assertEqual(allowed.status_code, 200)
+            cast = client.post(
+                "/api/airplay/cast",
+                json={},
+                headers={"X-CSRF-Token": token},
+            )
+            self.assertEqual(cast.status_code, 200)
+            cast_payload = cast.json()
+            self.assertEqual(cast_payload["audioMode"], "dual-clock-video-only")
+            updated = client.patch(
+                f"/api/airplay/cast/{cast_payload['sessionId']}",
+                json={
+                    "trackId": "listener:test-track",
+                    "title": "权限测试",
+                    "lyrics": "[00:01.00]歌词",
+                    "position": 3,
+                    "duration": 120,
+                    "playing": True,
+                },
+                headers={"X-CSRF-Token": token},
+            )
+            self.assertEqual(updated.status_code, 200)
+            self.assertEqual(updated.json()["streamUrl"], cast_payload["streamUrl"])
 
     def test_backup_file_is_owner_only(self):
         with TestClient(app) as client:
@@ -202,6 +224,14 @@ class CommercialFoundationTests(unittest.TestCase):
             self.assertEqual(payload["status"], "ready")
             self.assertIn("database", payload["checks"])
             self.assertIn("storage", payload["checks"])
+
+    def test_airplay_bearer_stream_allows_cross_origin_player_requests(self):
+        with TestClient(app) as client:
+            response = client.get(
+                "/api/airplay/stream/expired-token/master.m3u8",
+                headers={"Origin": "https://apple-tv.invalid"},
+            )
+        self.assertEqual(response.status_code, 404)
 
     def test_fnos_music_uses_the_public_music_api_prefix(self):
         self.assertEqual(

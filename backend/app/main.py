@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field, HttpUrl
 
 from . import auth
 from . import audit
+from .airplay_cast import cast_manager
 from .catalog import search as catalog_search
 from .config import settings
 from .db import get_kv, init_db, now, row, rows, set_kv
@@ -238,6 +239,21 @@ class DiscoveryDownloadBody(BaseModel):
     tracks: list[dict] = Field(default_factory=list, max_length=100)
 
 
+class AirPlayCastUpdateBody(BaseModel):
+    trackId: str = Field(default="", max_length=300)
+    title: str = Field(default="", max_length=200)
+    artist: str = Field(default="", max_length=200)
+    album: str = Field(default="", max_length=200)
+    quality: str = Field(default="", max_length=40)
+    lyrics: str = Field(default="", max_length=300_000)
+    position: float = Field(default=0, ge=0, le=60 * 60 * 24)
+    duration: float = Field(default=0, ge=0, le=60 * 60 * 24)
+    playing: bool = False
+    sourceType: str = Field(default="", max_length=40)
+    localFileId: str = Field(default="", max_length=300)
+    plexRatingKey: str = Field(default="", max_length=300)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     errors = settings.validate()
@@ -252,6 +268,7 @@ async def lifespan(app: FastAPI):
     finally:
         if settings.worker_mode == "embedded":
             manager.stop()
+        cast_manager.shutdown()
 
 
 app = FastAPI(title=settings.app_name, version=settings.app_version, lifespan=lifespan)
@@ -1654,6 +1671,111 @@ def update_player_state(body: SettingsPatchBody, user=Depends(auth.current_user)
     states[user.get("id")] = clean
     set_kv("player_states", states)
     return {"ok": True, "state": clean}
+
+
+def _airplay_public_base(request: Request) -> str:
+    return settings.airplay_public_base_url or str(request.base_url).rstrip("/")
+
+
+def _airplay_cover(body: AirPlayCastUpdateBody, user: dict) -> bytes | None:
+    if body.sourceType == "local_file" and body.localFileId:
+        path = _local_file_path(body.localFileId, user)
+        embedded = _embedded_cover(path)
+        if embedded:
+            return embedded[0]
+        for name in ("cover.jpg", "cover.png", "folder.jpg", "folder.png", "front.jpg", "front.png"):
+            candidate = path.parent / name
+            if candidate.is_file() and candidate.stat().st_size <= 12 * 1024 * 1024:
+                return candidate.read_bytes()
+    if body.sourceType == "plex_item" and body.plexRatingKey:
+        info = plex.playback(body.plexRatingKey, "original")
+        thumb = info.get("thumb") or ""
+        if thumb:
+            data = plex.image(thumb)
+            return data[: 12 * 1024 * 1024]
+    return None
+
+
+@app.post("/api/airplay/cast", dependencies=[Depends(auth.current_user)])
+def create_airplay_cast(request: Request, user=Depends(auth.current_user)):
+    rate_limiter.check(client_key(request, "airplay-cast-create"), limit=12, window_seconds=60)
+    try:
+        session = cast_manager.create(user["id"], _airplay_public_base(request))
+        return cast_manager.status(session.session_id, user["id"])
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@app.get("/api/airplay/cast/{session_id}", dependencies=[Depends(auth.current_user)])
+def airplay_cast_status(session_id: str, user=Depends(auth.current_user)):
+    try:
+        return cast_manager.status(session_id, user["id"])
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.patch("/api/airplay/cast/{session_id}", dependencies=[Depends(auth.current_user)])
+def update_airplay_cast(session_id: str, body: AirPlayCastUpdateBody, user=Depends(auth.current_user)):
+    try:
+        changed = cast_manager.track_changed(session_id, user["id"], body.trackId)
+        cover = _airplay_cover(body, user) if changed else None
+        return cast_manager.update(session_id, user["id"], body.model_dump(), cover)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="无法准备歌词投屏画面，请检查曲目封面与媒体来源连接。") from exc
+
+
+@app.delete("/api/airplay/cast/{session_id}", dependencies=[Depends(auth.current_user)])
+def stop_airplay_cast(session_id: str, user=Depends(auth.current_user)):
+    try:
+        cast_manager.stop(session_id, user["id"])
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"ok": True}
+
+
+def _airplay_stream_headers(*, playlist: bool) -> dict[str, str]:
+    return {
+        "Cache-Control": "no-store" if playlist else "public, max-age=4, immutable",
+        "Access-Control-Allow-Origin": "*",
+        "Cross-Origin-Resource-Policy": "cross-origin",
+        "Accept-Ranges": "bytes",
+    }
+
+
+@app.get("/api/airplay/stream/{token}/master.m3u8")
+def airplay_master_playlist(token: str):
+    try:
+        content = cast_manager.master_playlist(token)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return Response(
+        content=content,
+        media_type="application/vnd.apple.mpegurl",
+        headers=_airplay_stream_headers(playlist=True),
+    )
+
+
+@app.get("/api/airplay/stream/{token}/{filename}")
+def airplay_stream_file(token: str, filename: str):
+    try:
+        target = cast_manager.stream_file(token, filename)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    media_type = {
+        ".m3u8": "application/vnd.apple.mpegurl",
+        ".mp4": "video/mp4",
+        ".m4s": "video/iso.segment",
+    }.get(target.suffix.lower(), "application/octet-stream")
+    return FileResponse(
+        target,
+        media_type=media_type,
+        content_disposition_type="inline",
+        headers=_airplay_stream_headers(playlist=target.suffix.lower() == ".m3u8"),
+    )
 
 
 @app.post("/api/profile/avatar", dependencies=[Depends(auth.current_user)])

@@ -11,6 +11,7 @@ import { createRoot } from "react-dom/client";
 import { motion } from "motion/react";
 import {
   Activity,
+  Airplay,
   Album,
   ArrowLeft,
   ArrowDownToLine,
@@ -111,6 +112,11 @@ import {
   resolvedTheme,
 } from "./lib/appearance";
 import { clearFastCache, readFastCache, writeFastCache } from "./lib/cache";
+import {
+  airPlayStatePayload,
+  airPlayTrackId,
+  nativeAirPlayAvailable,
+} from "./lib/airplay";
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
@@ -3508,6 +3514,186 @@ function PlayerProvider({ children }) {
   );
 }
 
+function useAirPlayLyricsCast({ track, lyrics, player }) {
+  const videoRef = useRef(null);
+  const sessionRef = useRef(null);
+  const latestPayloadRef = useRef(null);
+  const creatingRef = useRef(null);
+  const pickerTimerRef = useRef(null);
+  const [supported, setSupported] = useState(false);
+  const [session, setSession] = useState(null);
+  const [engaged, setEngaged] = useState(false);
+  const [wireless, setWireless] = useState(false);
+  const [availability, setAvailability] = useState("unknown");
+  const [message, setMessage] = useState("");
+  const hasTrack = Boolean(track);
+
+  latestPayloadRef.current = airPlayStatePayload({ track, lyrics, player });
+
+  useEffect(() => {
+    const video = videoRef.current;
+    const available = nativeAirPlayAvailable(video);
+    setSupported(available);
+    if (!video || !available) return undefined;
+    const onAvailability = (event) => setAvailability(event.availability || "unknown");
+    const onWirelessChange = () => {
+      const active = Boolean(video.webkitCurrentPlaybackTargetIsWireless);
+      if (active && pickerTimerRef.current) {
+        window.clearTimeout(pickerTimerRef.current);
+        pickerTimerRef.current = null;
+      }
+      setWireless(active);
+      setEngaged(active);
+      setMessage(active ? "歌词视频正在投到电视；音频仍由本机播放，切歌无需重连" : "");
+      if (!active) video.pause();
+    };
+    video.addEventListener("webkitplaybacktargetavailabilitychanged", onAvailability);
+    video.addEventListener("webkitcurrentplaybacktargetiswirelesschanged", onWirelessChange);
+    return () => {
+      if (pickerTimerRef.current) window.clearTimeout(pickerTimerRef.current);
+      video.removeEventListener("webkitplaybacktargetavailabilitychanged", onAvailability);
+      video.removeEventListener("webkitcurrentplaybacktargetiswirelesschanged", onWirelessChange);
+    };
+  }, [hasTrack]);
+
+  const prepare = useCallback(async () => {
+    if (!supported || !hasTrack) return null;
+    if (sessionRef.current) return sessionRef.current;
+    if (!creatingRef.current) {
+      creatingRef.current = api("/api/airplay/cast", {
+        method: "POST",
+        body: JSON.stringify({}),
+      })
+        .then(async (created) => {
+          sessionRef.current = created;
+          setSession(created);
+          const updated = await api(`/api/airplay/cast/${created.sessionId}`, {
+            method: "PATCH",
+            body: JSON.stringify(latestPayloadRef.current),
+          });
+          sessionRef.current = updated;
+          setSession(updated);
+          return updated;
+        })
+        .catch((error) => {
+          setMessage(error.message || "无法准备投屏视频流");
+          throw error;
+        })
+        .finally(() => {
+          creatingRef.current = null;
+        });
+    }
+    return creatingRef.current;
+  }, [supported, hasTrack]);
+
+  useEffect(() => {
+    if (!supported || !hasTrack || sessionRef.current) return;
+    prepare().catch(() => {});
+  }, [supported, hasTrack, prepare]);
+
+  const sync = useCallback(async () => {
+    const currentSession = sessionRef.current;
+    if (!currentSession?.sessionId || !latestPayloadRef.current?.trackId) return;
+    try {
+      const updated = await api(`/api/airplay/cast/${currentSession.sessionId}`, {
+        method: "PATCH",
+        body: JSON.stringify(latestPayloadRef.current),
+      });
+      sessionRef.current = { ...currentSession, ...updated };
+      setSession((value) => ({ ...value, ...updated }));
+      if (updated.status === "error") setMessage(updated.error || "歌词视频流异常");
+    } catch (error) {
+      setMessage(error.message || "歌词投屏时钟同步失败");
+    }
+  }, []);
+
+  const metadataKey = `${airPlayTrackId(track)}|${String(lyrics || "").length}|${player.quality}|${player.isPlaying}|${player.duration}`;
+  useEffect(() => {
+    if (!session?.sessionId) return;
+    sync();
+  }, [session?.sessionId, metadataKey, sync]);
+
+  useEffect(() => {
+    if (!session?.sessionId || !engaged) return undefined;
+    const timer = window.setInterval(sync, 1000);
+    return () => window.clearInterval(timer);
+  }, [session?.sessionId, engaged, sync]);
+
+  const showPicker = useCallback(async () => {
+    const video = videoRef.current;
+    if (!nativeAirPlayAvailable(video)) {
+      setMessage("此设备保留投屏控制，但不能原生发起 AirPlay；请使用 iPhone、iPad 或 macOS Safari。");
+      return;
+    }
+    let ready = sessionRef.current;
+    if (!ready) {
+      setMessage("正在准备固定投屏地址，准备好后请再点一次“投到电视”。");
+      try {
+        await prepare();
+      } catch {}
+      return;
+    }
+    setEngaged(true);
+    setMessage("请选择同一网络中的 Apple TV");
+    try {
+      if (video.src !== ready.streamUrl) {
+        video.src = ready.streamUrl;
+        video.load();
+      }
+      video.muted = true;
+      video.play().catch(() => {});
+      video.webkitShowPlaybackTargetPicker();
+      if (pickerTimerRef.current) window.clearTimeout(pickerTimerRef.current);
+      pickerTimerRef.current = window.setTimeout(() => {
+        if (!video.webkitCurrentPlaybackTargetIsWireless) {
+          video.pause();
+          setEngaged(false);
+          setMessage("");
+        }
+        pickerTimerRef.current = null;
+      }, 30000);
+    } catch (error) {
+      setEngaged(false);
+      setMessage(error.message || "Safari 无法打开 AirPlay 设备选择器");
+    }
+  }, [prepare]);
+
+  return {
+    videoRef,
+    streamUrl: session?.streamUrl || "",
+    supported,
+    availability,
+    wireless,
+    engaged,
+    message,
+    showPicker,
+  };
+}
+
+function AirPlayCastButton({ cast, overlay = false }) {
+  const label = cast.wireless ? "正在投到电视" : "投到电视";
+  return (
+    <button
+      type="button"
+      className={`airplay-cast-button ${overlay ? "overlay" : ""} ${cast.wireless ? "active" : ""}`}
+      onClick={cast.showPicker}
+      aria-label={label}
+      aria-pressed={cast.wireless}
+      title={
+        cast.supported
+          ? cast.availability === "not-available"
+            ? "Safari 当前未发现可用的 AirPlay 目标"
+            : "打开 Apple 系统原生 AirPlay 设备选择器"
+          : "此设备不能原生发起 AirPlay"
+      }
+    >
+      <Airplay />
+      <span>{label}</span>
+      {cast.wireless && <i aria-hidden="true" />}
+    </button>
+  );
+}
+
 function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
   const player = usePlayer(),
     current = player.currentTrack;
@@ -3610,6 +3796,11 @@ function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
     .reduce((sum, item) => sum + Number(item.duration || 0), 0);
   const showLyrics = playerSettings.showLyrics !== false;
   const liked = player.isFavorite(current);
+  const airplayCast = useAirPlayLyricsCast({
+    track: lyricsTrack,
+    lyrics: lyricsText,
+    player,
+  });
   const addCurrentToPlaylist = () => {
     const names = Object.keys(player.playlists || {});
     const name = names.length
@@ -3877,7 +4068,14 @@ function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
                   <ListMusic />
                   加入歌单
                 </button>
+                <AirPlayCastButton cast={airplayCast} />
               </div>
+              {airplayCast.message && (
+                <div className={`airplay-cast-status ${airplayCast.wireless ? "active" : ""}`} role="status">
+                  <Airplay />
+                  <span>{airplayCast.message}</span>
+                </div>
+              )}
             </div>
           </article>
           <aside
@@ -4026,6 +4224,16 @@ function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
         <ListMusic />
         <span>{queue.length + 1}</span>
       </button>
+      <video
+        ref={airplayCast.videoRef}
+        className="airplay-cast-video"
+        src={airplayCast.streamUrl || undefined}
+        x-webkit-airplay="allow"
+        playsInline
+        muted
+        preload="none"
+        aria-hidden="true"
+      />
       {lyricsFull && showLyrics && (
         <LyricsFullscreenOverlay
           current={lyricsTrack}
@@ -4034,6 +4242,7 @@ function PlayerPage({ navigate, playerSettings = {}, isAdmin = true }) {
           lines={displayLyrics}
           activeLine={activeLine}
           player={player}
+          airplayCast={airplayCast}
           onClose={() => setLyricsFull(false)}
         />
       )}
@@ -4048,6 +4257,7 @@ function LyricsFullscreenOverlay({
   lines,
   activeLine,
   player,
+  airplayCast,
   onClose,
 }) {
   useEffect(() => {
@@ -4072,6 +4282,10 @@ function LyricsFullscreenOverlay({
         <X />
         关闭
       </button>
+      <div className="lyrics-overlay-airplay">
+        <AirPlayCastButton cast={airplayCast} overlay />
+        {airplayCast.message && <small>{airplayCast.message}</small>}
+      </div>
       <div className="lyrics-overlay-song">
         <div className="lyrics-overlay-cover">
           {cover ? <img src={cover} alt="" /> : <Music2 />}

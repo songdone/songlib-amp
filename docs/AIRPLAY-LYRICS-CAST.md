@@ -4,7 +4,7 @@
 
 本功能提供一个最小可验证原型：iPhone、iPad 或 macOS Safari 在检测到公开的 WebKit 播放目标 API 后，用带 `x-webkit-airplay="allow"` 的 `HTMLVideoElement` 调用 `webkitShowPlaybackTargetPicker()`。设备列表完全由苹果系统显示；SongLib Amp 不填写 Apple TV IP、不扫描局域网，也不模拟或逆向 AirPlay。
 
-播放器页和全屏歌词页都有“投到电视”入口。Windows/Android PWA 仍显示相同控制，便于跨平台 UI 一致，但会明确说明该设备不能原生发起 AirPlay。iOS/iPadOS 主屏幕 Web App 的独立窗口行为仍标记为待真实 iOS/tvOS 26 设备验证，不能仅凭 Safari 浏览器结果推断。
+一级导航的“正在播放”页和全屏歌词页都有“投到电视”入口。入口在空播放器状态下仍然可见并说明缺失条件，不再等到 SongLib 本机开始播放后才出现。Windows/Android PWA 仍显示相同控制，便于跨平台 UI 一致，但会明确说明该设备不能原生发起 AirPlay。iOS/iPadOS 主屏幕 Web App 的独立窗口行为仍标记为待真实 iOS/tvOS 26 设备验证，不能仅凭 Safari 浏览器结果推断。
 
 参考的公开接口与流规范：
 
@@ -28,11 +28,13 @@ TV 画面延续现有视觉语言：封面取平均色、模糊封面背景、�
 
 ### 音频模式审计
 
-当前 MVP 是 `dual-clock-video-only`：AirPlay HLS 只有歌词视频轨，原 `<audio>` 继续在 Safari 设备上播放。这样能先验证原生选择器、固定会话流、切歌不中断和歌词画面，但存在以下明确限制：
+当前 MVP 是 `dual-clock-video-only`：AirPlay HLS 只有歌词视频轨。选择 SongLib 本机来源时，原 `<audio>` 继续在 Safari 设备上播放；选择 Plex 活跃会话时，音频继续由目标 Plexamp/Plex 播放器输出。这样能先验证原生选择器、固定会话流、切歌不中断、外部会话跟随和歌词画面，但存在以下明确限制：
 
 - 音频时钟和歌词视频时钟不是同一个媒体时钟，不能保证样本级同步。
 - iOS/macOS 在切换输出路由、锁屏、后台或网络抖动时可能改变音频行为，必须在真机验证。
-- 后端以浏览器音频的 `currentTime` 为权威观测值：小于硬同步阈值的误差按增益和最大步长温和修正，大误差直接重锚；`AIRPLAY_LYRIC_ADVANCE_MS` 只影响歌词命中，不篡改进度条时钟。
+- SongLib 本机模式以浏览器音频的 `currentTime` 为权威观测值：小于硬同步阈值的误差按增益和最大步长温和修正，大误差直接重锚；`AIRPLAY_LYRIC_ADVANCE_MS` 只影响歌词命中，不篡改进度条时钟。
+- 跟随 Plexamp 时，SongLib 以 Plex `/status/sessions` 的 `viewOffset` 为外部时钟基准，在两秒轮询间隔内本地推进；这不是采样级同步。
+- 如果 Plexamp 音频本身正通过 AirPlay 输出，Safari 再发起歌词视频 AirPlay 是否会替换既有系统路由，必须在实际 iOS/tvOS 版本和目标设备上验证。
 - 下一阶段应把音频和歌词视频复用到同一个 HLS presentation timeline，并处理切歌时音频解码、无缝拼接、格式归一和响度；完成前不能把当前模式描述成严格音画同步。
 
 ## 分阶段计划
@@ -131,11 +133,13 @@ docker build -t songlib-amp:airplay-test .
 真机验收是唯一需要用户点击/授权的步骤：
 
 1. 在 iPhone/iPad/macOS Safari 通过最终 HTTPS 地址打开播放器，确认“投到电视”调用系统设备选择器；页面不得显示自行生成的设备列表。
-2. 选择同网段 Apple TV，确认 1080p 歌词画面出现，封面、标题、歌手、专辑、音质和进度正确。
-3. 连续切换至少 20 首歌，观察 Safari 的 `webkitCurrentPlaybackTargetIsWireless` 保持为真，视频 `src` 和主播放列表 URL 不变，Apple TV 不返回选择界面。
-4. 分别用普通 LRC 和带真实字时间的增强 LRC 验证整行/逐字高亮；调整 `AIRPLAY_LYRIC_ADVANCE_MS` 后复测。
-5. 连续播放 10 分钟与 30 分钟，记录音频相对歌词的误差和 `clockErrorMs`；测试暂停、拖动、锁屏、恢复和 Wi‑Fi 短暂抖动。
-6. 分别在 Safari 标签页与已安装主屏幕 Web App 中验证。后者在真实 iOS/tvOS 26 完成前保持“待验证”。
-7. 断开 AirPlay 后确认约 90 秒内编码器停止；旧分片和会话超时后不可读取。
+2. 打开“正在播放 → 播放设备”，确认其他设备上的 Plexamp 音乐会话可见；只有出现在 Plex `/clients` 且公布 `playback` 能力的设备才显示“可控制”。
+3. 对可控制的测试设备验证播放、暂停、上一首、下一首和进度跳转；对仅跟随设备确认按钮禁用且有明确原因。
+4. 选择同网段 Apple TV，确认 1080p 歌词画面出现，封面、标题、歌手、专辑、音质和进度正确。
+5. 连续切换至少 20 首歌，观察 Safari 的 `webkitCurrentPlaybackTargetIsWireless` 保持为真，视频 `src` 和主播放列表 URL 不变，Apple TV 不返回选择界面。
+6. 分别用普通 LRC 和带真实字时间的增强 LRC 验证整行/逐字高亮；调整 `AIRPLAY_LYRIC_ADVANCE_MS` 后复测。
+7. 连续播放 10 分钟与 30 分钟，记录音频相对歌词的误差和 `clockErrorMs`；测试暂停、拖动、锁屏、恢复和 Wi-Fi 短暂抖动。
+8. 分别在 Safari 标签页与已安装主屏幕 Web App 中验证。后者在真实 iOS/tvOS 26 完成前保持“待验证”。
+9. 断开 AirPlay 后确认约 90 秒内编码器停止；旧分片和会话超时后不可读取。
 
 当前工作站没有系统级 FFmpeg/Docker，也没有 Apple TV；已使用隔离测试环境中的真实 FFmpeg 生成播放列表与分片，并确认编码中切歌的进程 PID、会话 URL 均不变。容器构建、QSV 与苹果设备项目仍必须在上述目标环境继续验收。

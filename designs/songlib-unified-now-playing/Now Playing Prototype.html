@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090a0d">
+  <title>SongLib Amp｜统一播放中心</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #090a0d;
+      --surface: rgba(27, 28, 34, .72);
+      --surface-strong: rgba(36, 37, 44, .92);
+      --surface-soft: rgba(255, 255, 255, .055);
+      --line: rgba(255, 255, 255, .105);
+      --line-strong: rgba(255, 255, 255, .18);
+      --text: #f5f5f7;
+      --secondary: rgba(245, 245, 247, .68);
+      --tertiary: rgba(245, 245, 247, .42);
+      --accent: #f2bd63;
+      --positive: #6bd69b;
+      --warning: #f3c568;
+      --danger: #ff766f;
+      --radius: 18px;
+      --ease: cubic-bezier(.22, 1, .36, 1);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); }
+    body { font-family: -apple-system, "SF Pro Text", "PingFang SC", "Noto Sans SC", sans-serif; color: var(--text); line-height: 1.65; }
+    button, input { font: inherit; }
+    button { color: inherit; cursor: pointer; }
+    button:focus-visible, input:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 64%, transparent); outline-offset: 3px; }
+    .ambient { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
+    .ambient::before { content: ""; position: absolute; width: 70vw; height: 70vw; right: -16vw; top: -26vw; border-radius: 50%; background: color-mix(in srgb, var(--accent) 22%, #512f50); filter: blur(110px); opacity: .34; transition: background .5s var(--ease); }
+    .ambient::after { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg, rgba(9,10,13,.98) 10%, rgba(9,10,13,.78) 56%, rgba(9,10,13,.96)); }
+    .app { position: relative; min-height: 100vh; display: grid; grid-template-columns: 228px minmax(0, 1fr); }
+    .sidebar { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; padding: 22px 14px 16px; background: rgba(12,13,17,.78); border-right: 1px solid var(--line); backdrop-filter: blur(30px) saturate(140%); }
+    .brand { display: flex; align-items: center; gap: 11px; padding: 0 10px 24px; }
+    .brand img { width: 34px; height: 34px; }
+    .brand strong, .brand small { display: block; }
+    .brand strong { font-size: 14px; letter-spacing: -.02em; }
+    .brand small { color: var(--tertiary); font-size: 10px; }
+    .nav { display: grid; gap: 5px; }
+    .nav button { min-height: 44px; display: flex; align-items: center; gap: 12px; padding: 0 13px; border: 0; border-radius: 11px; background: transparent; color: var(--secondary); text-align: left; transition: .2s var(--ease); }
+    .nav button:hover { background: var(--surface-soft); color: var(--text); }
+    .nav button.active { background: color-mix(in srgb, var(--accent) 13%, transparent); color: #ffe2a7; }
+    .nav i { width: 20px; font-style: normal; text-align: center; opacity: .8; }
+    .nav span { flex: 1; font-size: 13px; font-weight: 600; }
+    .sidebar-device { margin-top: auto; padding: 13px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-soft); }
+    .sidebar-device b, .sidebar-device small { display: block; }
+    .sidebar-device b { font-size: 12px; }
+    .sidebar-device small { margin-top: 3px; color: var(--tertiary); font-size: 10px; }
+    .online { display: inline-flex; align-items: center; gap: 6px; color: var(--positive); }
+    .online::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 12px currentColor; }
+    .main { min-width: 0; padding: 22px clamp(22px, 3vw, 46px) 44px; }
+    .topbar { height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+    .topbar h1 { margin: 0; font-size: 26px; letter-spacing: -.045em; }
+    .topbar-actions { display: flex; gap: 9px; }
+    .pill, .icon-button { min-height: 40px; border: 1px solid var(--line); background: rgba(25,26,31,.72); backdrop-filter: blur(20px); }
+    .pill { display: inline-flex; align-items: center; gap: 9px; padding: 0 14px; border-radius: 999px; color: var(--secondary); font-size: 12px; }
+    .pill strong { color: var(--text); }
+    .icon-button { width: 40px; border-radius: 50%; }
+    .workspace { display: grid; grid-template-columns: minmax(280px, .78fr) minmax(380px, 1.22fr); gap: clamp(22px, 3vw, 42px); align-items: start; }
+    .art-column { position: sticky; top: 22px; }
+    .cover-wrap { position: relative; width: min(100%, 520px); margin-inline: auto; }
+    .cover { width: 100%; aspect-ratio: 1; display: grid; place-items: center; overflow: hidden; border-radius: 26px; background: linear-gradient(145deg, #333540, #16171c); box-shadow: 0 40px 90px rgba(0,0,0,.5), 0 1px rgba(255,255,255,.14) inset; }
+    .cover img { width: 44%; height: 44%; opacity: .74; }
+    .source-badge { position: absolute; left: 16px; bottom: 16px; display: flex; align-items: center; gap: 8px; padding: 8px 11px; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; background: rgba(12,13,17,.66); backdrop-filter: blur(20px); font-size: 11px; }
+    .source-badge i { width: 7px; height: 7px; border-radius: 50%; background: var(--positive); }
+    .track-copy { margin-top: 24px; }
+    .track-copy h2 { margin: 0; font-size: clamp(26px, 3.3vw, 46px); line-height: 1.08; letter-spacing: -.052em; }
+    .track-copy p { margin: 8px 0 0; color: var(--secondary); font-size: 15px; }
+    .quality { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--tertiary); font-size: 11px; }
+    .quality span { padding: 2px 7px; border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); border-radius: 6px; color: #f5cd84; }
+    .controls { margin-top: 25px; }
+    .timeline { display: grid; grid-template-columns: 38px 1fr 38px; gap: 10px; align-items: center; color: var(--tertiary); font-variant-numeric: tabular-nums; font-size: 10px; }
+    input[type="range"] { width: 100%; accent-color: var(--text); }
+    .main-controls { display: flex; justify-content: center; align-items: center; gap: 18px; margin-top: 18px; }
+    .control { width: 46px; height: 46px; border: 0; border-radius: 50%; background: transparent; font-size: 19px; transition: .18s var(--ease); }
+    .control:hover { background: var(--surface-soft); transform: scale(1.05); }
+    .control.primary-control { width: 58px; height: 58px; background: var(--text); color: #111217; font-size: 22px; box-shadow: 0 12px 35px rgba(0,0,0,.32); }
+    .control:disabled { cursor: not-allowed; opacity: .28; transform: none; }
+    .detail-panel { min-height: 680px; padding: 10px; border: 1px solid var(--line); border-radius: 26px; background: var(--surface); box-shadow: 0 28px 85px rgba(0,0,0,.28); backdrop-filter: blur(34px) saturate(140%); }
+    .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; border-radius: 15px; background: rgba(0,0,0,.18); }
+    .tabs button { min-height: 38px; border: 0; border-radius: 11px; background: transparent; color: var(--tertiary); font-size: 12px; font-weight: 650; }
+    .tabs button.active { background: rgba(255,255,255,.105); color: var(--text); box-shadow: 0 5px 18px rgba(0,0,0,.18); }
+    .pane { display: none; padding: 24px 22px; }
+    .pane.active { display: block; animation: pane-in .36s var(--ease); }
+    @keyframes pane-in { from { opacity: 0; transform: translateY(7px); } }
+    .lyrics { min-height: 530px; display: flex; flex-direction: column; justify-content: center; gap: 17px; }
+    .lyric { margin: 0; color: rgba(245,245,247,.24); font-size: clamp(19px, 2.15vw, 31px); font-weight: 650; letter-spacing: -.035em; line-height: 1.45; transition: .32s var(--ease); }
+    .lyric.active { color: var(--text); transform: scale(1.015); transform-origin: left; text-shadow: 0 5px 24px rgba(0,0,0,.28); }
+    .cast-bar { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 12px; padding: 15px 16px; border: 1px solid var(--line); border-radius: 17px; background: rgba(0,0,0,.16); }
+    .cast-bar strong, .cast-bar small { display: block; }
+    .cast-bar strong { font-size: 13px; }
+    .cast-bar small { margin-top: 3px; color: var(--tertiary); font-size: 10px; }
+    .cast-button { min-height: 42px; padding: 0 16px; border: 0; border-radius: 12px; background: var(--accent); color: #18130a; font-weight: 750; white-space: nowrap; }
+    .cast-button.connected { background: var(--positive); }
+    .device-list { display: grid; gap: 10px; }
+    .device { width: 100%; display: grid; grid-template-columns: 44px 1fr auto; gap: 12px; align-items: center; padding: 13px; border: 1px solid var(--line); border-radius: 16px; background: rgba(0,0,0,.12); text-align: left; transition: .2s var(--ease); }
+    .device:hover { border-color: var(--line-strong); background: rgba(255,255,255,.06); }
+    .device.active { border-color: color-mix(in srgb, var(--accent) 46%, transparent); background: color-mix(in srgb, var(--accent) 9%, transparent); }
+    .device-icon { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 13px; background: rgba(255,255,255,.07); font-size: 11px; }
+    .device b, .device small { display: block; }
+    .device b { font-size: 13px; }
+    .device small { margin-top: 2px; color: var(--tertiary); font-size: 10px; }
+    .state { padding: 4px 8px; border-radius: 99px; background: rgba(107,214,155,.12); color: var(--positive); font-size: 9px; }
+    .state.follow { background: rgba(243,197,104,.11); color: var(--warning); }
+    .device-help { margin: 16px 2px 0; color: var(--tertiary); font-size: 11px; }
+    .queue { display: grid; gap: 2px; }
+    .queue-row { display: grid; grid-template-columns: 32px 1fr auto; gap: 11px; align-items: center; min-height: 58px; padding: 7px 9px; border-radius: 12px; }
+    .queue-row:hover { background: var(--surface-soft); }
+    .queue-row i { color: var(--tertiary); font-style: normal; font-size: 11px; }
+    .queue-row b, .queue-row small { display: block; }
+    .queue-row b { font-size: 12px; }
+    .queue-row small { color: var(--tertiary); font-size: 10px; }
+    .queue-row time { color: var(--tertiary); font-size: 10px; }
+    .mobile-nav { display: none; }
+    .notice { margin-top: 12px; color: var(--tertiary); font-size: 10px; text-align: center; }
+    @media (max-width: 980px) {
+      .app { grid-template-columns: 88px minmax(0, 1fr); }
+      .brand div, .nav span, .sidebar-device { display: none; }
+      .brand { justify-content: center; padding-inline: 0; }
+      .nav button { justify-content: center; padding: 0; }
+      .workspace { grid-template-columns: minmax(230px, .7fr) minmax(340px, 1.3fr); }
+    }
+    @media (max-width: 720px) {
+      .app { display: block; }
+      .sidebar { display: none; }
+      .main { padding: 16px 16px 104px; }
+      .topbar { margin-bottom: 18px; }
+      .topbar h1 { font-size: 22px; }
+      .topbar .pill { width: 40px; padding: 0; justify-content: center; overflow: hidden; }
+      .topbar .pill span, .topbar .pill strong { display: none; }
+      .topbar .pill::before { content: "◉"; color: var(--positive); font-size: 14px; }
+      .workspace { display: block; }
+      .art-column { position: static; display: grid; grid-template-columns: 112px minmax(0,1fr); gap: 17px; align-items: center; }
+      .cover-wrap { width: 112px; }
+      .cover { border-radius: 18px; }
+      .source-badge { display: none; }
+      .track-copy { margin: 0; }
+      .track-copy h2 { font-size: 24px; }
+      .track-copy p { margin-top: 4px; font-size: 13px; }
+      .quality { margin-top: 7px; }
+      .controls { grid-column: 1 / -1; margin-top: 8px; }
+      .main-controls { margin: 12px 0 22px; }
+      .detail-panel { min-height: 0; border-radius: 22px; }
+      .pane { padding: 20px 15px; }
+      .lyrics { min-height: 360px; }
+      .lyric { font-size: 21px; }
+      .cast-bar { align-items: flex-start; flex-direction: column; }
+      .cast-button { width: 100%; }
+      .mobile-nav { position: fixed; z-index: 9; left: 10px; right: 10px; bottom: max(10px, env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(5, 1fr); padding: 6px; border: 1px solid var(--line); border-radius: 20px; background: rgba(22,23,28,.82); backdrop-filter: blur(30px) saturate(150%); box-shadow: 0 16px 45px rgba(0,0,0,.38); }
+      .mobile-nav button { min-height: 52px; display: grid; place-items: center; gap: 1px; border: 0; border-radius: 15px; background: transparent; color: var(--tertiary); font-size: 9px; }
+      .mobile-nav button.active { background: color-mix(in srgb, var(--accent) 12%, transparent); color: #ffe0a2; }
+    }
+  </style>
+</head>
+<body>
+  <div class="ambient"></div>
+  <div class="app" data-screen-label="统一播放中心">
+    <aside class="sidebar">
+      <div class="brand"><img src="songlib-mark.svg" alt=""><div><strong>SongLib Amp</strong><small>音乐回到自己的岛屿</small></div></div>
+      <nav class="nav" aria-label="主导航">
+        <button><i>⌂</i><span>首页</span></button>
+        <button><i>♫</i><span>音乐库</span></button>
+        <button class="active"><i>▶</i><span>正在播放</span></button>
+        <button><i>≡</i><span>歌单</span></button>
+        <button><i>⚙</i><span>设置</span></button>
+      </nav>
+      <div class="sidebar-device"><b class="online">Plex 已连接</b><small>2 个播放器在线</small></div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <h1>正在播放</h1>
+        <div class="topbar-actions">
+          <button class="pill" id="deviceShortcut"><span>播放设备</span><strong id="deviceName">客厅的 Plexamp</strong></button>
+          <button class="icon-button" aria-label="更多设置">•••</button>
+        </div>
+      </header>
+
+      <section class="workspace">
+        <div class="art-column">
+          <div class="cover-wrap">
+            <div class="cover"><img src="fallback-cover.svg" alt="当前专辑封面占位"></div>
+            <div class="source-badge"><i></i><span id="sourceLabel">跟随 Plexamp</span></div>
+          </div>
+          <div class="track-copy">
+            <h2>夜曲</h2>
+            <p>周杰伦 · 十一月的萧邦</p>
+            <div class="quality"><span>无损</span> FLAC · 24-bit / 96 kHz</div>
+          </div>
+          <div class="controls">
+            <div class="timeline"><span id="elapsed">1:42</span><input id="timeline" type="range" min="0" max="242" value="102" aria-label="播放进度"><span>4:02</span></div>
+            <div class="main-controls">
+              <button class="control" id="previous" aria-label="上一首">‹|</button>
+              <button class="control primary-control" id="toggle" aria-label="暂停">Ⅱ</button>
+              <button class="control" id="next" aria-label="下一首">|›</button>
+            </div>
+          </div>
+        </div>
+
+        <section class="detail-panel">
+          <div class="tabs" role="tablist">
+            <button class="active" data-tab="lyrics">歌词与投屏</button>
+            <button data-tab="devices">播放设备</button>
+            <button data-tab="queue">待播队列</button>
+          </div>
+          <div class="pane active" data-pane="lyrics">
+            <div class="lyrics" aria-label="同步歌词">
+              <p class="lyric">为你弹奏萧邦的夜曲</p>
+              <p class="lyric active">纪念我死去的爱情</p>
+              <p class="lyric">跟夜风一样的声音</p>
+              <p class="lyric">心碎得很好听</p>
+            </div>
+            <div class="cast-bar">
+              <div><strong>歌词投到电视</strong><small id="castHint">Safari 将打开苹果原生 AirPlay 设备列表</small></div>
+              <button class="cast-button" id="castButton">投到电视</button>
+            </div>
+            <div class="notice">音频由所选 Plexamp 设备继续播放；SongLib 跟随其时间轴校准歌词画面。</div>
+          </div>
+          <div class="pane" data-pane="devices">
+            <div class="device-list">
+              <button class="device active" data-device="客厅的 Plexamp" data-source="跟随 Plexamp" data-control="1"><span class="device-icon">AMP</span><span><b>客厅的 Plexamp</b><small>iPhone · 正在播放《夜曲》</small></span><span class="state">可控制</span></button>
+              <button class="device" data-device="书房 Mac" data-source="跟随 Plexamp" data-control="1"><span class="device-icon">MAC</span><span><b>书房 Mac</b><small>Plexamp · 已暂停</small></span><span class="state">可控制</span></button>
+              <button class="device" data-device="卧室 Apple TV" data-source="跟随 Plex" data-control="0"><span class="device-icon">TV</span><span><b>卧室 Apple TV</b><small>Plex · 仅提供会话状态</small></span><span class="state follow">仅跟随</span></button>
+              <button class="device" data-device="此浏览器" data-source="SongLib 本机播放" data-control="1"><span class="device-icon">WEB</span><span><b>此浏览器</b><small>SongLib Amp · 本地播放器</small></span><span class="state">可控制</span></button>
+            </div>
+            <p class="device-help">播放器必须出现在 Plex 的设备列表并开启“允许远程控制”。否则 SongLib 只读取歌曲和进度，不显示无效控制。</p>
+          </div>
+          <div class="pane" data-pane="queue">
+            <div class="queue">
+              <div class="queue-row"><i>01</i><span><b>夜曲</b><small>周杰伦</small></span><time>4:02</time></div>
+              <div class="queue-row"><i>02</i><span><b>一路向北</b><small>周杰伦</small></span><time>4:55</time></div>
+              <div class="queue-row"><i>03</i><span><b>黑色毛衣</b><small>周杰伦</small></span><time>4:11</time></div>
+              <div class="queue-row"><i>04</i><span><b>枫</b><small>周杰伦</small></span><time>4:35</time></div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <nav class="mobile-nav" aria-label="移动端主导航">
+      <button>⌂<span>首页</span></button><button>♫<span>音乐库</span></button><button class="active">▶<span>正在播放</span></button><button>≡<span>歌单</span></button><button>⚙<span>设置</span></button>
+    </nav>
+  </div>
+  <script>
+    const tabs = document.querySelectorAll("[data-tab]");
+    const panes = document.querySelectorAll("[data-pane]");
+    const activateTab = (name) => {
+      tabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.tab === name));
+      panes.forEach((pane) => pane.classList.toggle("active", pane.dataset.pane === name));
+    };
+    tabs.forEach((tab) => tab.addEventListener("click", () => activateTab(tab.dataset.tab)));
+    document.getElementById("deviceShortcut").addEventListener("click", () => activateTab("devices"));
+
+    let playing = true;
+    const toggle = document.getElementById("toggle");
+    toggle.addEventListener("click", () => {
+      playing = !playing;
+      toggle.textContent = playing ? "Ⅱ" : "▶";
+      toggle.setAttribute("aria-label", playing ? "暂停" : "播放");
+    });
+
+    const timeline = document.getElementById("timeline");
+    const elapsed = document.getElementById("elapsed");
+    const format = (seconds) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+    timeline.addEventListener("input", () => elapsed.textContent = format(Number(timeline.value)));
+
+    document.querySelectorAll(".device").forEach((device) => device.addEventListener("click", () => {
+      document.querySelectorAll(".device").forEach((item) => item.classList.remove("active"));
+      device.classList.add("active");
+      document.getElementById("deviceName").textContent = device.dataset.device;
+      document.getElementById("sourceLabel").textContent = device.dataset.source;
+      const controllable = device.dataset.control === "1";
+      [document.getElementById("previous"), toggle, document.getElementById("next")].forEach((button) => button.disabled = !controllable);
+      document.getElementById("castHint").textContent = controllable ? "Safari 将打开苹果原生 AirPlay 设备列表" : "这个会话只能跟随歌词，播放控制由原设备完成";
+    }));
+
+    let casting = false;
+    const cast = document.getElementById("castButton");
+    cast.addEventListener("click", () => {
+      casting = !casting;
+      cast.classList.toggle("connected", casting);
+      cast.textContent = casting ? "正在投屏" : "投到电视";
+      document.getElementById("castHint").textContent = casting ? "歌词画面已连接；切歌不会重新选择电视" : "Safari 将打开苹果原生 AirPlay 设备列表";
+    });
+  </script>
+</body>
+</html>

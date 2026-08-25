@@ -1,9 +1,9 @@
 import {
-  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
+  useCallback,
 } from "react";
 import {
   Airplay,
@@ -42,6 +42,7 @@ import {
   AirPlayCastButton,
   useAirPlayLyricsCast,
 } from "../airplay/AirPlayLyricsCast";
+import { usePlexSessions } from "./usePlexSessions";
 
 const fallbackCover = "/visuals/fallback-cover-vinyl.svg";
 const fallbackPlayer = "/visuals/fallback-player.svg";
@@ -58,47 +59,6 @@ const coverFor = (track) =>
   track?.raw?.coverUrl ||
   track?.raw?.thumbUrl ||
   "";
-
-function usePlexSessions() {
-  const [payload, setPayload] = useState({
-    sessions: [],
-    clients: [],
-    polledAt: Date.now(),
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const refresh = useCallback(async ({ quiet = false } = {}) => {
-    if (!quiet) setLoading(true);
-    try {
-      const next = await api("/api/plex/remote/sessions");
-      setPayload({
-        sessions: Array.isArray(next.sessions) ? next.sessions : [],
-        clients: Array.isArray(next.clients) ? next.clients : [],
-        polledAt: Number(next.polledAt || Date.now()),
-      });
-      setError("");
-    } catch (requestError) {
-      setError(requestError.message || "无法读取 Plex 播放设备");
-    } finally {
-      if (!quiet) setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    refresh();
-    const poll = () => {
-      if (document.visibilityState === "visible") refresh({ quiet: true });
-    };
-    const timer = window.setInterval(poll, 2000);
-    document.addEventListener("visibilitychange", poll);
-    return () => {
-      window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", poll);
-    };
-  }, [refresh]);
-
-  return { ...payload, loading, error, refresh };
-}
 
 function deviceIcon(session) {
   const text = `${session?.platform || ""} ${session?.device || ""} ${session?.product || ""}`.toLowerCase();
@@ -237,6 +197,7 @@ export default function NowPlayingPage({
   const [clockNow, setClockNow] = useState(Date.now());
   const [controlBusy, setControlBusy] = useState("");
   const [controlMessage, setControlMessage] = useState("");
+  const [remoteVolume, setRemoteVolume] = useState(100);
   const [lyricsFull, setLyricsFull] = useState(false);
   const autoResolvedRef = useRef(false);
 
@@ -325,6 +286,7 @@ export default function NowPlayingPage({
             previous: "已切换到上一首",
             next: "已切换到下一首",
             seek: "已更新播放进度",
+            volume: "已调整设备音量",
           })[action] || "控制命令已发送",
         );
         window.setTimeout(() => remote.refresh({ quiet: true }), 350);
@@ -338,6 +300,9 @@ export default function NowPlayingPage({
   );
 
   const usingRemote = selectedSource !== "local" && Boolean(selectedSession);
+  useEffect(() => {
+    if (selectedSession) setRemoteVolume(Number(selectedSession.volume ?? 100));
+  }, [selectedSession?.id, selectedSession?.volume]);
   const track = usingRemote
     ? remoteTrack(selectedSession, remoteMetadata)
     : localPlayer.currentTrack;
@@ -442,6 +407,14 @@ export default function NowPlayingPage({
           <p>{sourceDescription}</p>
         </div>
         <div className="now-page-actions">
+          {track ? (
+            <AirPlayCastButton cast={cast} />
+          ) : (
+            <button className="airplay-cast-button" disabled title="选择歌曲后可投送歌词视频">
+              <Airplay />
+              <span>投到电视</span>
+            </button>
+          )}
           <button className="now-device-shortcut" onClick={() => setTab("devices")}>
             <MonitorSpeaker />
             <span><small>播放设备</small><strong>{usingRemote ? selectedSession.deviceName : "此浏览器"}</strong></span>
@@ -501,10 +474,29 @@ export default function NowPlayingPage({
               </div>
               <div className="now-control-meta">
                 {usingRemote ? (
-                  <span className={selectedSession.controllable ? "ok" : "warning"}>
-                    {selectedSession.controllable ? <Check /> : <CircleAlert />}
-                    {remoteControlMessage(selectedSession)}
-                  </span>
+                  <>
+                    {selectedSession.controllable && (
+                      <label>
+                        <Volume2 />
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="1"
+                          value={remoteVolume}
+                          disabled={controlBusy === "volume"}
+                          onChange={(event) => setRemoteVolume(Number(event.target.value))}
+                          onPointerUp={() => remoteCommand("volume", remoteVolume)}
+                          onKeyUp={() => remoteCommand("volume", remoteVolume)}
+                          aria-label={`调整 ${selectedSession.deviceName} 音量`}
+                        />
+                      </label>
+                    )}
+                    <span className={selectedSession.controllable ? "ok" : "warning"}>
+                      {selectedSession.controllable ? <Check /> : <CircleAlert />}
+                      {remoteControlMessage(selectedSession)}
+                    </span>
+                  </>
                 ) : (
                   <>
                     <label><Volume2 /><input type="range" min="0" max="1" step="0.01" value={localPlayer.volume} onChange={(event) => localPlayer.setVolume(event.target.value)} aria-label="音量" /></label>

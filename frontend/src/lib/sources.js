@@ -4,3 +4,11 @@ export const sourceCatalogReady = (source) => {
   const inspection = source.inspectResult || {};
   return Boolean(inspection.ok);
 };
+
+export const mergeCatalogResults = (items = []) =>
+  [...new Map(
+    items.map((item) => [
+      `${item.platform || "unknown"}:${item.trackId || item.id || ""}`,
+      item,
+    ]),
+  ).values()];

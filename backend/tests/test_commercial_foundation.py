@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+import wave
 from pathlib import Path
 from unittest.mock import PropertyMock, patch
 
@@ -12,18 +13,21 @@ os.environ.setdefault("PLEX_CONFIG", tempfile.mkdtemp(prefix="songlib-commercial
 os.environ.setdefault("WORKER_MODE", "web")
 
 from fastapi.testclient import TestClient
+from mutagen import File as MutagenFile
 
 from app import auth
 from app.config import settings
 from app.db import init_db, row, rows, set_kv, transaction
 from app.download_inbox import _repair_mojibake
 from app.jobs import manager
+from app.local_library import local_library
 from app.main import app, fnos_music, plex
 from app.fnos_music import FnosMusicClient
 from app.plex import dashboard_stats
 from app.playlist_migration import detect_share_link, strict_candidate
 from app.playlists import create_playlist, import_m3u
 from app.recommendations import list_recommendations, refresh
+from app.scraper import build_diff_preview
 
 
 class CommercialFoundationTests(unittest.TestCase):
@@ -54,6 +58,65 @@ class CommercialFoundationTests(unittest.TestCase):
         first = manager.create("local_scan", "扫描", {"idempotencyKey": key})
         second = manager.create("local_scan", "扫描", {"idempotencyKey": key})
         self.assertEqual(first["id"], second["id"])
+
+    def test_wav_tags_are_written_to_real_id3_frames_and_can_be_rolled_back(self):
+        Path(settings.music_root).mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix="tag-write-", dir=settings.music_root) as directory:
+            path = Path(directory) / "01 - 原始标题.wav"
+            with wave.open(str(path), "wb") as audio:
+                audio.setnchannels(1)
+                audio.setsampwidth(2)
+                audio.setframerate(8_000)
+                audio.writeframes(bytes(16_000))
+
+            local_library.scan({}, lambda *_args: None)
+            item = next(
+                value
+                for value in local_library.list("原始标题", "", 20, 0)["items"]
+                if value["path"] == str(path.resolve())
+            )
+            updated = local_library.update_tags(
+                item["id"],
+                {"title": "写入后的标题", "artist": "测试歌手", "album": "测试专辑"},
+            )
+
+            self.assertEqual(updated["title"], "写入后的标题")
+            written = MutagenFile(path, easy=False)
+            self.assertEqual(written.tags.get("TIT2").text[0], "写入后的标题")
+            self.assertEqual(written.tags.get("TPE1").text[0], "测试歌手")
+
+            operation = row(
+                "SELECT id FROM operation_logs WHERE action='tag_write' AND target_id=? ORDER BY created_at DESC LIMIT 1",
+                (item["id"],),
+            )
+            local_library.rollback(operation["id"])
+            rolled_back = MutagenFile(path, easy=False)
+            self.assertIsNone(rolled_back.tags.get("TIT2"))
+            self.assertIsNone(rolled_back.tags.get("TPE1"))
+            with transaction() as conn:
+                conn.execute("DELETE FROM operation_logs WHERE target_id=?", (item["id"],))
+                conn.execute("DELETE FROM files WHERE id=?", (item["id"],))
+
+    def test_plex_metadata_preview_keeps_every_user_facing_asset(self):
+        artist = {"ratingKey": "artist-1", "sectionKey": "1", "title": "测试歌手"}
+        album = {
+            "ratingKey": "album-1",
+            "sectionKey": "1",
+            "title": "测试专辑",
+            "parentTitle": "测试歌手",
+        }
+        with (
+            patch("app.scraper.plex.artists", return_value=[artist]),
+            patch("app.scraper.plex.albums", return_value=[album]),
+            patch("app.scraper.plex.first_track", side_effect=RuntimeError("no local file")),
+        ):
+            plan = build_diff_preview("scrape_plex_metadata", "all", "missing", 20)
+
+        fields = {item["field"] for item in plan["items"]}
+        self.assertTrue(
+            {"歌手海报", "歌手背景", "中文简介", "专辑封面", "专辑中文简介"} <= fields
+        )
+        self.assertEqual(plan["summary"]["create"], 5)
 
     def test_download_is_queued_without_a_preflight_permission_gate(self):
         item = {

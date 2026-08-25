@@ -9,6 +9,9 @@ import uuid
 from pathlib import Path
 
 from mutagen import File as MutagenFile
+from mutagen.apev2 import APEv2
+from mutagen.asf import ASFTags
+from mutagen.id3 import ID3, TALB, TCON, TDRC, TIT2, TPE1, TPE2, TPOS, TRCK
 
 from .config import settings
 from .db import get_kv, now, row, rows, set_kv, transaction
@@ -18,6 +21,37 @@ from .plex import has_chinese, local_media_path, plex
 
 AUDIO_EXTENSIONS = {".mp3", ".flac", ".m4a", ".mp4", ".aac", ".ogg", ".opus", ".wav", ".ape", ".wma"}
 IGNORED_DIRS = {"_incoming", "_downloads", ".trash", "@eaDir", "#recycle", ".snapshot"}
+TAG_NAMES = ("title", "artist", "album", "albumartist", "date", "tracknumber", "discnumber", "genre")
+ID3_TAGS = {
+    "title": ("TIT2", TIT2),
+    "artist": ("TPE1", TPE1),
+    "album": ("TALB", TALB),
+    "albumartist": ("TPE2", TPE2),
+    "date": ("TDRC", TDRC),
+    "tracknumber": ("TRCK", TRCK),
+    "discnumber": ("TPOS", TPOS),
+    "genre": ("TCON", TCON),
+}
+ASF_TAGS = {
+    "title": "Title",
+    "artist": "Author",
+    "album": "WM/AlbumTitle",
+    "albumartist": "WM/AlbumArtist",
+    "date": "WM/Year",
+    "tracknumber": "WM/TrackNumber",
+    "discnumber": "WM/PartOfSet",
+    "genre": "WM/Genre",
+}
+APE_TAGS = {
+    "title": "Title",
+    "artist": "Artist",
+    "album": "Album",
+    "albumartist": "Album Artist",
+    "date": "Year",
+    "tracknumber": "Track",
+    "discnumber": "Disc",
+    "genre": "Genre",
+}
 
 
 def clean_track_title(value: str, artist: str = "", album: str = "") -> str:
@@ -115,13 +149,60 @@ def _quick_hash(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _tag_values(tags, name: str) -> list[str]:
+    if not tags:
+        return []
+    normalized = str(name or "").casefold()
+    if isinstance(tags, ID3):
+        frame_id = ID3_TAGS.get(normalized, (str(name), None))[0]
+        frame = tags.get(frame_id)
+        values = getattr(frame, "text", None)
+        if values is not None:
+            return [str(value) for value in values]
+        return [str(frame)] if frame is not None else []
+    native_name = (
+        ASF_TAGS.get(normalized, name)
+        if isinstance(tags, ASFTags)
+        else APE_TAGS.get(normalized, name)
+        if isinstance(tags, APEv2)
+        else normalized
+    )
+    value = tags.get(native_name)
+    if isinstance(value, (list, tuple)):
+        return [str(item) for item in value]
+    return [str(value)] if value not in (None, "") else []
+
+
+def _write_tag(audio, name: str, value):
+    normalized = str(name or "").casefold()
+    values = value if isinstance(value, (list, tuple)) else [value]
+    values = [str(item) for item in values if item not in (None, "")]
+    if audio.tags is None:
+        audio.add_tags()
+    if isinstance(audio.tags, ID3):
+        frame_id, frame_type = ID3_TAGS[normalized]
+        audio.tags.delall(frame_id)
+        if values:
+            audio.tags.add(frame_type(encoding=3, text=values))
+        return
+    native_name = (
+        ASF_TAGS.get(normalized, normalized)
+        if isinstance(audio.tags, ASFTags)
+        else APE_TAGS.get(normalized, normalized)
+        if isinstance(audio.tags, APEv2)
+        else normalized
+    )
+    if not values:
+        audio.tags.pop(native_name, None)
+    else:
+        audio.tags[native_name] = values
+
+
 def _first(tags, *names):
     for name in names:
-        value = tags.get(name) if tags else None
-        if isinstance(value, (list, tuple)) and value:
-            return str(value[0])
-        if value not in (None, ""):
-            return str(value)
+        values = _tag_values(tags, name)
+        if values:
+            return values[0]
     return ""
 
 
@@ -364,19 +445,18 @@ class LocalLibraryService:
 
     def update_tags(self, file_id: str, changes: dict):
         item = self.get(file_id); path = _inside_music(Path(item["path"]))
-        allowed = {"title", "artist", "album", "albumartist", "date", "tracknumber", "discnumber", "genre"}
+        allowed = set(TAG_NAMES)
         audio = MutagenFile(path, easy=True)
         if audio is None:
             raise ValueError("无法识别该音频格式")
         if audio.tags is None: audio.add_tags()
-        before = {key: list(audio.tags.get(key) or []) for key in allowed}
+        before = {key: _tag_values(audio.tags, key) for key in TAG_NAMES}
         for key, value in changes.items():
             normalized = {"albumArtist": "albumartist", "year": "date", "trackNumber": "tracknumber", "discNumber": "discnumber"}.get(key, key)
             if normalized in allowed:
-                if value in (None, ""): audio.tags.pop(normalized, None)
-                else: audio.tags[normalized] = [str(value)]
+                _write_tag(audio, normalized, value)
         audio.save()
-        after = {key: list(audio.tags.get(key) or []) for key in allowed}
+        after = {key: _tag_values(audio.tags, key) for key in TAG_NAMES}
         self._operation("tag_write", file_id, {"path": str(path), "tags": before}, {"path": str(path), "tags": after}, {"path": str(path), "tags": before})
         refreshed = self.inspect_file(path)
         with transaction() as conn:
@@ -511,8 +591,7 @@ class LocalLibraryService:
             if audio is None: raise ValueError("无法打开音频文件以回滚标签")
             if audio.tags is None: audio.add_tags()
             for key, value in (data.get("tags") or {}).items():
-                if value: audio.tags[key] = value
-                else: audio.tags.pop(key, None)
+                _write_tag(audio, key, value)
             audio.save()
         elif operation["action"] == "organize_move":
             source = _inside_music(Path(data["from"])); target = _inside_music(Path(data["to"]))

@@ -97,13 +97,15 @@ import {
   pathForLibraryTab,
   pathForPage,
   pathForPlaylist,
+  pathForSettingsTab,
   playlistIdFromPath,
+  settingsTabFromPath,
 } from "./lib/routes";
 import {
   mobileNavigationIds,
   mobileNavigationTarget,
 } from "./lib/navigation";
-import { sourceCatalogReady } from "./lib/sources";
+import { mergeCatalogResults, sourceCatalogReady } from "./lib/sources";
 import { buildAmbientDeck } from "./lib/ambient";
 import { pwaInstallGuidance, pwaSecureOrigin } from "./lib/pwa";
 import {
@@ -120,6 +122,7 @@ import {
   useAirPlayLyricsCast,
 } from "./features/airplay/AirPlayLyricsCast";
 import NowPlayingPage from "./features/now-playing/NowPlayingPage";
+import { usePlexSessions } from "./features/now-playing/usePlexSessions";
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
@@ -1128,8 +1131,21 @@ function Empty({ icon: Icon = Music2, title, text }) {
   );
 }
 
-function Dashboard({ stats, jobs, loading, navigate, runJob, isAdmin = true }) {
+function Dashboard({
+  stats,
+  jobs,
+  loading,
+  navigate,
+  runJob,
+  isAdmin = true,
+  plexConfigured = false,
+}) {
   const player = usePlayer();
+  const remote = usePlexSessions({
+    pollMs: 8000,
+    quietErrors: true,
+    enabled: plexConfigured,
+  });
   const [home, setHome] = useState({
     artists: [],
     albums: [],
@@ -1185,6 +1201,12 @@ function Dashboard({ stats, jobs, loading, navigate, runJob, isAdmin = true }) {
         artist.title === heroAlbum?.parentTitle,
     ) || home.artists[0];
   const heroCover = heroArtist?.thumbUrl || heroAlbum?.thumbUrl || "";
+  const activeRemoteSessions = remote.sessions.filter((session) => session.playing);
+  const openRemoteSession = (session) => {
+    localStorage.setItem("songlib-playback-source", `plex:${session.id}`);
+    if (player.isPlaying) player.pause();
+    navigate("player");
+  };
   return (
     <div className="page dashboard-page home-v2">
       <header className="home-heading">
@@ -1238,6 +1260,33 @@ function Dashboard({ stats, jobs, loading, navigate, runJob, isAdmin = true }) {
             <b />
           </span>
         </div>
+      </section>
+
+      <section className="home-device-center" aria-label="播放设备与电视投屏">
+        <button className="home-device-primary" onClick={() => navigate("player")}>
+          <span className="home-device-icon"><Airplay /></span>
+          <span>
+            <small>播放设备与电视</small>
+            <strong>控制播放、查看歌词、投到电视</strong>
+          </span>
+          <ChevronRight />
+        </button>
+        {activeRemoteSessions.slice(0, 3).map((session) => (
+          <button
+            className="home-remote-session"
+            key={session.id}
+            onClick={() => openRemoteSession(session)}
+          >
+            <span className="home-live-dot" />
+            <span>
+              <small>{session.deviceName || "Plexamp"} 正在播放</small>
+              <strong>{session.title || "未命名歌曲"}</strong>
+              <em>{session.artist || "未知歌手"}</em>
+            </span>
+            <span>{session.controllable ? "可控制" : "仅跟随"}</span>
+            <ChevronRight />
+          </button>
+        ))}
       </section>
 
       <SectionHead
@@ -5286,14 +5335,29 @@ function DownloadCenter({
     setLoading(true);
     setError("");
     try {
-      const data = await api(`/api/sources/${sourceId}/test-search`, {
-        method: "POST",
-        body: JSON.stringify({
-          keyword: query,
-          platform: platform === "all" ? "tx" : platform,
-        }),
-      });
-      setResults(data.results || []);
+      const declaredPlatforms = (selected?.supportedPlatforms || []).filter(
+        (value) => value === "tx" || value === "wy",
+      );
+      const targets = platform === "all"
+        ? declaredPlatforms.length
+          ? declaredPlatforms
+          : ["tx", "wy"]
+        : [platform];
+      const responses = await Promise.allSettled(
+        targets.map((targetPlatform) =>
+          api(`/api/sources/${sourceId}/test-search`, {
+            method: "POST",
+            body: JSON.stringify({ keyword: query, platform: targetPlatform }),
+          }),
+        ),
+      );
+      const successful = responses
+        .filter((result) => result.status === "fulfilled")
+        .flatMap((result) => result.value.results || []);
+      if (!successful.length) {
+        throw responses.find((result) => result.status === "rejected")?.reason || new Error("没有搜索结果");
+      }
+      setResults(mergeCatalogResults(successful));
       await refreshSources?.();
     } catch (err) {
       setError(`搜索失败：${err.message}`);
@@ -5309,6 +5373,22 @@ function DownloadCenter({
           map[key] ||= {
             album: item.album || "单曲",
             artist: item.artist,
+            coverUrl: item.coverUrl,
+            tracks: [],
+          };
+          map[key].tracks.push(item);
+          return map;
+        }, {}),
+      ),
+    [results],
+  );
+  const artistGroups = useMemo(
+    () =>
+      Object.values(
+        results.reduce((map, item) => {
+          const key = item.artist || "未知歌手";
+          map[key] ||= {
+            artist: key,
             coverUrl: item.coverUrl,
             tracks: [],
           };
@@ -5500,10 +5580,9 @@ function DownloadCenter({
           value={searchType}
           onChange={(e) => setSearchType(e.target.value)}
         >
-          <option value="song">歌曲</option>
-          <option value="album">专辑</option>
-          <option value="artist">歌手</option>
-          <option value="playlist">歌单</option>
+          <option value="song">歌曲列表</option>
+          <option value="album">按专辑分组</option>
+          <option value="artist">按歌手分组</option>
         </select>
         <select value={quality} onChange={(e) => setQuality(e.target.value)}>
           <option value="128k">标准 128K</option>
@@ -5518,7 +5597,7 @@ function DownloadCenter({
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="搜索歌曲、专辑名、歌手或歌单"
+            placeholder="搜索歌曲、专辑名或歌手"
           />
           <button className="primary" disabled={loading || !selected}>
             {loading ? <LoaderCircle className="spin" /> : "搜索"}
@@ -5533,7 +5612,13 @@ function DownloadCenter({
       )}
       <section className="search-results panel">
         <SectionHead
-          title={searchType === "album" ? "专辑结果" : "搜索结果"}
+          title={
+            searchType === "album"
+              ? "专辑结果"
+              : searchType === "artist"
+                ? "歌手结果"
+                : "歌曲结果"
+          }
           note={
             results.length
               ? `找到 ${results.length} 首候选歌曲 · 当前目标：${target === "device" ? "当前设备" : "NAS 待入库"}`
@@ -5543,20 +5628,21 @@ function DownloadCenter({
         {loading ? (
           <PageLoader />
         ) : results.length ? (
-          searchType === "album" ? (
+          ["album", "artist"].includes(searchType) ? (
             <div className="album-results">
-              {albumGroups.map((group) => (
+              {(searchType === "album" ? albumGroups : artistGroups).map((group) => (
                 <article
                   className="album-result"
-                  key={`${group.album}-${group.artist}`}
+                  key={searchType === "album" ? `${group.album}-${group.artist}` : group.artist}
                 >
                   <div className="result-cover big">
                     {group.coverUrl ? <img src={group.coverUrl} /> : <Album />}
                   </div>
                   <div>
-                    <strong>{group.album}</strong>
+                    <strong>{searchType === "album" ? group.album : group.artist}</strong>
                     <span>
-                      {group.artist} · {group.tracks.length} 首 ·{" "}
+                      {searchType === "album" ? `${group.artist} · ` : ""}
+                      {group.tracks.length} 首 ·{" "}
                       {platform === "tx"
                         ? "QQ 音乐"
                         : platform === "wy"
@@ -5573,16 +5659,23 @@ function DownloadCenter({
                   <div className="album-actions">
                     <button
                       className="secondary small"
-                      onClick={() => setResults(group.tracks)}
+                      onClick={() => {
+                        setResults(group.tracks);
+                        setSearchType("song");
+                      }}
                     >
-                      查看曲目
+                      查看歌曲
                     </button>
                     <button
                       className="primary small"
                       onClick={() => downloadMany(group.tracks)}
                     >
                       <Download />
-                      {target === "device" ? "下载到设备" : "下载整张专辑"}
+                      {target === "device"
+                        ? "下载到设备"
+                        : searchType === "album"
+                          ? "下载整张专辑"
+                          : "下载歌手结果"}
                     </button>
                   </div>
                 </article>
@@ -6050,19 +6143,40 @@ function Tasks({ jobs, refresh, navigate }) {
   );
 }
 
+const ADMIN_SETTINGS_TAB_IDS = [
+  "plex",
+  "paths",
+  "ingest",
+  "scrape",
+  "naming",
+  "exclude",
+  "appearance",
+  "player",
+  "user",
+  "logs",
+];
+const LISTENER_SETTINGS_TAB_IDS = ["appearance", "user"];
+
 function SettingsPage({
   settings,
   logout,
   navigate,
   isAdmin = true,
+  initialTab = "",
+  onTabChange,
   onSettingsChange,
   appearance = DEFAULT_APPEARANCE,
   onAppearanceChange,
 }) {
+  const allowedTabIds = isAdmin
+    ? ADMIN_SETTINGS_TAB_IDS
+    : LISTENER_SETTINGS_TAB_IDS;
+  const resolveTab = (value) =>
+    allowedTabIds.includes(value) ? value : allowedTabIds[0];
   const [current, setCurrent] = useState(""),
     [next, setNext] = useState(""),
     [message, setMessage] = useState("");
-  const [tab, setTab] = useState(isAdmin ? "operations" : "appearance"),
+  const [tab, setTab] = useState(() => resolveTab(initialTab)),
     [draft, setDraft] = useState({}),
     [plexOpen, setPlexOpen] = useState(false),
     [plex, setPlex] = useState(settings.plex || {});
@@ -6108,8 +6222,13 @@ function SettingsPage({
     setPlayerPrefs({ ...defaultPlayerPrefs, ...(settings.player || {}) });
   }, [settings]);
   useEffect(() => {
-    if (!isAdmin && !["appearance", "user"].includes(tab)) setTab("appearance");
-  }, [isAdmin, tab]);
+    setTab(resolveTab(initialTab));
+  }, [initialTab, isAdmin]);
+  const changeTab = (value) => {
+    const nextTab = resolveTab(value);
+    setTab(nextTab);
+    onTabChange?.(nextTab);
+  };
   const change = async (event) => {
     event.preventDefault();
     setMessage("");
@@ -6280,21 +6399,20 @@ function SettingsPage({
   };
   const tabs = isAdmin
     ? [
-        ["operations", "管理工具", Gauge],
-        ["plex", "Plex 连接", Server],
-        ["paths", "本地路径", FolderTree],
-        ["ingest", "下载与入库", ArrowDownToLine],
-        ["scrape", "刮削规则", WandSparkles],
-        ["naming", "命名规则", Tags],
-        ["exclude", "扫描排除", ShieldCheck],
-        ["appearance", "外观与主题", Palette],
-        ["player", "播放器", Play],
-        ["user", "用户与安全", UserRound],
-        ["logs", "备份与日志", ScrollText],
+        { id: "plex", label: "Plex 连接", icon: Server, group: "连接与存储" },
+        { id: "paths", label: "媒体目录", icon: FolderTree, group: "连接与存储" },
+        { id: "ingest", label: "下载入库规则", icon: ArrowDownToLine, group: "整理规则" },
+        { id: "scrape", label: "元数据规则", icon: WandSparkles, group: "整理规则" },
+        { id: "naming", label: "文件命名", icon: Tags, group: "整理规则" },
+        { id: "exclude", label: "扫描排除", icon: ShieldCheck, group: "整理规则" },
+        { id: "appearance", label: "外观与主题", icon: Palette, group: "体验" },
+        { id: "player", label: "播放与歌词", icon: Play, group: "体验" },
+        { id: "user", label: "用户与安全", icon: UserRound, group: "账户与系统" },
+        { id: "logs", label: "备份与日志", icon: ScrollText, group: "账户与系统" },
       ]
     : [
-        ["appearance", "外观与主题", Palette],
-        ["user", "用户与安全", UserRound],
+        { id: "appearance", label: "外观与主题", icon: Palette, group: "体验" },
+        { id: "user", label: "用户与安全", icon: UserRound, group: "账户" },
       ];
   const templates = draft.namingTemplates || settings.namingTemplates || {};
   const scrapeRules = draft.scrapeRules || settings.scrapeRules || {
@@ -6323,42 +6441,28 @@ function SettingsPage({
   return (
     <div className="page settings-page">
       <div className="settings-tabs">
-        {tabs.map(([id, label, Icon]) => (
-          <button
-            className={tab === id ? "active" : ""}
-            onClick={() => setTab(id)}
-            key={id}
-          >
-            <Icon />
-            {label}
-          </button>
-        ))}
+        {tabs.map((item, index) => {
+          const Icon = item.icon;
+          const showGroup = index === 0 || tabs[index - 1].group !== item.group;
+          return (
+            <React.Fragment key={item.id}>
+              {showGroup && <span className="settings-tab-group">{item.group}</span>}
+              <button
+                className={tab === item.id ? "active" : ""}
+                onClick={() => changeTab(item.id)}
+              >
+                <Icon />
+                {item.label}
+              </button>
+            </React.Fragment>
+          );
+        })}
       </div>
       <section className="panel settings-workbench">
         {message && (
           <div className="inline-info">
             <ShieldCheck />
             {message}
-          </div>
-        )}
-        {tab === "operations" && (
-          <div className="settings-operations">
-            <header>
-              <span>ADMINISTRATION</span>
-              <h2>管理工具</h2>
-              <p>这些功能也会在一级“音乐工具”中直接显示；这里保留快捷入口。</p>
-            </header>
-            <div className="settings-operations-grid">
-              {managementNav
-                .filter((item) => item.id !== "settings")
-                .map((item) => (
-                  <button key={item.id} onClick={() => navigate(item.id)}>
-                    <span><item.icon /></span>
-                    <span><strong>{item.label}</strong><small>{item.desc}</small></span>
-                    <ChevronRight />
-                  </button>
-                ))}
-            </div>
           </div>
         )}
         {tab === "plex" && (
@@ -7249,6 +7353,7 @@ function SettingsPage({
           onClose={() => setPlexOpen(false)}
           onSaved={async (next) => {
             setPlex(next);
+            onSettingsChange?.((value) => ({ ...value, plex: next }));
             setPlexOpen(false);
             setMessage("Plex 配置已保存");
           }}
@@ -9276,11 +9381,11 @@ const pageMeta = {
   me: ["收藏与历史", "你的音乐足迹"],
   manage: ["音乐工具", "下载、标签与 Plex 资料"],
   search: ["搜索", "歌曲、艺人、专辑与歌单"],
-  local: ["本地曲库", "文件与目录"],
-  scrape: ["资料补全", "封面、歌词与简介"],
-  download: ["下载与入库", "授权来源与待整理文件"],
-  sources: ["音乐源", "连接与可用性"],
-  tasks: ["任务", "进度与历史"],
+  local: ["文件与标签", "浏览、写入标签与安全回滚"],
+  scrape: ["Plex 元数据", "歌手海报、简介、背景与专辑封面"],
+  download: ["歌曲下载与入库", "下载到设备或 NAS，并确认入库"],
+  sources: ["音乐源管理", "授权来源、接口识别与可用性"],
+  tasks: ["任务中心", "进度、失败恢复与历史"],
   settings: ["设置", "账号、连接与存储"],
 };
 
@@ -9554,6 +9659,9 @@ function AuthenticatedShell({ setAuthenticated }) {
             navigate={navigate}
             runJob={runJob}
             isAdmin={canManageLibrary}
+            plexConfigured={Boolean(
+              settingsData.plex?.enabled && settingsData.plex?.serverUrl,
+            )}
           />
         )}{" "}
         {active === "library" && (
@@ -9656,6 +9764,11 @@ function AuthenticatedShell({ setAuthenticated }) {
             logout={logout}
             navigate={navigate}
             isAdmin={isAdmin}
+            initialTab={settingsTabFromPath(
+              window.location.pathname,
+              isAdmin ? "plex" : "appearance",
+            )}
+            onTabChange={(tab) => updatePath(pathForSettingsTab(tab))}
             onSettingsChange={setSettingsData}
             appearance={appearance}
             onAppearanceChange={changeAppearance}

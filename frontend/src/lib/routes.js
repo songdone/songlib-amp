@@ -22,6 +22,26 @@ const PATH_PAGES = Object.freeze(
   ),
 );
 
+const SETTINGS_TAB_PATHS = Object.freeze({
+  plex: "plex",
+  paths: "storage",
+  ingest: "ingest",
+  scrape: "metadata",
+  naming: "naming",
+  exclude: "exclusions",
+  appearance: "appearance",
+  player: "player",
+  user: "users",
+  logs: "system",
+});
+
+const SETTINGS_PATH_TABS = Object.freeze(
+  Object.entries(SETTINGS_TAB_PATHS).reduce(
+    (result, [tab, path]) => ({ ...result, [path]: tab }),
+    {},
+  ),
+);
+
 const normalizePath = (pathname = "/") => {
   const path = `/${String(pathname).split(/[?#]/, 1)[0].replace(/^\/+|\/+$/g, "")}`;
   return path === "/" ? path : path.replace(/\/+$/g, "");
@@ -38,8 +58,17 @@ export const pageFromPath = (pathname) => {
   )
     return "library";
   if (/^\/playlists\/[^/]+$/.test(path)) return "playlists";
+  if (/^\/settings\/[^/]+$/.test(path)) return "settings";
   return "home";
 };
+
+export const settingsTabFromPath = (pathname, fallback = "plex") => {
+  const slug = normalizePath(pathname).match(/^\/settings\/([^/]+)$/)?.[1];
+  return SETTINGS_PATH_TABS[slug] || fallback;
+};
+
+export const pathForSettingsTab = (tab) =>
+  `/settings/${SETTINGS_TAB_PATHS[tab] || SETTINGS_TAB_PATHS.plex}`;
 
 export const libraryTabFromPath = (pathname) => {
   const tab = normalizePath(pathname).match(

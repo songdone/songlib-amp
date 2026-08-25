@@ -86,6 +86,19 @@
   width: 16px;
 }
 
+.settings-page .settings-tab-group {
+  display: block;
+  margin: 11px 11px 3px;
+  color: rgba(245, 245, 247, 0.34);
+  font-size: calc(8px + var(--font-delta, 0px));
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.settings-page .settings-tab-group:first-child {
+  margin-top: 4px;
+}
+
 .settings-page .settings-workbench {
   grid-column: 2;
   min-width: 0;
@@ -118,6 +131,110 @@
 .settings-workbench .account-row-actions button {
   min-width: max-content;
   white-space: nowrap;
+}
+
+.home-device-center {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(235px, 1fr));
+  gap: 10px;
+  margin: 14px 0 30px;
+}
+
+.home-device-center > button {
+  min-width: 0;
+  min-height: 78px;
+  display: grid;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 17px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.072), rgba(255, 255, 255, 0.025));
+  color: #f5f5f7;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.045);
+  text-align: left;
+  backdrop-filter: blur(18px) saturate(130%);
+  transition: 180ms ease;
+}
+
+.home-device-center > button:hover {
+  border-color: rgba(240, 189, 88, 0.28);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.095), rgba(240, 189, 88, 0.035));
+  transform: translateY(-1px);
+}
+
+.home-device-primary {
+  grid-template-columns: 46px minmax(0, 1fr) 18px;
+}
+
+.home-device-icon {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: rgba(240, 189, 88, 0.12);
+  color: #f2c66f;
+}
+
+.home-device-icon svg {
+  width: 21px;
+}
+
+.home-device-primary small,
+.home-device-primary strong,
+.home-remote-session small,
+.home-remote-session strong,
+.home-remote-session em {
+  display: block;
+  min-width: 0;
+}
+
+.home-device-primary small,
+.home-remote-session small,
+.home-remote-session em {
+  overflow: hidden;
+  color: rgba(245, 245, 247, 0.45);
+  font-size: calc(8px + var(--font-delta, 0px));
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-device-primary strong,
+.home-remote-session strong {
+  overflow: hidden;
+  margin-top: 3px;
+  font-size: calc(11px + var(--font-delta, 0px));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-device-primary > svg,
+.home-remote-session > svg {
+  width: 16px;
+  color: rgba(245, 245, 247, 0.32);
+}
+
+.home-remote-session {
+  grid-template-columns: 9px minmax(0, 1fr) auto 16px;
+}
+
+.home-remote-session > span:nth-last-of-type(1) {
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: rgba(107, 214, 155, 0.1);
+  color: #83ddb0;
+  font-size: calc(8px + var(--font-delta, 0px));
+  white-space: nowrap;
+}
+
+.home-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #6bd69b;
+  box-shadow: 0 0 15px rgba(107, 214, 155, 0.72);
 }
 
 .settings-operations > header span {
@@ -265,6 +382,10 @@
     background: rgba(255, 255, 255, 0.035);
   }
 
+  .settings-page .settings-tab-group {
+    display: none;
+  }
+
   .settings-page .settings-workbench {
     grid-column: auto;
     min-height: 520px;
@@ -289,11 +410,21 @@
   .visual-shell .mobile-nav button:nth-child(3) {
     color: #f2c66f;
   }
+
+  .home-device-center {
+    grid-template-columns: 1fr;
+    margin: 10px 0 24px;
+  }
+
+  .home-device-center > button {
+    min-height: 72px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .visual-shell .sidebar nav button,
-  .settings-operations-grid > button {
+  .settings-operations-grid > button,
+  .home-device-center > button {
     transition: none;
   }
 }

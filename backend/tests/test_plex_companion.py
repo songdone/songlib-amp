@@ -66,6 +66,7 @@ class PlexCompanionTests(unittest.TestCase):
         self.assertEqual(session["positionMs"], 102000)
         self.assertTrue(session["playing"])
         self.assertTrue(session["controllable"])
+        self.assertEqual(session["volume"], 100)
         self.assertTrue(session["coverUrl"].startswith("/api/plex/image?path="))
         public_client = next(item for item in result["clients"] if item["id"] == "client-playback")
         self.assertNotIn("_host", public_client)
@@ -91,6 +92,23 @@ class PlexCompanionTests(unittest.TestCase):
             kwargs["headers"]["X-Plex-Target-Client-Identifier"],
             "client-playback",
         )
+
+    @patch("app.plex_companion._private_address", side_effect=lambda host: host.startswith("192.168."))
+    @patch("app.plex_companion.PlexCompanion.controller_identifier", return_value="controller-test")
+    @patch("app.plex_companion.httpx.Client")
+    def test_volume_command_is_bounded_for_registered_client(self, client_type, _identifier, _private):
+        response = MagicMock()
+        response.raise_for_status.return_value = None
+        client = client_type.return_value.__enter__.return_value
+        client.get.return_value = response
+
+        self.companion.command("client-playback", "volume", 140)
+
+        self.assertEqual(
+            client.get.call_args.args[0],
+            "http://192.168.1.42:32500/player/playback/setParameters",
+        )
+        self.assertEqual(client.get.call_args.kwargs["params"]["volume"], 100)
 
     @patch("app.plex_companion._private_address", side_effect=lambda host: host.startswith("192.168."))
     def test_remote_public_client_is_follow_only(self, _private):

@@ -17,13 +17,18 @@ import {
   pathForLibraryTab,
   pathForPage,
   pathForPlaylist,
+  pathForSettingsTab,
   playlistIdFromPath,
+  settingsTabFromPath,
 } from "../src/lib/routes.js";
 import {
   mobileNavigationIds,
   mobileNavigationTarget,
 } from "../src/lib/navigation.js";
-import { sourceCatalogReady } from "../src/lib/sources.js";
+import {
+  mergeCatalogResults,
+  sourceCatalogReady,
+} from "../src/lib/sources.js";
 import { pwaInstallGuidance, pwaSecureOrigin } from "../src/lib/pwa.js";
 import { buildAmbientDeck } from "../src/lib/ambient.js";
 import {
@@ -191,6 +196,9 @@ test("every primary and management page has a durable URL", () => {
   assert.equal(pathForPage("download"), "/manage/downloads");
   assert.equal(pageFromPath("/manage/metadata"), "scrape");
   assert.equal(pageFromPath("/discover/"), "discover");
+  assert.equal(pageFromPath("/settings/users"), "settings");
+  assert.equal(settingsTabFromPath("/settings/users"), "user");
+  assert.equal(pathForSettingsTab("logs"), "/settings/system");
 });
 
 test("library tabs and playlist details keep their secondary URL", () => {
@@ -242,6 +250,16 @@ test("an inspected source is immediately available without a search-test gate", 
   };
   assert.equal(sourceCatalogReady(source), true);
   assert.equal(sourceCatalogReady({ ...source, enabled: false }), false);
+});
+
+test("all-platform search keeps QQ and NetEase results while removing true duplicates", () => {
+  const items = mergeCatalogResults([
+    { platform: "tx", trackId: "1", title: "夜曲" },
+    { platform: "wy", trackId: "1", title: "夜曲" },
+    { platform: "tx", trackId: "1", title: "夜曲（重复）" },
+  ]);
+  assert.equal(items.length, 2);
+  assert.deepEqual(items.map((item) => item.platform), ["tx", "wy"]);
 });
 
 test("PWA install guidance never exposes a no-op install action", () => {

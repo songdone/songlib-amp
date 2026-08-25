@@ -189,6 +189,7 @@ class PlexCompanion:
                     "album": data.get("parentTitle") or "",
                     "durationMs": _integer(data.get("duration")),
                     "positionMs": _integer(data.get("viewOffset")),
+                    "volume": max(0, min(_integer(player.get("volume"), 100), 100)),
                     "coverUrl": (
                         "/api/plex/image?path=" + urllib.parse.quote(thumb, safe="")
                         if thumb

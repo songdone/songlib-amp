@@ -4,6 +4,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from mutagen.apev2 import APEv2
+from mutagen.asf import ASFTags
+
 os.environ.setdefault("APP_PASSWORD", "test-password-123")
 os.environ.setdefault("SESSION_SECRET", "test-session-secret-for-songlib-123456")
 os.environ.setdefault("DATA_DIR", tempfile.mkdtemp(prefix="pmm-tests-"))
@@ -13,7 +16,7 @@ os.environ.setdefault("PLEX_CONFIG", tempfile.mkdtemp(prefix="pmm-plex-"))
 from app.auth import hash_password, verify_password
 from app.db import init_db, rows, transaction
 from app.downloader import safe_name, validate_public_url
-from app.local_library import local_library
+from app.local_library import _tag_values, _write_tag, local_library
 from app.lyrics import artist_match, norm
 from app.media_lyrics import read_local_lyrics
 from app.sources import (
@@ -50,6 +53,23 @@ class CoreTests(unittest.TestCase):
             self.assertEqual(result["lyrics"], expected)
             self.assertEqual(result["format"], "lrc")
             self.assertEqual(result["source"], "sidecar")
+
+    def test_wma_and_ape_tags_use_native_field_names(self):
+        class Audio:
+            def __init__(self, tags):
+                self.tags = tags
+
+        asf = Audio(ASFTags())
+        _write_tag(asf, "title", "WMA 标题")
+        _write_tag(asf, "albumartist", "专辑歌手")
+        self.assertIn("Title", asf.tags)
+        self.assertIn("WM/AlbumArtist", asf.tags)
+        self.assertEqual(_tag_values(asf.tags, "title"), ["WMA 标题"])
+
+        ape = Audio(APEv2())
+        _write_tag(ape, "tracknumber", "3")
+        self.assertIn("Track", ape.tags)
+        self.assertEqual(_tag_values(ape.tags, "tracknumber"), ["3"])
 
     def test_password_hash(self):
         encoded = hash_password("hello-plex-123")

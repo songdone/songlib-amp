@@ -128,6 +128,7 @@ docker compose -f docker-compose.yml -f docker-compose.hardened.yml up -d
 ## 文档
 
 - [原生 AirPlay 歌词投屏：架构、部署与验收](docs/AIRPLAY-LYRICS-CAST.md)
+- [信息架构、统一播放中心与 Plexamp 跟随控制](docs/UX-RESTRUCTURE.md)
 - [架构说明](docs/ARCHITECTURE.md)
 - [部署与首次安装](docs/DEPLOYMENT.md)
 - [升级、备份、恢复与故障排查](docs/OPERATIONS.md)

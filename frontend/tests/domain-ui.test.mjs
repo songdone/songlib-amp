@@ -217,13 +217,15 @@ test("library tabs and playlist details keep their secondary URL", () => {
 test("mobile navigation stays on one five-item row", () => {
   assert.deepEqual(mobileNavigationIds, [
     "home",
-    "discover",
     "library",
+    "player",
     "playlists",
-    "me",
+    "settings",
   ]);
-  assert.equal(mobileNavigationTarget("settings"), "me");
-  assert.equal(mobileNavigationTarget("sources", ["sources", "tasks"]), "me");
+  assert.equal(mobileNavigationTarget("settings"), "settings");
+  assert.equal(mobileNavigationTarget("sources", ["sources", "tasks"]), "settings");
+  assert.equal(mobileNavigationTarget("discover"), "home");
+  assert.equal(mobileNavigationTarget("me"), "library");
   assert.equal(mobileNavigationTarget("library"), "library");
 });
 

@@ -1,0 +1,18 @@
+{
+  "type": "design",
+  "designSystems": [],
+  "primaryDesignSystem": null,
+  "assets": {
+    "Now Playing Prototype": {
+      "versions": [
+        {
+          "path": "Now Playing Prototype.html",
+          "createdAt": "2026-08-25T08:42:47.973Z",
+          "status": "needs-review"
+        }
+      ]
+    }
+  },
+  "createdAt": "2026-08-25T08:42:47.975Z",
+  "updatedAt": "2026-08-25T08:44:34.815Z"
+}

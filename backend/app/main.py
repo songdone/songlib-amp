@@ -34,6 +34,7 @@ from .local_library import local_library, organizer
 from .lyrics import find_lyrics
 from .media_lyrics import read_local_lyrics
 from .plex import dashboard_stats, local_artist_background_file, local_media_path, plex
+from .plex_companion import plex_companion
 from .scraper import build_diff_preview
 from .security import SecurityMiddleware, client_key, issue_csrf, rate_limiter
 from . import playlists as playlist_service
@@ -195,6 +196,11 @@ class PlexSettingsBody(BaseModel):
 class PlexTestBody(BaseModel):
     serverUrl: str | None = None
     token: str | None = None
+
+
+class PlexRemoteCommandBody(BaseModel):
+    action: str = Field(pattern="^(play|pause|stop|previous|next|seek|volume)$")
+    value: int | None = None
 
 
 class FnosSettingsBody(BaseModel):
@@ -819,6 +825,38 @@ def plex_libraries():
         return {"items": plex.libraries()}
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Plex 返回异常，请查看网络或 Token 权限。{exc}") from exc
+
+
+@app.get("/api/plex/remote/sessions", dependencies=[Depends(auth.current_user)])
+def plex_remote_sessions():
+    saved = plex.saved_settings()
+    if not saved.get("enabled") or not saved.get("serverUrl"):
+        raise HTTPException(status_code=409, detail="请先连接 Plex，再查看其他设备的播放状态")
+    try:
+        return plex_companion.sessions()
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code in (401, 403):
+            raise HTTPException(status_code=401, detail="Plex Token 无权读取活动播放会话") from exc
+        raise HTTPException(status_code=502, detail="Plex 暂时无法返回活动播放会话") from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"读取 Plex 播放设备失败：{exc}") from exc
+
+
+@app.post("/api/plex/remote/clients/{client_id}/commands", dependencies=[Depends(auth.current_user)])
+def plex_remote_command(client_id: str, body: PlexRemoteCommandBody):
+    try:
+        return plex_companion.command(client_id, body.action, body.value)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc).strip("'")) from exc
+    except (PermissionError, ValueError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"目标 Plex 播放器拒绝了控制请求（HTTP {exc.response.status_code}）",
+        ) from exc
+    except httpx.RequestError as exc:
+        raise HTTPException(status_code=502, detail="无法连接目标 Plex 播放器，请确认应用仍在前台且允许远程控制") from exc
 
 
 @app.post("/api/plex/sync", dependencies=[Depends(auth.current_user)])

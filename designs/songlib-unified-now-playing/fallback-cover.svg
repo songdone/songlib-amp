@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 900" role="img" aria-label="SongLib Amp vinyl cover fallback">
+  <defs>
+    <radialGradient id="bg" cx="38%" cy="26%" r="82%">
+      <stop offset="0" stop-color="#312719"/>
+      <stop offset=".46" stop-color="#111215"/>
+      <stop offset="1" stop-color="#050507"/>
+    </radialGradient>
+    <radialGradient id="disc" cx="50%" cy="48%" r="50%">
+      <stop offset="0" stop-color="#24262b"/>
+      <stop offset=".28" stop-color="#101114"/>
+      <stop offset=".7" stop-color="#060608"/>
+      <stop offset="1" stop-color="#15171c"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#fff0b7"/>
+      <stop offset=".48" stop-color="#e4ad4f"/>
+      <stop offset="1" stop-color="#8a5a1d"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="18" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0.92 0 1 0 0 0.62 0 0 1 0 0.18 0 0 0 .9 0"/>
+      <feBlend in="SourceGraphic"/>
+    </filter>
+  </defs>
+  <rect width="900" height="900" rx="82" fill="url(#bg)"/>
+  <circle cx="450" cy="450" r="326" fill="url(#disc)" stroke="rgba(255,255,255,.08)" stroke-width="2"/>
+  <g opacity=".58" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1.5">
+    <circle cx="450" cy="450" r="292"/>
+    <circle cx="450" cy="450" r="258"/>
+    <circle cx="450" cy="450" r="224"/>
+    <circle cx="450" cy="450" r="188"/>
+    <circle cx="450" cy="450" r="154"/>
+  </g>
+  <circle cx="450" cy="450" r="96" fill="url(#gold)" filter="url(#glow)"/>
+  <circle cx="450" cy="450" r="33" fill="#07080a" stroke="rgba(255,255,255,.18)" stroke-width="3"/>
+  <path d="M258 316c68-67 191-84 284-42 43 19 78 47 105 84" fill="none" stroke="url(#gold)" stroke-width="9" stroke-linecap="round" opacity=".72"/>
+  <path d="M312 598c71 49 181 55 258 12 37-21 67-50 89-84" fill="none" stroke="url(#gold)" stroke-width="6" stroke-linecap="round" opacity=".5"/>
+  <g transform="translate(371 350)" fill="url(#gold)" opacity=".94">
+    <rect x="0" y="62" width="18" height="116" rx="9"/>
+    <rect x="34" y="28" width="18" height="150" rx="9"/>
+    <rect x="68" y="0" width="18" height="178" rx="9"/>
+    <rect x="102" y="42" width="18" height="136" rx="9"/>
+    <rect x="136" y="78" width="18" height="100" rx="9"/>
+  </g>
+  <text x="450" y="708" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif" font-size="34" font-weight="700" fill="#f0c46f" letter-spacing="6">SONGLIB AMP</text>
+  <text x="450" y="756" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif" font-size="19" fill="rgba(255,255,255,.48)" letter-spacing="9">NO COVER ART</text>
+</svg>

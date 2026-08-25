@@ -3,6 +3,7 @@ export const mobileNavigationIds = [
   "library",
   "player",
   "playlists",
+  "manage",
   "settings",
 ];
 
@@ -11,7 +12,7 @@ export const mobileNavigationTarget = (active, managementIds = []) => {
     active === "manage" ||
     managementIds.includes(active)
   ) {
-    return "settings";
+    return "manage";
   }
   if (active === "discover") return "home";
   if (active === "me" || active === "search") return "library";

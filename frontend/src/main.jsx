@@ -135,27 +135,28 @@ const nav = [
   { id: "library", label: "音乐库", icon: Library, group: "音乐" },
   { id: "player", label: "正在播放", icon: Play, group: "音乐" },
   { id: "playlists", label: "歌单", icon: ListMusic, group: "音乐" },
+  { id: "manage", label: "音乐工具", icon: Gauge, group: "工具", admin: true },
   { id: "settings", label: "设置", icon: Settings, group: "系统" },
 ];
 
 const managementNav = [
   {
     id: "local",
-    label: "本地曲库",
+    label: "文件与标签",
     icon: FolderTree,
-    desc: "浏览文件、编辑标签并撤销整理操作",
+    desc: "浏览音乐文件、写入真实音频标签并撤销整理操作",
   },
   {
     id: "scrape",
-    label: "刮削中心",
+    label: "Plex 元数据",
     icon: WandSparkles,
-    desc: "封面、歌词、背景、中文简介补齐",
+    desc: "歌手海报、背景、中文简介、专辑封面与歌词补齐",
   },
   {
     id: "download",
-    label: "下载入库",
+    label: "歌曲下载与入库",
     icon: ArrowDownToLine,
-    desc: "搜索、下载、确认入库与冲突检查",
+    desc: "下载到当前设备或 NAS，并完成标签与入库检查",
   },
   {
     id: "sources",
@@ -293,8 +294,9 @@ const storedJson = (key, fallback) => {
 
 const userIsAdmin = (user) => ["admin", "owner"].includes(user?.role);
 const activeNavId = (active) =>
-  active !== "settings" && managementNav.some((item) => item.id === active)
-    ? "settings"
+  active === "manage" ||
+  managementNav.some((item) => item.id !== "settings" && item.id === active)
+    ? "manage"
     : active === "discover"
       ? "home"
       : active === "me" || active === "search"
@@ -6344,7 +6346,7 @@ function SettingsPage({
             <header>
               <span>ADMINISTRATION</span>
               <h2>管理工具</h2>
-              <p>曲库、资料补全、下载、音乐源和任务集中在这里，不再占用音乐主导航。</p>
+              <p>这些功能也会在一级“音乐工具”中直接显示；这里保留快捷入口。</p>
             </header>
             <div className="settings-operations-grid">
               {managementNav
@@ -7239,8 +7241,8 @@ function SettingsPage({
             </SettingBlock>
           </>
         )}
+        {isAdmin && tab === "user" && <UserAccounts />}
       </section>
-      {isAdmin && tab === "user" && <UserAccounts />}
       {isAdmin && plexOpen && (
         <PlexSettingsModal
           initial={plex}
@@ -7732,31 +7734,33 @@ function UserAccounts() {
                 {(item.libraryScopes || []).join("、") || "未授权"}
               </span>
             </div>
-            <button className="secondary small" onClick={() => rename(item)}>
-              改名
-            </button>
-            <button
-              className="secondary small"
-              onClick={() => editAccess(item)}
-            >
-              权限范围
-            </button>
-            <button
-              className="secondary small"
-              onClick={() => setResetting(item)}
-            >
-              重置密码
-            </button>
-            <button
-              className="secondary small"
-              disabled={busy === item.id}
-              onClick={() => toggle(item)}
-            >
-              {item.enabled ? "停用" : "启用"}
-            </button>
-            <button className="icon-button danger" onClick={() => remove(item)}>
-              <Trash2 />
-            </button>
+            <div className="account-row-actions">
+              <button className="secondary small" onClick={() => rename(item)}>
+                改名
+              </button>
+              <button
+                className="secondary small"
+                onClick={() => editAccess(item)}
+              >
+                权限范围
+              </button>
+              <button
+                className="secondary small"
+                onClick={() => setResetting(item)}
+              >
+                重置密码
+              </button>
+              <button
+                className="secondary small"
+                disabled={busy === item.id}
+                onClick={() => toggle(item)}
+              >
+                {item.enabled ? "停用" : "启用"}
+              </button>
+              <button className="icon-button danger" onClick={() => remove(item)}>
+                <Trash2 />
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -9185,11 +9189,17 @@ function ManagementHub({ navigate, stats, jobs, permissions = [] }) {
   const managementGroups = [
     {
       id: "catalog",
-      eyebrow: "曲库与内容",
-      title: "整理、补全与入库",
+      eyebrow: "文件与下载",
+      title: "标签写入、歌曲下载与入库",
       items: visibleManagement.filter((item) =>
-        ["local", "scrape", "download"].includes(item.id),
+        ["local", "download"].includes(item.id),
       ),
+    },
+    {
+      id: "metadata",
+      eyebrow: "PLEX 资料",
+      title: "歌手海报、简介与专辑封面",
+      items: visibleManagement.filter((item) => item.id === "scrape"),
     },
     {
       id: "operations",
@@ -9211,10 +9221,10 @@ function ManagementHub({ navigate, stats, jobs, permissions = [] }) {
       <section className="page-intro">
         <span className="eyebrow">
           <Gauge />
-          ADMIN CENTER
+          MUSIC TOOLS
         </span>
-        <h1>管理中心</h1>
-        <p>扫描、整理、连接与任务状态集中在一处。</p>
+        <h1>音乐工具</h1>
+        <p>下载、标签写入、Plex 资料补全和任务状态都在首屏直接进入。</p>
       </section>
       <section className="manage-metrics" aria-label="曲库状态摘要">
         {metrics.map(([Icon, label, value, tone]) => (
@@ -9264,7 +9274,7 @@ const pageMeta = {
   player: ["正在播放", ""],
   discover: ["为你推荐", "熟悉的旋律，也有新的发现"],
   me: ["收藏与历史", "你的音乐足迹"],
-  manage: ["管理中心", "曲库、任务与服务"],
+  manage: ["音乐工具", "下载、标签与 Plex 资料"],
   search: ["搜索", "歌曲、艺人、专辑与歌单"],
   local: ["本地曲库", "文件与目录"],
   scrape: ["资料补全", "封面、歌词与简介"],
@@ -9676,17 +9686,22 @@ function MobileNav({ active, change, isAdmin = true }) {
     library: "曲库",
     player: "播放",
     playlists: "歌单",
+    manage: "工具",
     settings: "设置",
   };
   const items = mobileNavigationIds
     .map((id) => nav.find((item) => item.id === id))
-    .filter(Boolean);
+    .filter((item) => item && (!item.admin || isAdmin));
   const highlighted = mobileNavigationTarget(
     active,
     managementNav.map((item) => item.id),
   );
   return (
-    <nav className="mobile-nav mobile-only" aria-label="移动端主导航">
+    <nav
+      className="mobile-nav mobile-only"
+      aria-label="移动端主导航"
+      style={{ "--mobile-nav-count": items.length }}
+    >
       {items.map((item) => (
         <button
           className={highlighted === item.id ? "active" : ""}

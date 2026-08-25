@@ -87,11 +87,37 @@
 }
 
 .settings-page .settings-workbench {
+  grid-column: 2;
   min-width: 0;
   min-height: 620px;
   margin: 0;
   padding: clamp(20px, 2.4vw, 32px);
   border-radius: 22px !important;
+}
+
+.settings-workbench .account-panel {
+  min-width: 0;
+  margin: 20px 0 0;
+}
+
+.settings-workbench .account-row {
+  grid-template-columns: 30px minmax(0, 1fr) auto !important;
+}
+
+.settings-workbench .account-row > div:nth-child(2) {
+  min-width: 0;
+}
+
+.settings-workbench .account-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.settings-workbench .account-row-actions button {
+  min-width: max-content;
+  white-space: nowrap;
 }
 
 .settings-operations > header span {
@@ -179,9 +205,25 @@
   line-height: 1.55;
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1280px) {
+  .settings-page .settings-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1120px) {
   .settings-page {
     grid-template-columns: 190px minmax(0, 1fr);
+  }
+
+  .settings-workbench .account-row {
+    grid-template-columns: 28px minmax(0, 1fr) !important;
+  }
+
+  .settings-workbench .account-row-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    padding-left: 36px;
   }
 
   .settings-operations-grid {
@@ -224,8 +266,20 @@
   }
 
   .settings-page .settings-workbench {
+    grid-column: auto;
     min-height: 520px;
     padding: 18px 15px;
+  }
+
+  .visual-shell .mobile-nav {
+    grid-template-columns: repeat(
+      var(--mobile-nav-count, 5),
+      minmax(0, 1fr)
+    ) !important;
+  }
+
+  .settings-workbench .account-row-actions {
+    padding-left: 0;
   }
 
   .settings-operations-grid > button {

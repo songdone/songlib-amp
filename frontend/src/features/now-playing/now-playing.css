@@ -644,6 +644,50 @@
   color: var(--now-accent);
 }
 
+.now-cast-actions,
+.now-lyrics-offset {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.now-cast-actions {
+  flex: 0 0 auto;
+}
+
+.now-lyrics-offset {
+  padding: 4px;
+  border: 1px solid var(--now-line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.now-lyrics-offset button {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--now-secondary);
+}
+
+.now-lyrics-offset button:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--now-primary);
+}
+
+.now-lyrics-offset button.value {
+  width: 58px;
+  font-variant-numeric: tabular-nums;
+  font-size: calc(9px + var(--font-delta, 0px));
+}
+
+.now-lyrics-offset svg {
+  width: 15px;
+}
+
 .now-cast-bar strong,
 .now-cast-bar small {
   display: block;
@@ -1200,6 +1244,16 @@
 
   .now-cast-bar .airplay-cast-button {
     width: 100%;
+    justify-content: center;
+  }
+
+  .now-cast-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .now-lyrics-offset {
+    flex: 1 1 auto;
     justify-content: center;
   }
 

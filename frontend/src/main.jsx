@@ -124,7 +124,7 @@ import {
 import NowPlayingPage from "./features/now-playing/NowPlayingPage";
 import { usePlexSessions } from "./features/now-playing/usePlexSessions";
 
-if ("serviceWorker" in navigator) {
+if (window.isSecureContext && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker
       .register("/sw.js", { updateViaCache: "none" })
@@ -524,6 +524,8 @@ function PwaInstallPrompt() {
     hasPrompt: Boolean(event),
     secureOrigin,
     userAgent: window.navigator.userAgent,
+    platform: window.navigator.platform,
+    maxTouchPoints: window.navigator.maxTouchPoints,
   });
   useEffect(() => {
     if (standalone || localStorage.getItem("songlib-pwa-dismissed") === "1")
@@ -734,21 +736,31 @@ function Login({ onLogin }) {
 
                 <form className="login-motion-form" onSubmit={submit}>
                   <h3>登录控制台</h3>
-                  <label>用户名</label>
+                  <label htmlFor="songlib-login-username">用户名</label>
                   <div className="login-motion-input">
                     <User />
                     <input
-                      autoFocus
+                      id="songlib-login-username"
+                      name="username"
+                      type="text"
+                      autoComplete="username"
+                      autoCapitalize="none"
+                      spellCheck="false"
+                      enterKeyHint="next"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       placeholder="输入用户名"
                     />
                   </div>
-                  <label>密码</label>
+                  <label htmlFor="songlib-login-password">密码</label>
                   <div className="login-motion-input">
                     <KeyRound />
                     <input
+                      id="songlib-login-password"
+                      name="password"
                       type={showPassword ? "text" : "password"}
+                      autoComplete="current-password"
+                      enterKeyHint="go"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••••••"

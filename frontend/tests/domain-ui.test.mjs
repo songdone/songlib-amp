@@ -281,6 +281,34 @@ test("PWA install guidance never exposes a no-op install action", () => {
   );
   assert.equal(
     pwaInstallGuidance({
+      hasPrompt: false,
+      secureOrigin: false,
+      userAgent:
+        "Mozilla/5.0 (iPad; CPU OS 18_6 like Mac OS X) AppleWebKit/605.1.15 Version/18.6 Mobile/15E148 Safari/604.1",
+    }).actionLabel,
+    "查看添加方法",
+  );
+  assert.match(
+    pwaInstallGuidance({
+      hasPrompt: false,
+      secureOrigin: false,
+      userAgent: "Mozilla/5.0 (iPad; CPU OS 18_6 like Mac OS X)",
+    }).summary,
+    /仍可添加到主屏幕并正常登录/,
+  );
+  assert.equal(
+    pwaInstallGuidance({
+      hasPrompt: false,
+      secureOrigin: false,
+      userAgent:
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1",
+      platform: "MacIntel",
+      maxTouchPoints: 5,
+    }).actionLabel,
+    "查看添加方法",
+  );
+  assert.equal(
+    pwaInstallGuidance({
       hasPrompt: true,
       secureOrigin: true,
       userAgent: "Chrome",

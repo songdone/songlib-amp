@@ -258,6 +258,7 @@ class AirPlayCastUpdateBody(BaseModel):
     sourceType: str = Field(default="", max_length=40)
     localFileId: str = Field(default="", max_length=300)
     plexRatingKey: str = Field(default="", max_length=300)
+    lyricsOffsetMs: int = Field(default=0, ge=-5000, le=5000)
 
 
 @asynccontextmanager
@@ -1598,6 +1599,16 @@ def plex_lyrics(rating_key: str):
         local = read_local_lyrics(path)
         if local["lyrics"]:
             return local
+    try:
+        plex_lyric = plex.lyrics(
+            rating_key,
+            stream_key=info.get("lyricStreamKey") or "",
+            stream_format=info.get("lyricFormat") or "",
+        )
+    except Exception:
+        plex_lyric = {"lyrics": "", "format": "none", "source": ""}
+    if plex_lyric["lyrics"]:
+        return plex_lyric
     lyrics, source = find_lyrics(info)
     return {"lyrics": lyrics, "format": "lrc", "source": source or ""}
 

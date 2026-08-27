@@ -41,6 +41,11 @@ test("cast state uses stable source identity and the browser media clock", () =>
       sourceType: "local_file",
       localFileId: "42",
       plexRatingKey: "",
+      lyricsOffsetMs: 0,
     },
+  );
+  assert.equal(
+    airPlayStatePayload({ track, player: {}, lyricsOffsetMs: 9000 }).lyricsOffsetMs,
+    5000,
   );
 });

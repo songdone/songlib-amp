@@ -18,7 +18,7 @@ export const airPlayTrackId = (track) => {
   return `${source}:${id}`;
 };
 
-export const airPlayStatePayload = ({ track, lyrics, player }) => ({
+export const airPlayStatePayload = ({ track, lyrics, player, lyricsOffsetMs = 0 }) => ({
   trackId: airPlayTrackId(track),
   title: String(track?.title || "未命名歌曲"),
   artist: String(track?.artist || "未知歌手"),
@@ -31,4 +31,5 @@ export const airPlayStatePayload = ({ track, lyrics, player }) => ({
   sourceType: String(track?.sourceType || track?.source || ""),
   localFileId: String(track?.localFileId || (track?.sourceType === "local_file" ? track?.raw?.id || "" : "")),
   plexRatingKey: String(track?.plexRatingKey || track?.ratingKey || track?.raw?.ratingKey || ""),
+  lyricsOffsetMs: Math.max(-5000, Math.min(5000, Math.round(Number(lyricsOffsetMs || 0)))),
 });

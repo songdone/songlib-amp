@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { api } from "../../lib/api";
+import { reconcileRemoteSessionClock } from "../../lib/remotePlayback";
 
 export function usePlexSessions({
   pollMs = 2000,
@@ -14,16 +15,33 @@ export function usePlexSessions({
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const refreshSequence = useRef(0);
 
   const refresh = useCallback(
     async ({ quiet = false } = {}) => {
+      const sequence = ++refreshSequence.current;
       if (!quiet) setLoading(true);
       try {
         const next = await api("/api/plex/remote/sessions");
-        setPayload({
-          sessions: Array.isArray(next.sessions) ? next.sessions : [],
-          clients: Array.isArray(next.clients) ? next.clients : [],
-          polledAt: Number(next.polledAt || Date.now()),
+        if (sequence !== refreshSequence.current) return;
+        const receivedAt = Date.now();
+        setPayload((current) => {
+          const previousById = new Map(
+            current.sessions.map((session) => [session.id, session]),
+          );
+          return {
+            sessions: (Array.isArray(next.sessions) ? next.sessions : []).map(
+              (session) =>
+                reconcileRemoteSessionClock(
+                  previousById.get(session.id),
+                  session,
+                  receivedAt,
+                ),
+            ),
+            clients: Array.isArray(next.clients) ? next.clients : [],
+            polledAt: receivedAt,
+            serverPolledAt: Number(next.polledAt || 0),
+          };
         });
         setError("");
       } catch (requestError) {
@@ -39,6 +57,7 @@ export function usePlexSessions({
 
   useEffect(() => {
     if (!enabled) {
+      refreshSequence.current += 1;
       setLoading(false);
       setError("");
       setPayload({ sessions: [], clients: [], polledAt: Date.now() });

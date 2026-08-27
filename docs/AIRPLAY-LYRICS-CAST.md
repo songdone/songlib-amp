@@ -24,7 +24,9 @@
 5. 浏览器每秒上报曲目、播放状态和当前媒体时间。切歌只替换渲染状态，不替换视频 URL、不重启编码器。
 6. 普通 LRC 按整行高亮；增强 LRC 中真实的 `<mm:ss.xx>` 字/词时间按字词高亮。无真实字时间时不会伪造逐字效果。
 
-TV 画面延续现有视觉语言：封面取平均色、模糊封面背景、琥珀/紫色氛围层、大字号歌词、标题/歌手/专辑、音质标签和播放进度。默认输出为 1920×1080/30 FPS；渲染器默认生成 5 FPS 的内容帧，FFmpeg 以 30 FPS 输出，减少 NAS 上不必要的 Python 绘制负担。
+TV 画面恢复早期 UnPlay 歌词原型的信息层级，并按 Apple TV 远距离观看重新收敛：左侧封面、曲名/歌手/专辑/音质，右侧五行大歌词与系统式白色进度条；背景继续由封面取色和模糊动态渐变生成，不复用 UnPlay 商标或设备发现逻辑。默认输出为 1920×1080/30 FPS；渲染器默认生成 5 FPS 的内容帧，FFmpeg 以 30 FPS 输出，减少 NAS 上不必要的 Python 绘制负担。
+
+歌词与投屏面板提供每次 `±0.25s` 的同步微调和一键归零，调整值保存在当前浏览器并随会话状态更新，不更换 HLS URL、不重启编码器。服务端的 `AIRPLAY_LYRIC_ADVANCE_MS` 是部署级基线，界面微调是在该基线上叠加的单个会话偏移。
 
 ### 音频模式审计
 
@@ -33,9 +35,20 @@ TV 画面延续现有视觉语言：封面取平均色、模糊封面背景、�
 - 音频时钟和歌词视频时钟不是同一个媒体时钟，不能保证样本级同步。
 - iOS/macOS 在切换输出路由、锁屏、后台或网络抖动时可能改变音频行为，必须在真机验证。
 - SongLib 本机模式以浏览器音频的 `currentTime` 为权威观测值：小于硬同步阈值的误差按增益和最大步长温和修正，大误差直接重锚；`AIRPLAY_LYRIC_ADVANCE_MS` 只影响歌词命中，不篡改进度条时钟。
-- 跟随 Plexamp 时，SongLib 以 Plex `/status/sessions` 的 `viewOffset` 为外部时钟基准，在两秒轮询间隔内本地推进；这不是采样级同步。
+- 跟随 Plexamp 时，SongLib 以 Plex `/status/sessions` 的 `viewOffset` 建立连续的本地单调时钟。部分 Plexamp 版本会连续返回同一个冻结值，此时不会再每两秒重置进度；真实小漂移只做限幅修正，超过阈值的 seek 才重新锚定。这仍不是采样级同步。
 - 如果 Plexamp 音频本身正通过 AirPlay 输出，Safari 再发起歌词视频 AirPlay 是否会替换既有系统路由，必须在实际 iOS/tvOS 版本和目标设备上验证。
 - 下一阶段应把音频和歌词视频复用到同一个 HLS presentation timeline，并处理切歌时音频解码、无缝拼接、格式归一和响度；完成前不能把当前模式描述成严格音画同步。
+
+### Siri Remote 与 tvOS 交互边界
+
+Apple 的 tvOS 交互要求标准媒体动作保持标准含义：Play/Pause 控制媒体，菜单使用方向焦点，选择需要单独按下，并提供即时焦点反馈。SongLib 当前按这些边界处理：
+
+- AirPlay 连接后，Safari 隐藏视频的播放/暂停事件会桥接到当前 SongLib 或可控制的 Plex Companion 会话；页面状态变化也同步回 HLS 媒体元素。浏览器同时注册标准 Media Session 的播放、暂停、上一首和下一首动作，只有 Safari/tvOS 实际下发的动作才执行。
+- 这是渐进增强，不把未经真机确认的 `nexttrack`/`previoustrack` 事件描述为所有系统版本都支持。Play/Pause 是 Apple TV 的标准媒体动作；上一首/下一首仍须在目标 Safari/tvOS 版本验收。
+- 普通 AirPlay HLS 是视频 presentation，不是运行在 Apple TV 上的可交互应用。歌词、按钮或歌单即使被画进视频帧，也不能获得 tvOS 焦点，因此不能用 Siri Remote 在该视频中浏览 Plex 音乐库、选择歌单或点击歌词偏移按钮。
+- 若要在电视上提供库/歌单焦点导航、系统播放器内容标签和完整上一首/下一首命令，必须增加原生 tvOS 客户端，使用 tvOS Focus Engine、`AVPlayerViewController`/`MPRemoteCommandCenter` 和 SongLib 的受权 API；不能借 HLS 或 WebKit 伪造这一层交互。
+
+官方依据：[tvOS 设计](https://developer.apple.com/design/human-interface-guidelines/designing-for-tvos)、[焦点与选择](https://developer.apple.com/design/human-interface-guidelines/focus-and-selection/)、[Siri Remote](https://developer.apple.com/design/human-interface-guidelines/remotes)、[自定义 tvOS 播放体验](https://developer.apple.com/documentation/avkit/customizing-the-tvos-playback-experience)、[`MPRemoteCommandCenter`](https://developer.apple.com/documentation/mediaplayer/mpremotecommandcenter)。
 
 ## 分阶段计划
 
@@ -137,9 +150,10 @@ docker build -t songlib-amp:airplay-test .
 3. 对可控制的测试设备验证播放、暂停、上一首、下一首和进度跳转；对仅跟随设备确认按钮禁用且有明确原因。
 4. 选择同网段 Apple TV，确认 1080p 歌词画面出现，封面、标题、歌手、专辑、音质和进度正确。
 5. 连续切换至少 20 首歌，观察 Safari 的 `webkitCurrentPlaybackTargetIsWireless` 保持为真，视频 `src` 和主播放列表 URL 不变，Apple TV 不返回选择界面。
-6. 分别用普通 LRC 和带真实字时间的增强 LRC 验证整行/逐字高亮；调整 `AIRPLAY_LYRIC_ADVANCE_MS` 后复测。
+6. 分别用普通 LRC 和带真实字时间的增强 LRC 验证整行/逐字高亮；使用界面 `±0.25s` 微调并归零，再调整 `AIRPLAY_LYRIC_ADVANCE_MS` 复测部署基线。
 7. 连续播放 10 分钟与 30 分钟，记录音频相对歌词的误差和 `clockErrorMs`；测试暂停、拖动、锁屏、恢复和 Wi-Fi 短暂抖动。
 8. 分别在 Safari 标签页与已安装主屏幕 Web App 中验证。后者在真实 iOS/tvOS 26 完成前保持“待验证”。
-9. 断开 AirPlay 后确认约 90 秒内编码器停止；旧分片和会话超时后不可读取。
+9. 使用 Siri Remote 验证 Play/Pause；记录目标系统是否向 Safari Media Session 下发上一首/下一首。不要把 HLS 视频误验为可焦点导航的 tvOS App。
+10. 断开 AirPlay 后确认约 90 秒内编码器停止；旧分片和会话超时后不可读取。
 
 当前工作站没有系统级 FFmpeg/Docker，也没有 Apple TV；已使用隔离测试环境中的真实 FFmpeg 生成播放列表与分片，并确认编码中切歌的进程 PID、会话 URL 均不变。容器构建、QSV 与苹果设备项目仍必须在上述目标环境继续验收。

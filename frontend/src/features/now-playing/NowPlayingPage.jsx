@@ -17,11 +17,13 @@ import {
   ListMusic,
   LoaderCircle,
   Maximize2,
+  Minus,
   Mic2,
   MonitorSpeaker,
   Music2,
   Pause,
   Play,
+  Plus,
   Radio,
   RefreshCw,
   Server,
@@ -243,9 +245,11 @@ export default function NowPlayingPage({
     const ratingKey = selectedSession?.ratingKey;
     if (!ratingKey || selectedSource === "local") {
       setRemoteMetadata({});
+      setMetadataLoading(false);
       return;
     }
     let cancelled = false;
+    setRemoteMetadata({});
     setMetadataLoading(true);
     api(`/api/plex/items/${encodeURIComponent(ratingKey)}/playback`)
       .then((data) => !cancelled && setRemoteMetadata(data || {}))
@@ -323,6 +327,8 @@ export default function NowPlayingPage({
             canSeek: Boolean(selectedSession?.controllable),
             toggle: () =>
               remoteCommand(selectedSession?.playing ? "pause" : "play"),
+            play: () => remoteCommand("play"),
+            pause: () => remoteCommand("pause"),
             previous: () => remoteCommand("previous"),
             next: () => remoteCommand("next"),
             seek: (seconds) => remoteCommand("seek", Math.round(seconds * 1000)),
@@ -349,9 +355,9 @@ export default function NowPlayingPage({
   useEffect(() => {
     setFallbackLyrics("");
     setLyricsError("");
-    if (!track || String(track.lyrics || "").trim() || usingRemote) return;
+    if (!track || String(track.lyrics || "").trim()) return;
     const key =
-      track.sourceType === "plex_item"
+      track.sourceType === "plex_item" || track.sourceType === "plex_session"
         ? track.plexRatingKey || track.raw?.ratingKey
         : track.sourceType === "local_file"
           ? track.localFileId || track.raw?.id
@@ -359,7 +365,7 @@ export default function NowPlayingPage({
     if (!key) return;
     let cancelled = false;
     api(
-      track.sourceType === "plex_item"
+      track.sourceType === "plex_item" || track.sourceType === "plex_session"
         ? `/api/player/plex/${encodeURIComponent(key)}/lyrics`
         : `/api/player/local/${encodeURIComponent(key)}/lyrics`,
     )
@@ -368,7 +374,7 @@ export default function NowPlayingPage({
     return () => {
       cancelled = true;
     };
-  }, [track?.id, track?.lyrics, usingRemote]);
+  }, [track?.id, track?.lyrics, track?.sourceType, track?.plexRatingKey]);
 
   const lyricsText = String(track?.lyrics || fallbackLyrics || "").trim();
   const lyricsTrack = track ? { ...track, lyrics: lyricsText } : null;
@@ -546,7 +552,10 @@ export default function NowPlayingPage({
               )}
               <div className="now-cast-bar">
                 <span><Airplay /><span><strong>歌词投到电视</strong><small>{track ? usingRemote ? `音频继续由 ${selectedSession.deviceName} 播放` : "音频继续由此浏览器播放" : "需要先选择正在播放的歌曲"}</small></span></span>
-                {track ? <AirPlayCastButton cast={cast} /> : <button className="airplay-cast-button" disabled><Airplay />投到电视</button>}
+                <div className="now-cast-actions">
+                  {track && <div className="now-lyrics-offset" aria-label="歌词同步微调"><button onClick={() => cast.adjustLyricsOffset(-250)} title="歌词延后 0.25 秒"><Minus /></button><button className="value" onClick={cast.resetLyricsOffset} title="重置歌词同步">{cast.lyricsOffsetMs > 0 ? "+" : ""}{(cast.lyricsOffsetMs / 1000).toFixed(2)}s</button><button onClick={() => cast.adjustLyricsOffset(250)} title="歌词提前 0.25 秒"><Plus /></button></div>}
+                  {track ? <AirPlayCastButton cast={cast} /> : <button className="airplay-cast-button" disabled><Airplay />投到电视</button>}
+                </div>
               </div>
               {track && (
                 <button className="now-fullscreen-lyrics" disabled={!lines.length} onClick={() => setLyricsFull(true)}><Maximize2 />全屏歌词</button>

@@ -291,6 +291,7 @@ class CastSession:
         "lyrics": "",
         "duration": 0.0,
         "playing": False,
+        "lyricsOffsetMs": 0,
     })
     lyrics: list[LyricLine] = field(default_factory=list)
     clock: ClockDiscipline = field(default_factory=lambda: ClockDiscipline(
@@ -367,6 +368,7 @@ class AirPlayCastManager:
                 "lyrics": str(payload.get("lyrics") or "")[:300_000],
                 "duration": max(0.0, float(payload.get("duration") or 0)),
                 "playing": bool(payload.get("playing")),
+                "lyricsOffsetMs": max(-5000, min(5000, int(payload.get("lyricsOffsetMs") or 0))),
             }
             lyrics_changed = next_state["lyrics"] != session.state.get("lyrics")
             metadata_changed = any(next_state[key] != session.state.get(key) for key in ("trackId", "title", "artist", "album", "quality"))
@@ -406,6 +408,8 @@ class AirPlayCastManager:
                 "trackId": session.state.get("trackId") or "",
                 "clockErrorMs": round(session.clock.last_error * 1000),
                 "audioMode": "dual-clock-video-only",
+                "lyricsOffsetMs": int(session.state.get("lyricsOffsetMs") or 0),
+                "remoteControlMode": "html-media-transport-bridge",
                 "video": {
                     "width": settings.airplay_width,
                     "height": settings.airplay_height,
@@ -587,7 +591,10 @@ class AirPlayCastManager:
         image = self._animated_ambient(image, media_time)
         draw = ImageDraw.Draw(image, "RGBA")
         width, height = image.size
-        lyric_time = media_time + settings.airplay_lyric_advance_ms / 1000
+        lyric_time = media_time + (
+            settings.airplay_lyric_advance_ms
+            + int(state.get("lyricsOffsetMs") or 0)
+        ) / 1000
         active = -1
         for index, line in enumerate(lines):
             if line.time <= lyric_time:
@@ -595,34 +602,42 @@ class AirPlayCastManager:
             else:
                 break
         if lines:
-            indexes = [active - 1, active, active + 1]
-            y_positions = [int(height * 0.37), int(height * 0.50), int(height * 0.65)]
+            indexes = [active - 2, active - 1, active, active + 1, active + 2]
+            y_positions = [
+                int(height * 0.20),
+                int(height * 0.35),
+                int(height * 0.50),
+                int(height * 0.65),
+                int(height * 0.79),
+            ]
             for row, (index, y) in enumerate(zip(indexes, y_positions)):
                 if not 0 <= index < len(lines):
                     continue
                 line = lines[index]
-                font = _font(max(28, int(height * (0.052 if row == 1 else 0.034))), bold=row == 1)
-                max_width = int(width * 0.54)
+                is_active = row == 2
+                font = _font(max(28, int(height * (0.054 if is_active else 0.038))), bold=is_active)
+                max_width = int(width * 0.50)
                 text = _ellipsize(draw, line.text, font, max_width)
-                x = int(width * 0.405)
-                fill = (255, 255, 255, 82) if row != 1 else (255, 255, 255, 220)
-                if row == 1 and line.words:
+                x = int(width * 0.435)
+                distance = abs(row - 2)
+                fill = (255, 255, 255, 64 if distance == 2 else 118)
+                if is_active and line.words:
                     cursor = x
                     for word in line.words:
                         segment = word.text
-                        word_fill = (255, 209, 111, 255) if word.time <= lyric_time else (255, 255, 255, 160)
+                        word_fill = (255, 255, 255, 255) if word.time <= lyric_time else (255, 255, 255, 145)
                         draw.text((cursor, y), segment, font=font, fill=word_fill, stroke_width=1, stroke_fill=(0, 0, 0, 110))
                         cursor += draw.textlength(segment, font=font)
                 else:
-                    draw.text((x, y), text, font=font, fill=(255, 209, 111, 255) if row == 1 else fill, stroke_width=1, stroke_fill=(0, 0, 0, 100))
+                    draw.text((x, y), text, font=font, fill=(255, 255, 255, 245) if is_active else fill, stroke_width=1, stroke_fill=(0, 0, 0, 100))
         else:
-            draw.text((int(width * 0.405), int(height * 0.50)), "歌词准备中", font=_font(int(height * 0.046), bold=True), fill=(255, 255, 255, 150))
+            draw.text((int(width * 0.435), int(height * 0.50)), "歌词准备中", font=_font(int(height * 0.046), bold=True), fill=(255, 255, 255, 150))
 
-        left, right = int(width * 0.405), int(width * 0.93)
-        bar_y = int(height * 0.865)
+        left, right = int(width * 0.435), int(width * 0.93)
+        bar_y = int(height * 0.91)
         draw.rounded_rectangle((left, bar_y, right, bar_y + max(5, height // 180)), radius=8, fill=(255, 255, 255, 42))
         ratio = min(1.0, media_time / duration) if duration else 0.0
-        draw.rounded_rectangle((left, bar_y, left + int((right - left) * ratio), bar_y + max(5, height // 180)), radius=8, fill=(255, 203, 94, 235))
+        draw.rounded_rectangle((left, bar_y, left + int((right - left) * ratio), bar_y + max(5, height // 180)), radius=8, fill=(255, 255, 255, 230))
         small = _font(max(18, height // 48))
         draw.text((left, bar_y + 18), self._format_time(media_time), font=small, fill=(255, 255, 255, 145))
         remaining = self._format_time(duration)
@@ -677,9 +692,11 @@ class AirPlayCastManager:
         shade_draw.rectangle((int(width * 0.34), 0, width, height), fill=(4, 5, 9, 42))
         image = Image.alpha_composite(image, shade)
         draw = ImageDraw.Draw(image, "RGBA")
-        cover_size = int(min(width * 0.245, height * 0.46))
-        cover_x, cover_y = int(width * 0.095), int(height * 0.25)
-        draw.rounded_rectangle((cover_x - 10, cover_y - 10, cover_x + cover_size + 10, cover_y + cover_size + 10), radius=width // 70, fill=(0, 0, 0, 115), outline=(255, 224, 164, 52), width=2)
+        cover_size = int(min(width * 0.255, height * 0.46))
+        cover_x, cover_y = int(width * 0.072), int(height * 0.175)
+        radius = width // 70
+        draw.rounded_rectangle((cover_x - 22, cover_y + 18, cover_x + cover_size + 22, cover_y + cover_size + 36), radius=radius + 5, fill=(0, 0, 0, 96), outline=(255, 255, 255, 32), width=2)
+        draw.rounded_rectangle((cover_x - 7, cover_y - 7, cover_x + cover_size + 7, cover_y + cover_size + 7), radius=radius, fill=(0, 0, 0, 92), outline=(255, 255, 255, 28), width=2)
         if session.cover:
             cover = _fit_cover(session.cover, (cover_size, cover_size))
             mask = Image.new("L", (cover_size, cover_size), 0)
@@ -690,18 +707,22 @@ class AirPlayCastManager:
             draw.text((cover_x + cover_size * 0.38, cover_y + cover_size * 0.36), "♪", font=_font(cover_size // 4, bold=True), fill=(255, 204, 98, 210))
         state = session.state
         label = _font(max(18, height // 50), bold=True)
-        draw.text((cover_x, int(height * 0.12)), "SONGLIB AMP  ·  AIRPLAY LYRICS", font=label, fill=(255, 205, 104, 210))
-        title_font = _font(max(34, height // 19), bold=True)
-        meta_font = _font(max(20, height // 34))
-        max_meta_width = int(width * 0.53)
-        draw.text((int(width * 0.405), int(height * 0.12)), _ellipsize(draw, state.get("title") or "等待播放", title_font, max_meta_width), font=title_font, fill=(255, 255, 255, 245), stroke_width=1, stroke_fill=(0, 0, 0, 120))
+        title_font = _font(max(30, height // 27), bold=True)
+        meta_font = _font(max(20, height // 39))
+        info_width = int(width * 0.34)
+        info_center = cover_x + cover_size // 2
+        title = _ellipsize(draw, state.get("title") or "等待播放", title_font, info_width)
+        title_x = info_center - int(draw.textlength(title, font=title_font) / 2)
+        title_y = cover_y + cover_size + int(height * 0.09)
+        draw.text((title_x, title_y), title, font=title_font, fill=(255, 255, 255, 245), stroke_width=1, stroke_fill=(0, 0, 0, 100))
         meta = f"{state.get('artist') or '未知歌手'}  ·  {state.get('album') or '未知专辑'}"
-        draw.text((int(width * 0.405), int(height * 0.205)), _ellipsize(draw, meta, meta_font, max_meta_width), font=meta_font, fill=(255, 255, 255, 150))
+        meta = _ellipsize(draw, meta, meta_font, info_width)
+        meta_x = info_center - int(draw.textlength(meta, font=meta_font) / 2)
+        draw.text((meta_x, title_y + int(height * 0.057)), meta, font=meta_font, fill=(255, 255, 255, 145))
         quality = state.get("quality") or "LYRICS CAST"
-        pill_x, pill_y = cover_x, cover_y + cover_size + int(height * 0.045)
-        pill_w = int(draw.textlength(quality.upper(), font=label)) + 42
-        draw.rounded_rectangle((pill_x, pill_y, pill_x + pill_w, pill_y + 48), radius=24, fill=(255, 255, 255, 22), outline=(255, 255, 255, 36))
-        draw.text((pill_x + 21, pill_y + 10), quality.upper(), font=label, fill=(255, 225, 164, 200))
+        quality_text = quality.upper()
+        quality_x = info_center - int(draw.textlength(quality_text, font=label) / 2)
+        draw.text((quality_x, title_y + int(height * 0.112)), quality_text, font=label, fill=(255, 255, 255, 105))
         return image.convert("RGB")
 
     def stop(self, session_id: str, owner_id: str) -> None:

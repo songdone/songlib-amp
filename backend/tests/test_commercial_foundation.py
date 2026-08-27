@@ -3,7 +3,7 @@ import tempfile
 import unittest
 import wave
 from pathlib import Path
-from unittest.mock import PropertyMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 os.environ.setdefault("APP_PASSWORD", "test-password-123")
 os.environ.setdefault("SESSION_SECRET", "test-session-secret-for-songlib-123456")
@@ -21,7 +21,7 @@ from app.db import init_db, row, rows, set_kv, transaction
 from app.download_inbox import _repair_mojibake
 from app.jobs import manager
 from app.local_library import local_library
-from app.main import app, fnos_music, plex
+from app.main import app, fnos_music, plex, plex_lyrics
 from app.fnos_music import FnosMusicClient
 from app.plex import dashboard_stats
 from app.playlist_migration import detect_share_link, strict_candidate
@@ -460,6 +460,62 @@ class CommercialFoundationTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(response.json()["source"], "qq")
                 self.assertIn("[00:01.00]", response.json()["lyrics"])
+
+    def test_plex_player_prefers_the_server_lyric_stream(self):
+        server_lyrics = "[00:01.00]Plex 字幕流歌词\n[00:05.00]第二句"
+        with (
+            patch.object(
+                plex,
+                "playback",
+                return_value={
+                    "ratingKey": "track-stream",
+                    "title": "带歌词流的歌曲",
+                    "artist": "测试歌手",
+                    "album": "测试专辑",
+                    "duration": 200000,
+                    "file": "/unmapped/song.flac",
+                    "lyricStreamKey": "/library/streams/lyric-1",
+                    "lyricFormat": "lrc",
+                },
+            ),
+            patch.object(
+                plex,
+                "lyrics",
+                return_value={
+                    "lyrics": server_lyrics,
+                    "format": "lrc",
+                    "source": "plex",
+                },
+            ) as plex_lyrics_fetch,
+            patch("app.main.find_lyrics") as provider,
+        ):
+            response = plex_lyrics("track-stream")
+        self.assertEqual(response["source"], "plex")
+        self.assertEqual(response["lyrics"], server_lyrics)
+        plex_lyrics_fetch.assert_called_once_with(
+            "track-stream",
+            stream_key="/library/streams/lyric-1",
+            stream_format="lrc",
+        )
+        provider.assert_not_called()
+
+    def test_plex_lyric_stream_uses_shared_encoding_detection(self):
+        response = MagicMock()
+        expected = "[00:01.00]Plex 字幕流歌词"
+        response.content = expected.encode("utf-16")
+        with patch.object(plex, "request", return_value=response) as request:
+            result = plex.lyrics(
+                "track-encoded",
+                stream_key="/library/streams/lyric-encoded",
+                stream_format="lrc",
+            )
+        self.assertEqual(result["lyrics"], expected)
+        self.assertEqual(result["source"], "plex")
+        request.assert_called_once_with(
+            "GET",
+            "/library/streams/lyric-encoded",
+            timeout=8,
+        )
 
     def test_dashboard_prefers_plex_backgrounds_for_artists_with_more_tracks(self):
         music_root = Path(settings.music_root)

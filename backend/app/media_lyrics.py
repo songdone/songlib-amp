@@ -8,7 +8,7 @@ from mutagen import File as MutagenFile
 LYRIC_SUFFIXES = {".lrc", ".txt"}
 
 
-def _decode_lyrics(data: bytes) -> str:
+def decode_lyrics(data: bytes) -> str:
     if data.startswith((b"\xff\xfe", b"\xfe\xff")):
         return data.decode("utf-16").strip()
     try:
@@ -34,6 +34,11 @@ def _decode_lyrics(data: bytes) -> str:
 
         return min(candidates, key=corruption_score)
     return data.decode("utf-8", errors="ignore").strip()
+
+
+# Kept as a private alias for older callers while Plex subtitle streams use the
+# same encoding detection as local sidecar files.
+_decode_lyrics = decode_lyrics
 
 
 def _sidecar_candidates(audio_path: Path) -> list[Path]:
@@ -85,7 +90,7 @@ def read_local_lyrics(audio_path: Path) -> dict[str, str]:
         if not candidate.exists():
             continue
         try:
-            lyrics = _decode_lyrics(candidate.read_bytes())
+            lyrics = decode_lyrics(candidate.read_bytes())
         except OSError:
             continue
         if lyrics:

@@ -3,10 +3,73 @@ import test from "node:test";
 
 import {
   preferredRemoteSession,
+  reconcileRemoteSessionClock,
   remoteControlMessage,
   remotePositionSeconds,
   remoteTrack,
 } from "../src/lib/remotePlayback.js";
+
+test("stale Plex offsets never reset an advancing playback clock", () => {
+  const first = reconcileRemoteSessionClock(null, {
+    id: "phone",
+    ratingKey: "42",
+    positionMs: 12_000,
+    durationMs: 30_000,
+    playing: true,
+  }, 1_000);
+  const second = reconcileRemoteSessionClock(first, {
+    id: "phone",
+    ratingKey: "42",
+    positionMs: 12_000,
+    durationMs: 30_000,
+    playing: true,
+  }, 3_000);
+  assert.equal(remotePositionSeconds(second, 0, 3_500), 14.5);
+});
+
+test("small clock drift is corrected gently while a real seek snaps", () => {
+  const first = reconcileRemoteSessionClock(null, {
+    id: "phone",
+    ratingKey: "42",
+    positionMs: 10_000,
+    durationMs: 60_000,
+    playing: true,
+  }, 1_000);
+  const corrected = reconcileRemoteSessionClock(first, {
+    id: "phone",
+    ratingKey: "42",
+    positionMs: 11_500,
+    durationMs: 60_000,
+    playing: true,
+  }, 2_000);
+  assert.equal(corrected.clockPositionMs, 11_150);
+  const sought = reconcileRemoteSessionClock(corrected, {
+    id: "phone",
+    ratingKey: "42",
+    positionMs: 40_000,
+    durationMs: 60_000,
+    playing: true,
+  }, 3_000);
+  assert.equal(sought.clockPositionMs, 40_000);
+});
+
+test("a stale pause event freezes at the locally predicted position", () => {
+  const first = reconcileRemoteSessionClock(null, {
+    id: "phone",
+    ratingKey: "42",
+    positionMs: 10_000,
+    durationMs: 60_000,
+    playing: true,
+  }, 1_000);
+  const paused = reconcileRemoteSessionClock(first, {
+    id: "phone",
+    ratingKey: "42",
+    positionMs: 10_000,
+    durationMs: 60_000,
+    playing: false,
+  }, 3_000);
+  assert.equal(remotePositionSeconds(paused, 0, 9_000), 12);
+});
 
 test("remote playback clock advances from the Plex poll timestamp", () => {
   assert.equal(

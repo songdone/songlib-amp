@@ -64,6 +64,7 @@ class AirPlayCastTests(unittest.TestCase):
                 "position": 0,
                 "duration": 180,
                 "playing": True,
+                "lyricsOffsetMs": 750,
             }
             manager.update(session.session_id, "listener-1", first)
             second = {**first, "trackId": "local_file:2", "title": "第二首", "position": 0}
@@ -71,6 +72,8 @@ class AirPlayCastTests(unittest.TestCase):
             self.assertEqual(status["streamUrl"], first_url)
             self.assertEqual(status["encoderStarts"], 0)
             self.assertEqual(status["trackRevision"], 2)
+            self.assertEqual(status["lyricsOffsetMs"], 750)
+            self.assertEqual(status["remoteControlMode"], "html-media-transport-bridge")
             self.assertIs(manager.create("listener-1", "https://music.example.test"), session)
             manager.stop(session.session_id, "listener-1")
 

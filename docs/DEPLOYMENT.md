@@ -53,6 +53,8 @@ docker compose -f docker-compose.yml -f docker-compose.hardened.yml up -d
 
 ## 5. HTTPS
 
+iPhone/iPad Safari 可将普通 HTTP 的内网地址添加到主屏幕，并继续登录和使用在线功能；这不要求请求绕行外网。HTTP 不能注册 Service Worker，因此没有离线静态缓存、Web Push 等安全上下文增强能力，桌面 Chromium 的原生安装提示也不会出现。若需要完整 PWA 能力，建议在 NAS 或同网段反向代理上本地终止 HTTPS，并用局域网 DNS 将域名解析到 NAS，从而保持内网低延迟。
+
 如果通过反向代理暴露：
 
 - 设 `COOKIE_SECURE=true`。

@@ -3,6 +3,74 @@ const asNumber = (value) => {
   return Number.isFinite(number) ? Math.max(0, number) : 0;
 };
 
+const clamp = (value, minimum, maximum) =>
+  Math.min(maximum, Math.max(minimum, value));
+
+const trackIdentity = (session) =>
+  String(
+    session?.ratingKey ||
+      `${session?.title || ""}|${session?.artist || ""}|${session?.durationMs || 0}`,
+  );
+
+export const reconcileRemoteSessionClock = (
+  previous,
+  incoming,
+  receivedAt = Date.now(),
+) => {
+  const at = asNumber(receivedAt);
+  const durationMs = asNumber(incoming?.durationMs);
+  const rawPositionMs = durationMs
+    ? Math.min(asNumber(incoming?.positionMs), durationMs)
+    : asNumber(incoming?.positionMs);
+  const sameTrack =
+    previous && trackIdentity(previous) === trackIdentity(incoming);
+
+  if (!sameTrack) {
+    return {
+      ...incoming,
+      rawPositionMs,
+      clockPositionMs: rawPositionMs,
+      clockAt: at,
+    };
+  }
+
+  const previousAt = asNumber(previous.clockAt || at);
+  const previousBase = asNumber(
+    previous.clockPositionMs ?? previous.positionMs,
+  );
+  const predicted = previous.playing
+    ? previousBase + Math.max(0, at - previousAt)
+    : previousBase;
+  const boundedPrediction = durationMs
+    ? Math.min(predicted, durationMs)
+    : predicted;
+  const previousRaw = asNumber(
+    previous.rawPositionMs ?? previous.positionMs,
+  );
+  const rawChanged = Math.abs(rawPositionMs - previousRaw) >= 250;
+  let anchor = boundedPrediction;
+
+  if (!incoming?.playing) {
+    if (rawChanged) anchor = rawPositionMs;
+  } else if (rawChanged) {
+    const drift = rawPositionMs - boundedPrediction;
+    anchor =
+      Math.abs(drift) >= 4000
+        ? rawPositionMs
+        : boundedPrediction + clamp(drift * 0.35, -150, 150);
+  }
+
+  anchor = durationMs
+    ? clamp(anchor, 0, durationMs)
+    : Math.max(0, anchor);
+  return {
+    ...incoming,
+    rawPositionMs,
+    clockPositionMs: anchor,
+    clockAt: at,
+  };
+};
+
 export const remotePositionSeconds = (
   session,
   polledAt = Date.now(),
@@ -10,9 +78,10 @@ export const remotePositionSeconds = (
 ) => {
   if (!session) return 0;
   const duration = asNumber(session.durationMs) / 1000;
-  const base = asNumber(session.positionMs) / 1000;
+  const base = asNumber(session.clockPositionMs ?? session.positionMs) / 1000;
+  const anchorAt = asNumber(session.clockAt ?? polledAt);
   const elapsed = session.playing
-    ? Math.max(0, asNumber(now) - asNumber(polledAt)) / 1000
+    ? Math.max(0, asNumber(now) - anchorAt) / 1000
     : 0;
   const position = base + elapsed;
   return duration ? Math.min(position, duration) : position;

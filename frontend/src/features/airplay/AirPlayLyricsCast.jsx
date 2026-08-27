@@ -13,6 +13,8 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
   const sessionRef = useRef(null);
   const latestPayloadRef = useRef(null);
   const creatingRef = useRef(null);
+  const syncingRef = useRef(false);
+  const syncQueuedRef = useRef(false);
   const pickerTimerRef = useRef(null);
   const [supported, setSupported] = useState(false);
   const [session, setSession] = useState(null);
@@ -20,9 +22,16 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
   const [wireless, setWireless] = useState(false);
   const [availability, setAvailability] = useState("unknown");
   const [message, setMessage] = useState("");
+  const [lyricsOffsetMs, setLyricsOffsetMs] = useState(() => {
+    const saved = Number(window.localStorage.getItem("songlib-airplay-lyrics-offset") || 0);
+    return Number.isFinite(saved) ? Math.max(-5000, Math.min(5000, saved)) : 0;
+  });
   const hasTrack = Boolean(track);
+  const playerRef = useRef(player);
+  const wirelessRef = useRef(false);
 
-  latestPayloadRef.current = airPlayStatePayload({ track, lyrics, player });
+  playerRef.current = player;
+  latestPayloadRef.current = airPlayStatePayload({ track, lyrics, player, lyricsOffsetMs });
 
   useEffect(() => {
     const video = videoRef.current;
@@ -33,6 +42,7 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
       setAvailability(event.availability || "unknown");
     const onWirelessChange = () => {
       const active = Boolean(video.webkitCurrentPlaybackTargetIsWireless);
+      wirelessRef.current = active;
       if (active && pickerTimerRef.current) {
         window.clearTimeout(pickerTimerRef.current);
         pickerTimerRef.current = null;
@@ -45,11 +55,24 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
           : "",
       );
       if (!active) video.pause();
+      if (active && !playerRef.current?.isPlaying) video.pause();
+    };
+    const onPlay = () => {
+      if (!wirelessRef.current || playerRef.current?.isPlaying) return;
+      if (typeof playerRef.current?.play === "function") playerRef.current.play();
+      else playerRef.current?.toggle?.();
+    };
+    const onPause = () => {
+      if (!wirelessRef.current || !playerRef.current?.isPlaying) return;
+      if (typeof playerRef.current?.pause === "function") playerRef.current.pause();
+      else playerRef.current?.toggle?.();
     };
     video.addEventListener(
       "webkitplaybacktargetavailabilitychanged",
       onAvailability,
     );
+    video.addEventListener("play", onPlay);
+    video.addEventListener("pause", onPause);
     video.addEventListener(
       "webkitcurrentplaybacktargetiswirelesschanged",
       onWirelessChange,
@@ -60,6 +83,8 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
         "webkitplaybacktargetavailabilitychanged",
         onAvailability,
       );
+      video.removeEventListener("play", onPlay);
+      video.removeEventListener("pause", onPause);
       video.removeEventListener(
         "webkitcurrentplaybacktargetiswirelesschanged",
         onWirelessChange,
@@ -103,27 +128,37 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
   }, [supported, hasTrack, prepare]);
 
   const sync = useCallback(async () => {
-    const currentSession = sessionRef.current;
-    if (!currentSession?.sessionId || !latestPayloadRef.current?.trackId)
+    if (syncingRef.current) {
+      syncQueuedRef.current = true;
       return;
+    }
+    syncingRef.current = true;
     try {
-      const updated = await api(
-        `/api/airplay/cast/${currentSession.sessionId}`,
-        {
-          method: "PATCH",
-          body: JSON.stringify(latestPayloadRef.current),
-        },
-      );
-      sessionRef.current = { ...currentSession, ...updated };
-      setSession((value) => ({ ...value, ...updated }));
-      if (updated.status === "error")
-        setMessage(updated.error || "歌词视频流异常");
+      do {
+        syncQueuedRef.current = false;
+        const currentSession = sessionRef.current;
+        const payload = latestPayloadRef.current;
+        if (!currentSession?.sessionId || !payload?.trackId) return;
+        const updated = await api(
+          `/api/airplay/cast/${currentSession.sessionId}`,
+          {
+            method: "PATCH",
+            body: JSON.stringify(payload),
+          },
+        );
+        sessionRef.current = { ...currentSession, ...updated };
+        setSession((value) => ({ ...value, ...updated }));
+        if (updated.status === "error")
+          setMessage(updated.error || "歌词视频流异常");
+      } while (syncQueuedRef.current);
     } catch (error) {
       setMessage(error.message || "歌词投屏时钟同步失败");
+    } finally {
+      syncingRef.current = false;
     }
   }, []);
 
-  const metadataKey = `${airPlayTrackId(track)}|${String(lyrics || "").length}|${player.quality}|${player.isPlaying}|${player.duration}`;
+  const metadataKey = `${airPlayTrackId(track)}|${String(lyrics || "").length}|${player.quality}|${player.isPlaying}|${player.duration}|${lyricsOffsetMs}`;
   useEffect(() => {
     if (!session?.sessionId) return;
     sync();
@@ -134,6 +169,50 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
     const timer = window.setInterval(sync, 1000);
     return () => window.clearInterval(timer);
   }, [session?.sessionId, engaged, sync]);
+
+  useEffect(() => {
+    window.localStorage.setItem("songlib-airplay-lyrics-offset", String(lyricsOffsetMs));
+  }, [lyricsOffsetMs]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!wireless || !video) return;
+    if (player.isPlaying && video.paused) video.play().catch(() => {});
+    if (!player.isPlaying && !video.paused) video.pause();
+  }, [wireless, player.isPlaying]);
+
+  useEffect(() => {
+    const mediaSession = navigator.mediaSession;
+    if (!engaged || !mediaSession) return undefined;
+    const play = () => {
+      if (typeof playerRef.current?.play === "function") playerRef.current.play();
+      else if (!playerRef.current?.isPlaying) playerRef.current?.toggle?.();
+    };
+    const pause = () => {
+      if (typeof playerRef.current?.pause === "function") playerRef.current.pause();
+      else if (playerRef.current?.isPlaying) playerRef.current?.toggle?.();
+    };
+    const actions = {
+      play,
+      pause,
+      previoustrack: () => playerRef.current?.previous?.(),
+      nexttrack: () => playerRef.current?.next?.(),
+    };
+    for (const [action, handler] of Object.entries(actions)) {
+      try { mediaSession.setActionHandler(action, handler); } catch {}
+    }
+    return () => {
+      for (const action of Object.keys(actions)) {
+        try { mediaSession.setActionHandler(action, null); } catch {}
+      }
+    };
+  }, [engaged]);
+
+  const adjustLyricsOffset = useCallback((delta) => {
+    setLyricsOffsetMs((current) =>
+      Math.max(-5000, Math.min(5000, current + Number(delta || 0))),
+    );
+  }, []);
 
   const showPicker = useCallback(async () => {
     const video = videoRef.current;
@@ -184,6 +263,9 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
     wireless,
     engaged,
     message,
+    lyricsOffsetMs,
+    adjustLyricsOffset,
+    resetLyricsOffset: () => setLyricsOffsetMs(0),
     showPicker,
   };
 }

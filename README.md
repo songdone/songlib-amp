@@ -86,7 +86,7 @@ docker compose ps
 
 打开 `http://NAS地址:32782`。不需要预先创建 `.env`：程序会把随机会话密钥保存在 `/data`，首次访问会引导创建主人账号；Plex、飞牛音乐、目录与播放器偏好都在网页设置中完成。
 
-浏览器原生 PWA 安装要求 HTTPS。普通 HTTP 局域网地址仍可完整使用网页功能，但安装提示会明确展示 HTTPS 要求；需要桌面或主屏幕安装时，请先通过 NAS 反向代理配置可信 HTTPS，再用 HTTPS 地址访问。
+iPhone/iPad Safari 可以把当前局域网页面直接“添加到主屏幕”；HTTP 内网地址仍可作为主屏幕应用登录、播放和管理音乐，不需要让流量绕行公网。HTTP 不提供 Service Worker 离线缓存、Web Push 等安全上下文能力，桌面 Chromium 的原生安装提示也仍要求安全上下文。需要完整 PWA 或 AirPlay 证书能力时，可让 HTTPS 在 NAS/内网反向代理本地终止，并通过局域网 DNS 直连 NAS，访问链路无需经过公网。
 
 ### 飞牛应用中心安装包
 

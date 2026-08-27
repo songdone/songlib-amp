@@ -10,7 +10,7 @@ import httpx
 
 from .config import settings
 from .db import get_kv, now
-from .media_lyrics import read_local_lyrics
+from .media_lyrics import decode_lyrics, read_local_lyrics
 
 
 def has_chinese(text: str, minimum: int = 20) -> bool:
@@ -318,6 +318,15 @@ class PlexClient:
         else:
             stream_url = original_url
             mode = "original"
+        lyric_stream = next(
+            (
+                stream
+                for stream in element.findall(".//Stream")
+                if stream.attrib.get("streamType") == "4"
+                and str(stream.attrib.get("key") or "").startswith("/")
+            ),
+            None,
+        )
         return {
             "source": "plex_item",
             "ratingKey": rating_key,
@@ -334,6 +343,41 @@ class PlexClient:
             "mode": mode,
             "bitrate": bitrate,
             "qualities": ["original", "320k", "256k", "192k", "128k"],
+            "lyricStreamKey": lyric_stream.attrib.get("key", "") if lyric_stream is not None else "",
+            "lyricFormat": (
+                lyric_stream.attrib.get("format")
+                or lyric_stream.attrib.get("codec")
+                or "lrc"
+            ) if lyric_stream is not None else "",
+        }
+
+    def lyrics(self, rating_key: str, *, stream_key: str = "", stream_format: str = "") -> dict[str, str]:
+        key = str(stream_key or "")
+        format_name = str(stream_format or "")
+        if not key:
+            root = self.xml(f"/library/metadata/{rating_key}", {"includeFields": 1})
+            element = next((child for child in root if child.attrib.get("ratingKey")), None)
+            if element is not None:
+                stream = next(
+                    (
+                        item
+                        for item in element.findall(".//Stream")
+                        if item.attrib.get("streamType") == "4"
+                        and str(item.attrib.get("key") or "").startswith("/")
+                    ),
+                    None,
+                )
+                if stream is not None:
+                    key = str(stream.attrib.get("key") or "")
+                    format_name = str(stream.attrib.get("format") or stream.attrib.get("codec") or "lrc")
+        if not key.startswith("/"):
+            return {"lyrics": "", "format": "none", "source": ""}
+        response = self.request("GET", key, timeout=8)
+        lyrics = decode_lyrics(response.content)
+        return {
+            "lyrics": lyrics,
+            "format": format_name or "lrc",
+            "source": "plex" if lyrics else "",
         }
 
     def playback_info(self, rating_key: str):
@@ -346,6 +390,15 @@ class PlexClient:
         file_path = local_media_path(info.get("file") or "")
         if file_path and file_path.exists():
             lyrics = read_local_lyrics(file_path)["lyrics"]
+        if not lyrics and info.get("lyricStreamKey"):
+            try:
+                lyrics = self.lyrics(
+                    rating_key,
+                    stream_key=info.get("lyricStreamKey") or "",
+                    stream_format=info.get("lyricFormat") or "",
+                )["lyrics"]
+            except Exception:
+                lyrics = ""
         saved = self.saved_settings()
         external = saved.get("externalUrl") or base
         mapped_path = local_media_path(info.get("file") or "")

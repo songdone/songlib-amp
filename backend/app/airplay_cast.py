@@ -10,6 +10,7 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
@@ -220,6 +221,7 @@ def build_ffmpeg_command(output_dir: Path, *, use_qsv: bool) -> list[str]:
     return command
 
 
+@lru_cache(maxsize=1)
 def _font_path() -> str | None:
     candidates = [
         settings.airplay_font_path,
@@ -231,6 +233,7 @@ def _font_path() -> str | None:
     return next((item for item in candidates if item and Path(item).exists()), None)
 
 
+@lru_cache(maxsize=32)
 def _font(size: int, *, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     regular = _font_path()
     bold_candidates = [
@@ -291,6 +294,7 @@ class CastSession:
         "lyrics": "",
         "duration": 0.0,
         "playing": False,
+        "coverKey": "",
         "lyricsOffsetMs": 0,
     })
     lyrics: list[LyricLine] = field(default_factory=list)
@@ -349,11 +353,27 @@ class AirPlayCastManager:
         with session.lock:
             return str(session.state.get("trackId") or "") != str(track_id or "")
 
+    def visual_changed(
+        self,
+        session_id: str,
+        owner_id: str,
+        track_id: str,
+        cover_key: str = "",
+    ) -> bool:
+        session = self._owned(session_id, owner_id)
+        with session.lock:
+            return (
+                str(session.state.get("trackId") or "") != str(track_id or "")
+                or str(session.state.get("coverKey") or "") != str(cover_key or "")
+            )
+
     def update(self, session_id: str, owner_id: str, payload: dict, cover_bytes: bytes | None = None) -> dict:
         session = self._owned(session_id, owner_id)
         track_id = str(payload.get("trackId") or "")[:300]
         with session.lock:
             changed = track_id != str(session.state.get("trackId") or "")
+            cover_key = str(payload.get("coverKey") or "")[:2000]
+            cover_changed = cover_key != str(session.state.get("coverKey") or "")
             if changed:
                 session.track_revision += 1
                 session.clock.reset(payload.get("position", 0), bool(payload.get("playing")))
@@ -368,16 +388,17 @@ class AirPlayCastManager:
                 "lyrics": str(payload.get("lyrics") or "")[:300_000],
                 "duration": max(0.0, float(payload.get("duration") or 0)),
                 "playing": bool(payload.get("playing")),
+                "coverKey": cover_key,
                 "lyricsOffsetMs": max(-5000, min(5000, int(payload.get("lyricsOffsetMs") or 0))),
             }
             lyrics_changed = next_state["lyrics"] != session.state.get("lyrics")
             metadata_changed = any(next_state[key] != session.state.get(key) for key in ("trackId", "title", "artist", "album", "quality"))
             session.state = next_state
-            if changed:
+            if changed or cover_changed:
                 session.cover = self._decode_cover(cover_bytes)
             if lyrics_changed:
                 session.lyrics = parse_timed_lyrics(next_state["lyrics"])
-            if metadata_changed or changed:
+            if metadata_changed or changed or cover_changed:
                 session.visual_base = None
             session.error = "" if session.process and session.process.poll() is None else session.error
         return self.status(session_id, owner_id)
@@ -409,7 +430,7 @@ class AirPlayCastManager:
                 "clockErrorMs": round(session.clock.last_error * 1000),
                 "audioMode": "dual-clock-video-only",
                 "lyricsOffsetMs": int(session.state.get("lyricsOffsetMs") or 0),
-                "remoteControlMode": "html-media-transport-bridge",
+                "remoteControlMode": "continuous-hls-media-session",
                 "video": {
                     "width": settings.airplay_width,
                     "height": settings.airplay_height,

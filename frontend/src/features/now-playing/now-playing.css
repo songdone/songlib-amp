@@ -838,6 +838,11 @@
   color: var(--now-warning);
 }
 
+.now-device-state.idle {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--now-tertiary);
+}
+
 .now-device-check {
   width: 15px;
   color: var(--now-accent);
@@ -1065,8 +1070,8 @@
 
 @media (max-width: 1100px) {
   .now-workspace {
-    grid-template-columns: minmax(260px, 0.7fr) minmax(360px, 1.3fr);
-    gap: 24px;
+    grid-template-columns: minmax(220px, 0.72fr) minmax(300px, 1.28fr);
+    gap: 18px;
   }
 
   .now-detail-panel {
@@ -1091,7 +1096,8 @@
 
   .now-playing-page {
     min-height: 100dvh;
-    padding: max(17px, env(safe-area-inset-top)) 15px 112px !important;
+    padding: max(17px, env(safe-area-inset-top)) 15px calc(142px + env(safe-area-inset-bottom)) !important;
+    scroll-padding-bottom: calc(112px + env(safe-area-inset-bottom));
   }
 
   .now-playing-page::before {
@@ -1270,6 +1276,10 @@
     padding-inline: 6px;
   }
 
+  .now-device-help {
+    margin-bottom: 24px;
+  }
+
   .now-lyrics-overlay {
     padding-inline: 16px;
   }
@@ -1324,6 +1334,54 @@
 
   .now-lyrics-overlay footer > button {
     display: none;
+  }
+}
+
+/* iPad/Safari performance mode: one static backdrop and opaque surfaces avoid
+ * repeatedly compositing several full-screen blur layers while the clock ticks. */
+@media (max-width: 1180px), (hover: none) and (pointer: coarse) {
+  .route-player .app-backdrop {
+    display: none;
+  }
+
+  .now-playing-page::before {
+    opacity: 0.22;
+    transition: none;
+  }
+
+  .now-page-actions > .airplay-cast-button,
+  .now-device-shortcut,
+  .now-source-chip,
+  .now-detail-panel,
+  .now-overlay-close,
+  .now-lyrics-overlay header .airplay-cast-button {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .now-detail-panel {
+    background: rgba(18, 19, 24, 0.96);
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.3);
+  }
+
+  .now-lyrics-overlay-bg img {
+    filter: saturate(0.75) brightness(0.36);
+    opacity: 0.5;
+  }
+
+  .now-pane,
+  .now-cover,
+  .now-lyrics-lines button,
+  .now-device-row,
+  .now-main-controls button {
+    animation: none;
+    transition-duration: 0.12s;
+  }
+
+  .route-player .mobile-nav {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: rgba(15, 16, 20, 0.98);
   }
 }
 

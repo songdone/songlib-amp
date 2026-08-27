@@ -428,3 +428,115 @@
     transition: none;
   }
 }
+
+/* Stable touch mode for older iPads and compact Safari windows.  Large video,
+ * blur and continuously composited layers are replaced by opaque materials;
+ * the hierarchy remains unchanged and every control stays available. */
+@media (max-width: 1180px), (hover: none) and (pointer: coarse) {
+  .login-video-wrap,
+  .login-flow-lines,
+  .login-dust,
+  .login-breath-glow,
+  .login-ambient-glow,
+  .login-card-glow,
+  .login-motion-hover-glow {
+    display: none !important;
+  }
+
+  .login-base-map {
+    opacity: 0.58 !important;
+    filter: brightness(0.62) saturate(0.78) !important;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+  }
+
+  .login-motion-left {
+    display: none !important;
+  }
+
+  .login-motion-shell {
+    padding-top: 88px !important;
+  }
+
+  .login-motion-grid {
+    display: block !important;
+  }
+
+  .login-motion-card-group {
+    width: min(440px, 100%) !important;
+    margin-inline: auto !important;
+  }
+
+  .login-motion-card,
+  .login-motion-logo-mark,
+  .login-motion-feature,
+  .visual-shell :is(
+    .topbar,
+    .sidebar,
+    .mobile-nav,
+    .panel,
+    .glass,
+    .setting-card,
+    .settings-sidebar,
+    .sources-card,
+    .manage-card,
+    .stat-card,
+    .source-strip,
+    .modal,
+    .modal-backdrop,
+    .mini-player,
+    .track-table,
+    .media-art,
+    .local-hero,
+    .manage-metrics,
+    .me-listening-surface,
+    .me-collection-surface,
+    .me-list-surface,
+    .connected-playlists,
+    .playlist-migration,
+    .appearance-live-preview,
+    .settings-tabs,
+    .home-device-center > button,
+    .player-corner-button,
+    .player-queue-fab,
+    .player-queue-drawer,
+    .pwa-prompt
+  ) {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .login-motion-card {
+    background: rgba(14, 14, 16, 0.97) !important;
+  }
+
+  .visual-shell .topbar,
+  .visual-shell .sidebar,
+  .visual-shell .mobile-nav,
+  .visual-shell .mini-player,
+  .visual-shell .pwa-prompt {
+    background-color: rgba(14, 15, 19, 0.98) !important;
+  }
+
+  .visual-shell:not(.route-player) .app-backdrop .backdrop-image,
+  .visual-shell:not(.route-player) .artist-backdrop .backdrop-image {
+    animation: none !important;
+    filter: brightness(0.34) saturate(0.72) !important;
+    transform: none !important;
+  }
+
+  .visual-shell :is(
+    .home-focus-disc,
+    .home-focus-grooves,
+    .home-focus-cover,
+    .home-focus-tonearm,
+    .vinyl,
+    .backdrop-image
+  ) {
+    animation: none !important;
+  }
+
+  .visual-shell :is(button, a, input, select, textarea) {
+    touch-action: manipulation;
+  }
+}

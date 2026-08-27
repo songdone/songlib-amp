@@ -70,6 +70,9 @@ class PlexCompanion:
         self.plex = plex_client
         self._command_lock = threading.Lock()
         self._last_command = int(time.time() * 1000)
+        self._snapshot_lock = threading.Lock()
+        self._last_clients: dict[str, dict] = {}
+        self._last_clients_at = 0.0
 
     @staticmethod
     def controller_identifier() -> str:
@@ -134,18 +137,50 @@ class PlexCompanion:
             )
         return result
 
+    def _client_snapshot(self, max_stale_seconds: float = 45.0) -> tuple[dict[str, dict], bool]:
+        """Return a stable Companion snapshot across transient /clients gaps.
+
+        Plexamp can briefly disappear from ``/clients`` while its active music
+        session remains in ``/status/sessions``. Dropping the cached address on
+        every empty poll makes the UI flap between controllable and follow-only
+        and can disable controls between a tap and its command request.
+        """
+        now_value = time.monotonic()
+        try:
+            fresh = {item["id"]: item for item in self.clients()}
+        except Exception:
+            with self._snapshot_lock:
+                if self._last_clients and now_value - self._last_clients_at <= max_stale_seconds:
+                    return dict(self._last_clients), True
+            raise
+
+        with self._snapshot_lock:
+            if fresh:
+                self._last_clients = dict(fresh)
+                self._last_clients_at = now_value
+                return fresh, False
+            if self._last_clients and now_value - self._last_clients_at <= max_stale_seconds:
+                return dict(self._last_clients), True
+            self._last_clients = {}
+            self._last_clients_at = now_value
+        return {}, False
+
     def _clients_by_id(self) -> dict[str, dict]:
-        return {item["id"]: item for item in self.clients()}
+        clients, _ = self._client_snapshot()
+        return clients
 
     def sessions(self) -> dict:
         client_warning = ""
+        clients_stale = False
         try:
-            clients = self._clients_by_id()
+            clients, clients_stale = self._client_snapshot()
         except Exception:
             # Newer Plex clients may expose an active session without
             # registering a directly controllable Companion endpoint.
             clients = {}
             client_warning = "Plex 返回了活动会话，但没有提供可远程控制的播放器列表"
+        if clients_stale:
+            client_warning = "Plex 设备列表正在刷新，暂时沿用最近一次可用的本地控制地址"
         root = self.plex.xml("/status/sessions")
         sessions = []
         for item in root:
@@ -206,15 +241,18 @@ class PlexCompanion:
                 }
             )
         sessions.sort(key=lambda value: (not value["playing"], value["deviceName"].casefold()))
+        active_client_ids = {item["clientId"] for item in sessions if item["clientId"]}
         public_clients = [
             {key: value for key, value in item.items() if not key.startswith("_")}
             for item in clients.values()
+            if not clients_stale or item["id"] in active_client_ids
         ]
         return {
             "connected": True,
             "sessions": sessions,
             "clients": public_clients,
             "clientWarning": client_warning,
+            "clientsStale": clients_stale,
             "polledAt": int(time.time() * 1000),
         }
 

@@ -132,6 +132,26 @@ class PlexCompanionTests(unittest.TestCase):
         self.assertFalse(result["sessions"][0]["controllable"])
         self.assertTrue(result["clientWarning"])
 
+    @patch("app.plex_companion._private_address", side_effect=lambda host: host.startswith("192.168."))
+    def test_recent_client_snapshot_prevents_control_state_flapping(self, _private):
+        source = FakePlex()
+        companion = PlexCompanion(source)
+        first = companion.sessions()
+        self.assertTrue(first["sessions"][0]["controllable"])
+
+        original = source.xml
+
+        def xml(path):
+            if path == "/clients":
+                return ET.fromstring('<MediaContainer size="0" />')
+            return original(path)
+
+        source.xml = xml
+        second = companion.sessions()
+        self.assertTrue(second["sessions"][0]["controllable"])
+        self.assertTrue(second["clientsStale"])
+        self.assertTrue(second["clientWarning"])
+
 
 if __name__ == "__main__":
     unittest.main()

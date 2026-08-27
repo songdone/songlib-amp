@@ -31,5 +31,13 @@ export const airPlayStatePayload = ({ track, lyrics, player, lyricsOffsetMs = 0 
   sourceType: String(track?.sourceType || track?.source || ""),
   localFileId: String(track?.localFileId || (track?.sourceType === "local_file" ? track?.raw?.id || "" : "")),
   plexRatingKey: String(track?.plexRatingKey || track?.ratingKey || track?.raw?.ratingKey || ""),
+  coverKey: String(
+    track?.albumCoverUrl ||
+      track?.coverUrl ||
+      track?.thumbUrl ||
+      track?.raw?.coverUrl ||
+      track?.raw?.thumbUrl ||
+      "",
+  ),
   lyricsOffsetMs: Math.max(-5000, Math.min(5000, Math.round(Number(lyricsOffsetMs || 0)))),
 });

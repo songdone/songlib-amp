@@ -258,6 +258,7 @@ class AirPlayCastUpdateBody(BaseModel):
     sourceType: str = Field(default="", max_length=40)
     localFileId: str = Field(default="", max_length=300)
     plexRatingKey: str = Field(default="", max_length=300)
+    coverKey: str = Field(default="", max_length=2_000)
     lyricsOffsetMs: int = Field(default=0, ge=-5000, le=5000)
 
 
@@ -1736,7 +1737,7 @@ def _airplay_cover(body: AirPlayCastUpdateBody, user: dict) -> bytes | None:
             candidate = path.parent / name
             if candidate.is_file() and candidate.stat().st_size <= 12 * 1024 * 1024:
                 return candidate.read_bytes()
-    if body.sourceType == "plex_item" and body.plexRatingKey:
+    if body.sourceType in {"plex_item", "plex_session"} and body.plexRatingKey:
         info = plex.playback(body.plexRatingKey, "original")
         thumb = info.get("thumb") or ""
         if thumb:
@@ -1766,7 +1767,12 @@ def airplay_cast_status(session_id: str, user=Depends(auth.current_user)):
 @app.patch("/api/airplay/cast/{session_id}", dependencies=[Depends(auth.current_user)])
 def update_airplay_cast(session_id: str, body: AirPlayCastUpdateBody, user=Depends(auth.current_user)):
     try:
-        changed = cast_manager.track_changed(session_id, user["id"], body.trackId)
+        changed = cast_manager.visual_changed(
+            session_id,
+            user["id"],
+            body.trackId,
+            body.coverKey,
+        )
         cover = _airplay_cover(body, user) if changed else None
         return cast_manager.update(session_id, user["id"], body.model_dump(), cover)
     except KeyError as exc:

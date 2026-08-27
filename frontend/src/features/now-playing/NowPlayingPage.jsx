@@ -71,6 +71,8 @@ function deviceIcon(session) {
 
 function DeviceRow({ session, active, onSelect }) {
   const Icon = deviceIcon(session);
+  const idle = !session.title;
+  const stateLabel = idle ? "空闲" : session.controllable ? "可控制" : "仅跟随";
   return (
     <button
       type="button"
@@ -86,8 +88,8 @@ function DeviceRow({ session, active, onSelect }) {
             : `${session.product || "Plex"} · 当前没有播放内容`}
         </small>
       </span>
-      <span className={`now-device-state ${session.controllable ? "" : "follow"}`}>
-        {session.controllable ? "可控制" : "仅跟随"}
+      <span className={`now-device-state ${idle ? "idle" : session.controllable ? "" : "follow"}`}>
+        {stateLabel}
       </span>
       {active && <Check className="now-device-check" />}
     </button>
@@ -237,8 +239,15 @@ export default function NowPlayingPage({
   ]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setClockNow(Date.now()), 250);
-    return () => window.clearInterval(timer);
+    const tick = () => {
+      if (document.visibilityState === "visible") setClockNow(Date.now());
+    };
+    const timer = window.setInterval(tick, 1000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", tick);
+    };
   }, []);
 
   useEffect(() => {
@@ -267,7 +276,7 @@ export default function NowPlayingPage({
     setSelectedSource(source);
     localStorage.setItem("songlib-playback-source", source);
     setControlMessage("");
-    setTab(source === "local" ? "lyrics" : "devices");
+    setTab("lyrics");
   };
 
   const remoteCommand = useCallback(
@@ -423,7 +432,7 @@ export default function NowPlayingPage({
           )}
           <button className="now-device-shortcut" onClick={() => setTab("devices")}>
             <MonitorSpeaker />
-            <span><small>播放设备</small><strong>{usingRemote ? selectedSession.deviceName : "此浏览器"}</strong></span>
+            <span><small>播放来源</small><strong>{usingRemote ? selectedSession.deviceName : "此浏览器"}</strong></span>
             <ChevronRight />
           </button>
           <button className="icon-button" onClick={() => remote.refresh()} aria-label="刷新 Plex 播放设备">
@@ -450,7 +459,7 @@ export default function NowPlayingPage({
             </span>
           </div>
           <div className="now-track-copy">
-            <h2>{track?.title || "选择一个播放设备"}</h2>
+            <h2>{track?.title || "选择一个播放来源"}</h2>
             <p>{track ? `${track.artist || "未知歌手"} · ${track.album || "未知专辑"}` : "可以跟随其他设备上的 Plexamp，也可以从音乐库在此浏览器播放。"}</p>
             {track && (
               <div className="now-quality">
@@ -514,7 +523,7 @@ export default function NowPlayingPage({
             </div>
           ) : (
             <div className="now-empty-actions">
-              <button className="primary" onClick={() => setTab("devices")}><MonitorSpeaker />选择播放设备</button>
+              <button className="primary" onClick={() => setTab("devices")}><MonitorSpeaker />选择播放来源</button>
               <button className="secondary" onClick={() => navigate("library")}><Library />打开音乐库</button>
             </div>
           )}
@@ -522,8 +531,8 @@ export default function NowPlayingPage({
 
         <section className="now-detail-panel">
           <nav className="now-tabs" aria-label="正在播放详情">
-            <button className={tab === "lyrics" ? "active" : ""} onClick={() => setTab("lyrics")}><Mic2 />歌词与投屏</button>
-            <button className={tab === "devices" ? "active" : ""} onClick={() => setTab("devices")}><MonitorSpeaker />播放设备<span>{remote.sessions.length}</span></button>
+            <button className={tab === "lyrics" ? "active" : ""} onClick={() => setTab("lyrics")}><Mic2 />歌词投屏</button>
+            <button className={tab === "devices" ? "active" : ""} onClick={() => setTab("devices")}><MonitorSpeaker />播放来源<span>{remote.sessions.length}</span></button>
             <button className={tab === "queue" ? "active" : ""} onClick={() => setTab("queue")}><ListMusic />待播队列</button>
           </nav>
 
@@ -546,7 +555,7 @@ export default function NowPlayingPage({
                 </div>
               ) : (
                 <div className="now-centered">
-                  <Mic2 /><strong>{lyricsError ? "歌词获取失败" : track ? "这首歌还没有可用歌词" : "选择正在播放的设备"}</strong>
+                  <Mic2 /><strong>{lyricsError ? "歌词获取失败" : track ? "这首歌还没有可用歌词" : "选择正在播放的来源"}</strong>
                   <p>{lyricsError || (track ? "SongLib 会优先使用本地 LRC 和增强歌词。" : "选择设备后，这里会显示歌曲、实时进度和歌词。")}</p>
                 </div>
               )}
@@ -570,7 +579,7 @@ export default function NowPlayingPage({
                 <button className={`now-device-row ${selectedSource === "local" ? "active" : ""}`} onClick={() => chooseSource("local")}>
                   <span className="now-device-icon"><Server /></span>
                   <span className="now-device-copy"><strong>此浏览器</strong><small>SongLib Amp · {localPlayer.currentTrack ? `${localPlayer.isPlaying ? "正在播放" : "已暂停"}《${localPlayer.currentTrack.title}》` : "当前没有播放内容"}</small></span>
-                  <span className="now-device-state">可控制</span>{selectedSource === "local" && <Check className="now-device-check" />}
+                  <span className={`now-device-state ${localPlayer.currentTrack ? "" : "idle"}`}>{localPlayer.currentTrack ? "可控制" : "本机空闲"}</span>{selectedSource === "local" && <Check className="now-device-check" />}
                 </button>
                 {remote.sessions.map((session) => (
                   <DeviceRow key={session.id} session={session} active={usingRemote && selectedSession?.id === session.id} onSelect={() => chooseSource(`plex:${session.id}`)} />
@@ -580,7 +589,7 @@ export default function NowPlayingPage({
               {!remote.loading && !remote.sessions.length && !idleClients.length && (
                 <div className="now-centered compact"><MonitorSpeaker /><strong>没有发现 Plex 播放器</strong><p>请打开 Plexamp，并在 Plex 设置中允许远程控制。</p></div>
               )}
-              <div className="now-device-help"><CircleAlert /><span>Plex 播放器必须出现在服务器 `/clients` 列表并公布 playback 能力；否则 SongLib 只跟随歌曲和进度，不显示无效控制。</span></div>
+              <div className="now-device-help"><CircleAlert /><span>这里选择要跟随或控制的播放来源；Apple TV 请从顶部“投到电视”进入。标为“仅跟随”的 Plexamp 仍会同步歌曲、歌词和进度。</span></div>
             </div>
           )}
 

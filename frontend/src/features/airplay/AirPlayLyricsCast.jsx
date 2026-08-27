@@ -16,6 +16,8 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
   const syncingRef = useRef(false);
   const syncQueuedRef = useRef(false);
   const pickerTimerRef = useRef(null);
+  const routeGuardUntilRef = useRef(0);
+  const resumeTimerRef = useRef(null);
   const [supported, setSupported] = useState(false);
   const [session, setSession] = useState(null);
   const [engaged, setEngaged] = useState(false);
@@ -43,6 +45,7 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
     const onWirelessChange = () => {
       const active = Boolean(video.webkitCurrentPlaybackTargetIsWireless);
       wirelessRef.current = active;
+      routeGuardUntilRef.current = Date.now() + 1800;
       if (active && pickerTimerRef.current) {
         window.clearTimeout(pickerTimerRef.current);
         pickerTimerRef.current = null;
@@ -51,27 +54,52 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
       setEngaged(active);
       setMessage(
         active
-          ? "歌词视频正在投到电视；音频仍由所选播放设备输出，切歌无需重连"
+          ? "电视画面已连接；音频仍由所选播放设备输出，切歌无需重连"
           : "",
       );
-      if (!active) video.pause();
-      if (active && !playerRef.current?.isPlaying) video.pause();
-    };
-    const onPlay = () => {
-      if (!wirelessRef.current || playerRef.current?.isPlaying) return;
-      if (typeof playerRef.current?.play === "function") playerRef.current.play();
-      else playerRef.current?.toggle?.();
+      if (active) {
+        // Start only after WebKit has moved playback to the wireless target.
+        // Starting before the picker makes the iPad decode the same 1080p HLS
+        // stream locally while Apple TV also downloads it.
+        video.play().catch(() => {
+          setMessage("Apple TV 已选择，但视频传输未能启动，请重新打开设备选择器");
+        });
+      } else {
+        video.pause();
+      }
     };
     const onPause = () => {
-      if (!wirelessRef.current || !playerRef.current?.isPlaying) return;
-      if (typeof playerRef.current?.pause === "function") playerRef.current.pause();
-      else playerRef.current?.toggle?.();
+      if (
+        !wirelessRef.current ||
+        !video.webkitCurrentPlaybackTargetIsWireless
+      ) return;
+
+      // The lyrics HLS is a continuous transport. Pausing it freezes the live
+      // playlist and eventually disconnects Apple TV, so resume it immediately.
+      // A deliberate Siri Remote play/pause press is treated as a toggle for the
+      // selected audio player after the route-settling guard has elapsed.
+      if (Date.now() >= routeGuardUntilRef.current) {
+        const current = playerRef.current;
+        if (current?.isPlaying) {
+          if (typeof current.pause === "function") current.pause();
+          else current.toggle?.();
+        } else if (typeof current?.play === "function") current.play();
+        else current?.toggle?.();
+      }
+      if (resumeTimerRef.current) window.clearTimeout(resumeTimerRef.current);
+      resumeTimerRef.current = window.setTimeout(() => {
+        resumeTimerRef.current = null;
+        if (
+          wirelessRef.current &&
+          video.webkitCurrentPlaybackTargetIsWireless &&
+          video.paused
+        ) video.play().catch(() => {});
+      }, 80);
     };
     video.addEventListener(
       "webkitplaybacktargetavailabilitychanged",
       onAvailability,
     );
-    video.addEventListener("play", onPlay);
     video.addEventListener("pause", onPause);
     video.addEventListener(
       "webkitcurrentplaybacktargetiswirelesschanged",
@@ -79,11 +107,11 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
     );
     return () => {
       if (pickerTimerRef.current) window.clearTimeout(pickerTimerRef.current);
+      if (resumeTimerRef.current) window.clearTimeout(resumeTimerRef.current);
       video.removeEventListener(
         "webkitplaybacktargetavailabilitychanged",
         onAvailability,
       );
-      video.removeEventListener("play", onPlay);
       video.removeEventListener("pause", onPause);
       video.removeEventListener(
         "webkitcurrentplaybacktargetiswirelesschanged",
@@ -158,7 +186,19 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
     }
   }, []);
 
-  const metadataKey = `${airPlayTrackId(track)}|${String(lyrics || "").length}|${player.quality}|${player.isPlaying}|${player.duration}|${lyricsOffsetMs}`;
+  const payloadSnapshot = latestPayloadRef.current;
+  const metadataKey = [
+    airPlayTrackId(track),
+    payloadSnapshot?.title,
+    payloadSnapshot?.artist,
+    payloadSnapshot?.album,
+    payloadSnapshot?.coverKey,
+    String(lyrics || "").length,
+    player.quality,
+    player.isPlaying,
+    player.duration,
+    lyricsOffsetMs,
+  ].join("|");
   useEffect(() => {
     if (!session?.sessionId) return;
     sync();
@@ -173,13 +213,6 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
   useEffect(() => {
     window.localStorage.setItem("songlib-airplay-lyrics-offset", String(lyricsOffsetMs));
   }, [lyricsOffsetMs]);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!wireless || !video) return;
-    if (player.isPlaying && video.paused) video.play().catch(() => {});
-    if (!player.isPlaying && !video.paused) video.pause();
-  }, [wireless, player.isPlaying]);
 
   useEffect(() => {
     const mediaSession = navigator.mediaSession;
@@ -197,6 +230,18 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
       pause,
       previoustrack: () => playerRef.current?.previous?.(),
       nexttrack: () => playerRef.current?.next?.(),
+      seekto: (details) => {
+        if (Number.isFinite(details?.seekTime)) playerRef.current?.seek?.(details.seekTime);
+      },
+      seekbackward: (details) => {
+        const current = playerRef.current;
+        current?.seek?.(Math.max(0, Number(current.currentTime || 0) - Number(details?.seekOffset || 10)));
+      },
+      seekforward: (details) => {
+        const current = playerRef.current;
+        const duration = Math.max(0, Number(current?.duration || 0));
+        current?.seek?.(Math.min(duration || Infinity, Number(current?.currentTime || 0) + Number(details?.seekOffset || 10)));
+      },
     };
     for (const [action, handler] of Object.entries(actions)) {
       try { mediaSession.setActionHandler(action, handler); } catch {}
@@ -207,6 +252,38 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
       }
     };
   }, [engaged]);
+
+  useEffect(() => {
+    const mediaSession = navigator.mediaSession;
+    if (!engaged || !mediaSession) return;
+    try {
+      mediaSession.playbackState = player.isPlaying ? "playing" : "paused";
+      if (typeof window.MediaMetadata === "function") {
+        const artwork = payloadSnapshot?.coverKey
+          ? [{ src: new URL(payloadSnapshot.coverKey, window.location.href).href }]
+          : undefined;
+        mediaSession.metadata = new window.MediaMetadata({
+          title: payloadSnapshot?.title || "SongLib Amp",
+          artist: payloadSnapshot?.artist || "",
+          album: payloadSnapshot?.album || "",
+          artwork,
+        });
+      }
+    } catch {}
+  }, [engaged, metadataKey, player.isPlaying]);
+
+  useEffect(() => {
+    const mediaSession = navigator.mediaSession;
+    const duration = Math.max(0, Number(player.duration || 0));
+    if (!engaged || !mediaSession?.setPositionState || !duration) return;
+    try {
+      mediaSession.setPositionState({
+        duration,
+        playbackRate: 1,
+        position: Math.min(duration, Math.max(0, Number(player.currentTime || 0))),
+      });
+    } catch {}
+  }, [engaged, player.currentTime, player.duration]);
 
   const adjustLyricsOffset = useCallback((delta) => {
     setLyricsOffsetMs((current) =>
@@ -235,10 +312,10 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
     try {
       if (video.src !== ready.streamUrl) {
         video.src = ready.streamUrl;
-        video.load();
       }
       video.muted = true;
-      video.play().catch(() => {});
+      // Do not call play() here. It forces Safari to download and decode the
+      // hidden 1080p stream on the iPad before the AirPlay route is selected.
       video.webkitShowPlaybackTargetPicker();
       if (pickerTimerRef.current) window.clearTimeout(pickerTimerRef.current);
       pickerTimerRef.current = window.setTimeout(() => {

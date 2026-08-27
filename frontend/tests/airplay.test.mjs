@@ -6,6 +6,7 @@ import {
   airPlayTrackId,
   nativeAirPlayAvailable,
 } from "../src/lib/airplay.js";
+import { parseLrc } from "../src/lib/lyrics.js";
 
 test("native AirPlay support is capability-detected from the video element", () => {
   assert.equal(nativeAirPlayAvailable(null), false);
@@ -20,6 +21,7 @@ test("cast state uses stable source identity and the browser media clock", () =>
     title: "晴天",
     artist: "周杰伦",
     album: "叶惠美",
+    coverUrl: "/api/cover/42",
   };
   assert.equal(airPlayTrackId(track), "local_file:42");
   assert.deepEqual(
@@ -41,6 +43,7 @@ test("cast state uses stable source identity and the browser media clock", () =>
       sourceType: "local_file",
       localFileId: "42",
       plexRatingKey: "",
+      coverKey: "/api/cover/42",
       lyricsOffsetMs: 0,
     },
   );
@@ -48,4 +51,18 @@ test("cast state uses stable source identity and the browser media clock", () =>
     airPlayStatePayload({ track, player: {}, lyricsOffsetMs: 9000 }).lyricsOffsetMs,
     5000,
   );
+});
+
+test("enhanced LRC keeps word timing without exposing timing tags", () => {
+  const lines = parseLrc(
+    "[00:19.00]<00:19.00>逐<00:19.35>字<00:19.70>歌<00:20.05>词",
+  );
+  assert.equal(lines.length, 1);
+  assert.equal(lines[0].text, "逐字歌词");
+  assert.deepEqual(lines[0].words, [
+    { time: 19, text: "逐" },
+    { time: 19.35, text: "字" },
+    { time: 19.7, text: "歌" },
+    { time: 20.05, text: "词" },
+  ]);
 });

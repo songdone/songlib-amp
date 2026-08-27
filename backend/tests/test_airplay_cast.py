@@ -64,6 +64,7 @@ class AirPlayCastTests(unittest.TestCase):
                 "position": 0,
                 "duration": 180,
                 "playing": True,
+                "coverKey": "/cover/1",
                 "lyricsOffsetMs": 750,
             }
             manager.update(session.session_id, "listener-1", first)
@@ -73,8 +74,36 @@ class AirPlayCastTests(unittest.TestCase):
             self.assertEqual(status["encoderStarts"], 0)
             self.assertEqual(status["trackRevision"], 2)
             self.assertEqual(status["lyricsOffsetMs"], 750)
-            self.assertEqual(status["remoteControlMode"], "html-media-transport-bridge")
+            self.assertEqual(status["remoteControlMode"], "continuous-hls-media-session")
             self.assertIs(manager.create("listener-1", "https://music.example.test"), session)
+            manager.stop(session.session_id, "listener-1")
+
+    def test_late_cover_identity_invalidates_visual_without_track_switch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = AirPlayCastManager(Path(directory))
+            session = manager.create("listener-1", "https://music.example.test")
+            payload = {
+                "trackId": "plex_session:42",
+                "title": "歌曲",
+                "artist": "歌手",
+                "album": "专辑",
+                "position": 0,
+                "duration": 180,
+                "playing": True,
+                "coverKey": "",
+            }
+            manager.update(session.session_id, "listener-1", payload)
+            self.assertFalse(
+                manager.visual_changed(session.session_id, "listener-1", payload["trackId"], "")
+            )
+            self.assertTrue(
+                manager.visual_changed(
+                    session.session_id,
+                    "listener-1",
+                    payload["trackId"],
+                    "/api/plex/image?path=thumb",
+                )
+            )
             manager.stop(session.session_id, "listener-1")
 
 

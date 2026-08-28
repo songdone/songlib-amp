@@ -1,7 +1,7 @@
 # 飞牛 fnOS 应用包测试报告
 
 - 测试日期：2026-08-03
-- 应用版本：`1.0.2`
+- 应用版本：`1.0.3`
 - 应用包：`songlib-amp.fpk`
 - FPK SHA-256：`9309f538f2b0bfb32192b528d70f279c938c063e8e09d291822f0c6a74b09ebc`
 - 打包工具：飞牛官方 `fnpack 1.2.3`
@@ -15,7 +15,7 @@
 | 验证项 | 结果 | 记录 |
 | --- | --- | --- |
 | fnpack 格式校验与构建 | 通过 | Manifest、权限、资源、入口、向导和图标均通过官方打包检查 |
-| appcenter-cli 安装 | 通过 | 应用中心正确注册 `songlib-amp` / `SongLib Amp` / `1.0.2` |
+| appcenter-cli 安装 | 通过 | 应用中心正确注册 `songlib-amp` / `SongLib Amp` / `1.0.3` |
 | Docker 镜像拉取与启动 | 通过 | `666uos/songlib-amp:latest` 正常启动 |
 | 容器健康 | 通过 | Docker Health 为 `healthy`，`/api/health/ready` 返回 `ready` |
 | 应用中心停止与启动 | 通过 | 停止后端口关闭，重新启动后恢复 `healthy` |

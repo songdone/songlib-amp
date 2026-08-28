@@ -558,6 +558,13 @@
     padding: max(14px, env(safe-area-inset-top)) 18px 0 !important;
   }
 
+  .login-motion-logo,
+  .login-motion-card-group {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
   .login-motion-shell {
     display: block !important;
     min-height: 0 !important;

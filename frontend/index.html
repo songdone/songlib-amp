@@ -13,6 +13,48 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.json" />
     <title>SongLib Amp｜音屿</title>
+    <style>
+      html,
+      body {
+        min-height: 100%;
+        margin: 0;
+        background: #050505;
+      }
+
+      #root:empty {
+        position: fixed;
+        inset: 0;
+        background:
+          radial-gradient(circle at 50% 43%, rgba(208, 150, 48, 0.12), transparent 24%),
+          #050505;
+      }
+
+      #root:empty::before,
+      #root:empty::after {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        white-space: nowrap;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+      }
+
+      #root:empty::before {
+        content: "SongLib Amp  |  音屿";
+        top: 46%;
+        color: #f5d38a;
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+      }
+
+      #root:empty::after {
+        content: "正在连接本地音乐库";
+        top: calc(46% + 38px);
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 12px;
+        letter-spacing: 0.12em;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

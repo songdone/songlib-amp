@@ -326,6 +326,10 @@ test("compact login keeps the form in the first mobile viewport", () => {
   const compactRule = styles.slice(styles.lastIndexOf("@media (max-width: 900px)"));
   assert.match(compactRule, /\.login-motion-shell\s*\{[\s\S]*?min-height:\s*0\s*!important/);
   assert.match(compactRule, /\.login-motion-card-group\s*\{[\s\S]*?margin:\s*8px auto 0\s*!important/);
+  assert.match(compactRule, /\.login-motion-logo,[\s\S]*?opacity:\s*1\s*!important/);
+  const indexHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(indexHtml, /#root:empty::before/);
+  assert.match(indexHtml, /正在连接本地音乐库/);
 });
 
 test("ambient deck keeps every unique artist image and prioritizes larger libraries", () => {

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'songlib-amp-static-v22'
+const CACHE_NAME = 'songlib-amp-static-v23'
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',

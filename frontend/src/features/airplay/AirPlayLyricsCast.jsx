@@ -7,6 +7,7 @@ import {
   airPlayStatePayload,
   airPlayTrackId,
   nativeAirPlayAvailable,
+  primeAirPlayVideo,
 } from "../../lib/airplay";
 
 export function useAirPlayLyricsCast({ track, lyrics, player }) {
@@ -92,6 +93,7 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
       }
       setWireless(active);
       setEngaged(active);
+      video.classList.toggle("is-active", active);
       setMessage(
         active
           ? "Apple TV 歌词视频已连接；切歌无需重连"
@@ -367,15 +369,18 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
     setPickerOpen(true);
     setMessage("请选择同一网络中的 Apple TV");
     try {
-      if (video.currentSrc !== ready.streamUrl && video.src !== ready.streamUrl) {
-        video.src = ready.streamUrl;
-      }
-      video.muted = true;
-      // Ask Safari to identify the HLS resource and its video/audio tracks while
-      // the native picker is open. Playback still starts only after the route is
-      // wireless, so the iPad does not decode the 1080p stream in parallel.
-      video.preload = "metadata";
-      video.load();
+      // Safari may suspend media that is effectively hidden or outside the
+      // viewport. Make the real HLS video visibly present before asking WebKit
+      // for a route, so the picker is bound to a playing video session instead
+      // of falling back to the browser's audio/Now Playing session.
+      // This call remains inside the user's click gesture. It starts the HLS
+      // request before the native picker opens, allowing Safari to identify the
+      // source as H.264 video with a silent AAC compatibility track.
+      primeAirPlayVideo(video, ready.streamUrl).catch(() => {
+        if (!wirelessRef.current) {
+          setMessage("歌词视频流未能启动，请确认 Apple TV 可访问 NAS 直连地址");
+        }
+      });
       video.webkitShowPlaybackTargetPicker();
       if (pickerTimerRef.current) window.clearTimeout(pickerTimerRef.current);
       pickerTimerRef.current = window.setTimeout(() => {
@@ -384,12 +389,15 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
           video.removeAttribute("src");
           video.preload = "none";
           video.load();
+          video.classList.remove("is-active");
           setPickerOpen(false);
           setMessage("");
         }
         pickerTimerRef.current = null;
       }, 30000);
     } catch (error) {
+      video.pause();
+      video.classList.remove("is-active");
       setPickerOpen(false);
       setMessage(error.message || "Safari 无法打开 AirPlay 设备选择器");
     }

@@ -1,5 +1,12 @@
 # 变更记录
 
+## 1.0.1
+
+- 修复 Safari 原生 AirPlay 选择器退化为音频封面页：歌词 HLS 在用户点击时先开始播放，并在视口内显示真实视频预览，再交给 `webkitShowPlaybackTargetPicker()`。
+- 禁止 SongLib 本机音频元素参与远程播放，避免它抢占歌词视频的 AirPlay 路由。
+- PWA Service Worker 更新后自动接管并刷新页面，避免长期驻留的 iPad 主屏幕应用继续运行旧前端。
+- NAS 部署要求显式设置 Apple TV 可达的 `AIRPLAY_PUBLIC_BASE_URL`，不再依赖管理入口或反向代理传入的 Host。
+
 ## 1.0.0
 
 - 修复外部 Plexamp `viewOffset` 冻结造成的进度条周期回跳，改为单调预测、小漂移限幅修正和真实 seek 重锚；远端歌词改为优先读取 Plex 自带 LRC 字幕流。

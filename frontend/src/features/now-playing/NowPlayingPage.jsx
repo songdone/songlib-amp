@@ -615,12 +615,14 @@ export default function NowPlayingPage({
 
       <video
         ref={cast.videoRef}
-        className="airplay-cast-video"
+        className={`airplay-cast-video ${cast.pickerOpen || cast.wireless ? "is-active" : ""}`}
         x-webkit-airplay="allow"
         playsInline
         muted
+        autoPlay={cast.pickerOpen || cast.wireless}
         preload="none"
         disablePictureInPicture
+        aria-label="Apple TV 歌词视频预览"
         aria-hidden="true"
       />
       {lyricsFull && track && (

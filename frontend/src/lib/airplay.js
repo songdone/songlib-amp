@@ -4,6 +4,21 @@ export const nativeAirPlayAvailable = (video) =>
       typeof video.webkitShowPlaybackTargetPicker === "function",
   );
 
+export const primeAirPlayVideo = (video, streamUrl) => {
+  if (!video || !streamUrl) {
+    return Promise.reject(new Error("歌词视频地址尚未准备好"));
+  }
+  video.classList?.add("is-active");
+  if (video.currentSrc !== streamUrl && video.src !== streamUrl) {
+    video.src = streamUrl;
+  }
+  video.defaultMuted = true;
+  video.muted = true;
+  video.preload = "auto";
+  video.load();
+  return Promise.resolve(video.play());
+};
+
 export const airPlayLiveLatencyMs = (video) => {
   try {
     const ranges = video?.seekable;

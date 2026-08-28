@@ -6,6 +6,7 @@ import {
   airPlayStatePayload,
   airPlayTrackId,
   nativeAirPlayAvailable,
+  primeAirPlayVideo,
 } from "../src/lib/airplay.js";
 import { parseLrc } from "../src/lib/lyrics.js";
 
@@ -13,6 +14,26 @@ test("native AirPlay support is capability-detected from the video element", () 
   assert.equal(nativeAirPlayAvailable(null), false);
   assert.equal(nativeAirPlayAvailable({}), false);
   assert.equal(nativeAirPlayAvailable({ webkitShowPlaybackTargetPicker() {} }), true);
+});
+
+test("AirPlay video is visible, muted and already playing before the native picker", async () => {
+  const calls = [];
+  const video = {
+    classList: { add: (name) => calls.push(`class:${name}`) },
+    currentSrc: "",
+    src: "",
+    load: () => calls.push("load"),
+    play: () => {
+      calls.push("play");
+      return Promise.resolve();
+    },
+  };
+  await primeAirPlayVideo(video, "http://nas.local/cast/master.m3u8");
+  assert.equal(video.src, "http://nas.local/cast/master.m3u8");
+  assert.equal(video.defaultMuted, true);
+  assert.equal(video.muted, true);
+  assert.equal(video.preload, "auto");
+  assert.deepEqual(calls, ["class:is-active", "load", "play"]);
 });
 
 test("cast state uses stable source identity and the browser media clock", () => {

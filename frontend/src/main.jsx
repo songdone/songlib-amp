@@ -118,6 +118,12 @@ import NowPlayingPage from "./features/now-playing/NowPlayingPage";
 import { usePlexSessions } from "./features/now-playing/usePlexSessions";
 
 if (window.isSecureContext && "serviceWorker" in navigator) {
+  let refreshingForWorker = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshingForWorker) return;
+    refreshingForWorker = true;
+    window.location.reload();
+  });
   window.addEventListener("load", () => {
     navigator.serviceWorker
       .register("/sw.js", { updateViaCache: "none" })
@@ -3507,6 +3513,8 @@ function PlayerProvider({ children }) {
         ref={audioRef}
         className="global-audio"
         x-webkit-airplay="deny"
+        disableRemotePlayback
+        controlsList="noremoteplayback"
         onTimeUpdate={(e) => {
           const audio = e.currentTarget;
           const currentTime = audio.currentTime || 0;

@@ -24,7 +24,7 @@
 ./scripts/upgrade.sh
 ```
 
-流程为在线备份、从 Docker Hub 拉取固定版本镜像并重建容器。NAS 不编译源码。数据库迁移是只向前的；大版本升级前阅读 `CHANGELOG.md` 和迁移说明。
+流程为在线备份、从 Docker Hub 拉取 `latest` 并重建容器。NAS 不编译源码。数据库迁移是只向前的；升级前阅读 `CHANGELOG.md` 和迁移说明。
 
 ## 常见问题
 

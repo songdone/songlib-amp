@@ -67,11 +67,10 @@ iPhone/iPad Safari 可将普通 HTTP 的内网地址添加到主屏幕，并继�
 
 ## 多架构
 
-Docker Hub 的 `latest` 与固定标签同时发布 `linux/amd64`、`linux/arm64`。NAS 只需执行 `docker compose pull`，不需要本地编译。维护者跨架构发布时使用：
+Docker Hub 只维护 `latest`，同时发布 `linux/amd64`、`linux/arm64`。NAS 只需执行 `docker compose pull`，不需要本地编译。维护者跨架构发布时使用：
 
 ```bash
 docker buildx build --platform linux/amd64,linux/arm64 \
-  -t 666uos/songlib-amp:1.0.0-rc.6 \
   -t 666uos/songlib-amp:latest \
   --push .
 ```

@@ -12,6 +12,7 @@ os.environ.setdefault("PLEX_CONFIG", tempfile.mkdtemp(prefix="airplay-plex-"))
 from app.airplay_cast import (
     AirPlayCastManager,
     ClockDiscipline,
+    build_master_playlist,
     build_ffmpeg_command,
     parse_timed_lyrics,
 )
@@ -45,9 +46,21 @@ class AirPlayCastTests(unittest.TestCase):
         joined = " ".join(command)
         self.assertIn("libx264", command)
         self.assertIn("-hls_segment_type fmp4", joined)
-        self.assertIn("-hls_time 1", joined)
+        self.assertIn("-hls_time 0.5", joined)
+        self.assertIn("anullsrc=channel_layout=stereo:sample_rate=48000", command)
+        self.assertIn("-c:a aac", joined)
+        self.assertIn("-bf 0", joined)
+        self.assertIn("-flags +cgop", joined)
+        self.assertIn("-tune zerolatency", joined)
+        self.assertNotIn("-an", command)
         self.assertIn("delete_segments+independent_segments+program_date_time+temp_file", command)
         self.assertNotIn("-hls_playlist_type", command)
+
+    def test_master_playlist_advertises_video_and_aac(self):
+        playlist = build_master_playlist()
+        self.assertIn("#EXT-X-INDEPENDENT-SEGMENTS", playlist)
+        self.assertIn("avc1.640029,mp4a.40.2", playlist)
+        self.assertIn("RESOLUTION=1920x1080", playlist)
 
     def test_track_switch_keeps_session_url_and_does_not_start_new_encoder(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -66,6 +79,7 @@ class AirPlayCastTests(unittest.TestCase):
                 "playing": True,
                 "coverKey": "/cover/1",
                 "lyricsOffsetMs": 750,
+                "transportLatencyMs": 1350,
             }
             manager.update(session.session_id, "listener-1", first)
             second = {**first, "trackId": "local_file:2", "title": "第二首", "position": 0}
@@ -74,6 +88,8 @@ class AirPlayCastTests(unittest.TestCase):
             self.assertEqual(status["encoderStarts"], 0)
             self.assertEqual(status["trackRevision"], 2)
             self.assertEqual(status["lyricsOffsetMs"], 750)
+            self.assertEqual(status["transportLatencyMs"], 1350)
+            self.assertEqual(status["audioMode"], "dual-clock-silent-aac")
             self.assertEqual(status["remoteControlMode"], "continuous-hls-media-session")
             self.assertIs(manager.create("listener-1", "https://music.example.test"), session)
             manager.stop(session.session_id, "listener-1")

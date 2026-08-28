@@ -24,7 +24,7 @@ SongLib Amp 不内置第三方私钥，不绕过 DRM，也不附带受版权保�
 
 ## 快速部署
 
-要求：Docker 24+、Docker Compose 2.20+，推荐至少 2 GB 可用内存。[Docker Hub 镜像](https://hub.docker.com/r/666uos/songlib-amp/tags)的 `latest` 与固定版本标签同时提供 `linux/amd64`、`linux/arm64`，NAS 不需要编译源码。
+要求：Docker 24+、Docker Compose 2.20+，推荐至少 2 GB 可用内存。[Docker Hub 镜像](https://hub.docker.com/r/666uos/songlib-amp/tags)只维护 `latest`，并提供 `linux/amd64`、`linux/arm64`，NAS 不需要编译源码。
 
 ```bash
 mkdir -p songlib-amp/{data,downloads,music}
@@ -103,7 +103,7 @@ docker compose pull
 docker compose up -d
 ```
 
-`latest` 适合直接获取当前发布版；需要严格锁定或回滚时，把 Compose 的 `image` 改为 `666uos/songlib-amp:1.0.0-rc.6` 等固定标签，再次执行相同命令。仓库内的 [`docker-compose.yml`](docker-compose.yml) 与上面模板一致；只有参与开发时才使用 `docker-compose.build.yml` 在本机编译。
+项目只维护 `666uos/songlib-amp:latest` 这一条对外发布镜像，应用内版本按 `1.0.0`、`1.0.1` 顺序递增。仓库内的 [`docker-compose.yml`](docker-compose.yml) 与上面模板一致；只有参与开发时才使用 `docker-compose.build.yml` 在本机编译。
 
 默认模板已经包含非 root 用户和 `no-new-privileges`，Compose 会自动创建项目隔离网络。需要只读根文件系统和全部 Linux capability 裁剪时，再叠加可选文件：
 

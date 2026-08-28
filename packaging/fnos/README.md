@@ -31,4 +31,4 @@
 
 ## 架构与镜像
 
-Manifest 声明 `platform=all`，应用包本身不含平台相关二进制。固定镜像 `666uos/songlib-amp:1.0.0-rc.6` 同时提供 `linux/amd64` 与 `linux/arm64`。
+Manifest 声明 `platform=all`，应用包本身不含平台相关二进制。发布镜像统一使用 `666uos/songlib-amp:latest`。

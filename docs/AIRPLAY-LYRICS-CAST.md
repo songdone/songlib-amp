@@ -18,23 +18,23 @@
 投屏链路如下：
 
 1. 支持的 Safari 为当前账号预建一个轻量会话，但尚不启动编码器。
-2. 用户点击“投到电视”，Safari 在同一用户手势内启动隐藏视频并打开苹果原生选择器。
+2. 用户点击“投到电视”，Safari 在同一用户手势内让隐藏视频加载 HLS 元数据并打开苹果原生选择器；在路由真正变为无线目标前不播放视频、不注册伪音频 Now Playing 会话。
 3. Apple TV 请求带 256 位随机访问令牌的固定 `master.m3u8` URL；此时后端才启动一个持续的 FFmpeg 编码器。
-4. 后端以 1 秒 fMP4 HLS 分片维护短实时窗口。会话 URL、主播放列表 URL和媒体播放列表 URL 在整个投屏期间不变。
+4. 后端以 0.5 秒 fMP4 HLS 分片维护至少六个分片的短实时窗口，并提供静音 AAC-LC 立体声轨满足 Apple HLS 视频兼容要求。会话 URL、主播放列表 URL 和媒体播放列表 URL 在整个投屏期间不变。
 5. 浏览器每秒上报曲目、播放状态和当前媒体时间。切歌只替换渲染状态，不替换视频 URL、不重启编码器。
 6. 普通 LRC 按整行高亮；增强 LRC 中真实的 `<mm:ss.xx>` 字/词时间按字词高亮。无真实字时间时不会伪造逐字效果。
 
-TV 画面恢复早期 UnPlay 歌词原型的信息层级，并按 Apple TV 远距离观看重新收敛：左侧封面、曲名/歌手/专辑/音质，右侧五行大歌词与系统式白色进度条；背景继续由封面取色和模糊动态渐变生成，不复用 UnPlay 商标或设备发现逻辑。默认输出为 1920×1080/30 FPS；渲染器默认生成 5 FPS 的内容帧，FFmpeg 以 30 FPS 输出，减少 NAS 上不必要的 Python 绘制负担。
+TV 画面恢复早期 UnPlay 歌词原型的信息层级，并按 Apple TV 远距离观看重新收敛：左侧封面、曲名/歌手/专辑/音质，右侧五行大歌词与系统式白色进度条；背景继续由封面取色和模糊动态渐变生成，不复用 UnPlay 商标或设备发现逻辑。默认输出为 1920×1080/30 FPS；渲染器默认生成 4 FPS 的内容帧，FFmpeg 以无 B 帧、低缓冲的 30 FPS 输出，降低无 QSV NAS 的编码负担。
 
 歌词与投屏面板提供每次 `±0.25s` 的同步微调和一键归零，调整值保存在当前浏览器并随会话状态更新，不更换 HLS URL、不重启编码器。服务端的 `AIRPLAY_LYRIC_ADVANCE_MS` 是部署级基线，界面微调是在该基线上叠加的单个会话偏移。
 
 ### 音频模式审计
 
-当前 MVP 是 `dual-clock-video-only`：AirPlay HLS 只有歌词视频轨。选择 SongLib 本机来源时，原 `<audio>` 继续在 Safari 设备上播放；选择 Plex 活跃会话时，音频继续由目标 Plexamp/Plex 播放器输出。这样能先验证原生选择器、固定会话流、切歌不中断、外部会话跟随和歌词画面，但存在以下明确限制：
+当前 MVP 是 `dual-clock-silent-aac`：AirPlay HLS 包含歌词视频和一条静音 AAC-LC 兼容轨，不携带、转发或重复播放用户音乐。静音轨用于避免 Apple TV 把不完整的视频 presentation 降级成只有封面的音频 Now Playing 界面。选择 SongLib 本机来源时，原 `<audio x-webkit-airplay="deny">` 尝试继续在 Safari 设备上播放；选择 Plex 活跃会话时，音频继续由目标 Plexamp/Plex 播放器输出。这样能先验证原生选择器、固定会话流、切歌不中断、外部会话跟随和歌词画面，但存在以下明确限制：
 
 - 音频时钟和歌词视频时钟不是同一个媒体时钟，不能保证样本级同步。
 - iOS/macOS 在切换输出路由、锁屏、后台或网络抖动时可能改变音频行为，必须在真机验证。
-- SongLib 本机模式以浏览器音频的 `currentTime` 为权威观测值：小于硬同步阈值的误差按增益和最大步长温和修正，大误差直接重锚；`AIRPLAY_LYRIC_ADVANCE_MS` 只影响歌词命中，不篡改进度条时钟。
+- SongLib 本机模式以浏览器音频的 `currentTime` 为权威观测值：小于硬同步阈值的误差按增益和最大步长温和修正，大误差直接重锚；播放器可观测到直播边缘时会估算实际 HLS 缓冲延迟，无法观测时使用 `AIRPLAY_PIPELINE_ADVANCE_MS`，手动 `AIRPLAY_LYRIC_ADVANCE_MS` 只叠加到歌词命中。
 - 跟随 Plexamp 时，SongLib 以 Plex `/status/sessions` 的 `viewOffset` 建立连续的本地单调时钟。部分 Plexamp 版本会连续返回同一个冻结值，此时不会再每两秒重置进度；真实小漂移只做限幅修正，超过阈值的 seek 才重新锚定。这仍不是采样级同步。
 - 如果 Plexamp 音频本身正通过 AirPlay 输出，Safari 再发起歌词视频 AirPlay 是否会替换既有系统路由，必须在实际 iOS/tvOS 版本和目标设备上验证。
 - 下一阶段应把音频和歌词视频复用到同一个 HLS presentation timeline，并处理切歌时音频解码、无缝拼接、格式归一和响度；完成前不能把当前模式描述成严格音画同步。
@@ -43,7 +43,7 @@ TV 画面恢复早期 UnPlay 歌词原型的信息层级，并按 Apple TV 远�
 
 Apple 的 tvOS 交互要求标准媒体动作保持标准含义：Play/Pause 控制媒体，菜单使用方向焦点，选择需要单独按下，并提供即时焦点反馈。SongLib 当前按这些边界处理：
 
-- AirPlay 连接后，Safari 隐藏视频的播放/暂停事件会桥接到当前 SongLib 或可控制的 Plex Companion 会话；页面状态变化也同步回 HLS 媒体元素。浏览器同时注册标准 Media Session 的播放、暂停、上一首和下一首动作，只有 Safari/tvOS 实际下发的动作才执行。
+- AirPlay 连接后，Safari 隐藏视频的播放/暂停事件会桥接到当前 SongLib 或可控制的 Plex Companion 会话；同一次 Siri Remote 操作会去重，避免视频事件和 Media Session 事件造成双重切换。浏览器只注册标准动作处理器，不向系统发布第二套音频封面、播放状态或进度。
 - 这是渐进增强，不把未经真机确认的 `nexttrack`/`previoustrack` 事件描述为所有系统版本都支持。Play/Pause 是 Apple TV 的标准媒体动作；上一首/下一首仍须在目标 Safari/tvOS 版本验收。
 - 普通 AirPlay HLS 是视频 presentation，不是运行在 Apple TV 上的可交互应用。歌词、按钮或歌单即使被画进视频帧，也不能获得 tvOS 焦点，因此不能用 Siri Remote 在该视频中浏览 Plex 音乐库、选择歌单或点击歌词偏移按钮。
 - 若要在电视上提供库/歌单焦点导航、系统播放器内容标签和完整上一首/下一首命令，必须增加原生 tvOS 客户端，使用 tvOS Focus Engine、`AVPlayerViewController`/`MPRemoteCommandCenter` 和 SongLib 的受权 API；不能借 HLS 或 WebKit 伪造这一层交互。
@@ -53,7 +53,7 @@ Apple 的 tvOS 交互要求标准媒体动作保持标准含义：Play/Pause 控
 ## 分阶段计划
 
 - 阶段 1（已完成）：公开 WebKit API 能力检测、原生选择器入口、固定授权会话 URL、平台降级说明。
-- 阶段 2（已完成原型）：持续 FFmpeg、1 秒 fMP4 HLS、普通/增强 LRC、封面/元数据/进度动态渲染、温和漂移修正。
+- 阶段 2（已完成原型）：持续 FFmpeg、0.5 秒 fMP4 HLS、静音 AAC 兼容轨、普通/增强 LRC、封面/元数据/进度动态渲染、温和漂移修正。
 - 阶段 3（已完成自动验证）：固定 URL 与切歌不启动新编码器的单测、歌词解析和时钟测试、前端能力检测测试、完整回归构建，并以真实 FFmpeg 生成 fMP4 HLS 做切歌 PID/URL 稳定性烟雾测试。
 - 阶段 4（待真实设备）：Safari/PWA、Apple TV 可达性、证书信任、10/30 分钟漂移、连续切歌和断网恢复验收。
 - 阶段 5（后续）：音频与视频复用同一媒体时钟；在真实设备确认基础 HLS 稳定后再评估带 partial segments 的完整 LL-HLS，不在当前版本虚假标称 LL-HLS。
@@ -67,10 +67,11 @@ Apple 的 tvOS 交互要求标准媒体动作保持标准含义：Play/Pause 控
 | `AIRPLAY_ENCODER` | `auto` | `auto`、`qsv` 或 `software`；QSV 初始化失败会自动降级软件编码。 |
 | `AIRPLAY_WIDTH` / `AIRPLAY_HEIGHT` | `1920` / `1080` | 必须为 16:9；4K 使用 `3840` / `2160`。 |
 | `AIRPLAY_FPS` | `30` | 支持 24–30，推荐保持 30。 |
-| `AIRPLAY_RENDER_FPS` | `5` | Python 动态画面生成频率，逐字歌词可提高到 10，代价是更多 CPU/管道流量。 |
-| `AIRPLAY_SEGMENT_SECONDS` | `1` | 1–3 秒；稳定低延迟建议 1。 |
-| `AIRPLAY_VIDEO_BITRATE` | 自动 | 1080p 默认 `5M`，4K 默认 `14M`。 |
+| `AIRPLAY_RENDER_FPS` | `4` | Python 动态画面生成频率，逐字歌词可提高到 8–10，代价是更多 CPU/管道流量。 |
+| `AIRPLAY_SEGMENT_SECONDS` | `0.5` | 0.25–3 秒；默认 0.5 秒以缩短直播缓冲。 |
+| `AIRPLAY_VIDEO_BITRATE` | 自动 | 1080p 默认 `3M`，4K 默认 `12M`。 |
 | `AIRPLAY_LYRIC_ADVANCE_MS` | `250` | 歌词显示提前量，可设为负数。 |
+| `AIRPLAY_PIPELINE_ADVANCE_MS` | `1750` | 无法从 Safari 读取直播边缘时使用的默认传输延迟补偿。 |
 | `AIRPLAY_DRIFT_GAIN` | `0.35` | 每次时钟观测使用的温和修正比例。 |
 | `AIRPLAY_DRIFT_STEP_MS` | `250` | 单次温和修正的最大步长。 |
 | `AIRPLAY_HARD_SYNC_MS` | `2000` | 超过该误差时直接重新锚定。 |

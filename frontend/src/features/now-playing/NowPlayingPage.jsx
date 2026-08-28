@@ -616,11 +616,11 @@ export default function NowPlayingPage({
       <video
         ref={cast.videoRef}
         className="airplay-cast-video"
-        src={cast.streamUrl || undefined}
         x-webkit-airplay="allow"
         playsInline
         muted
         preload="none"
+        disablePictureInPicture
         aria-hidden="true"
       />
       {lyricsFull && track && (

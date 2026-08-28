@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import mimetypes
 import json
 import os
@@ -260,6 +261,7 @@ class AirPlayCastUpdateBody(BaseModel):
     plexRatingKey: str = Field(default="", max_length=300)
     coverKey: str = Field(default="", max_length=2_000)
     lyricsOffsetMs: int = Field(default=0, ge=-5000, le=5000)
+    transportLatencyMs: int = Field(default=0, ge=0, le=5000)
 
 
 @asynccontextmanager
@@ -1799,21 +1801,31 @@ def _airplay_stream_headers(*, playlist: bool) -> dict[str, str]:
     }
 
 
+def _airplay_playlist_response(content: str | bytes, request: Request) -> Response:
+    payload = content.encode("utf-8") if isinstance(content, str) else content
+    headers = _airplay_stream_headers(playlist=True)
+    headers["Vary"] = "Accept-Encoding"
+    if "gzip" in request.headers.get("accept-encoding", "").lower():
+        payload = gzip.compress(payload, compresslevel=4)
+        headers["Content-Encoding"] = "gzip"
+    return Response(
+        content=payload,
+        media_type="application/vnd.apple.mpegurl",
+        headers=headers,
+    )
+
+
 @app.get("/api/airplay/stream/{token}/master.m3u8")
-def airplay_master_playlist(token: str):
+def airplay_master_playlist(token: str, request: Request):
     try:
         content = cast_manager.master_playlist(token)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return Response(
-        content=content,
-        media_type="application/vnd.apple.mpegurl",
-        headers=_airplay_stream_headers(playlist=True),
-    )
+    return _airplay_playlist_response(content, request)
 
 
 @app.get("/api/airplay/stream/{token}/{filename}")
-def airplay_stream_file(token: str, filename: str):
+def airplay_stream_file(token: str, filename: str, request: Request):
     try:
         target = cast_manager.stream_file(token, filename)
     except KeyError as exc:
@@ -1825,6 +1837,8 @@ def airplay_stream_file(token: str, filename: str):
         ".mp4": "video/mp4",
         ".m4s": "video/iso.segment",
     }.get(target.suffix.lower(), "application/octet-stream")
+    if target.suffix.lower() == ".m3u8":
+        return _airplay_playlist_response(target.read_bytes(), request)
     return FileResponse(
         target,
         media_type=media_type,

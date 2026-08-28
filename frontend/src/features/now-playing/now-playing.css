@@ -1089,7 +1089,7 @@
   }
 }
 
-@media (max-width: 780px) {
+@media (max-width: 900px) {
   .route-player .main {
     min-height: 100dvh;
   }

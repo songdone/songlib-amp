@@ -1,6 +1,6 @@
 services:
   songlib:
-    image: 666uos/songlib-amp:1.0.0-rc.6
+    image: 666uos/songlib-amp:latest
     container_name: songlib-amp-fnos
     restart: unless-stopped
     user: "${TRIM_UID}:${TRIM_GID}"
@@ -14,7 +14,10 @@ services:
       AIRPLAY_WIDTH: "1920"
       AIRPLAY_HEIGHT: "1080"
       AIRPLAY_FPS: "30"
+      AIRPLAY_RENDER_FPS: "4"
+      AIRPLAY_SEGMENT_SECONDS: "0.5"
       AIRPLAY_LYRIC_ADVANCE_MS: "250"
+      AIRPLAY_PIPELINE_ADVANCE_MS: "1750"
     ports:
       - "${wizard_port}:8080"
     volumes:

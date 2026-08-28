@@ -4,6 +4,20 @@ export const nativeAirPlayAvailable = (video) =>
       typeof video.webkitShowPlaybackTargetPicker === "function",
   );
 
+export const airPlayLiveLatencyMs = (video) => {
+  try {
+    const ranges = video?.seekable;
+    if (!ranges?.length) return 0;
+    const liveEdge = Number(ranges.end(ranges.length - 1));
+    const current = Number(video.currentTime);
+    if (!Number.isFinite(liveEdge) || !Number.isFinite(current)) return 0;
+    const latency = Math.max(0, Math.min(5, liveEdge - current));
+    return Math.round((latency * 1000) / 50) * 50;
+  } catch {
+    return 0;
+  }
+};
+
 export const airPlayTrackId = (track) => {
   if (!track) return "";
   const source = track.sourceType || track.source || "unknown";
@@ -18,7 +32,13 @@ export const airPlayTrackId = (track) => {
   return `${source}:${id}`;
 };
 
-export const airPlayStatePayload = ({ track, lyrics, player, lyricsOffsetMs = 0 }) => ({
+export const airPlayStatePayload = ({
+  track,
+  lyrics,
+  player,
+  lyricsOffsetMs = 0,
+  transportLatencyMs = 0,
+}) => ({
   trackId: airPlayTrackId(track),
   title: String(track?.title || "未命名歌曲"),
   artist: String(track?.artist || "未知歌手"),
@@ -40,4 +60,8 @@ export const airPlayStatePayload = ({ track, lyrics, player, lyricsOffsetMs = 0 
       "",
   ),
   lyricsOffsetMs: Math.max(-5000, Math.min(5000, Math.round(Number(lyricsOffsetMs || 0)))),
+  transportLatencyMs: Math.max(
+    0,
+    Math.min(5000, Math.round(Number(transportLatencyMs || 0))),
+  ),
 });

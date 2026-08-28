@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  airPlayLiveLatencyMs,
   airPlayStatePayload,
   airPlayTrackId,
   nativeAirPlayAvailable,
@@ -45,12 +46,31 @@ test("cast state uses stable source identity and the browser media clock", () =>
       plexRatingKey: "",
       coverKey: "/api/cover/42",
       lyricsOffsetMs: 0,
+      transportLatencyMs: 0,
     },
   );
   assert.equal(
     airPlayStatePayload({ track, player: {}, lyricsOffsetMs: 9000 }).lyricsOffsetMs,
     5000,
   );
+});
+
+test("cast latency follows the AirPlay live edge and stays bounded", () => {
+  assert.equal(
+    airPlayLiveLatencyMs({
+      currentTime: 10,
+      seekable: { length: 1, end: () => 12.42 },
+    }),
+    2400,
+  );
+  assert.equal(
+    airPlayLiveLatencyMs({
+      currentTime: 0,
+      seekable: { length: 1, end: () => 20 },
+    }),
+    5000,
+  );
+  assert.equal(airPlayLiveLatencyMs({ seekable: { length: 0 } }), 0);
 });
 
 test("enhanced LRC keeps word timing without exposing timing tags", () => {

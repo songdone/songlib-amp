@@ -1,7 +1,7 @@
 # 飞牛 fnOS 应用包测试报告
 
 - 测试日期：2026-08-03
-- 应用版本：`1.0.0-rc.6`
+- 应用版本：`1.0.0`
 - 应用包：`songlib-amp.fpk`
 - FPK SHA-256：`9309f538f2b0bfb32192b528d70f279c938c063e8e09d291822f0c6a74b09ebc`
 - 打包工具：飞牛官方 `fnpack 1.2.3`
@@ -15,8 +15,8 @@
 | 验证项 | 结果 | 记录 |
 | --- | --- | --- |
 | fnpack 格式校验与构建 | 通过 | Manifest、权限、资源、入口、向导和图标均通过官方打包检查 |
-| appcenter-cli 安装 | 通过 | 应用中心正确注册 `songlib-amp` / `SongLib Amp` / `1.0.0-rc.6` |
-| Docker 镜像拉取与启动 | 通过 | `666uos/songlib-amp:1.0.0-rc.6` 正常启动 |
+| appcenter-cli 安装 | 通过 | 应用中心正确注册 `songlib-amp` / `SongLib Amp` / `1.0.0` |
+| Docker 镜像拉取与启动 | 通过 | `666uos/songlib-amp:latest` 正常启动 |
 | 容器健康 | 通过 | Docker Health 为 `healthy`，`/api/health/ready` 返回 `ready` |
 | 应用中心停止与启动 | 通过 | 停止后端口关闭，重新启动后恢复 `healthy` |
 | 私有数据持久化 | 通过 | 停止与重新启动后，私有数据卷中的测试标记仍存在；验证后已删除标记 |
@@ -26,19 +26,12 @@
 | 现有服务共存 | 通过 | 新应用使用 32782；原有 SongLib 实例和飞牛音乐 5666 全程可用 |
 | amd64 镜像 | 通过 | 镜像清单包含 `linux/amd64` |
 | arm64 镜像 | 通过（清单） | 镜像清单包含 `linux/arm64`；仍建议应用中心审核阶段补充 ARM 真机安装 |
-| 后端测试 | 通过 | 34 项单元/集成测试全部通过 |
-| 前端测试与生产构建 | 通过 | 14 项关键交互测试全部通过，Vite 生产构建成功 |
+| 后端测试 | 通过 | 54 项单元/集成测试全部通过 |
+| 前端测试与生产构建 | 通过 | 25 项关键交互测试全部通过，Vite 生产构建成功 |
 
 ## 镜像清单
 
-固定版本与 `latest` 指向相同 OCI 索引：
-
-`sha256:1b25f687fffc9af8eeb17aec43862db7f2d107858ac44d63bff5fc4b51272565`
-
-平台镜像：
-
-- `linux/amd64`：`sha256:9d2c113ca3ec489dcd8d08522454a27067b4436563e276ec80832a08ddfd1aee`
-- `linux/arm64`：`sha256:6c4c12d41ef48146b25e31ac2f5fb81e2d7560cf77b2ce0280879556beba1ad0`
+只发布 `latest`；发布后以 `docker buildx imagetools inspect 666uos/songlib-amp:latest` 记录当次 OCI 索引和平台摘要，避免文档保留已经失效的旧摘要。
 
 ## 实机安装位置
 

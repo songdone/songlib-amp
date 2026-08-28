@@ -131,10 +131,37 @@ def qsv_available(ffmpeg_binary: str, dri_root: Path = Path("/dev/dri")) -> bool
     return result.returncode == 0 and "h264_qsv" in result.stdout
 
 
+def _bitrate_bits(value: str) -> int:
+    match = re.fullmatch(r"\s*(\d+(?:\.\d+)?)\s*([kKmM]?)\s*", str(value or ""))
+    if not match:
+        return 3_000_000
+    amount = float(match.group(1))
+    multiplier = {"": 1, "k": 1_000, "m": 1_000_000}[match.group(2).lower()]
+    return max(1, int(amount * multiplier))
+
+
+def build_master_playlist() -> str:
+    video_bitrate = settings.airplay_video_bitrate or (
+        "12M" if settings.airplay_width >= 3840 else "3M"
+    )
+    bandwidth = int((_bitrate_bits(video_bitrate) + 64_000) * 1.12)
+    codec = "avc1.640033" if settings.airplay_width >= 3840 else "avc1.640029"
+    return (
+        "#EXTM3U\n"
+        "#EXT-X-VERSION:7\n"
+        "#EXT-X-INDEPENDENT-SEGMENTS\n"
+        f'#EXT-X-STREAM-INF:BANDWIDTH={bandwidth},AVERAGE-BANDWIDTH={bandwidth},'
+        f'RESOLUTION={settings.airplay_width}x{settings.airplay_height},FRAME-RATE={settings.airplay_fps:.3f},'
+        f'CODECS="{codec},mp4a.40.2"\n'
+        "media.m3u8\n"
+    )
+
+
 def build_ffmpeg_command(output_dir: Path, *, use_qsv: bool) -> list[str]:
     width, height = settings.airplay_width, settings.airplay_height
     fps, segment = settings.airplay_fps, settings.airplay_segment_seconds
-    bitrate = settings.airplay_video_bitrate or ("14M" if width >= 3840 else "5M")
+    bitrate = settings.airplay_video_bitrate or ("12M" if width >= 3840 else "3M")
+    segment_text = f"{segment:g}"
     command = [
         settings.ffmpeg_binary,
         "-hide_banner",
@@ -156,7 +183,14 @@ def build_ffmpeg_command(output_dir: Path, *, use_qsv: bool) -> list[str]:
         str(settings.airplay_render_fps),
         "-i",
         "pipe:0",
-        "-an",
+        "-f",
+        "lavfi",
+        "-i",
+        "anullsrc=channel_layout=stereo:sample_rate=48000",
+        "-map",
+        "0:v:0",
+        "-map",
+        "1:a:0",
         "-vf",
         f"fps={fps},format=nv12" if use_qsv else f"fps={fps},format=yuv420p",
     ]
@@ -170,22 +204,36 @@ def build_ffmpeg_command(output_dir: Path, *, use_qsv: bool) -> list[str]:
             "high",
             "-level:v",
             "5.1" if width >= 3840 else "4.1",
+            "-bf",
+            "0",
         ]
     else:
         command += [
             "-c:v",
             "libx264",
             "-preset",
-            "veryfast",
+            "superfast",
             "-tune",
-            "stillimage",
+            "zerolatency",
             "-profile:v",
             "high",
             "-level:v",
             "5.1" if width >= 3840 else "4.1",
+            "-bf",
+            "0",
+            "-refs",
+            "1",
         ]
-    gop = fps * segment
+    gop = max(1, round(fps * segment))
     command += [
+        "-c:a",
+        "aac",
+        "-b:a",
+        "64k",
+        "-ar",
+        "48000",
+        "-ac",
+        "2",
         "-b:v",
         bitrate,
         "-maxrate",
@@ -198,16 +246,18 @@ def build_ffmpeg_command(output_dir: Path, *, use_qsv: bool) -> list[str]:
         str(gop),
         "-sc_threshold",
         "0",
+        "-flags",
+        "+cgop",
         "-force_key_frames",
-        f"expr:gte(t,n_forced*{segment})",
+        f"expr:gte(t,n_forced*{segment_text})",
         "-f",
         "hls",
         "-hls_time",
-        str(segment),
+        segment_text,
         "-hls_list_size",
-        "8",
+        "12",
         "-hls_delete_threshold",
-        "4",
+        "6",
         "-hls_segment_type",
         "fmp4",
         "-hls_fmp4_init_filename",
@@ -296,6 +346,7 @@ class CastSession:
         "playing": False,
         "coverKey": "",
         "lyricsOffsetMs": 0,
+        "transportLatencyMs": 0,
     })
     lyrics: list[LyricLine] = field(default_factory=list)
     clock: ClockDiscipline = field(default_factory=lambda: ClockDiscipline(
@@ -390,6 +441,10 @@ class AirPlayCastManager:
                 "playing": bool(payload.get("playing")),
                 "coverKey": cover_key,
                 "lyricsOffsetMs": max(-5000, min(5000, int(payload.get("lyricsOffsetMs") or 0))),
+                "transportLatencyMs": max(
+                    0,
+                    min(5000, int(payload.get("transportLatencyMs") or 0)),
+                ),
             }
             lyrics_changed = next_state["lyrics"] != session.state.get("lyrics")
             metadata_changed = any(next_state[key] != session.state.get(key) for key in ("trackId", "title", "artist", "album", "quality"))
@@ -428,8 +483,10 @@ class AirPlayCastManager:
                 "trackRevision": session.track_revision,
                 "trackId": session.state.get("trackId") or "",
                 "clockErrorMs": round(session.clock.last_error * 1000),
-                "audioMode": "dual-clock-video-only",
+                "audioMode": "dual-clock-silent-aac",
                 "lyricsOffsetMs": int(session.state.get("lyricsOffsetMs") or 0),
+                "transportLatencyMs": int(session.state.get("transportLatencyMs") or 0)
+                or settings.airplay_pipeline_advance_ms,
                 "remoteControlMode": "continuous-hls-media-session",
                 "video": {
                     "width": settings.airplay_width,
@@ -496,16 +553,7 @@ class AirPlayCastManager:
 
     def master_playlist(self, token: str) -> str:
         self.ensure_started(token)
-        bandwidth = 15_000_000 if settings.airplay_width >= 3840 else 5_500_000
-        codec = "avc1.640033" if settings.airplay_width >= 3840 else "avc1.640029"
-        return (
-            "#EXTM3U\n"
-            "#EXT-X-VERSION:7\n"
-            f'#EXT-X-STREAM-INF:BANDWIDTH={bandwidth},AVERAGE-BANDWIDTH={bandwidth},'
-            f'RESOLUTION={settings.airplay_width}x{settings.airplay_height},FRAME-RATE={settings.airplay_fps:.3f},'
-            f'CODECS="{codec}"\n'
-            "media.m3u8\n"
-        )
+        return build_master_playlist()
 
     def _encoder_worker(self, session: CastSession) -> None:
         wants_qsv = settings.airplay_encoder in {"auto", "qsv"}
@@ -609,10 +657,14 @@ class AirPlayCastManager:
             lines = list(session.lyrics)
             media_time = session.clock.position()
             duration = float(state.get("duration") or 0)
-        image = self._animated_ambient(image, media_time)
+        transport_latency_ms = int(state.get("transportLatencyMs") or 0)
+        if not transport_latency_ms:
+            transport_latency_ms = settings.airplay_pipeline_advance_ms
+        display_time = media_time + transport_latency_ms / 1000
+        image = self._animated_ambient(image, display_time)
         draw = ImageDraw.Draw(image, "RGBA")
         width, height = image.size
-        lyric_time = media_time + (
+        lyric_time = display_time + (
             settings.airplay_lyric_advance_ms
             + int(state.get("lyricsOffsetMs") or 0)
         ) / 1000
@@ -657,10 +709,10 @@ class AirPlayCastManager:
         left, right = int(width * 0.435), int(width * 0.93)
         bar_y = int(height * 0.91)
         draw.rounded_rectangle((left, bar_y, right, bar_y + max(5, height // 180)), radius=8, fill=(255, 255, 255, 42))
-        ratio = min(1.0, media_time / duration) if duration else 0.0
+        ratio = min(1.0, display_time / duration) if duration else 0.0
         draw.rounded_rectangle((left, bar_y, left + int((right - left) * ratio), bar_y + max(5, height // 180)), radius=8, fill=(255, 255, 255, 230))
         small = _font(max(18, height // 48))
-        draw.text((left, bar_y + 18), self._format_time(media_time), font=small, fill=(255, 255, 255, 145))
+        draw.text((left, bar_y + 18), self._format_time(display_time), font=small, fill=(255, 255, 255, 145))
         remaining = self._format_time(duration)
         draw.text((right - draw.textlength(remaining, font=small), bar_y + 18), remaining, font=small, fill=(255, 255, 255, 145))
         if not state.get("playing"):

@@ -242,7 +242,7 @@ class CommercialFoundationTests(unittest.TestCase):
             )
             self.assertEqual(cast.status_code, 200)
             cast_payload = cast.json()
-            self.assertEqual(cast_payload["audioMode"], "dual-clock-video-only")
+            self.assertEqual(cast_payload["audioMode"], "dual-clock-silent-aac")
             updated = client.patch(
                 f"/api/airplay/cast/{cast_payload['sessionId']}",
                 json={

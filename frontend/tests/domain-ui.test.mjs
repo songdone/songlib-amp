@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -315,6 +316,16 @@ test("PWA install guidance never exposes a no-op install action", () => {
     }).actionLabel,
     "安装应用",
   );
+});
+
+test("compact login keeps the form in the first mobile viewport", () => {
+  const styles = readFileSync(
+    new URL("../src/features/shell/shell-refactor.css", import.meta.url),
+    "utf8",
+  );
+  const compactRule = styles.slice(styles.lastIndexOf("@media (max-width: 900px)"));
+  assert.match(compactRule, /\.login-motion-shell\s*\{[\s\S]*?min-height:\s*0\s*!important/);
+  assert.match(compactRule, /\.login-motion-card-group\s*\{[\s\S]*?margin:\s*8px auto 0\s*!important/);
 });
 
 test("ambient deck keeps every unique artist image and prioritizes larger libraries", () => {

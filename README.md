@@ -96,6 +96,14 @@ iPhone/iPad Safari 可以把当前局域网页面直接“添加到主屏幕”�
 - [应用包构建说明](packaging/fnos/README.md)
 - 应用包源码：`packaging/fnos/songlib-amp`
 
+### 飞牛应用中心安装包
+
+仓库同时提供飞牛 fnOS 原生 `.fpk` 应用包工程。安装后由飞牛应用中心管理容器，不需要手写 Compose；系统会自动创建相互独立的 `songlib-amp/music` 与 `songlib-amp/downloads` 共享目录，首次安装只需确认访问端口。
+
+- [飞牛应用中心发布与安装说明](docs/FNOS-APP-STORE.md)
+- [应用包构建说明](packaging/fnos/README.md)
+- 应用包源码：`packaging/fnos/songlib-amp`
+
 升级时先备份 `data` 目录，再执行：
 
 ```bash

@@ -360,11 +360,11 @@ test("touch startup and the global shell avoid continuous media work", () => {
 test("startup cannot remain on the static connecting screen forever", () => {
   const index = readFileSync(new URL("../index.html", import.meta.url), "utf8");
   const startup = readFileSync(
-    new URL("../public/startup-v104.js", import.meta.url),
+    new URL("../public/startup-v105.js", import.meta.url),
     "utf8",
   );
   const source = readFileSync(new URL("../src/main.jsx", import.meta.url), "utf8");
-  assert.match(index, /startup-v104\.js/);
+  assert.match(index, /startup-v105\.js/);
   assert.match(startup, /window\.setTimeout\(recoverOnce, 12000\)/);
   assert.match(startup, /清理本应用缓存并重新连接/);
   assert.match(startup, /registration\.unregister\(\)/);
@@ -373,6 +373,13 @@ test("startup cannot remain on the static connecting screen forever", () => {
   const apiSource = readFileSync(new URL("../src/lib/api.js", import.meta.url), "utf8");
   assert.match(apiSource, /timeoutMs = 20000/);
   assert.match(source, /api\("\/api\/auth\/status", \{ timeoutMs: 8000 \}\)/);
+});
+
+test("logged-in player chrome defines the time formatter it renders", () => {
+  const source = readFileSync(new URL("../src/main.jsx", import.meta.url), "utf8");
+  assert.match(source, /const formatTime = \(value\) => \{/);
+  assert.match(source, /function SidebarMiniPlayer[\s\S]*?formatTime\(player\.currentTime\)/);
+  assert.match(source, /function MiniPlayer[\s\S]*?formatTime\(player\.duration\)/);
 });
 
 test("ambient deck keeps every unique artist image and prioritizes larger libraries", () => {

@@ -181,6 +181,10 @@ const managementNav = [
 
 const fmt = (value) => new Intl.NumberFormat("zh-CN").format(value || 0);
 const pct = (value, total) => (total ? Math.round((value / total) * 100) : 0);
+const formatTime = (value) => {
+  const seconds = Math.max(0, Math.floor(Number(value || 0)));
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+};
 const durationLabel = (value) => {
   const seconds = Math.floor(Number(value || 0) / 1000);
   if (!seconds) return "";

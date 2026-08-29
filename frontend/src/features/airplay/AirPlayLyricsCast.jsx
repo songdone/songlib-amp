@@ -17,6 +17,7 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
   const creatingRef = useRef(null);
   const syncingRef = useRef(false);
   const syncQueuedRef = useRef(false);
+  const syncMetadataQueuedRef = useRef(false);
   const pickerTimerRef = useRef(null);
   const routeGuardUntilRef = useRef(0);
   const resumeTimerRef = useRef(null);
@@ -216,23 +217,38 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
     prepare().catch(() => {});
   }, [supported, hasTrack, prepare]);
 
-  const sync = useCallback(async () => {
+  const sync = useCallback(async (metadata = false) => {
     if (syncingRef.current) {
       syncQueuedRef.current = true;
+      if (metadata) syncMetadataQueuedRef.current = true;
       return;
     }
     syncingRef.current = true;
+    let metadataRequested = metadata;
     try {
       do {
+        const sendMetadata =
+          metadataRequested || syncMetadataQueuedRef.current;
+        metadataRequested = false;
         syncQueuedRef.current = false;
+        syncMetadataQueuedRef.current = false;
         const currentSession = sessionRef.current;
         const payload = latestPayloadRef.current;
         if (!currentSession?.sessionId || !payload?.trackId) return;
+        const body = sendMetadata
+          ? payload
+          : {
+              position: payload.position,
+              duration: payload.duration,
+              playing: payload.playing,
+              lyricsOffsetMs: payload.lyricsOffsetMs,
+              transportLatencyMs: payload.transportLatencyMs,
+            };
         const updated = await api(
-          `/api/airplay/cast/${currentSession.sessionId}`,
+          `/api/airplay/cast/${currentSession.sessionId}${sendMetadata ? "" : "/clock"}`,
           {
             method: "PATCH",
-            body: JSON.stringify(payload),
+            body: JSON.stringify(body),
           },
         );
         sessionRef.current = { ...currentSession, ...updated };
@@ -254,21 +270,21 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
     payloadSnapshot?.artist,
     payloadSnapshot?.album,
     payloadSnapshot?.coverKey,
-    String(lyrics || "").length,
     player.quality,
-    player.isPlaying,
-    player.duration,
-    lyricsOffsetMs,
-    transportLatencyMs,
   ].join("|");
   useEffect(() => {
     if (!session?.sessionId) return;
-    sync();
-  }, [session?.sessionId, metadataKey, sync]);
+    sync(true);
+  }, [session?.sessionId, metadataKey, lyrics, sync]);
+
+  useEffect(() => {
+    if (!session?.sessionId) return;
+    sync(false);
+  }, [session?.sessionId, lyricsOffsetMs, transportLatencyMs, sync]);
 
   useEffect(() => {
     if (!session?.sessionId || !engaged) return undefined;
-    const timer = window.setInterval(sync, 1000);
+    const timer = window.setInterval(() => sync(false), 1000);
     return () => window.clearInterval(timer);
   }, [session?.sessionId, engaged, sync]);
 

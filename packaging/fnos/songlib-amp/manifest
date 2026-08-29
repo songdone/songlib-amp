@@ -1,5 +1,5 @@
 appname=songlib-amp
-version=1.0.3
+version=1.0.4
 display_name=SongLib Amp
 desc=本地优先的 NAS 音乐管理与播放平台，支持 Plex 曲库与歌单、歌词与封面、授权下载入库、音乐整理、推荐和响应式播放器。
 source=thirdparty

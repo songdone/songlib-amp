@@ -264,6 +264,14 @@ class AirPlayCastUpdateBody(BaseModel):
     transportLatencyMs: int = Field(default=0, ge=0, le=5000)
 
 
+class AirPlayCastClockBody(BaseModel):
+    position: float = Field(default=0, ge=0, le=60 * 60 * 24)
+    duration: float = Field(default=0, ge=0, le=60 * 60 * 24)
+    playing: bool = False
+    lyricsOffsetMs: int = Field(default=0, ge=-5000, le=5000)
+    transportLatencyMs: int = Field(default=0, ge=0, le=5000)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     errors = settings.validate()
@@ -1343,7 +1351,8 @@ def local_categories():
 
 
 @app.get("/api/local/files/{file_id}", dependencies=[Depends(auth.current_user)])
-def local_file(file_id: str):
+def local_file(file_id: str, user=Depends(auth.current_user)):
+    _local_file_path(file_id, user)
     try: return local_library.get(file_id)
     except KeyError as exc: raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -1485,11 +1494,8 @@ def rollback_operation(operation_id: str):
 
 
 @app.get("/api/player/local/{file_id}/stream", dependencies=[Depends(auth.current_user)])
-def stream_local_file(file_id: str):
-    try: item = local_library.get(file_id)
-    except KeyError as exc: raise HTTPException(status_code=404, detail=str(exc)) from exc
-    path = Path(item["path"])
-    if not path.exists(): raise HTTPException(status_code=404, detail="本地音频文件已不存在")
+def stream_local_file(file_id: str, user=Depends(auth.current_user)):
+    path = _local_file_path(file_id, user)
     return FileResponse(path, filename=path.name, content_disposition_type="inline")
 
 
@@ -1519,24 +1525,18 @@ def local_playback_info(file_id: str, user=Depends(auth.current_user)):
 
 
 @app.get("/api/player/local/{file_id}/cover", dependencies=[Depends(auth.current_user)])
-def local_cover(file_id: str):
-    try:
-        item = local_library.get(file_id)
-    except KeyError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    cover = Path(item["path"]).parent / "cover.jpg"
-    if not cover.exists():
-        raise HTTPException(status_code=404, detail="封面不存在")
-    return FileResponse(cover, media_type="image/jpeg", content_disposition_type="inline")
+def local_cover(file_id: str, user=Depends(auth.current_user)):
+    return local_file_cover(file_id, user)
 
 
 @app.get("/api/player/local/{file_id}/lyrics", dependencies=[Depends(auth.current_user)])
-def local_lyrics(file_id: str):
+def local_lyrics(file_id: str, user=Depends(auth.current_user)):
     try:
         item = local_library.get(file_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    local = read_local_lyrics(Path(item["path"]))
+    path = _local_file_path(file_id, user)
+    local = read_local_lyrics(path)
     if local["lyrics"]:
         return local
     lyrics, source = find_lyrics(item)
@@ -1730,21 +1730,27 @@ def _airplay_public_base(request: Request) -> str:
 
 
 def _airplay_cover(body: AirPlayCastUpdateBody, user: dict) -> bytes | None:
-    if body.sourceType == "local_file" and body.localFileId:
-        path = _local_file_path(body.localFileId, user)
-        embedded = _embedded_cover(path)
-        if embedded:
-            return embedded[0]
-        for name in ("cover.jpg", "cover.png", "folder.jpg", "folder.png", "front.jpg", "front.png"):
-            candidate = path.parent / name
-            if candidate.is_file() and candidate.stat().st_size <= 12 * 1024 * 1024:
-                return candidate.read_bytes()
-    if body.sourceType in {"plex_item", "plex_session"} and body.plexRatingKey:
-        info = plex.playback(body.plexRatingKey, "original")
-        thumb = info.get("thumb") or ""
-        if thumb:
-            data = plex.image(thumb)
-            return data[: 12 * 1024 * 1024]
+    # Artwork is optional decoration. A missing sidecar, a stale Plex thumb or
+    # a temporary Plex outage must never prevent title, lyrics and clock state
+    # from reaching an already-connected Apple TV session.
+    try:
+        if body.sourceType == "local_file" and body.localFileId:
+            path = _local_file_path(body.localFileId, user)
+            embedded = _embedded_cover(path)
+            if embedded:
+                return embedded[0]
+            for name in ("cover.jpg", "cover.png", "folder.jpg", "folder.png", "front.jpg", "front.png"):
+                candidate = path.parent / name
+                if candidate.is_file() and candidate.stat().st_size <= 12 * 1024 * 1024:
+                    return candidate.read_bytes()
+        if body.sourceType in {"plex_item", "plex_session"} and body.plexRatingKey:
+            info = plex.playback(body.plexRatingKey, "original")
+            thumb = info.get("thumb") or ""
+            if thumb:
+                data = plex.image(thumb)
+                return data[: 12 * 1024 * 1024]
+    except (KeyError, OSError, RuntimeError, ValueError, httpx.HTTPError):
+        return None
     return None
 
 
@@ -1780,7 +1786,23 @@ def update_airplay_cast(session_id: str, body: AirPlayCastUpdateBody, user=Depen
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(status_code=502, detail="无法准备歌词投屏画面，请检查曲目封面与媒体来源连接。") from exc
+        raise HTTPException(status_code=502, detail="无法更新歌词投屏画面") from exc
+
+
+@app.patch("/api/airplay/cast/{session_id}/clock", dependencies=[Depends(auth.current_user)])
+def update_airplay_cast_clock(
+    session_id: str,
+    body: AirPlayCastClockBody,
+    user=Depends(auth.current_user),
+):
+    try:
+        return cast_manager.update_clock(
+            session_id,
+            user["id"],
+            body.model_dump(),
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @app.delete("/api/airplay/cast/{session_id}", dependencies=[Depends(auth.current_user)])

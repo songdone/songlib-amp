@@ -20,7 +20,7 @@
 1. 支持的 Safari 为当前账号预建一个轻量会话，但尚不启动编码器。
 2. 用户点击“投到电视”，Safari 在同一用户手势内让隐藏视频加载 HLS 元数据并打开苹果原生选择器；在路由真正变为无线目标前不播放视频、不注册伪音频 Now Playing 会话。
 3. Apple TV 请求带 256 位随机访问令牌的固定 `master.m3u8` URL；此时后端才启动一个持续的 FFmpeg 编码器。
-4. 后端以 0.5 秒 fMP4 HLS 分片维护至少六个分片的短实时窗口，并提供静音 AAC-LC 立体声轨满足 Apple HLS 视频兼容要求。会话 URL、主播放列表 URL 和媒体播放列表 URL 在整个投屏期间不变。
+4. 后端以 1 秒 fMP4 HLS 分片维护至少六个分片的短实时窗口，并提供静音 AAC-LC 立体声轨满足 Apple HLS 视频兼容要求。会话 URL、主播放列表 URL 和媒体播放列表 URL 在整个投屏期间不变。1 秒是当前 FFmpeg HLS 输出可生成合法整数 `EXT-X-TARGETDURATION` 的最低配置。
 5. 浏览器每秒上报曲目、播放状态和当前媒体时间。切歌只替换渲染状态，不替换视频 URL、不重启编码器。
 6. 普通 LRC 按整行高亮；增强 LRC 中真实的 `<mm:ss.xx>` 字/词时间按字词高亮。无真实字时间时不会伪造逐字效果。
 
@@ -53,7 +53,7 @@ Apple 的 tvOS 交互要求标准媒体动作保持标准含义：Play/Pause 控
 ## 分阶段计划
 
 - 阶段 1（已完成）：公开 WebKit API 能力检测、原生选择器入口、固定授权会话 URL、平台降级说明。
-- 阶段 2（已完成原型）：持续 FFmpeg、0.5 秒 fMP4 HLS、静音 AAC 兼容轨、普通/增强 LRC、封面/元数据/进度动态渲染、温和漂移修正。
+- 阶段 2（已完成原型）：持续 FFmpeg、1 秒 fMP4 HLS、静音 AAC 兼容轨、普通/增强 LRC、封面/元数据/进度动态渲染、温和漂移修正。
 - 阶段 3（已完成自动验证）：固定 URL 与切歌不启动新编码器的单测、歌词解析和时钟测试、前端能力检测测试、完整回归构建，并以真实 FFmpeg 生成 fMP4 HLS 做切歌 PID/URL 稳定性烟雾测试。
 - 阶段 4（待真实设备）：Safari/PWA、Apple TV 可达性、证书信任、10/30 分钟漂移、连续切歌和断网恢复验收。
 - 阶段 5（后续）：音频与视频复用同一媒体时钟；在真实设备确认基础 HLS 稳定后再评估带 partial segments 的完整 LL-HLS，不在当前版本虚假标称 LL-HLS。
@@ -68,7 +68,7 @@ Apple 的 tvOS 交互要求标准媒体动作保持标准含义：Play/Pause 控
 | `AIRPLAY_WIDTH` / `AIRPLAY_HEIGHT` | `1920` / `1080` | 必须为 16:9；4K 使用 `3840` / `2160`。 |
 | `AIRPLAY_FPS` | `30` | 支持 24–30，推荐保持 30。 |
 | `AIRPLAY_RENDER_FPS` | `4` | Python 动态画面生成频率，逐字歌词可提高到 8–10，代价是更多 CPU/管道流量。 |
-| `AIRPLAY_SEGMENT_SECONDS` | `0.5` | 0.25–3 秒；默认 0.5 秒以缩短直播缓冲。 |
+| `AIRPLAY_SEGMENT_SECONDS` | `1.0` | 1–3 秒；默认 1 秒兼顾低延迟与 Apple HLS 播放列表合规性。 |
 | `AIRPLAY_VIDEO_BITRATE` | 自动 | 1080p 默认 `3M`，4K 默认 `12M`。 |
 | `AIRPLAY_LYRIC_ADVANCE_MS` | `250` | 歌词显示提前量，可设为负数。 |
 | `AIRPLAY_PIPELINE_ADVANCE_MS` | `1750` | 无法从 Safari 读取直播边缘时使用的默认传输延迟补偿。 |

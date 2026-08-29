@@ -212,7 +212,7 @@ def build_ffmpeg_command(output_dir: Path, *, use_qsv: bool) -> list[str]:
             "-c:v",
             "libx264",
             "-preset",
-            "superfast",
+            "ultrafast",
             "-tune",
             "zerolatency",
             "-profile:v",
@@ -456,6 +456,34 @@ class AirPlayCastManager:
             if metadata_changed or changed or cover_changed:
                 session.visual_base = None
             session.error = "" if session.process and session.process.poll() is None else session.error
+        return self.status(session_id, owner_id)
+
+    def update_clock(self, session_id: str, owner_id: str, payload: dict) -> dict:
+        """Apply the one-second transport heartbeat without resending lyrics.
+
+        Lyrics can be hundreds of kilobytes. Keeping clock discipline on a
+        small endpoint avoids repeatedly parsing and comparing that text while
+        an iPad is also rendering the controller UI.
+        """
+        session = self._owned(session_id, owner_id)
+        with session.lock:
+            session.clock.update(
+                payload.get("position", 0),
+                bool(payload.get("playing")),
+            )
+            session.state["duration"] = max(
+                0.0,
+                float(payload.get("duration") or session.state.get("duration") or 0),
+            )
+            session.state["playing"] = bool(payload.get("playing"))
+            session.state["lyricsOffsetMs"] = max(
+                -5000,
+                min(5000, int(payload.get("lyricsOffsetMs") or 0)),
+            )
+            session.state["transportLatencyMs"] = max(
+                0,
+                min(5000, int(payload.get("transportLatencyMs") or 0)),
+            )
         return self.status(session_id, owner_id)
 
     @staticmethod

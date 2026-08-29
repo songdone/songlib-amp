@@ -28,6 +28,7 @@ from app.playlist_migration import detect_share_link, strict_candidate
 from app.playlists import create_playlist, import_m3u
 from app.recommendations import list_recommendations, refresh
 from app.scraper import build_diff_preview
+from app.security import rate_limiter
 
 
 class CommercialFoundationTests(unittest.TestCase):
@@ -37,6 +38,10 @@ class CommercialFoundationTests(unittest.TestCase):
         auth.ensure_bootstrap_password()
 
     def setUp(self):
+        # Login throttling is process-global in production. Tests create fresh
+        # clients per case, so reset the in-memory window to keep cases isolated.
+        with rate_limiter._lock:
+            rate_limiter._events.clear()
         with transaction() as conn:
             conn.execute("DELETE FROM playlist_items")
             conn.execute("DELETE FROM playlists")
@@ -257,6 +262,55 @@ class CommercialFoundationTests(unittest.TestCase):
             )
             self.assertEqual(updated.status_code, 200)
             self.assertEqual(updated.json()["streamUrl"], cast_payload["streamUrl"])
+
+    def test_airplay_lyrics_and_clock_survive_missing_plex_artwork(self):
+        with TestClient(app) as client, patch.object(
+            plex,
+            "playback",
+            side_effect=RuntimeError("Plex artwork temporarily unavailable"),
+        ):
+            login = client.post(
+                "/api/auth/login",
+                json={"username": "admin", "password": "test-password-123"},
+            )
+            self.assertEqual(login.status_code, 200)
+            token = client.cookies.get("songlib_csrf")
+            headers = {"X-CSRF-Token": token}
+            created = client.post("/api/airplay/cast", json={}, headers=headers)
+            self.assertEqual(created.status_code, 200)
+            session_id = created.json()["sessionId"]
+            updated = client.patch(
+                f"/api/airplay/cast/{session_id}",
+                json={
+                    "trackId": "plex_session:missing-artwork",
+                    "title": "仍应显示的歌曲",
+                    "artist": "测试歌手",
+                    "lyrics": "[00:01.00]歌词不能被封面故障阻断",
+                    "position": 3,
+                    "duration": 120,
+                    "playing": True,
+                    "sourceType": "plex_session",
+                    "plexRatingKey": "missing-artwork",
+                    "coverKey": "/api/plex/image?path=missing",
+                },
+                headers=headers,
+            )
+            self.assertEqual(updated.status_code, 200)
+            self.assertEqual(updated.json()["trackId"], "plex_session:missing-artwork")
+            heartbeat = client.patch(
+                f"/api/airplay/cast/{session_id}/clock",
+                json={
+                    "position": 4,
+                    "duration": 120,
+                    "playing": True,
+                    "lyricsOffsetMs": 250,
+                    "transportLatencyMs": 1500,
+                },
+                headers=headers,
+            )
+            self.assertEqual(heartbeat.status_code, 200)
+            self.assertEqual(heartbeat.json()["lyricsOffsetMs"], 250)
+            client.delete(f"/api/airplay/cast/{session_id}", headers=headers)
 
     def test_backup_file_is_owner_only(self):
         with TestClient(app) as client:

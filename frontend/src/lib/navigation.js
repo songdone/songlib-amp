@@ -8,6 +8,7 @@ export const mobileNavigationIds = [
 ];
 
 export const mobileNavigationTarget = (active, managementIds = []) => {
+  if (active === "settings") return "settings";
   if (
     active === "manage" ||
     managementIds.includes(active)

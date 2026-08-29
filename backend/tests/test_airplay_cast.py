@@ -46,12 +46,13 @@ class AirPlayCastTests(unittest.TestCase):
         joined = " ".join(command)
         self.assertIn("libx264", command)
         self.assertIn("-hls_segment_type fmp4", joined)
-        self.assertIn("-hls_time 0.5", joined)
+        self.assertIn("-hls_time 1", joined)
         self.assertIn("anullsrc=channel_layout=stereo:sample_rate=48000", command)
         self.assertIn("-c:a aac", joined)
         self.assertIn("-bf 0", joined)
         self.assertIn("-flags +cgop", joined)
         self.assertIn("-tune zerolatency", joined)
+        self.assertIn("-preset ultrafast", joined)
         self.assertNotIn("-an", command)
         self.assertIn("delete_segments+independent_segments+program_date_time+temp_file", command)
         self.assertNotIn("-hls_playlist_type", command)
@@ -120,6 +121,44 @@ class AirPlayCastTests(unittest.TestCase):
                     "/api/plex/image?path=thumb",
                 )
             )
+            manager.stop(session.session_id, "listener-1")
+
+    def test_clock_heartbeat_preserves_metadata_and_large_lyrics(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = AirPlayCastManager(Path(directory))
+            session = manager.create("listener-1", "https://music.example.test")
+            lyrics = "[00:01.00]第一句\n[00:04.00]第二句"
+            manager.update(
+                session.session_id,
+                "listener-1",
+                {
+                    "trackId": "plex_session:42",
+                    "title": "歌曲",
+                    "artist": "歌手",
+                    "album": "专辑",
+                    "quality": "Plex",
+                    "lyrics": lyrics,
+                    "position": 1,
+                    "duration": 180,
+                    "playing": True,
+                },
+            )
+            manager.update_clock(
+                session.session_id,
+                "listener-1",
+                {
+                    "position": 8.5,
+                    "duration": 180,
+                    "playing": True,
+                    "lyricsOffsetMs": 250,
+                    "transportLatencyMs": 1500,
+                },
+            )
+            self.assertEqual(session.state["title"], "歌曲")
+            self.assertEqual(session.state["lyrics"], lyrics)
+            self.assertEqual(len(session.lyrics), 2)
+            self.assertEqual(session.state["lyricsOffsetMs"], 250)
+            self.assertEqual(session.state["transportLatencyMs"], 1500)
             manager.stop(session.session_id, "listener-1")
 
 

@@ -38,7 +38,7 @@ def _float_env(name: str, default: float, minimum: float, maximum: float) -> flo
 @dataclass(frozen=True)
 class Settings:
     app_name: str = os.getenv("APP_NAME", "SongLib Amp｜音屿")
-    app_version: str = os.getenv("APP_VERSION", "1.0.3")
+    app_version: str = os.getenv("APP_VERSION", "1.0.4")
     environment: str = os.getenv("APP_ENV", "production").strip().lower()
     data_dir: Path = Path(os.getenv("DATA_DIR", "/data"))
     music_root: Path = Path(os.getenv("MUSIC_ROOT", "/music"))
@@ -71,7 +71,9 @@ class Settings:
     airplay_height: int = _int_env("AIRPLAY_HEIGHT", 1080, 360, 2160)
     airplay_fps: int = _int_env("AIRPLAY_FPS", 30, 24, 30)
     airplay_render_fps: int = _int_env("AIRPLAY_RENDER_FPS", 4, 2, 15)
-    airplay_segment_seconds: float = _float_env("AIRPLAY_SEGMENT_SECONDS", 0.5, 0.25, 3.0)
+    # FFmpeg rounds EXT-X-TARGETDURATION to an integer. Values below one
+    # second therefore produce TARGETDURATION:0, which Apple HLS clients reject.
+    airplay_segment_seconds: float = _float_env("AIRPLAY_SEGMENT_SECONDS", 1.0, 1.0, 3.0)
     airplay_encoder: str = os.getenv("AIRPLAY_ENCODER", "auto").strip().lower()
     airplay_video_bitrate: str = os.getenv("AIRPLAY_VIDEO_BITRATE", "").strip()
     airplay_lyric_advance_ms: int = _int_env("AIRPLAY_LYRIC_ADVANCE_MS", 250, -3000, 3000)

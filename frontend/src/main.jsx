@@ -8,7 +8,6 @@ import React, {
   useState,
 } from "react";
 import { createRoot } from "react-dom/client";
-import { motion } from "motion/react";
 import {
   Activity,
   Airplay,
@@ -341,17 +340,6 @@ function AppBackdrop({
 }
 
 function LoginMotionBackdrop() {
-  const particles = useMemo(
-    () =>
-      Array.from({ length: 60 }, (_, index) => ({
-        id: index,
-        left: `${(index * 37) % 100}%`,
-        duration: 12 + ((index * 17) % 12),
-        delay: (index * 29) % 15,
-        x: Math.sin(index) * 120,
-      })),
-    [],
-  );
   return (
     <div className="login-motion-bg" aria-hidden="true">
       <div className="login-base-map">
@@ -376,8 +364,8 @@ function LoginMotionBackdrop() {
             <stop offset="100%" stopColor="rgba(245, 158, 11, 0)" />
           </linearGradient>
         </defs>
-        {Array.from({ length: 8 }, (_, index) => (
-          <motion.path
+        {Array.from({ length: 4 }, (_, index) => (
+          <path
             key={index}
             d={`M -10 ${20 + index * 15} Q ${40 + index * 5} ${30 - index * 5} ${70 + index * 10} ${50 + index * 10} T 110 ${40 + index * 10}`}
             fill="none"
@@ -386,85 +374,22 @@ function LoginMotionBackdrop() {
             strokeLinecap="round"
             strokeOpacity={0.42}
             vectorEffect="non-scaling-stroke"
-            initial={{ pathLength: 0, opacity: 0, pathOffset: 0 }}
-            animate={{
-              pathLength: [0, 0.18, 0.18, 0],
-              opacity: [0, 0.42, 0.26, 0],
-              pathOffset: [0, 0.18, 0.46, 0.72],
-            }}
-            transition={{
-              duration: 26 + index * 4.5,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: index * 4.8,
-            }}
           />
         ))}
       </svg>
-      <div className="login-video-wrap">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="login-video"
-          src="/visuals/songlib-login-background.mp4"
-        />
-      </div>
       <div className="login-gradient-top" />
       <div className="login-gradient-side" />
-      <motion.div
-        className="login-breath-glow top-left"
-        animate={{ opacity: [0.2, 0.6, 0.2] }}
-        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.div
-        className="login-breath-glow top-right"
-        animate={{ opacity: [0.1, 0.5, 0.1] }}
-        transition={{
-          duration: 8,
-          repeat: Infinity,
-          ease: "easeInOut",
-          delay: 2,
-        }}
-      />
-      <div className="login-dust">
-        {particles.map((item) => (
-          <motion.i
-            key={item.id}
-            style={{ left: item.left }}
-            animate={{
-              y: ["0vh", "-120vh"],
-              x: [0, item.x],
-              opacity: [0, 1, 0],
-            }}
-            transition={{
-              duration: item.duration,
-              repeat: Infinity,
-              ease: "linear",
-              delay: item.delay,
-            }}
-          />
-        ))}
-      </div>
+      <div className="login-breath-glow top-left" />
+      <div className="login-breath-glow top-right" />
       <div className="login-ambient-glow" />
-      <motion.div
-        className="login-card-glow"
-        animate={{ opacity: [0.3, 0.7, 0.3] }}
-        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-      />
+      <div className="login-card-glow" />
     </div>
   );
 }
 
-function LoginFeatureCard({ icon: Icon, title, desc, delay }) {
+function LoginFeatureCard({ icon: Icon, title, desc }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.6, delay, ease: "easeOut" }}
-      className="login-motion-feature"
-    >
+    <div className="login-motion-feature">
       <div>
         <Icon />
       </div>
@@ -472,7 +397,7 @@ function LoginFeatureCard({ icon: Icon, title, desc, delay }) {
         <h4>{title}</h4>
         <p>{desc}</p>
       </section>
-    </motion.div>
+    </div>
   );
 }
 
@@ -631,12 +556,7 @@ function Login({ onLogin }) {
   return (
     <main className="login-page login-motion-page">
       <LoginMotionBackdrop />
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
-        className="login-motion-logo"
-      >
+      <div className="login-motion-logo">
         <div className="login-motion-logo-mark">
           <img src={BRAND.mark} alt="" />
         </div>
@@ -648,18 +568,13 @@ function Login({ onLogin }) {
           </h1>
           <p>让散落的音乐 回到自己的岛屿</p>
         </div>
-      </motion.div>
+      </div>
 
       <div className="login-motion-shell">
         <div className="login-motion-grid">
           <section className="login-motion-left">
             <div>
-              <motion.div
-                initial={{ opacity: 0, x: -30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-                className="login-motion-copy"
-              >
+              <div className="login-motion-copy">
                 <h3>
                   <span />
                   YOUR MUSIC, AT HOME
@@ -673,13 +588,8 @@ function Login({ onLogin }) {
                   一处收藏、整理和播放 NAS
                   里的音乐，也能与 Plex 保持同步。
                 </p>
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-                className="login-motion-features"
-              >
+              </div>
+              <div className="login-motion-features">
                 <LoginFeatureCard
                   delay={0.3}
                   icon={Server}
@@ -704,21 +614,12 @@ function Login({ onLogin }) {
                   title="为你发现"
                   desc="从熟悉走向新的旋律"
                 />
-              </motion.div>
+              </div>
             </div>
           </section>
 
           <section className="login-motion-right">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.98, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{
-                duration: 0.8,
-                delay: 0.3,
-                ease: [0.16, 1, 0.3, 1],
-              }}
-              className="login-motion-card-group"
-            >
+            <div className="login-motion-card-group">
               <div className="login-motion-hover-glow" />
               <div className="login-motion-card">
                 <div className="login-motion-card-line" />
@@ -804,7 +705,7 @@ function Login({ onLogin }) {
                   NAS 本地运行 · 数据不会上传云端
                 </footer>
               </div>
-            </motion.div>
+            </div>
           </section>
         </div>
       </div>
@@ -1151,7 +1052,7 @@ function Dashboard({
   isAdmin = true,
   plexConfigured = false,
 }) {
-  const player = usePlayer();
+  const player = usePlayerCore();
   const remote = usePlexSessions({
     pollMs: 8000,
     quietErrors: true,
@@ -2791,7 +2692,13 @@ function DiscoverPage({ play, navigate, isAdmin = true }) {
 }
 
 const PlayerContext = createContext(null);
-const usePlayer = () => useContext(PlayerContext);
+const PlayerClockContext = createContext({ currentTime: 0, duration: 0 });
+const usePlayerCore = () => useContext(PlayerContext);
+const usePlayer = () => {
+  const player = usePlayerCore();
+  const clock = useContext(PlayerClockContext);
+  return useMemo(() => ({ ...player, ...clock }), [player, clock]);
+};
 
 const sourceLabel = (sourceType) =>
   ({
@@ -3479,13 +3386,8 @@ function PlayerProvider({ children }) {
       error: "",
     }));
   };
-  const value = {
-    ...state,
-    audioRef,
-    history,
-    playEvents,
-    playlists,
-    favorites,
+  const actionImplementationsRef = useRef({});
+  actionImplementationsRef.current = {
     play,
     pause,
     resume,
@@ -3506,10 +3408,55 @@ function PlayerProvider({ children }) {
     addToPlaylist,
     clear,
   };
+  const actions = useMemo(() => {
+    const result = {};
+    for (const name of Object.keys(actionImplementationsRef.current)) {
+      result[name] = (...args) => actionImplementationsRef.current[name](...args);
+    }
+    return result;
+  }, []);
+  const value = useMemo(
+    () => ({
+      currentTrack: state.currentTrack,
+      queue: state.queue,
+      isPlaying: state.isPlaying,
+      volume: state.volume,
+      playMode: state.playMode,
+      quality: state.quality,
+      loading: state.loading,
+      error: state.error,
+      audioRef,
+      history,
+      playEvents,
+      playlists,
+      favorites,
+      ...actions,
+    }),
+    [
+      state.currentTrack,
+      state.queue,
+      state.isPlaying,
+      state.volume,
+      state.playMode,
+      state.quality,
+      state.loading,
+      state.error,
+      history,
+      playEvents,
+      playlists,
+      favorites,
+      actions,
+    ],
+  );
+  const clock = useMemo(
+    () => ({ currentTime: state.currentTime, duration: state.duration }),
+    [state.currentTime, state.duration],
+  );
   return (
     <PlayerContext.Provider value={value}>
-      {children}
-      <audio
+      <PlayerClockContext.Provider value={clock}>
+        {children}
+        <audio
         ref={audioRef}
         className="global-audio"
         x-webkit-airplay="deny"
@@ -3561,7 +3508,8 @@ function PlayerProvider({ children }) {
             audioRef.current?.play().catch(() => {});
           } else next(true);
         }}
-      />
+        />
+      </PlayerClockContext.Provider>
     </PlayerContext.Provider>
   );
 }
@@ -7458,7 +7406,7 @@ function Toast({ toast, clear }) {
 }
 
 function GlobalSearchPage({ play, navigate, isAdmin }) {
-  const player = usePlayer();
+  const player = usePlayerCore();
   const [query, setQuery] = useState(
       () => localStorage.getItem("songlib-global-search") || "",
     ),
@@ -7660,7 +7608,7 @@ function GlobalSearchPage({ play, navigate, isAdmin }) {
 }
 
 function MePage({ navigate }) {
-  const player = usePlayer();
+  const player = usePlayerCore();
   const favorites = Object.values(player.favorites || {}).sort((a, b) =>
     String(b.likedAt || "").localeCompare(String(a.likedAt || "")),
   );
@@ -8758,7 +8706,7 @@ function App() {
   const [authenticated, setAuthenticated] = useState(null);
   const [setupRequired, setSetupRequired] = useState(false);
   useEffect(() => {
-    api("/api/auth/status")
+    api("/api/auth/status", { timeoutMs: 8000 })
       .then((d) => {
         setAuthenticated(d.authenticated);
         setSetupRequired(Boolean(d.setupRequired));
@@ -8790,6 +8738,17 @@ function App() {
   );
 }
 
+function NowPlayingRoute({ navigate, playerSettings }) {
+  const player = usePlayer();
+  return (
+    <NowPlayingPage
+      player={player}
+      navigate={navigate}
+      playerSettings={playerSettings}
+    />
+  );
+}
+
 function AuthenticatedShell({ setAuthenticated }) {
   const [active, setActive] = useState(() =>
     pageFromPath(window.location.pathname),
@@ -8810,7 +8769,10 @@ function AuthenticatedShell({ setAuthenticated }) {
   const [appearance, setAppearance] = useState(() =>
     normalizeAppearance(storedJson("songlib-appearance", DEFAULT_APPEARANCE)),
   );
-  const player = usePlayer();
+  // The shell only needs track identity and stable playback commands. Keeping
+  // the high-frequency media clock in the player route and mini players avoids
+  // reconciling every page on each HTMLAudioElement timeupdate.
+  const player = usePlayerCore();
   const prefersDark = useMediaQuery("(prefers-color-scheme: dark)");
   const theme = resolvedTheme(appearance.theme, prefersDark);
   const changeAppearance = useCallback((value) => {
@@ -9116,8 +9078,7 @@ function AuthenticatedShell({ setAuthenticated }) {
           />
         )}{" "}
         {active === "player" && (
-          <NowPlayingPage
-            player={player}
+          <NowPlayingRoute
             navigate={navigate}
             playerSettings={settingsData.player}
           />
@@ -9197,3 +9158,5 @@ function MobileNav({ active, change, isAdmin = true }) {
 }
 
 createRoot(document.getElementById("root")).render(<App />);
+document.documentElement.dataset.songlibStarted = BRAND.version;
+window.dispatchEvent(new Event("songlib:started"));

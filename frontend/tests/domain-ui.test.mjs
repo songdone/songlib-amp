@@ -318,6 +318,22 @@ test("PWA install guidance never exposes a no-op install action", () => {
   );
 });
 
+test("mobile navigation has exactly one semantic active destination", () => {
+  assert.equal(
+    mobileNavigationTarget("settings", ["local", "scrape", "download", "settings"]),
+    "settings",
+  );
+  assert.equal(
+    mobileNavigationTarget("download", ["local", "scrape", "download", "settings"]),
+    "manage",
+  );
+  const shellCss = readFileSync(
+    new URL("../src/features/shell/shell-refactor.css", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(shellCss, /mobile-nav button:nth-child\(3\)/);
+});
+
 test("compact login keeps the form in the first mobile viewport", () => {
   const styles = readFileSync(
     new URL("../src/features/shell/shell-refactor.css", import.meta.url),
@@ -330,6 +346,33 @@ test("compact login keeps the form in the first mobile viewport", () => {
   const indexHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
   assert.match(indexHtml, /#root:empty::before/);
   assert.match(indexHtml, /正在连接本地音乐库/);
+});
+
+test("touch startup and the global shell avoid continuous media work", () => {
+  const source = readFileSync(new URL("../src/main.jsx", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /from ["']motion\/react["']/);
+  assert.doesNotMatch(source, /songlib-login-background\.mp4/);
+  assert.match(source, /const PlayerClockContext = createContext/);
+  assert.match(source, /function AuthenticatedShell[\s\S]*?const player = usePlayerCore\(\)/);
+  assert.match(source, /<PlayerClockContext\.Provider value=\{clock\}>/);
+});
+
+test("startup cannot remain on the static connecting screen forever", () => {
+  const index = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const startup = readFileSync(
+    new URL("../public/startup-v104.js", import.meta.url),
+    "utf8",
+  );
+  const source = readFileSync(new URL("../src/main.jsx", import.meta.url), "utf8");
+  assert.match(index, /startup-v104\.js/);
+  assert.match(startup, /window\.setTimeout\(recoverOnce, 12000\)/);
+  assert.match(startup, /清理本应用缓存并重新连接/);
+  assert.match(startup, /registration\.unregister\(\)/);
+  assert.match(source, /dataset\.songlibStarted = BRAND\.version/);
+  assert.match(source, /new Event\("songlib:started"\)/);
+  const apiSource = readFileSync(new URL("../src/lib/api.js", import.meta.url), "utf8");
+  assert.match(apiSource, /timeoutMs = 20000/);
+  assert.match(source, /api\("\/api\/auth\/status", \{ timeoutMs: 8000 \}\)/);
 });
 
 test("ambient deck keeps every unique artist image and prioritizes larger libraries", () => {

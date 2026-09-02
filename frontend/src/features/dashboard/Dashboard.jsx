@@ -1,4 +1,4 @@
-import { Airplay, ChevronRight, CircleAlert, Disc3, ListMusic, Music2, Play, Plus, Search, Sparkles } from "lucide-react";
+import { Airplay, ChevronRight, CircleAlert, Disc3, ListMusic, Music2, Play, Plus, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Empty } from "../../components/Empty";
 import { PageLoader } from "../../components/PageLoader";
@@ -88,16 +88,13 @@ export function Dashboard({
   };
   return (
     <div className="page dashboard-page home-v2">
+      {/* 搜索入口只保留顶栏那一个。这里原本还有一个 home-search-shortcut，
+          和顶栏搜索框同屏出现，是两次改版叠加留下的重复入口。 */}
       <header className="home-heading">
         <div>
           <span>{greeting}</span>
           <h1>听点喜欢的</h1>
         </div>
-        <button className="home-search-shortcut" onClick={() => navigate("search")}>
-          <Search />
-          <span>搜索歌曲、艺人或专辑</span>
-          <kbd>↵</kbd>
-        </button>
       </header>
 
       <section className="home-focus">

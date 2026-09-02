@@ -1,0 +1,84 @@
+/**
+ * 侧边导航 —— 迁移到设计 token 的第一块，作为其余部分的样板。
+ *
+ * 这里演示重构后的写法：
+ *   - 颜色全部来自语义 token，不写字面量；
+ *   - 靠 @layer components 排在 legacy.* 之后来压过旧规则，不用 !important；
+ *   - 每替换掉一条旧规则，就从 commercial.css 里删掉对应的那条。
+ *
+ * 修掉的问题：分组标签与版本号原先是 #626670 / #666a73 打底深色侧栏，
+ * 实测 3.42:1 和 3.63:1，低于 WCAG AA 对小号文字要求的 4.5:1。
+ * 改用 --text-tertiary 后两者都达标，且随主题自动切换。
+ */
+
+@layer components {
+  .sidebar {
+    background: var(--surface-1);
+    border-inline-end: 1px solid var(--border-subtle);
+  }
+
+  .nav-group {
+    display: grid;
+    gap: var(--space-1);
+    margin-block-end: var(--space-5);
+  }
+
+  /* 分组标签：原先对比度不达标，且字号小到 9px。 */
+  .nav-group-label {
+    padding: 0 var(--space-3) var(--space-2);
+    color: var(--text-tertiary);
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+  }
+
+  .side-version {
+    margin: var(--space-2) var(--space-3) var(--space-4);
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-tertiary);
+    font-size: var(--text-2xs);
+  }
+
+  .sidebar nav button {
+    width: 100%;
+    height: var(--control-height-lg);
+    padding-inline: var(--space-3);
+    gap: var(--space-3);
+    border: 0;
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    transition:
+      background-color var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out);
+  }
+
+  .sidebar nav button svg {
+    width: 18px;
+    height: 18px;
+    stroke-width: 1.8;
+  }
+
+  .sidebar nav button:hover {
+    color: var(--text-primary);
+    background: var(--surface-hover);
+  }
+
+  .sidebar nav button.active {
+    color: var(--accent-text);
+    background: var(--accent-soft);
+  }
+
+  /* 选中态左侧的强调条。 */
+  .sidebar nav button.active i {
+    inset-inline: 0 auto;
+    width: 2px;
+    height: 18px;
+    border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+    background: var(--accent-solid);
+  }
+}

@@ -69,10 +69,20 @@ export function MiniPlayer({ openPlayer, navigate }) {
           onChange={(e) => player.setVolume(e.target.value)}
         />
       </label>
-      <button className="icon-button" onClick={openPlayer}>
+      <button
+        className="icon-button"
+        onClick={openPlayer}
+        aria-label="打开正在播放"
+        title="打开正在播放"
+      >
         <ListMusic />
       </button>
-      <button className="icon-button" onClick={player.clear}>
+      <button
+        className="icon-button"
+        onClick={player.clear}
+        aria-label="停止播放并清空队列"
+        title="停止播放并清空队列"
+      >
         <X />
       </button>
     </div>

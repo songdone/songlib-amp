@@ -3,6 +3,8 @@ import { useState } from "react";
 import { Empty } from "../../components/Empty";
 import { SectionHead } from "../../components/SectionHead";
 import { StatGrid, StatTile } from "../../components/ui/StatTile";
+import { api } from "../../lib/api";
+import { timeAgo } from "../../lib/format";
 
 /**
  * 任务按处理方式分四类，顺序就是用户该关注的顺序：
@@ -15,8 +17,6 @@ const TASK_FILTERS = [
   { id: "failed", icon: CircleAlert, label: "需要重试", tone: "danger" },
   { id: "history", icon: Check, label: "已完成", tone: "success" },
 ];
-import { api } from "../../lib/api";
-import { timeAgo } from "../../lib/format";
 
 export function Tasks({ jobs, refresh, navigate }) {
   const [detail, setDetail] = useState(null),
@@ -65,9 +65,11 @@ export function Tasks({ jobs, refresh, navigate }) {
   const visible = groups[filter] || jobs;
   return (
     <div className="page tasks-page">
+      {/* 顶栏已经显示"任务"，这里不重复页名；
+          说明改成告诉用户下面这几个数字是干什么的。 */}
       <SectionHead
-        title="任务中心"
-        note="运行中、待确认、失败和历史任务分开处理"
+        title="后台在跑什么"
+        note="点上面的方块可以按类别筛选"
         action={
           <button className="secondary small" onClick={refresh}>
             <RefreshCw />
@@ -190,7 +192,7 @@ export function Tasks({ jobs, refresh, navigate }) {
                 <span className="eyebrow">任务详情</span>
                 <h3>{detail.title}</h3>
               </div>
-              <button className="icon-button" onClick={() => setDetail(null)}>
+              <button className="icon-button" onClick={() => setDetail(null)} aria-label="关闭任务详情" title="关闭">
                 <X />
               </button>
             </div>

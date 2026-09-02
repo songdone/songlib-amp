@@ -151,7 +151,7 @@ export function Login({ onLogin }) {
 
         {/* --- 右栏：登录 --- */}
         <section className="login__card-wrap enter enter-3">
-          <div className="login__card glow-ring">
+          <div className="login__card glass glass--thick glow-ring">
             <div className="login__card-head">
               <h2>欢迎回来</h2>
               <p>用你的账号继续</p>

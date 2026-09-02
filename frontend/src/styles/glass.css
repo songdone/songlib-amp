@@ -1,0 +1,161 @@
+/**
+ * 玻璃材质。
+ *
+ * Apple 的 Liquid Glass 是 iOS 26 / macOS 26 / tvOS 26 的系统级材质，
+ * 只在原生框架里有 API（SwiftUI `.glassEffect()`、UIKit `UIGlassEffect`、
+ * AppKit `NSGlassEffectView`）。Safari 没有把它暴露给 CSS 或任何 Web API，
+ * 所以网页拿不到真正的系统材质 —— 这里做的是尽可能接近的模拟。
+ *
+ * 真实玻璃看起来"厚"，靠的是四件事同时成立，缺一件就会显得像半透明色块：
+ *
+ *   1. 折射    —— 背后的内容被推挤变形（backdrop-filter: blur）
+ *   2. 提亮    —— 玻璃会把背后的颜色提纯提亮（saturate + brightness）
+ *   3. 高光边  —— 光源方向那一侧的边缘更亮，对侧更暗
+ *   4. 内投影  —— 玻璃有厚度，内壁会落一道很淡的阴影
+ *
+ * 重构前的 liquid-glass.css 只做了第 1 件，剩下靠调透明度硬凑，
+ * 所以怎么调都像蒙了层灰。
+ *
+ * 性能提醒：backdrop-filter 每一层都要重新采样背后的内容。
+ * 同屏叠三层以上就会掉帧，尤其在 NAS 自带的低端显示输出上。
+ * 只给"浮在内容之上"的东西用：侧栏、顶栏、迷你播放器、对话框、吐司。
+ * 列表项和卡片不要用。
+ */
+
+@layer components {
+  /* =============================================================
+   * 基础材质
+   * ============================================================= */
+
+  .glass {
+    position: relative;
+    /* 半透明底色是玻璃的"本体色"，不能全靠模糊 ——
+       纯模糊在纯色背景上等于什么都没发生。 */
+    background: color-mix(in srgb, var(--surface-1) 62%, transparent);
+    backdrop-filter: blur(20px) saturate(180%) brightness(1.08);
+    -webkit-backdrop-filter: blur(20px) saturate(180%) brightness(1.08);
+    border: 1px solid color-mix(in srgb, var(--border-default) 80%, transparent);
+    border-radius: var(--radius-lg);
+    /* 外阴影给"浮起来"的高度，内阴影给"有厚度"的体积。 */
+    box-shadow:
+      var(--shadow-lg),
+      inset 0 1px 0 color-mix(in srgb, #fff 14%, transparent),
+      inset 0 -1px 0 color-mix(in srgb, #000 20%, transparent);
+  }
+
+  /**
+   * 高光边。
+   * 用 ::before 画一圈渐变描边，左上亮右下暗，模拟单一光源。
+   * 这是让玻璃"有棱"的关键，没有它就是一块磨砂塑料。
+   */
+  .glass::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      145deg,
+      color-mix(in srgb, #fff 26%, transparent) 0%,
+      transparent 38%,
+      transparent 62%,
+      color-mix(in srgb, #fff 8%, transparent) 100%
+    );
+    /* 只保留描边那一圈：整块减去内容区。 */
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    pointer-events: none;
+  }
+
+  /* --- 厚度分级 --- */
+
+  /* 薄玻璃：顶栏这类需要看清背后内容的地方。 */
+  .glass--thin {
+    background: color-mix(in srgb, var(--surface-1) 46%, transparent);
+    backdrop-filter: blur(12px) saturate(160%);
+    -webkit-backdrop-filter: blur(12px) saturate(160%);
+  }
+
+  /* 厚玻璃：对话框这类需要和背后内容明确分开的地方。 */
+  .glass--thick {
+    background: color-mix(in srgb, var(--surface-1) 82%, transparent);
+    backdrop-filter: blur(32px) saturate(200%) brightness(1.12);
+    -webkit-backdrop-filter: blur(32px) saturate(200%) brightness(1.12);
+  }
+
+  /* =============================================================
+   * 浅色主题
+   *
+   * 浅色下要反过来：内壁高光在上、暗边在下的方向不变，
+   * 但强度要减半，否则白底上会出现一圈脏边。
+   * ============================================================= */
+
+  :root[data-theme="light"] .glass {
+    background: color-mix(in srgb, var(--surface-1) 70%, transparent);
+    box-shadow:
+      var(--shadow-md),
+      inset 0 1px 0 color-mix(in srgb, #fff 70%, transparent),
+      inset 0 -1px 0 color-mix(in srgb, #0f121a 6%, transparent);
+  }
+
+  :root[data-theme="light"] .glass::before {
+    background: linear-gradient(
+      145deg,
+      color-mix(in srgb, #fff 80%, transparent) 0%,
+      transparent 40%,
+      transparent 60%,
+      color-mix(in srgb, #0f121a 6%, transparent) 100%
+    );
+  }
+
+  /* =============================================================
+   * 兜底
+   *
+   * 不支持 backdrop-filter 时（旧 Firefox、部分嵌入式 WebView）
+   * 退回不透明表面。半透明但不模糊会让背后内容透出来，文字直接没法读 ——
+   * 这比没有玻璃效果糟糕得多。
+   * ============================================================= */
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass,
+    .glass--thin,
+    .glass--thick {
+      background: var(--surface-1);
+    }
+  }
+
+  /* =============================================================
+   * 交互态
+   *
+   * Liquid Glass 的一个特征是"活的"：指针靠近时高光会跟着移动。
+   * 这里做一个简化版 —— 悬停时整体提亮一档，并让高光边更明显。
+   * 真正跟随指针需要 JS 持续更新坐标，对这个场景不值得。
+   * ============================================================= */
+
+  .glass--interactive {
+    transition:
+      background-color calc(220ms * var(--motion-scale)) var(--ease-out),
+      box-shadow calc(220ms * var(--motion-scale)) var(--ease-out);
+  }
+
+  .glass--interactive:hover {
+    background: color-mix(in srgb, var(--surface-1) 72%, transparent);
+  }
+
+  .glass--interactive:hover::before {
+    background: linear-gradient(
+      145deg,
+      color-mix(in srgb, #fff 38%, transparent) 0%,
+      transparent 40%,
+      transparent 60%,
+      color-mix(in srgb, var(--accent-solid) 22%, transparent) 100%
+    );
+  }
+}

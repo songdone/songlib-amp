@@ -247,17 +247,14 @@
     min-width: 0;
   }
 
+  /* 表面材质来自 .glass --thick（见 styles/glass.css），
+     这里只补版式：圆角比默认再大一档，让它在大面积背景上更像一块实体。 */
   .login__card {
     display: flex;
     flex-direction: column;
     gap: var(--space-5);
     padding: clamp(var(--space-5), 2.5vw, var(--space-8));
-    border: 1px solid var(--border-subtle);
     border-radius: var(--radius-xl);
-    /* 半透明加背景模糊，让卡片"浮"在视频上而不是盖住它。 */
-    background: color-mix(in srgb, var(--surface-1) 82%, transparent);
-    backdrop-filter: blur(20px) saturate(120%);
-    box-shadow: var(--shadow-lg);
   }
 
   .login__card-head h2 {

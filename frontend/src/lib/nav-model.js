@@ -28,6 +28,7 @@ import {
   Settings,
   Sparkles,
   WandSparkles,
+  Wifi,
 } from "lucide-react";
 
 /** 分组顺序即侧栏顺序。 */
@@ -99,7 +100,7 @@ export const managementNav = [
   {
     id: "sources",
     label: "音乐源",
-    icon: Activity,
+    icon: Wifi,
     desc: "管理你有权使用的下载来源",
   },
   {

@@ -19,6 +19,7 @@ import {
   Play,
   Search,
   Tags,
+  WifiOff,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Badge } from "../../components/ui/Badge";
@@ -36,10 +37,20 @@ import {
 import { MediaCard, MediaGrid } from "../../components/ui/MediaCard";
 import { PageLoader } from "../../components/PageLoader";
 import { api } from "../../lib/api";
+import { timeAgo } from "../../lib/format";
 import { coverUrlFor } from "../../lib/media";
+import { indexStatus, remember, searchOffline } from "../../lib/offlineIndex";
 import { usePlayerCore } from "../player/PlayerProvider";
 
 const EMPTY = { tracks: [], artists: [], albums: [], pending: [] };
+
+/** 离线结果里要标出这条是歌、是歌手还是专辑 —— 三种混在一个列表里。 */
+const OFFLINE_KIND_LABELS = {
+  track: "单曲",
+  artist: "歌手",
+  album: "专辑",
+  file: "本地文件",
+};
 
 export function GlobalSearchPage({ play, navigate, isAdmin }) {
   const player = usePlayerCore();
@@ -50,6 +61,22 @@ export function GlobalSearchPage({ play, navigate, isAdmin }) {
   const [groups, setGroups] = useState(EMPTY);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  /* 离线结果单独存。混进 groups 会让"这是缓存的、可能不是最新的"
+     这件事说不清楚 —— 用户会以为搜到的就是曲库现在的样子。 */
+  const [offline, setOffline] = useState(null);
+
+  /* NAS 连不上时退到本地索引。
+     判据是"请求失败"，不是 navigator.onLine —— 手机连着 WiFi 但
+     NAS 关机的情况下 onLine 仍然是 true，那才是这个场景的常态。 */
+  const fallbackToOffline = async (text) => {
+    const [items, status] = await Promise.all([
+      searchOffline(text, 60),
+      indexStatus(),
+    ]);
+    setOffline({ items, ...status });
+    setGroups(EMPTY);
+    setSubmitted(text);
+  };
 
   const runSearch = async (event) => {
     event?.preventDefault?.();
@@ -58,21 +85,42 @@ export function GlobalSearchPage({ play, navigate, isAdmin }) {
     localStorage.setItem("songlib-global-search", text);
     setLoading(true);
     setError("");
+    setOffline(null);
     try {
+      /*
+       * 每一路单独兜住失败，这样一个接口挂了不影响其他几路 ——
+       * 但**必须记下它失败了**。
+       *
+       * 原来写的是 `.catch(() => ({ items: [] }))`，把失败变成了
+       * "搜到 0 条"。于是 NAS 整个连不上的时候，Promise.all 照样成功，
+       * 外面那个 catch 永远进不去，页面显示"没找到跟 xx 有关的内容"，
+       * 离线索引这条路根本走不到。断线和没搜到必须能分开。
+       */
+      const soft = (promise) =>
+        promise.then(
+          (value) => ({ ...value, failed: false }),
+          () => ({ items: [], failed: true }),
+        );
       const [tracks, artists, albums, pending] = await Promise.all([
-        api(`/api/catalog/unified?limit=40&q=${encodeURIComponent(text)}`).catch(
-          () => ({ items: [] }),
+        soft(api(`/api/catalog/unified?limit=40&q=${encodeURIComponent(text)}`)),
+        soft(
+          api(`/api/library/artists?pageSize=12&search=${encodeURIComponent(text)}`),
         ),
-        api(
-          `/api/library/artists?pageSize=12&search=${encodeURIComponent(text)}`,
-        ).catch(() => ({ items: [] })),
-        api(
-          `/api/library/albums?pageSize=12&search=${encodeURIComponent(text)}`,
-        ).catch(() => ({ items: [] })),
+        soft(
+          api(`/api/library/albums?pageSize=12&search=${encodeURIComponent(text)}`),
+        ),
         isAdmin
-          ? api("/api/downloads/pending").catch(() => ({ items: [] }))
-          : Promise.resolve({ items: [] }),
+          ? soft(api("/api/downloads/pending"))
+          : Promise.resolve({ items: [], failed: false }),
       ]);
+
+      // 三路主查询全挂 = 连不上 NAS。待入库那一路不算 ——
+      // 非管理员本来就不查它。
+      if (tracks.failed && artists.failed && albums.failed) {
+        await fallbackToOffline(text);
+        return;
+      }
+
       setGroups({
         tracks: tracks.items || [],
         artists: artists.items || [],
@@ -83,6 +131,11 @@ export function GlobalSearchPage({ play, navigate, isAdmin }) {
         ),
       });
       setSubmitted(text);
+      // 搜到的东西顺手存进离线索引。这是唯一不需要额外请求就能
+      // 让索引变全的时机 —— 用户搜过什么，通常就是他之后还会找的。
+      remember("track", tracks.items || []);
+      remember("artist", artists.items || []);
+      remember("album", albums.items || []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -139,6 +192,51 @@ export function GlobalSearchPage({ play, navigate, isAdmin }) {
 
       {loading ? (
         <PageLoader />
+      ) : offline ? (
+        <>
+          <Notice tone="warning" icon={WifiOff}>
+            连不上 NAS，下面是本机存的曲库索引
+            {offline.updatedAt ? `（${timeAgo(offline.updatedAt)}存下的）` : ""}。
+            这里只能翻和搜，放不了歌 —— 音频要从 NAS 取。
+          </Notice>
+          {offline.items.length ? (
+            <Section>
+              <SectionHeader
+                title="本机索引里找到的"
+                note={`${offline.items.length} 条 · 索引里一共 ${offline.count} 条`}
+              />
+              <ListGroup>
+                {offline.items.map((item) => (
+                  <ListRow
+                    key={item.key}
+                    leading={
+                      <Cover
+                        src={item.coverUrl}
+                        title={item.title}
+                        size="40px"
+                        shape={item.kind === "artist" ? "round" : "square"}
+                      />
+                    }
+                    title={item.title}
+                    subtitle={item.subtitle || OFFLINE_KIND_LABELS[item.kind]}
+                    trailing={OFFLINE_KIND_LABELS[item.kind]}
+                    chevron={false}
+                  />
+                ))}
+              </ListGroup>
+            </Section>
+          ) : (
+            <EmptyState
+              icon={WifiOff}
+              title="本机索引里也没有"
+              text={
+                offline.count
+                  ? `索引里有 ${offline.count} 条，但没有跟「${submitted}」对得上的。等 NAS 回来再搜一次。`
+                  : "还没存下任何索引。联网时搜过、翻过的内容会自动存一份，之后断连就能查。"
+              }
+            />
+          )}
+        </>
       ) : !submitted ? (
         <EmptyState
           icon={Search}

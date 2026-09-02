@@ -416,9 +416,11 @@ export default function NowPlayingPage({
   return (
     <div className="page now-playing-page" style={{ "--now-bg": `url(${background})` }}>
       <header className="now-page-head">
+        {/* 这一页的主体是当前曲目，不是"正在播放"四个字。
+            所以页面标题收成一行小标签，把视觉重量留给下面的歌名。
+            重构前这里是 h1，而下面的歌名是 46px 的 h2 —— 层级是反的。 */}
         <div>
-          <span className="now-eyebrow">NOW PLAYING</span>
-          <h1>正在播放</h1>
+          <h1 className="now-page-title">正在播放</h1>
           <p>{sourceDescription}</p>
         </div>
         <div className="now-page-actions">
@@ -458,9 +460,12 @@ export default function NowPlayingPage({
               <i />{usingRemote ? `跟随 ${selectedSession.product || "Plex"}` : "SongLib 本机播放"}
             </span>
           </div>
-          <div className="now-track-copy">
-            <h2>{track?.title || "选择一个播放来源"}</h2>
-            <p>{track ? `${track.artist || "未知歌手"} · ${track.album || "未知专辑"}` : "可以跟随其他设备上的 Plexamp，也可以从音乐库在此浏览器播放。"}</p>
+          {/* 同一个标题兼两职：有歌时它是曲名（页面主体，可以很大），
+              没歌时它是一句提示（不该是页面主体）。
+              用 data-empty 区分，字号在 now-playing.refresh.css 里分开给。 */}
+          <div className="now-track-copy" data-empty={track ? undefined : "true"}>
+            <h2>{track?.title || "先选一个播放来源"}</h2>
+            <p>{track ? `${track.artist || "未知歌手"} · ${track.album || "未知专辑"}` : "可以跟随其他设备上的 Plexamp，也可以直接在这个浏览器里放。"}</p>
             {track && (
               <div className="now-quality">
                 <span>{usingRemote ? "PLEX" : effectivePlayer.quality === "original" ? "无损" : String(effectivePlayer.quality).toUpperCase()}</span>
@@ -560,10 +565,11 @@ export default function NowPlayingPage({
                 </div>
               )}
               <div className="now-cast-bar">
-                <span><Airplay /><span><strong>歌词投到电视</strong><small>{track ? usingRemote ? `音频继续由 ${selectedSession.deviceName} 播放` : "音频继续由此浏览器播放" : "需要先选择正在播放的歌曲"}</small></span></span>
+                <span><Airplay /><span><strong>歌词投到电视</strong><small>{track ? (usingRemote ? `从右上角投屏，音频继续由 ${selectedSession.deviceName} 播放` : "从右上角投屏，音频继续由这个浏览器播放") : "先选一首正在播放的歌"}</small></span></span>
                 <div className="now-cast-actions">
+                  {/* 这里只保留歌词时间微调。投屏按钮在页头，
+                      同一个动作不在一屏里出现两次。 */}
                   {track && <div className="now-lyrics-offset" aria-label="歌词同步微调"><button onClick={() => cast.adjustLyricsOffset(-250)} title="歌词延后 0.25 秒"><Minus /></button><button className="value" onClick={cast.resetLyricsOffset} title="重置歌词同步">{cast.lyricsOffsetMs > 0 ? "+" : ""}{(cast.lyricsOffsetMs / 1000).toFixed(2)}s</button><button onClick={() => cast.adjustLyricsOffset(250)} title="歌词提前 0.25 秒"><Plus /></button></div>}
-                  {track ? <AirPlayCastButton cast={cast} /> : <button className="airplay-cast-button" disabled><Airplay />投到电视</button>}
                 </div>
               </div>
               {track && (

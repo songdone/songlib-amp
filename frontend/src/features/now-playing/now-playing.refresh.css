@@ -1,0 +1,79 @@
+/**
+ * "正在播放"页的修正层。
+ *
+ * 这里只放已经迁到设计 token 的部分，对应的旧规则会从 now-playing.css 删掉。
+ * 整页还没重建完，所以是两份文件并存 —— 迁一块删一块。
+ */
+
+@layer components {
+  /*
+   * 标题层级。
+   *
+   * 重构前："正在播放"是 h1（最大 38px），当前曲名是 h2（最大 46px）。
+   * 层级是反的：h2 比 h1 大，而且屏幕上真正的主体是曲名，不是"正在播放"四个字。
+   *
+   * 现在页面标题收成一行小标签，视觉重量全部留给曲名。
+   * 旁边那行英文 eyebrow "NOW PLAYING" 一并去掉 —— 它和 h1 说的是同一件事。
+   */
+  .now-page-title {
+    margin: 0;
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+
+  .now-page-head p {
+    margin-block-start: var(--space-1);
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+  }
+
+  /*
+   * 曲名。上限从 46px 收到 40px —— 46px 是为了压过页面标题才顶上去的，
+   * 现在标题让位了，曲名不需要那么大也能是主体。
+   */
+  .now-track-copy h2 {
+    font-size: clamp(var(--text-xl), 3vw, 40px);
+    line-height: 1.1;
+    letter-spacing: var(--tracking-tight);
+  }
+}
+
+@layer components {
+  /*
+   * 空状态。
+   *
+   * .now-track-copy h2 同时承担两个角色：有歌时是曲名（页面主体，40px 合理），
+   * 没歌时是一句提示（40px 就成了全页最大的字，把空状态推成了主角）。
+   * 用 data-empty 分开给字号。
+   */
+  .now-track-copy[data-empty="true"] h2 {
+    font-size: var(--text-lg);
+    font-weight: var(--weight-semibold);
+    letter-spacing: normal;
+    color: var(--text-primary);
+  }
+
+  .now-track-copy[data-empty="true"] p {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+  }
+
+  /*
+   * 没歌时把封面位收小。
+   * 一个 430px 的空灰盒子占满视野，等于用最大的版面告诉用户"这里什么都没有"。
+   * 有歌时它是封面，该大；没歌时它只是个占位，收到三分之一即可。
+   */
+  .now-workspace.empty .now-cover-wrap {
+    width: min(200px, 44vw);
+    margin-inline: auto;
+  }
+
+  /* 占位图标同步收小，否则会在小盒子里显得过大。 */
+  .now-workspace.empty .now-cover svg {
+    width: 40%;
+    height: 40%;
+  }
+}

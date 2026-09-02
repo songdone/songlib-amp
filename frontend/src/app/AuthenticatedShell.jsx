@@ -240,6 +240,11 @@ export function AuthenticatedShell({ setAuthenticated }) {
       data-theme={theme}
       style={appearanceStyle(appearance)}
     >
+      {/* 环境光晕：两团极淡的品牌色径向渐变，从右上和左下渗入。
+          近黑画布如果完全均匀会显得没做完，这一层给画面纵深，
+          又不干扰任何前景文字（透明度都在 0.1 以下）。
+          position:fixed，页面滚动时光源不动，内容像是在光下移动。 */}
+      <div className="ambient" aria-hidden="true" />
       <ArtistBackdrop imageUrl={shellBackdrop} />
       {(!isMobile || menu) && (
         <Sidebar

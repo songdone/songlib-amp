@@ -11,6 +11,7 @@
  *   EmptyState 的标题永远是区块级，不参与和页面标题争大小。
  */
 
+import { forwardRef } from "react";
 import { ChevronRight } from "lucide-react";
 import { Button } from "./Button";
 
@@ -125,19 +126,33 @@ export function EmptyState({ icon: Icon, title, text, action }) {
   );
 }
 
-/** 页面主内容容器。统一水平留白与区块间距。 */
-export function Page({ children, className = "" }) {
+/**
+ * 页面主内容容器。统一水平留白与区块间距。
+ *
+ * 转发 ref 是为了让 useReveal 能挂上来观察内部的 .rise 元素 ——
+ * 滚动入场需要一个稳定的容器节点。
+ */
+export const Page = forwardRef(function Page({ children, className = "" }, ref) {
   return (
-    <div className={["ui-page", className].filter(Boolean).join(" ")}>
+    <div ref={ref} className={["ui-page", className].filter(Boolean).join(" ")}>
       {children}
     </div>
   );
-}
+});
 
-/** 区块。把标题和内容绑在一起，间距由这里给。 */
-export function Section({ children, className = "" }) {
+/**
+ * 区块。把标题和内容绑在一起，间距由这里给。
+ *
+ * @param reveal 传 true 时加上 .rise，进入视口才淡入上浮。
+ *               首屏就在视野里的区块不要传 —— 那会让人看到一次多余的动画。
+ */
+export function Section({ children, className = "", reveal = false }) {
   return (
-    <section className={["ui-section", className].filter(Boolean).join(" ")}>
+    <section
+      className={["ui-section", reveal && "rise", className]
+        .filter(Boolean)
+        .join(" ")}
+    >
       {children}
     </section>
   );

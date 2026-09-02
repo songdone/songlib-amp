@@ -1,76 +1,143 @@
-import { Activity, ArrowDownToLine, FolderTree, Gauge, Home, Library, ListMusic, Play, Settings, WandSparkles, Wifi } from "lucide-react";
+/**
+ * 导航模型。
+ *
+ * 重构前的分组是"音乐 / 工具 / 系统"—— 这是按技术类型分的，
+ * 用户不会想"我要用一个工具"，他想的是"我要把这批歌的标签改对"。
+ * 而且"音乐工具"是一个装了五样不相干东西的杂物抽屉
+ * （文件标签、Plex 元数据、下载入库、音乐源、任务中心），
+ * 每样都要先点进去再选一次；"设置"还同时出现在主导航和这个抽屉里。
+ *
+ * 现在按用户处于什么状态分两组：
+ *
+ *   听音乐  —— 日常使用。所有人可见。
+ *   整理曲库 —— 维护收藏。只有管理员可见，且每项都是独立的一级目的地，
+ *              不再藏在一个按钮后面。
+ *
+ * 设置单独放在最后，不属于任何一组 —— 它是低频的系统配置，
+ * 不是一类日常任务。
+ */
+
+import {
+  Activity,
+  ArrowDownToLine,
+  FolderTree,
+  Home,
+  Library,
+  ListMusic,
+  Play,
+  Settings,
+  Sparkles,
+  WandSparkles,
+} from "lucide-react";
+
+/** 分组顺序即侧栏顺序。 */
+export const NAV_GROUPS = Object.freeze({
+  listen: "听音乐",
+  manage: "整理曲库",
+});
 
 export const nav = [
-  { id: "home", label: "首页", icon: Home, group: "音乐" },
-  { id: "library", label: "音乐库", icon: Library, group: "音乐" },
-  { id: "player", label: "正在播放", icon: Play, group: "音乐" },
-  { id: "playlists", label: "歌单", icon: ListMusic, group: "音乐" },
-  { id: "manage", label: "音乐工具", icon: Gauge, group: "工具", admin: true },
-  { id: "settings", label: "设置", icon: Settings, group: "系统" },
-];
+  // --- 听音乐 ---
+  { id: "home", label: "首页", icon: Home, group: "listen" },
+  { id: "library", label: "音乐库", icon: Library, group: "listen" },
+  { id: "playlists", label: "歌单", icon: ListMusic, group: "listen" },
+  { id: "discover", label: "发现", icon: Sparkles, group: "listen" },
+  { id: "player", label: "正在播放", icon: Play, group: "listen" },
 
-export const managementNav = [
+  // --- 整理曲库（管理员） ---
+  {
+    id: "download",
+    label: "下载入库",
+    icon: ArrowDownToLine,
+    group: "manage",
+    admin: true,
+  },
   {
     id: "local",
     label: "文件与标签",
     icon: FolderTree,
-    desc: "浏览音乐文件、写入真实音频标签并撤销整理操作",
+    group: "manage",
+    admin: true,
   },
   {
     id: "scrape",
-    label: "Plex 元数据",
+    label: "封面与歌词",
     icon: WandSparkles,
-    desc: "歌手海报、背景、中文简介、专辑封面与歌词补齐",
+    group: "manage",
+    admin: true,
   },
+  { id: "tasks", label: "任务", icon: Activity, group: "manage", admin: true },
+
+  // --- 不分组 ---
+  { id: "settings", label: "设置", icon: Settings },
+];
+
+/**
+ * "音乐工具"聚合页仍然保留（旧书签和移动端"更多"会用到），
+ * 但它现在只是这几个一级目的地的索引，不再是唯一入口。
+ * 描述写"你能在这里做什么"，不写模块清单。
+ */
+export const managementNav = [
   {
     id: "download",
-    label: "歌曲下载与入库",
+    label: "下载入库",
     icon: ArrowDownToLine,
-    desc: "下载到当前设备或 NAS，并完成标签与入库检查",
+    desc: "搜歌、下载，确认无误后再放进正式曲库",
+  },
+  {
+    id: "local",
+    label: "文件与标签",
+    icon: FolderTree,
+    desc: "改歌名歌手专辑，整理目录结构，改错了能撤回",
+  },
+  {
+    id: "scrape",
+    label: "封面与歌词",
+    icon: WandSparkles,
+    desc: "补齐缺的专辑封面、歌词、歌手照片和简介",
   },
   {
     id: "sources",
-    label: "音乐源管理",
-    icon: Wifi,
-    desc: "添加授权来源并检查连接状态",
+    label: "音乐源",
+    icon: Activity,
+    desc: "管理你有权使用的下载来源",
   },
   {
     id: "tasks",
-    label: "任务中心",
+    label: "任务",
     icon: Activity,
-    desc: "运行中、待确认、失败与历史任务",
-  },
-  {
-    id: "settings",
-    label: "系统设置",
-    icon: Settings,
-    desc: "Plex、账号、安全、日志与偏好",
+    desc: "看后台在跑什么，处理需要确认和重试的",
   },
 ];
 
-export const activeNavId = (active) =>
-  active === "manage" ||
-  managementNav.some((item) => item.id !== "settings" && item.id === active)
-    ? "manage"
-    : active === "discover"
-      ? "home"
-      : active === "me" || active === "search"
-        ? "library"
-        : active;
+/** 侧栏里哪一项该高亮。子页面归到它所属的一级目的地。 */
+export const activeNavId = (active) => {
+  if (active === "sources" || active === "manage") return "download";
+  if (active === "me" || active === "search") return "library";
+  return active;
+};
 
+/**
+ * 页面标题与副标题。
+ *
+ * 副标题的规矩：只在标题不足以说明"这里能干什么"时才写，
+ * 而且写用户能做的事，不写模块清单。
+ * 重构前多数副标题是内部状态枚举（"运行中、待确认、失败和历史任务分开处理"），
+ * 读起来像项目说明书。
+ */
 export const pageMeta = {
   home: ["首页", ""],
-  library: ["音乐库", "歌手、专辑与单曲"],
-  playlists: ["歌单", "收藏、导入与迁移"],
+  library: ["音乐库", ""],
+  playlists: ["歌单", ""],
   player: ["正在播放", ""],
-  discover: ["为你推荐", "熟悉的旋律，也有新的发现"],
-  me: ["收藏与历史", "你的音乐足迹"],
-  manage: ["音乐工具", "下载、标签与 Plex 资料"],
-  search: ["搜索", "歌曲、艺人、专辑与歌单"],
-  local: ["文件与标签", "浏览、写入标签与安全回滚"],
-  scrape: ["Plex 元数据", "歌手海报、简介、背景与专辑封面"],
-  download: ["歌曲下载与入库", "下载到设备或 NAS，并确认入库"],
-  sources: ["音乐源管理", "授权来源、接口识别与可用性"],
-  tasks: ["任务中心", "进度、失败恢复与历史"],
-  settings: ["设置", "账号、连接与存储"],
+  discover: ["发现", "从你听过的歌里找出可能喜欢的"],
+  me: ["我的", "收藏、播放历史和听歌偏好"],
+  search: ["搜索", ""],
+  manage: ["整理曲库", ""],
+  local: ["文件与标签", "改标签、整理目录，改错了能撤回"],
+  scrape: ["封面与歌词", "补齐缺失的封面、歌词和歌手资料"],
+  download: ["下载入库", "搜歌下载，确认后再进正式曲库"],
+  sources: ["音乐源", "管理你有权使用的下载来源"],
+  tasks: ["任务", ""],
+  settings: ["设置", ""],
 };

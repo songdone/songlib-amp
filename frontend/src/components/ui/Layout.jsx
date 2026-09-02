@@ -27,7 +27,9 @@ export function PageHeader({ eyebrow, title, lead, actions }) {
     <header className="ui-page-header">
       <div className="ui-page-header__text">
         {eyebrow && <p className="ui-page-header__eyebrow">{eyebrow}</p>}
-        <h1 className="ui-page-header__title">{title}</h1>
+        {/* 标题用自上而下的渐变填充，底部略淡。
+            只在页面级大标题上用 —— 小字加渐变会糊。 */}
+        <h1 className="ui-page-header__title text-gradient">{title}</h1>
         {lead && <p className="ui-page-header__lead">{lead}</p>}
       </div>
       {actions && <div className="ui-page-header__actions">{actions}</div>}

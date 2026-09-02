@@ -47,7 +47,6 @@ import { fmt, timeAgo } from "../../lib/format";
 import { coverUrlFor } from "../../lib/media";
 import { usePlexSessions } from "../now-playing/usePlexSessions";
 import { usePlayerCore } from "../player/PlayerProvider";
-import { useReveal } from "../../hooks/useReveal";
 
 /** 按当地时间打招呼。夜里两点还在听歌的人不该被说"早上好"。 */
 const greetingFor = (hour) => {
@@ -79,10 +78,6 @@ export function Dashboard({
     recommendations: [],
   });
   const [contentLoading, setContentLoading] = useState(true);
-
-  // 各区块进入视口时淡入上浮。只触发一次 ——
-  // 来回滚动反复淡入会晕，而且再看一遍没有任何信息价值。
-  const revealRef = useReveal();
 
   useEffect(() => {
     Promise.all([
@@ -165,7 +160,7 @@ export function Dashboard({
   };
 
   return (
-    <Page className="home" ref={revealRef}>
+    <Page className="home">
       <PageHeader eyebrow={greetingFor(new Date().getHours())} title="听点喜欢的" />
 
       {/* --- 焦点专辑：封面即视觉 --- */}

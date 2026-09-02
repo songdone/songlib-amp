@@ -20,7 +20,11 @@ flowchart LR
 
 ## 模块
 
-- `main.py`：HTTP contract、鉴权依赖、健康探针。
+- `main.py`：应用装配 —— 创建 app、注册中间件、`include_router`、挂载静态资源。
+- `routers/`：按用户任务域划分的 `APIRouter`。已拆出 `health`、`accounts`、
+  `insights`、`backups`；其余路由仍在 `main.py`，见
+  [docs/UI-REFACTOR.md](UI-REFACTOR.md) 里的迁移顺序。
+- `schemas.py`：请求体模型。
 - `auth.py` / `security.py`：首装、账号、角色、会话、CSRF、来源校验、速率限制和响应安全头。
 - `adapters.py`：媒体库、元数据和授权下载提供方的稳定接口。
 - `local_library.py` / `plex.py`：首批媒体后端实现。
@@ -32,6 +36,24 @@ flowchart LR
 - `jobs.py` / `worker.py`：租约、检查点、指数退避、取消和失败恢复。
 - `migrations.py` / `db.py`：向前迁移和兼容旧数据库。
 - `audit.py`：敏感字段脱敏和管理操作留痕。
+
+## 前端结构
+
+前端按用户任务分目录，与本文档的"模块"一节按领域划分是同一个原则 ——
+分组依据是用户要完成什么事，不是代码属于什么技术类型。
+
+- `src/main.jsx`：入口。注册 Service Worker、挂载 React 根、广播启动事件。
+- `src/app/`：应用装配。`App` 负责鉴权与首装分支，`AuthenticatedShell` 负责
+  登录后的外壳、路由分发与主题。
+- `src/features/`：按一级导航分组（见 [UX-RESTRUCTURE.md](UX-RESTRUCTURE.md)）。
+  `player` 持有播放核心 context，其余 feature 消费它。
+- `src/components/` / `src/hooks/` / `src/lib/`：跨 feature 复用的展示组件、
+  hook 与纯函数。纯函数不依赖 React，可直接在 Node 测试里引入。
+- `src/styles/`：设计系统。`tokens.css` 是颜色、字号、间距的唯一来源；
+  优先级由 `index.css` 声明的 `@layer` 顺序决定。约束见
+  [UI-REFACTOR.md](UI-REFACTOR.md)。
+
+`legacy.*` 层是重构前遗留的样式，正在逐块迁移到 token，不要往里加新规则。
 
 ## 任务状态
 

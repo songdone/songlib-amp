@@ -129,6 +129,10 @@
     --text-xl: calc(23px + var(--font-delta));
     --text-2xl: calc(28px + var(--font-delta));
     --text-3xl: calc(34px + var(--font-delta));
+    /* 展示级字号。只给首屏大标题和登录页用，
+       正文和组件里出现这两级基本都是写错了。 */
+    --text-4xl: calc(44px + var(--font-delta));
+    --text-5xl: calc(60px + var(--font-delta));
 
     --leading-tight: 1.2;
     --leading-snug: 1.35;

@@ -14,8 +14,12 @@
 
 import { useState } from "react";
 
-/** 标题 -> 稳定的色相。用简单字符串哈希，够均匀且不引依赖。 */
-const hueOf = (text) => {
+/**
+ * 标题 -> 稳定的色相。用简单字符串哈希，够均匀且不引依赖。
+ * 导出是为了让别处（如首页 hero 的色光衬底）在没有封面时
+ * 能取到跟占位图完全一样的色相，两者不会各说各话。
+ */
+export const hueOf = (text) => {
   const value = String(text || "");
   let hash = 0;
   for (let i = 0; i < value.length; i += 1) {

@@ -14,6 +14,7 @@
    * ============================================================= */
 
   .home-hero {
+    position: relative;
     display: grid;
     grid-template-columns: clamp(160px, 22vw, 240px) minmax(0, 1fr);
     align-items: center;
@@ -22,6 +23,38 @@
     background: var(--surface-1);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-xl);
+    /* 衬底要被圆角裁掉，否则模糊的封面会溢出到卡片外。 */
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  /* 放大模糊的封面衬底。
+     模糊半径要足够大（40px+）：小半径会让人认出这是同一张封面，
+     看起来像贴错了图；大半径才读作"色光"。
+     右侧渐隐，保证文字区始终落在纯净底色上，对比度不受封面影响。 */
+  .home-hero__bleed {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    /* 没有封面时的兜底：一团和占位图同色相的光。
+       写在 background-image 上，有封面时被行内样式整条覆盖。 */
+    background-image: radial-gradient(
+      110% 120% at 8% 50%,
+      hsl(var(--hero-hue, 262) 58% 46%),
+      transparent 68%
+    );
+    background-position: left center;
+    background-size: 150% auto;
+    background-repeat: no-repeat;
+    filter: blur(56px) saturate(1.4);
+    opacity: 0.34;
+    transform: scale(1.2);
+    mask-image: linear-gradient(100deg, #000, transparent 62%);
+  }
+
+  /* 浅色主题下同样的透明度会把文字底色染脏，压到三分之一。 */
+  :root[data-theme="light"] .home-hero__bleed {
+    opacity: 0.12;
   }
 
   .home-hero__art {
@@ -122,5 +155,50 @@
   .home-attention-icon {
     color: var(--warning-text);
     background: var(--warning-soft);
+  }
+}
+
+@layer components {
+  /* =============================================================
+   * 曲库掠影
+   *
+   * 通栏的封面墙 + 一句说明。这是首页唯一一块"不为了完成任务"的
+   * 区域，作用是让曲库的体量被看见。
+   * 放在页面末尾：想听歌的人在上面已经拿到了入口，
+   * 逛到这里的人才是有闲心看的人。
+   * ============================================================= */
+
+  .home-wall {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    padding-block: clamp(var(--space-6), 4vw, var(--space-10));
+    /* 上方一道极淡的分隔渐变，代替一条硬分割线。 */
+    border-block-start: 1px solid var(--border-subtle);
+    mask-image: none;
+  }
+
+  .home-wall__head {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    max-width: 46ch;
+  }
+
+  .home-wall__title {
+    font-size: clamp(var(--text-2xl), 5vw, var(--text-4xl));
+    font-weight: var(--weight-bold);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  .home-wall__note {
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    color: var(--text-secondary);
+  }
+
+  .home-wall__action {
+    margin-block-start: var(--space-2);
   }
 }

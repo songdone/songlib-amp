@@ -1321,3 +1321,30 @@
     background: var(--text-disabled);
   }
 }
+
+@layer components {
+  /* =============================================================
+   * 封面墙
+   *
+   * 两排反向横移的封面，纯装饰，不可点 —— 原因见 CoverWall.jsx。
+   * 单元尺寸用 clamp 而不是 vh：这块是内容旁边的陪衬，
+   * 不该在大屏上长成半屏高。
+   * ============================================================= */
+
+  .cover-wall {
+    --cover-wall-size: clamp(76px, 8vw, 104px);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding-block: var(--space-1);
+  }
+
+  .cover-wall__cell {
+    display: block;
+    flex: 0 0 auto;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    /* 压暗，让这一层退到内容后面去。 */
+    opacity: 0.66;
+  }
+}

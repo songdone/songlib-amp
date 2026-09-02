@@ -16,10 +16,20 @@
  *    也不把数据库统计当卖点摆在标题旁边。
  */
 
-import { CircleAlert, ListMusic, Music2, Play, Plus, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  CircleAlert,
+  ListMusic,
+  Music2,
+  Play,
+  Plus,
+  Sparkles,
+} from "lucide-react";
 import { useEffect, useState } from "react";
+import { LiveBadge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
-import { Cover } from "../../components/ui/Cover";
+import { Cover, hueOf } from "../../components/ui/Cover";
+import { CoverWall } from "../../components/ui/CoverWall";
 import { MediaCard, MediaGrid } from "../../components/ui/MediaCard";
 import {
   EmptyState,
@@ -37,6 +47,7 @@ import { fmt, timeAgo } from "../../lib/format";
 import { coverUrlFor } from "../../lib/media";
 import { usePlexSessions } from "../now-playing/usePlexSessions";
 import { usePlayerCore } from "../player/PlayerProvider";
+import { useReveal } from "../../hooks/useReveal";
 
 /** 按当地时间打招呼。夜里两点还在听歌的人不该被说"早上好"。 */
 const greetingFor = (hour) => {
@@ -69,10 +80,14 @@ export function Dashboard({
   });
   const [contentLoading, setContentLoading] = useState(true);
 
+  // 各区块进入视口时淡入上浮。只触发一次 ——
+  // 来回滚动反复淡入会晕，而且再看一遍没有任何信息价值。
+  const revealRef = useReveal();
+
   useEffect(() => {
     Promise.all([
       api("/api/library/artists?pageSize=12").catch(() => ({ items: [] })),
-      api("/api/library/albums?pageSize=12").catch(() => ({ items: [] })),
+      api("/api/library/albums?pageSize=24").catch(() => ({ items: [] })),
       api("/api/library/tracks?pageSize=12").catch(() => ({ items: [] })),
       api("/api/playlists").catch(() => ({ items: [] })),
       api("/api/recommendations").catch(() => ({ items: [] })),
@@ -118,6 +133,31 @@ export function Dashboard({
   const needsAttention =
     isAdmin && ((stats?.failedTasks || 0) > 0 || (stats?.waitingIngest || 0) > 0);
 
+  /**
+   * 封面墙的素材：专辑优先，不够就拿单曲的封面补。
+   * 按封面地址去重 —— 同一张专辑的多首歌会给出同一张图，
+   * 重复出现会让墙看起来在打转。
+   */
+  const wallItems = (() => {
+    const seen = new Set();
+    const out = [];
+    // kind 只用来拼 key：单曲和专辑的 ratingKey 取自不同序列，
+    // 不加前缀会撞车。
+    const push = (item, coverUrl, kind) => {
+      if (!coverUrl || seen.has(coverUrl)) return;
+      seen.add(coverUrl);
+      out.push({
+        key: `${kind}-${item.ratingKey || item.id || coverUrl}`,
+        title: item.title || "未命名",
+        coverUrl,
+      });
+    };
+    home.albums.forEach((album) => push(album, album.thumbUrl, "album"));
+    home.tracks.forEach((track) => push(track, coverUrlFor(track), "track"));
+    return out.slice(0, 20);
+  })();
+
+
   const openRemoteSession = (session) => {
     localStorage.setItem("songlib-playback-source", `plex:${session.id}`);
     if (player.isPlaying) player.pause();
@@ -125,18 +165,40 @@ export function Dashboard({
   };
 
   return (
-    <Page className="home">
+    <Page className="home" ref={revealRef}>
       <PageHeader eyebrow={greetingFor(new Date().getHours())} title="听点喜欢的" />
 
       {/* --- 焦点专辑：封面即视觉 --- */}
       {heroAlbum ? (
         <Section className="home-hero">
+          {/*
+            封面本身放大、模糊、压暗后垫在卡片底下，
+            整块的色调就跟着当前这张专辑走 —— 每天首页颜色都不一样。
+            比给卡片配一个固定的品牌色渐变有意思得多，也不用取色算法。
+          */}
+          <div
+            className="home-hero__bleed"
+            aria-hidden="true"
+            style={{
+              // 没有封面时 CSS 里的径向渐变兜底，色相跟占位图取同一个值。
+              "--hero-hue": hueOf(heroAlbum.title),
+              backgroundImage: heroCover ? `url(${heroCover})` : undefined,
+            }}
+          />
           {/* 封面外一圈跟随品牌色的柔光描边，让它从卡片表面浮起来。 */}
           <div className="home-hero__art glow-ring">
             <Cover src={heroCover} title={heroAlbum.title} shape="square" />
           </div>
           <div className="home-hero__copy">
-            <p className="home-hero__label">最近加入</p>
+            {/* 有歌在放就把状态摆在这儿，没有则退回"最近加入"。
+                同屏只允许一个流光徽章，所以别处不要再用 LiveBadge。 */}
+            {player.isPlaying ? (
+              <LiveBadge>
+                正在放 · {player.currentTrack?.title || "未知曲目"}
+              </LiveBadge>
+            ) : (
+              <p className="home-hero__label">最近加入</p>
+            )}
             <h2 className="home-hero__title">{heroAlbum.title || "未命名专辑"}</h2>
             <p className="home-hero__meta">
               {[heroAlbum.parentTitle, heroAlbum.year].filter(Boolean).join(" · ")}
@@ -204,7 +266,7 @@ export function Dashboard({
       )}
 
       {/* --- 继续播放 --- */}
-      <Section>
+      <Section reveal>
         <SectionHeader
           title="继续播放"
           moreLabel="全部记录"
@@ -249,7 +311,7 @@ export function Dashboard({
 
       {/* --- 最近加入 --- */}
       {home.albums.length > 1 && (
-        <Section>
+        <Section reveal>
           <SectionHeader title="最近加入" onMore={() => navigate("library")} />
           <MediaGrid min={148}>
             {home.albums.slice(1, 9).map((item) => (
@@ -357,6 +419,29 @@ export function Dashboard({
           )}
         </Section>
       </div>
+
+      {/* --- 曲库掠影：装饰性封面墙，入口是标题旁那个按钮 --- */}
+      {wallItems.length >= 8 && (
+        <Section className="home-wall" reveal>
+          <div className="home-wall__head">
+            <h2 className="home-wall__title text-gradient">你的曲库</h2>
+            <p className="home-wall__note">
+              {fmt(stats?.artists || 0)} 位歌手、{fmt(stats?.albums || 0)} 张专辑、
+              {fmt(stats?.tracks || 0)} 首歌，都在这台机器上。
+            </p>
+            <div className="home-wall__action">
+              <Button
+                variant="secondary"
+                trailing={ArrowRight}
+                onClick={() => navigate("library")}
+              >
+                随便逛逛
+              </Button>
+            </div>
+          </div>
+          <CoverWall items={wallItems} />
+        </Section>
+      )}
 
       {/* --- 需要处理的事，放在最后，不打断听歌 --- */}
       {needsAttention && (

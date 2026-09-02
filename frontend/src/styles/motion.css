@@ -595,8 +595,9 @@
    * ============================================================= */
 
   .marquee {
+    --marquee-gap: var(--space-3);
     display: flex;
-    gap: var(--space-3);
+    gap: var(--marquee-gap);
     width: max-content;
     animation: marquee-x calc(52s / max(var(--motion-scale), 0.001)) linear
       infinite;
@@ -607,12 +608,21 @@
     animation-direction: reverse;
   }
 
+  /*
+   * 位移量不是干净的 -50%。
+   *
+   * N 个元素、间隙 g 的 flex 行，总宽是 N*w + (N-1)*g —— 末尾没有间隙。
+   * 前半段要走完的距离却是 N/2*w + N/2*g（每个元素连着它后面那道间隙）。
+   * 两者差半个间隙，直接用 -50% 每轮会往回跳 g/2。
+   * 间隙只有 12px，跳动不明显，但它是每 52 秒一次的规律抖动，
+   * 盯着看得出来。
+   */
   @keyframes marquee-x {
     from {
       transform: translate3d(0, 0, 0);
     }
     to {
-      transform: translate3d(-50%, 0, 0);
+      transform: translate3d(calc(-50% - var(--marquee-gap) / 2), 0, 0);
     }
   }
 

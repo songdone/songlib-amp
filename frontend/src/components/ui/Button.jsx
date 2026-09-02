@@ -16,6 +16,25 @@ const VARIANTS = new Set(["primary", "secondary", "ghost", "danger", "quiet"]);
 const SIZES = new Set(["sm", "md", "lg"]);
 
 /**
+ * 按钮外观的类名，给不是 <button> 的元素借用。
+ *
+ * 有两个地方长得像按钮但不能是 button：导出备份是 <a download>，
+ * 换头像是包着 <input type=file> 的 <label>。硬套 Button 组件的话，
+ * `type="button"` 会落到 <a> 上、`disabled` 会落到 <label> 上 ——
+ * 都是无效属性。所以这里只给类名，语义留给调用方自己选对标签。
+ */
+export function buttonClass({ variant = "secondary", size = "md", extra = "" } = {}) {
+  return [
+    "ui-btn",
+    `ui-btn--${VARIANTS.has(variant) ? variant : "secondary"}`,
+    `ui-btn--${SIZES.has(size) ? size : "md"}`,
+    extra,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+/**
  * @param variant  primary 页面主操作，一屏最多一个
  *                 secondary 并列的次要操作
  *                 ghost 低干扰操作（工具栏、卡片角上）

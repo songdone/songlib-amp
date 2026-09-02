@@ -174,13 +174,13 @@ export function PlexSettingsModal({ initial, onClose, onSaved }) {
             value={draft.token}
             onChange={(event) => setField("token", event.target.value)}
             trailing={
-              <button
-                type="button"
-                className="text-button"
+              <Button
+                size="sm"
+                variant="quiet"
                 onClick={() => setShowToken((value) => !value)}
               >
                 {showToken ? "隐藏" : "显示"}
-              </button>
+              </Button>
             }
           />
         </div>

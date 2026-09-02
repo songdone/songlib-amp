@@ -1,0 +1,108 @@
+/**
+ * 悬浮提示条（目前只有"装到桌面"）。
+ *
+ * 旧样式在 styles.css 里靠结构选择器定位：
+ *   .pwa-prompt > div:nth-child(3)
+ *   .pwa-prompt div div
+ * 一旦标记改动就静默失效。这里全部改成命名类。
+ */
+
+@layer components {
+  .pwa-prompt {
+    position: fixed;
+    inset-inline-end: var(--space-5);
+    inset-block-end: 104px;
+    z-index: 70;
+    width: min(380px, calc(100vw - var(--space-7)));
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr) 30px;
+    gap: var(--space-3);
+    align-items: start;
+    padding: var(--space-4);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    /* 旧的 .panel 是硬编码深色渐变，浅色主题下这里会是唯一一块黑的。
+       用 --surface-1（不透明）而不是 --surface-overlay ——
+       后者是 0.72 透明度，配 backdrop-filter 用的；这张卡飘在
+       正文和迷你播放器上方，透出下面的文字会看不清自己写了什么。 */
+    background: var(--surface-1);
+    box-shadow: var(--shadow-lg);
+    animation: pwa-prompt-in calc(var(--duration-slow) * var(--motion-scale))
+      var(--ease-settle) both;
+  }
+
+  @keyframes pwa-prompt-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.98);
+    }
+  }
+
+  .pwa-prompt__icon {
+    grid-column: 1;
+    width: 52px;
+    height: 52px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+  }
+
+  .pwa-prompt__icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .pwa-prompt__close {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+  }
+
+  /* 正文跨到第三列 —— 关闭按钮只占第一行，下面的文字不该给它留空。 */
+  .pwa-prompt__body {
+    grid-column: 2 / 4;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .pwa-prompt__body strong {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+  }
+
+  .pwa-prompt__body p {
+    font-size: var(--text-xs);
+    line-height: var(--leading-normal);
+    color: var(--text-secondary);
+  }
+
+  .pwa-prompt__help,
+  .pwa-prompt__status {
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    font-size: var(--text-xs);
+    line-height: var(--leading-normal);
+    color: var(--text-secondary);
+  }
+
+  @media (max-width: 640px) {
+    .pwa-prompt {
+      inset-inline: var(--space-3);
+      inset-block-end: 86px;
+      width: auto;
+      grid-template-columns: 44px minmax(0, 1fr) 30px;
+      padding: var(--space-3);
+    }
+
+    .pwa-prompt__icon {
+      width: 44px;
+      height: 44px;
+    }
+  }
+}

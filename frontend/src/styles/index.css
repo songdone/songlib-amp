@@ -42,6 +42,7 @@
 
 /* --- 组件库（@layer components） --- */
 @import "../components/ui/ui.css";
+@import "../components/ui/prompts.css";
 
 /* --- 已迁移到 token 的业务组件（@layer components） --- */
 @import "../features/shell/sidebar.css";
@@ -57,9 +58,7 @@
 @import "../features/tools/sources.css";
 @import "../features/tools/download.css";
 
-/* --- 旧控件类名的桥接层。放在最后，靠层级顺序压过全部 legacy 层。
-       每迁完一个页面这里就少一批用户，最后整个删掉。 --- */
-@import "./legacy-controls.css";
+@import "../features/player/player.css";
 @import "../features/discover/discover.css";
 @import "../features/tools/tasks.css";
 @import "../features/me/me.css";

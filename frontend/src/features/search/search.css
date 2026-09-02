@@ -1,0 +1,57 @@
+/**
+ * 搜索。
+ *
+ * 类名一律带 -page 后缀。页面容器叫 `search` 会撞上组件原语里的 .search
+ * （一个带 display:flex; align-items:center 的搜索框），整页内容会被
+ * 挤成一列居中 —— 已经踩过一次。
+ *
+ * 结果列表、卡片网格、空状态都来自 components/ui。
+ * 这里只有开头那句话、搜索表单，和曲目行右侧那排动作。
+ */
+
+@layer components {
+  .search-page__lead {
+    max-width: 60ch;
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    color: var(--text-secondary);
+  }
+
+  /* 输入框吃掉剩余宽度但有上限；按钮宽度跟着文字。 */
+  .search-page__form {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .search-page__form .ui-field {
+    flex: 1 1 auto;
+    max-width: 560px;
+  }
+
+  /* 一行五个东西（来源徽章 + 四个动作），必须能在窄屏折行，
+     否则会把标题挤成一个字。 */
+  .search-page__row-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-1);
+  }
+
+  .search-page__pending-icon {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    background: var(--warning-soft);
+    color: var(--warning-text);
+  }
+
+  .search-page__pending-icon svg {
+    width: 18px;
+    height: 18px;
+    stroke-width: 1.8;
+  }
+}

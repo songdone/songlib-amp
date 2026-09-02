@@ -14,7 +14,7 @@ const TONES = new Set(["neutral", "accent", "success", "warning", "danger", "inf
 export function Badge({ tone = "neutral", icon: Icon, children }) {
   const safeTone = TONES.has(tone) ? tone : "neutral";
   return (
-    <span className={`badge badge--${safeTone}`}>
+    <span className={`ui-badge ui-badge--${safeTone}`}>
       {Icon && <Icon aria-hidden="true" />}
       {children}
     </span>

@@ -82,3 +82,49 @@
     background: var(--accent-solid);
   }
 }
+
+@layer components {
+  /* =============================================================
+   * 顶栏标题
+   *
+   * 顶栏标题就是页面标题，所以是 h1；页面正文里不再重复一次页名。
+   * 旧样式挂在 .topbar h2 上（散在 styles.css / commercial.css /
+   * liquid-glass.css 三处），改标签会全部失效，所以改用类名。
+   * ============================================================= */
+
+  .topbar__heading {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .topbar__title {
+    margin: 0;
+    font-size: var(--text-md);
+    font-weight: var(--weight-bold);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .topbar__subtitle {
+    margin: 0;
+    font-size: var(--text-xs);
+    line-height: var(--leading-snug);
+    color: var(--text-tertiary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* 窄屏只留标题 —— 顶栏高度有限，副标题会挤掉搜索框。 */
+  @media (max-width: 900px) {
+    .topbar__subtitle {
+      display: none;
+    }
+  }
+}

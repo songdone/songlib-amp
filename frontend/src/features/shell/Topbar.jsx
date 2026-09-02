@@ -17,9 +17,11 @@ export function Topbar({ title, subtitle, openMenu, onNavigate, logout, profile 
       <button className="icon-button mobile-only" onClick={openMenu}>
         <Menu />
       </button>
-      <div>
-        <h2>{title}</h2>
-        <p>{subtitle}</p>
+      {/* 顶栏标题就是页面标题，所以用 h1。
+          页面正文里不要再重复一次页名 —— 那会让同一句话在一屏里出现两遍。 */}
+      <div className="topbar__heading">
+        <h1 className="topbar__title">{title}</h1>
+        {subtitle && <p className="topbar__subtitle">{subtitle}</p>}
       </div>
       <div className="top-actions">
         <form className="top-search" onSubmit={submitSearch}>

@@ -1,0 +1,253 @@
+/**
+ * 音乐库。
+ *
+ * 卡片网格来自 components/ui。这里只有工具条、"继续载入"和曲目表。
+ */
+
+@layer components {
+  /* 三段：视图胶囊、搜索框、计数。搜索框吃掉剩余宽度但有上限 ——
+     铺满整行会让计数被挤到很远的地方。 */
+  .library-toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-3) var(--space-4);
+  }
+
+  .library-toolbar .ui-field {
+    flex: 1 1 220px;
+    max-width: 420px;
+  }
+
+  .library-toolbar__count {
+    margin-inline-start: auto;
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .library-more {
+    display: flex;
+    justify-content: center;
+  }
+
+  /* =============================================================
+   * 曲目表
+   *
+   * 表头和数据行共用同一份列定义，所以列宽写在这一条选择器里。
+   * ============================================================= */
+
+  .track-table {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .track-table__head,
+  .track-table__row {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 2.4fr) minmax(0, 1.3fr) minmax(0, 1.3fr) 64px;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-4);
+    text-align: start;
+  }
+
+  .track-table__head {
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    background: var(--surface-2);
+  }
+
+  .track-table__row {
+    width: 100%;
+    border: 0;
+    background: none;
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    cursor: pointer;
+  }
+
+  .track-table__row + .track-table__row {
+    border-block-start: 1px solid var(--border-subtle);
+  }
+
+  .track-table__row:hover {
+    background: var(--surface-2);
+  }
+
+  .track-table__row:focus-visible {
+    outline: 2px solid var(--accent-border);
+    outline-offset: -2px;
+  }
+
+  /* 除了标题列，其余单元格都单行省略 —— 长专辑名不该把行撑高。 */
+  .track-table__row > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .track-table__index,
+  .track-table__time {
+    color: var(--text-tertiary);
+    font-size: var(--text-xs);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .track-table__time {
+    text-align: end;
+  }
+
+  .track-table__title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .track-table__title .ui-cover {
+    flex: none;
+  }
+
+  .track-table__title b {
+    min-width: 0;
+    font-weight: var(--weight-medium);
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 860px) {
+    /* 窄屏去掉专辑列 —— 歌手比专辑更常用来确认"是不是这首"。 */
+    .track-table__head span:nth-child(4),
+    .track-table__row > span:nth-child(4) {
+      display: none;
+    }
+
+    .track-table__head,
+    .track-table__row {
+      grid-template-columns: 36px minmax(0, 2.4fr) minmax(0, 1.2fr) 64px;
+    }
+  }
+}
+
+@layer components {
+  /* =============================================================
+   * 歌手 / 专辑详情
+   * ============================================================= */
+
+  .library-detail__back {
+    display: flex;
+  }
+
+  .library-detail__hero {
+    display: grid;
+    grid-template-columns: clamp(140px, 20vw, 220px) minmax(0, 1fr);
+    align-items: end;
+    gap: clamp(var(--space-5), 3vw, var(--space-10));
+  }
+
+  .library-detail__cover {
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* 歌手是圆形，柔光描边也要跟着圆。 */
+  .library-detail__cover:has(.ui-cover--round) {
+    border-radius: 50%;
+  }
+
+  .library-detail__copy {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+    min-width: 0;
+  }
+
+  .library-detail__kind {
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--accent-text);
+  }
+
+  .library-detail__title {
+    /* 跟随视口，长专辑名不会撑破布局。 */
+    font-size: clamp(var(--text-2xl), 4.4vw, var(--text-4xl));
+    font-weight: var(--weight-bold);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+    color: var(--text-primary);
+  }
+
+  .library-detail__meta {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+  }
+
+  .library-detail__bio {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-1);
+    max-width: 72ch;
+  }
+
+  /* 默认三行，展开后不限。是否显示"全文"按钮由 JS 量出来的
+     实际截断情况决定，不是按字数猜 —— 见 LibraryDetailPage。 */
+  .library-detail__summary {
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    color: var(--text-tertiary);
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+  }
+
+  .library-detail__summary[data-expanded] {
+    -webkit-line-clamp: unset;
+    overflow: visible;
+  }
+
+  .library-detail__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 0;
+    border: 0;
+    background: none;
+    font-size: var(--text-xs);
+    color: var(--accent-text);
+    cursor: pointer;
+  }
+
+  .library-detail__toggle svg {
+    width: 12px;
+    height: 12px;
+    transition: transform var(--duration-fast) var(--ease-out);
+  }
+
+  .library-detail__toggle[aria-expanded="true"] svg {
+    transform: rotate(180deg);
+  }
+
+  @media (max-width: 720px) {
+    .library-detail__hero {
+      grid-template-columns: minmax(0, 1fr);
+      align-items: start;
+    }
+
+    .library-detail__cover {
+      width: min(52vw, 200px);
+    }
+  }
+}

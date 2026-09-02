@@ -43,6 +43,7 @@ from .security import SecurityMiddleware, client_key, issue_csrf, rate_limiter
 from . import playlists as playlist_service
 from .playlist_migration import export_to_plex, import_to_songlib, preview_share_link, strict_candidate
 from . import recommendations as recommendation_service
+from . import discovery
 from .unified_catalog import match_external_tracks, normalize as normalize_catalog_text, unified_tracks
 from .sources import (
     SourceError, delete_source, get_source, import_code, import_file, import_url, list_sources,
@@ -141,131 +142,55 @@ def dashboard():
         }
 
 
-CURATED_PLAYLIST_CATEGORIES = [
-    {"id": "netease-hot", "platform": "网易云音乐", "name": "热门", "count": 0, "url": "https://music.163.com/#/discover/playlist/?cat=热门"},
-    {"id": "netease-chinese", "platform": "网易云音乐", "name": "华语", "count": 0, "url": "https://music.163.com/#/discover/playlist/?cat=华语"},
-    {"id": "netease-pop", "platform": "网易云音乐", "name": "流行", "count": 0, "url": "https://music.163.com/#/discover/playlist/?cat=流行"},
-    {"id": "netease-classic", "platform": "网易云音乐", "name": "经典", "count": 0, "url": "https://music.163.com/#/discover/playlist/?cat=经典"},
-    {"id": "netease-cantonese", "platform": "网易云音乐", "name": "粤语", "count": 0, "url": "https://music.163.com/#/discover/playlist/?cat=粤语"},
-    {"id": "netease-ost", "platform": "网易云音乐", "name": "影视原声", "count": 0, "url": "https://music.163.com/#/discover/playlist/?cat=影视原声"},
-    {"id": "qq-hot", "platform": "QQ 音乐", "name": "热门歌单", "count": 0, "url": "https://y.qq.com/n/ryqq/category"},
-    {"id": "qq-chinese", "platform": "QQ 音乐", "name": "华语推荐", "count": 0, "url": "https://y.qq.com/n/ryqq/category"},
-    {"id": "qq-cantonese", "platform": "QQ 音乐", "name": "粤语推荐", "count": 0, "url": "https://y.qq.com/n/ryqq/category"},
-    {"id": "kugou-hot", "platform": "酷狗音乐", "name": "热歌精选", "count": 0, "url": "https://www.kugou.com/yy/special/index/1-0-0.html"},
-]
-
-
-def _netease_get(path: str, params: dict | None = None):
-    headers = {
-        "User-Agent": "Mozilla/5.0 SongLib-Amp/0.8",
-        "Referer": "https://music.163.com/",
-        "Accept": "application/json,text/plain,*/*",
-    }
-    with httpx.Client(timeout=httpx.Timeout(8, read=12), follow_redirects=True) as client:
-        response = client.get("https://music.163.com" + path, params=params or {}, headers=headers)
-        response.raise_for_status()
-        return response.json()
-
-
-def _playlist_summary(item: dict) -> dict:
-    creator = item.get("creator") or {}
-    return {
-        "id": str(item.get("id") or ""),
-        "platform": "网易云音乐",
-        "title": item.get("name") or "未命名歌单",
-        "description": re.sub(r"\s+", " ", item.get("description") or "").strip()[:180],
-        "coverUrl": item.get("coverImgUrl") or item.get("picUrl") or "",
-        "trackCount": int(item.get("trackCount") or 0),
-        "playCount": int(item.get("playCount") or 0),
-        "creator": creator.get("nickname") or "网易云音乐",
-        "sourceUrl": f"https://music.163.com/#/playlist?id={item.get('id')}",
-    }
+@app.get("/api/discovery/platforms", dependencies=[Depends(auth.current_user)])
+def discovery_platforms():
+    """平台能力清单。纯静态，不打任何外部接口 —— 前端要先画出平台选择器。"""
+    return {"items": discovery.platform_list()}
 
 
 @app.get("/api/discovery/playlists", dependencies=[Depends(auth.current_user)])
-def discovery_playlists(category: str = "热门"):
-    categories = []
-    source = "curated-fallback"
-    playlist_items = []
-    error = ""
+def discovery_playlists(platform: str = "netease", category: str = ""):
     try:
-        data = _netease_get("/api/playlist/hottags")
-        for index, item in enumerate(data.get("tags") or []):
-            name = item.get("name")
-            if not name:
-                continue
-            categories.append({
-                "id": f"netease-{item.get('id') or index}",
-                "platform": "网易云音乐",
-                "name": name,
-                "count": int(item.get("usedCount") or item.get("count") or 0),
-                "url": f"https://music.163.com/#/discover/playlist/?cat={quote(name)}",
-            })
-        if categories:
-            source = "netease-hottags"
-        playlist_data = _netease_get("/api/playlist/list", {"cat": category, "order": "hot", "offset": 0, "total": "true", "limit": 18})
-        playlist_items = [_playlist_summary(item) for item in (playlist_data.get("playlists") or [])]
-    except Exception as exc:
-        error = str(exc)
-        categories = []
-    merged = categories + [item for item in CURATED_PLAYLIST_CATEGORIES if item["name"] not in {c["name"] for c in categories}]
-    return {
-        "source": source,
-        "updatedAt": now(),
-        "categories": merged[:40],
-        "playlists": playlist_items,
-        "selectedCategory": category,
-        "platforms": sorted({item["platform"] for item in merged}),
-        "error": error,
-    }
+        result = discovery.browse(platform, category)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    result["updatedAt"] = now()
+    return result
 
 
 @app.get("/api/discovery/playlists/{playlist_id}", dependencies=[Depends(auth.current_user)])
-def discovery_playlist_detail(playlist_id: str, user=Depends(auth.current_user)):
-    if not playlist_id.isdigit():
-        raise HTTPException(status_code=400, detail="歌单编号无效")
+def discovery_playlist_detail(
+    playlist_id: str, platform: str = "netease", user=Depends(auth.current_user)
+):
     try:
-        data = _netease_get("/api/v6/playlist/detail", {"id": playlist_id, "n": 1000, "s": 0})
-        playlist = data.get("playlist") or {}
-        playlist_tracks = list(playlist.get("tracks") or [])
-        known_ids = {str(item.get("id")) for item in playlist_tracks if item.get("id")}
-        missing_ids = [str(item.get("id")) for item in (playlist.get("trackIds") or []) if item.get("id") and str(item.get("id")) not in known_ids][:300]
-        for start in range(0, len(missing_ids), 100):
-            ids = missing_ids[start:start + 100]
-            extra = _netease_get("/api/song/detail", {"ids": json.dumps(ids, ensure_ascii=False)}).get("songs") or []
-            playlist_tracks.extend(extra)
-        raw_tracks = []
-        for item in playlist_tracks[:300]:
-            artists = item.get("ar") or item.get("artists") or []
-            album = item.get("al") or item.get("album") or {}
-            raw_tracks.append({
-                "platform": "wy",
-                "platformTrackId": str(item.get("id") or ""),
-                "title": item.get("name") or "",
-                "artist": " / ".join(filter(None, [artist.get("name") for artist in artists])),
-                "album": album.get("name") or "",
-                "duration": round(int(item.get("dt") or item.get("duration") or 0) / 1000),
-                "coverUrl": album.get("picUrl") or "",
-            })
-        tracks = match_external_tracks(raw_tracks, scopes=user.get("libraryScopes"))
-        enabled_sources = [item for item in list_sources() if source_catalog_ready(item)]
-        for item in tracks:
-            item["canDownload"] = item.get("matchStatus") != "matched" and bool(enabled_sources)
-        return {
-            "playlist": _playlist_summary(playlist),
-            "tracks": tracks,
-            "summary": {
-                "total": len(tracks),
-                "matched": len([item for item in tracks if item.get("matchStatus") == "matched"]),
-                "downloadable": len([item for item in tracks if item.get("canDownload")]),
-                "unavailable": len([item for item in tracks if item.get("matchStatus") != "matched" and not item.get("canDownload")]),
-            },
-            "downloadSource": ({"id": enabled_sources[0]["id"], "name": enabled_sources[0].get("displayName")} if enabled_sources else None),
-        }
-    except HTTPException:
-        raise
+        provider = discovery.provider_for(platform)
+        playlist, raw_tracks = provider.detail(playlist_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"读取平台歌单失败：{exc}") from exc
+
+    tracks = match_external_tracks(raw_tracks, scopes=user.get("libraryScopes"))
+    enabled_sources = [item for item in list_sources() if source_catalog_ready(item)]
+    for item in tracks:
+        item["canDownload"] = item.get("matchStatus") != "matched" and bool(enabled_sources)
+    return {
+        "playlist": playlist,
+        "tracks": tracks,
+        "summary": {
+            "total": len(tracks),
+            "matched": len([item for item in tracks if item.get("matchStatus") == "matched"]),
+            "downloadable": len([item for item in tracks if item.get("canDownload")]),
+            "unavailable": len([
+                item for item in tracks
+                if item.get("matchStatus") != "matched" and not item.get("canDownload")
+            ]),
+        },
+        "downloadSource": (
+            {"id": enabled_sources[0]["id"], "name": enabled_sources[0].get("displayName")}
+            if enabled_sources else None
+        ),
+    }
 
 
 @app.post("/api/discovery/download-missing", dependencies=[Depends(auth.current_user)])

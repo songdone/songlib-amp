@@ -4,7 +4,7 @@ import { PageLoader } from "../components/PageLoader";
 import { Toast } from "../components/Toast";
 import { BRAND } from "../config/brand";
 import { Dashboard } from "../features/dashboard/Dashboard";
-import { RecommendationPage } from "../features/discover/RecommendationPage";
+import { DiscoverPage } from "../features/discover/DiscoverPage";
 import { LocalLibraryPage } from "../features/library/LocalLibraryPage";
 import { MediaLibrary } from "../features/library/MediaLibrary";
 import { MePage } from "../features/me/MePage";
@@ -377,7 +377,7 @@ export function AuthenticatedShell({ setAuthenticated }) {
           />
         )}{" "}
         {active === "discover" && (
-          <RecommendationPage
+          <DiscoverPage
             play={playTrack}
             navigate={navigate}
             isAdmin={canManageLibrary}

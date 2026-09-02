@@ -1,4 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { ResumePrompt } from "./ResumePrompt";
+import { fetchResumePoint, useResumeReporter } from "./useResumePoint";
 import { api } from "../../lib/api";
 import { playbackDurationSeconds, playlistTrackPayload } from "../../lib/contracts";
 import { isPlayableDuration, normalizeTrackTitle, persistableTrack, sanitizeQueue, trackIdentity } from "../../lib/media";
@@ -201,6 +203,14 @@ export function PlayerProvider({ children }) {
   const audioRef = useRef(null);
   const hydratedRef = useRef(false);
   const progressMilestoneRef = useRef(0);
+  /*
+   * 待执行的起播位置。
+   *
+   * 必须等 loadedmetadata 才能 seek：在那之前 audio.duration 是 NaN，
+   * 给 currentTime 赋值会被浏览器静默忽略，而且随后的 load()
+   * 也会把它冲回 0。所以先记下来，等元数据到了再跳。
+   */
+  const pendingSeekRef = useRef(0);
   const playlistIdsRef = useRef({});
   const playlistCreateRef = useRef({});
   const previousTracksRef = useRef([]);
@@ -230,6 +240,39 @@ export function PlayerProvider({ children }) {
     storedJson("songlib-playlists", {}),
   );
   const currentTrack = state.currentTrack;
+
+  /* ----------------------------------------------------------------
+   * 跨设备续播
+   *
+   * readPosition 从 audio 元素上直接读，不从 state 读 —— state.currentTime
+   * 每秒变四次，用它当依赖会让上报的定时器每秒重建四次。
+   * ---------------------------------------------------------------- */
+  const [resumeOffer, setResumeOffer] = useState(null);
+  useResumeReporter({
+    track: currentTrack,
+    isPlaying: state.isPlaying,
+    readPosition: () => {
+      const audio = audioRef.current;
+      return {
+        position: audio?.currentTime || 0,
+        duration: Number.isFinite(audio?.duration) ? audio.duration : 0,
+      };
+    },
+  });
+
+  // 换歌时问一次"要不要接着上次的位置"。
+  // 只问，不跳 —— 自动跳是那种第一次遇到会以为是 bug 的"聪明"。
+  useEffect(() => {
+    setResumeOffer(null);
+    if (!currentTrack) return undefined;
+    let alive = true;
+    fetchResumePoint(currentTrack).then((point) => {
+      if (alive && point) setResumeOffer(point);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [currentTrack && trackIdentity(currentTrack)]);
   const sendListeningEvent = (eventType, track, position = 0, duration = 0) => {
     if (!track) return;
     api("/api/listening/events", {
@@ -389,6 +432,8 @@ export function PlayerProvider({ children }) {
   };
   const play = async (input, queue) => {
     setState((s) => ({ ...s, loading: true, error: "" }));
+    // startAt 由"听到一半的"这类明确表达了续播意图的入口传进来。
+    pendingSeekRef.current = Number(input?.startAt) || 0;
     try {
       const immediate = immediatePlaybackTrack(input, state.quality);
       if (immediate) {
@@ -772,6 +817,14 @@ export function PlayerProvider({ children }) {
     <PlayerContext.Provider value={value}>
       <PlayerClockContext.Provider value={clock}>
         {children}
+        <ResumePrompt
+          offer={resumeOffer}
+          onAccept={() => {
+            seek(resumeOffer.position);
+            setResumeOffer(null);
+          }}
+          onDismiss={() => setResumeOffer(null)}
+        />
         <audio
         ref={audioRef}
         className="global-audio"
@@ -795,10 +848,17 @@ export function PlayerProvider({ children }) {
           }
         }}
         onLoadedMetadata={(e) => {
-          const duration = Number.isFinite(e.currentTarget.duration)
-            ? e.currentTarget.duration
-            : 0;
+          const audio = e.currentTarget;
+          const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
           setState((s) => ({ ...s, duration: duration || s.duration }));
+          const target = pendingSeekRef.current;
+          pendingSeekRef.current = 0;
+          // 落在时长范围内才跳。存的位置可能来自另一个版本
+          // （比如更短的单曲版），越界的 seek 会让浏览器直接结束这首。
+          if (target > 0 && (!duration || target < duration - 1)) {
+            audio.currentTime = target;
+            setState((s) => ({ ...s, currentTime: target }));
+          }
         }}
         onError={(e) => {
           const error = e.currentTarget.error;

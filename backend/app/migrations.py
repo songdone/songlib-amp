@@ -144,6 +144,42 @@ MIGRATIONS: tuple[tuple[int, str, str], ...] = (
         CREATE INDEX IF NOT EXISTS idx_audit_time ON audit_events(created_at DESC);
         """,
     ),
+    (
+        2,
+        "playback_positions",
+        """
+        -- 跨设备续播：每个用户、每首歌记一个播放位置。
+        --
+        -- 主键是 (user_id, track_key)，不是自增 id —— 同一首歌只该有
+        -- 一条记录，用自增 id 的话每次上报都插一行，一晚上就几千条。
+        --
+        -- track_key 用前端的 trackIdentity()（canonicalKey / plex-xxx /
+        -- local-xxx / 规范化后的 曲名|歌手|专辑）。它对同一首歌的本地
+        -- 文件和 Plex 版本给出同一个 key，这正是"手机上听 Plex、
+        -- 回电脑接着本地文件听"能续上的前提。
+        --
+        -- title/artist/cover_url 是冗余的快照，为的是"继续听"能在
+        -- 曲库还没加载完时就渲染出来，也能在原文件被删之后仍然
+        -- 显示得出这条记录是什么。
+        CREATE TABLE IF NOT EXISTS playback_positions (
+          user_id TEXT NOT NULL,
+          track_key TEXT NOT NULL,
+          position_seconds REAL NOT NULL DEFAULT 0,
+          duration_seconds REAL NOT NULL DEFAULT 0,
+          title TEXT NOT NULL DEFAULT '',
+          artist TEXT NOT NULL DEFAULT '',
+          album TEXT NOT NULL DEFAULT '',
+          cover_url TEXT NOT NULL DEFAULT '',
+          track TEXT NOT NULL DEFAULT '{}',
+          device TEXT NOT NULL DEFAULT '',
+          updated_at TEXT NOT NULL,
+          PRIMARY KEY (user_id, track_key),
+          FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_playback_recent
+          ON playback_positions(user_id, updated_at DESC);
+        """,
+    ),
 )
 
 

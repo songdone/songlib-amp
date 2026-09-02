@@ -24,7 +24,15 @@ init_db()
 
 
 def insert(rows):
-    """Put rows straight into the files table. Only the columns health() reads."""
+    """Put rows straight into the files table. Only the columns health() reads.
+
+    注意这里是 `DELETE FROM files`，清的是整张表。
+
+    可以这么做，是因为整个套件共用一个 DATA_DIR，而其他用到 files 的
+    测试（test_commercial_foundation）只按自己的 id 删自己的行、
+    不依赖别人留下的数据。health() 和 _duplicate_groups() 都是全表扫描，
+    留着别的测试的行会让这里的断言随执行顺序变化。
+    """
     with transaction() as connection:
         connection.execute("DELETE FROM files")
         for item in rows:

@@ -43,7 +43,7 @@ import {
 import { PageLoader } from "../../components/PageLoader";
 import { api } from "../../lib/api";
 import { recommendationPlaybackInput } from "../../lib/contracts";
-import { fmt, timeAgo } from "../../lib/format";
+import { fmt, formatTime, timeAgo } from "../../lib/format";
 import { coverUrlFor } from "../../lib/media";
 import { usePlexSessions } from "../now-playing/usePlexSessions";
 import { usePlayerCore } from "../player/PlayerProvider";
@@ -78,6 +78,9 @@ export function Dashboard({
     recommendations: [],
   });
   const [contentLoading, setContentLoading] = useState(true);
+  // 听到一半的。和下面的"继续播放"是两件事：那个是"你放过什么"，
+  // 这个是"你在哪儿停下的"，而且是跨设备的。
+  const [resumePoints, setResumePoints] = useState([]);
 
   useEffect(() => {
     Promise.all([
@@ -97,6 +100,9 @@ export function Dashboard({
         }),
       )
       .finally(() => setContentLoading(false));
+    api("/api/playback/resume?limit=6")
+      .then((data) => setResumePoints(data.items || []))
+      .catch(() => setResumePoints([]));
   }, []);
 
   if (loading) return <PageLoader />;
@@ -112,6 +118,24 @@ export function Dashboard({
       }))
       .filter((item) => item.ratingKey || item.audioUrl || item.path || item.file);
     if (playable[index]) player.play(playable[index], playable.slice(index + 1));
+  };
+
+  /* 从"听到一半的"点进去：先放，等音频真的能跳了再 seek。
+     播放器加载音频是异步的，立刻 seek 会被 load() 冲掉。 */
+  const resumeFrom = async (point) => {
+    const track = { ...(point.track || {}), title: point.title, artist: point.artist };
+    if (!track.id && !track.ratingKey && !track.localFileId) {
+      // 快照里没有能定位到文件的字段（多半是老记录），
+      // 退化成搜索，总比点了没反应强。
+      localStorage.setItem("songlib-global-search", point.title || "");
+      navigate("search");
+      return;
+    }
+    await player.play({
+      ...track,
+      source: track.sourceType || (track.ratingKey ? "plex_item" : undefined),
+      startAt: point.position,
+    });
   };
 
   const openAlbum = async (album) => {
@@ -254,6 +278,56 @@ export function Dashboard({
                 subtitle={`${session.artist || "未知歌手"} · ${session.deviceName || "Plexamp"}`}
                 trailing={session.controllable ? "可控制" : "仅跟随"}
                 onClick={() => openRemoteSession(session)}
+              />
+            ))}
+          </ListGroup>
+        </Section>
+      )}
+
+      {/* --- 听到一半的 ---
+           只在真有记录时出现。没有记录时多一个空状态，
+           等于告诉用户"这里本来该有东西"，而其实没有才是常态。 */}
+      {resumePoints.length > 0 && (
+        <Section reveal>
+          <SectionHeader
+            title="听到一半的"
+            note="换设备也接着上次的位置"
+          />
+          <ListGroup>
+            {resumePoints.map((point) => (
+              <ListRow
+                key={point.trackKey}
+                leading={
+                  <Cover
+                    src={point.coverUrl}
+                    title={point.title}
+                    size="40px"
+                    shape="square"
+                  />
+                }
+                title={point.title || "未命名歌曲"}
+                subtitle={
+                  <span className="resume-row">
+                    {/* 歌手要留在副标题里。之前把设备名也塞在这一行，
+                        结果没地方放歌手了 —— 而"这是谁的歌"比
+                        "从哪台设备停下的"重要得多。设备移到行尾。 */}
+                    <span className="resume-row__artist">
+                      {point.artist || "未知歌手"}
+                    </span>
+                    <span className="resume-row__bar" aria-hidden="true">
+                      <i style={{ inlineSize: `${Math.round(point.progress * 100)}%` }} />
+                    </span>
+                    <span className="resume-row__time">
+                      {formatTime(point.position)}
+                      {point.duration ? ` / ${formatTime(point.duration)}` : ""}
+                    </span>
+                  </span>
+                }
+                trailing={point.device || null}
+                chevron={false}
+                /* 从这里点进去是明确的"接着听"，所以直接 seek ——
+                   和播放器里那个提示条不同，那边用户没表达过意图。 */
+                onClick={() => resumeFrom(point)}
               />
             ))}
           </ListGroup>

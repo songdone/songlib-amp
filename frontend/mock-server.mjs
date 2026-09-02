@@ -116,6 +116,15 @@ http.createServer((req,res)=>{
          existing:[{id:'e2',path:'/music/周杰伦/叶惠美/03 - 晴天.flac',album:'叶惠美',ext:'.flac',bitrate:960,size:38_400_000,duration:269}]}
       ]
     })
+    if(url.pathname==='/api/playback/resume')return json(res,{items:[
+      {trackKey:'plex-100',position:200,duration:313,progress:0.639,title:'海阔天空',artist:'Beyond',album:'乐与怒',
+       coverUrl:'/mock-cover/%E4%B9%90%E4%B8%8E%E6%80%92.svg',device:'iPhone',updatedAt:new Date(Date.now()-900000).toISOString(),
+       track:{ratingKey:'100',sourceType:'plex_item',duration:313000}},
+      {trackKey:'local-file-3',position:88,duration:269,progress:0.327,title:'晴天',artist:'周杰伦',album:'叶惠美',
+       coverUrl:'/mock-cover/%E5%8F%B6%E6%83%A0%E7%BE%8E.svg',device:'Mac',updatedAt:new Date(Date.now()-7200000).toISOString(),
+       track:{id:'file-3',localFileId:'file-3',sourceType:'local_file',duration:269000}}
+    ]})
+    if(url.pathname==='/api/playback/position')return json(res,{})
     if(url.pathname==='/api/local/health')return json(res,{
       total:1439,checkedAt:new Date(Date.now()-45000).toISOString(),score:96,clean:false,
       allChecks:[

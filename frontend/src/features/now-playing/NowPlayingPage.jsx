@@ -13,6 +13,7 @@ import {
   CircleAlert,
   Disc3,
   Heart,
+  ImagePlus,
   Library,
   ListMusic,
   LoaderCircle,
@@ -33,6 +34,7 @@ import {
 } from "lucide-react";
 
 import { Button, IconButton } from "../../components/ui/Button";
+import { PosterStudio } from "../share/PosterStudio";
 import { api } from "../../lib/api";
 import { displayLyricsFor, parseLrc } from "../../lib/lyrics";
 import {
@@ -202,6 +204,7 @@ export default function NowPlayingPage({
   const [controlMessage, setControlMessage] = useState("");
   const [remoteVolume, setRemoteVolume] = useState(100);
   const [lyricsFull, setLyricsFull] = useState(false);
+  const [posterOpen, setPosterOpen] = useState(false);
   const autoResolvedRef = useRef(false);
 
   const requestedSessionId = selectedSource.startsWith("plex:")
@@ -534,6 +537,12 @@ export default function NowPlayingPage({
                     <button className={liked ? "active" : ""} onClick={() => localPlayer.toggleFavorite(track)}><Heart />{liked ? "已喜欢" : "喜欢"}</button>
                   </>
                 )}
+                {/* 做海报和播放来源无关，本机和跟随 Plex 都能做，
+                    所以放在 ternary 外面。 */}
+                <button onClick={() => setPosterOpen(true)}>
+                  <ImagePlus />
+                  做分享图
+                </button>
               </div>
               {controlMessage && <div className={`now-control-message ${/失败|无法|拒绝/.test(controlMessage) ? "error" : ""}`}>{controlMessage}</div>}
             </div>
@@ -682,6 +691,14 @@ export default function NowPlayingPage({
       {lyricsFull && track && (
         <LyricsOverlay track={lyricsTrack} lines={lines} activeLine={activeLine} player={effectivePlayer} cast={cast} onClose={() => setLyricsFull(false)} />
       )}
+      {/* 传解析好的 lines 而不是 LRC 原文：海报要按句勾选，
+          解析这件事已经在这一页做过一次了，不必再做一遍。 */}
+      <PosterStudio
+        open={posterOpen && Boolean(track)}
+        onClose={() => setPosterOpen(false)}
+        track={lyricsTrack}
+        lyrics={lines}
+      />
     </div>
   );
 }

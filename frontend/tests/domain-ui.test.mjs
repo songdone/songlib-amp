@@ -354,17 +354,30 @@ test("mobile navigation has exactly one semantic active destination", () => {
   assert.doesNotMatch(shellCss, /mobile-nav button:nth-child\(3\)/);
 });
 
-test("compact login keeps the form in the first mobile viewport", () => {
-  const styles = readFileSync(
-    new URL("../src/features/shell/shell-refactor.css", import.meta.url),
-    "utf8",
-  );
-  const compactRule = styles.slice(styles.lastIndexOf("@media (max-width: 900px)"));
-  // 断言的是布局保证本身，不是它靠什么手法生效。
-  // 重构后优先级由 src/styles/index.css 的 @layer 顺序决定，不再用 !important。
-  assert.match(compactRule, /\.login-motion-shell\s*\{[\s\S]*?min-height:\s*0\s*[;}]/);
-  assert.match(compactRule, /\.login-motion-card-group\s*\{[\s\S]*?margin:\s*8px auto 0\s*[;}]/);
-  assert.match(compactRule, /\.login-motion-logo,[\s\S]*?opacity:\s*1\s*[;}]/);
+test("登录页在任何视口下都只有登录这一件事", () => {
+  const login = readSource("features/auth/Login.jsx");
+  const styles = readSource("features/auth/login.css");
+
+  // 重构前的登录页是一张营销落地页：左半屏放大标题加四张功能卡，
+  // 右半屏浮一张登录卡。窄屏上表单会被挤出首屏，于是又加了一整段
+  // @media 用 !important 把它压回来。布局本身不成立时，补丁只会越叠越多。
+  //
+  // 现在是单列居中，天然不存在"表单被挤出首屏"的问题。
+  // 这里锁住这个结构，防止功能介绍再长回登录页。
+  assert.match(styles, /\.login\s*\{[\s\S]*?place-items:\s*center/);
+  assert.match(styles, /\.login__panel\s*\{[\s\S]*?width:\s*min\(100%,\s*360px\)/);
+  assert.doesNotMatch(styles, /grid-template-columns/);
+
+  // 登录页不该再出现功能宣传、英文点缀和"控制台"口吻。
+  // 先剥掉注释 —— 注释里会引用这些旧文案来说明当初改掉了什么。
+  const loginCode = login
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+  assert.doesNotMatch(loginCode, /LoginFeatureCard|login-motion/);
+  assert.doesNotMatch(loginCode, /YOUR MUSIC|SECURE ACCESS/);
+  assert.doesNotMatch(loginCode, /控制台/);
+
+  // 启动兜底屏仍然要在。
   const indexHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
   assert.match(indexHtml, /#root:empty::before/);
   assert.match(indexHtml, /正在连接本地音乐库/);

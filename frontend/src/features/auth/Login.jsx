@@ -1,22 +1,26 @@
-import { Activity, CircleAlert, Eye, EyeOff, KeyRound, LoaderCircle, LogIn, Play, Server, ShieldCheck, User } from "lucide-react";
-import { useState } from "react";
-import { LoginMotionBackdrop } from "../../components/Backdrops";
+/**
+ * 登录页。
+ *
+ * 重构前这里是一张营销落地页：左半屏放大标题、一句产品介绍和四张功能卡
+ * （私人曲库 / 连续播放 / 本地优先 / 为你发现），右半屏浮一张登录卡片。
+ * 加上顶部 logo，品牌名在同一屏出现三次，还带"YOUR MUSIC, AT HOME"和
+ * "SECURE ACCESS"两行英文点缀，按钮写着"进入音屿控制台"。
+ * 而且顶部 logo 与左侧标题实际重叠。
+ *
+ * 登录页只有一个任务：让已经决定要用这个应用的人进去。
+ * 功能介绍对着一个正在输密码的人讲没有意义 —— 他早就装好了。
+ *
+ * 现在：一屏居中、一个品牌标记、两个输入框、一个按钮。
+ * 背景是随机取自曲库的一张模糊封面（拿不到就退回纯色渐变），
+ * 让人一眼看出这是自己的音乐库，而不是一张通用的粒子壁纸。
+ */
+
+import { CircleAlert, Eye, EyeOff, KeyRound, User } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Button, IconButton } from "../../components/ui/Button";
+import { Field, Notice } from "../../components/ui/Field";
 import { BRAND } from "../../config/brand";
 import { api } from "../../lib/api";
-
-function LoginFeatureCard({ icon: Icon, title, desc }) {
-  return (
-    <div className="login-motion-feature">
-      <div>
-        <Icon />
-      </div>
-      <section>
-        <h4>{title}</h4>
-        <p>{desc}</p>
-      </section>
-    </div>
-  );
-}
 
 export function Login({ onLogin }) {
   const [username, setUsername] = useState("admin");
@@ -24,6 +28,30 @@ export function Login({ onLogin }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [backdrop, setBackdrop] = useState("");
+
+  /**
+   * 登录前是未鉴权状态，取不到曲库封面是正常的，
+   * 失败就安静地用纯色背景，不打扰正在登录的人。
+   */
+  useEffect(() => {
+    let cancelled = false;
+    api("/api/library/albums?pageSize=12")
+      .then((result) => {
+        if (cancelled) return;
+        const covers = (result.items || [])
+          .map((item) => item.thumbUrl)
+          .filter(Boolean);
+        if (covers.length) {
+          setBackdrop(covers[Math.floor(Math.random() * covers.length)]);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const submit = async (event) => {
     event.preventDefault();
     setBusy(true);
@@ -40,161 +68,81 @@ export function Login({ onLogin }) {
       setBusy(false);
     }
   };
+
   return (
-    <main className="login-page login-motion-page">
-      <LoginMotionBackdrop />
-      <div className="login-motion-logo">
-        <div className="login-motion-logo-mark">
-          <img src={BRAND.mark} alt="" />
-        </div>
-        <div>
-          <h1>
-            {BRAND.name}
-            <span>|</span>
-            {BRAND.cnName}
-          </h1>
-          <p>让散落的音乐 回到自己的岛屿</p>
-        </div>
+    <main className="login">
+      <div className="login__backdrop" aria-hidden="true">
+        {backdrop && <img src={backdrop} alt="" />}
       </div>
 
-      <div className="login-motion-shell">
-        <div className="login-motion-grid">
-          <section className="login-motion-left">
-            <div>
-              <div className="login-motion-copy">
-                <h3>
-                  <span />
-                  YOUR MUSIC, AT HOME
-                </h3>
-                <h2>
-                  让散落的音乐,
-                  <br />
-                  回到自己的<span>岛屿。</span>
-                </h2>
-                <p>
-                  一处收藏、整理和播放 NAS
-                  里的音乐，也能与 Plex 保持同步。
-                </p>
-              </div>
-              <div className="login-motion-features">
-                <LoginFeatureCard
-                  delay={0.3}
-                  icon={Server}
-                  title="私人曲库"
-                  desc="音乐始终留在家中"
-                />
-                <LoginFeatureCard
-                  delay={0.4}
-                  icon={Play}
-                  title="连续播放"
-                  desc="歌曲、队列与歌词相伴"
-                />
-                <LoginFeatureCard
-                  delay={0.5}
-                  icon={ShieldCheck}
-                  title="本地优先"
-                  desc="听歌记录由你掌控"
-                />
-                <LoginFeatureCard
-                  delay={0.6}
-                  icon={Activity}
-                  title="为你发现"
-                  desc="从熟悉走向新的旋律"
-                />
-              </div>
-            </div>
-          </section>
-
-          <section className="login-motion-right">
-            <div className="login-motion-card-group">
-              <div className="login-motion-hover-glow" />
-              <div className="login-motion-card">
-                <div className="login-motion-card-line" />
-                <div className="login-motion-card-head">
-                  <div>
-                    <img src={BRAND.mark} alt="" />
-                  </div>
-                  <h2>
-                    {BRAND.name}
-                    <span>{BRAND.cnName}</span>
-                  </h2>
-                  <p>SECURE ACCESS</p>
-                </div>
-
-                <form className="login-motion-form" onSubmit={submit}>
-                  <h3>登录控制台</h3>
-                  <label htmlFor="songlib-login-username">用户名</label>
-                  <div className="login-motion-input">
-                    <User />
-                    <input
-                      id="songlib-login-username"
-                      name="username"
-                      type="text"
-                      autoComplete="username"
-                      autoCapitalize="none"
-                      spellCheck="false"
-                      enterKeyHint="next"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      placeholder="输入用户名"
-                    />
-                  </div>
-                  <label htmlFor="songlib-login-password">密码</label>
-                  <div className="login-motion-input">
-                    <KeyRound />
-                    <input
-                      id="songlib-login-password"
-                      name="password"
-                      type={showPassword ? "text" : "password"}
-                      autoComplete="current-password"
-                      enterKeyHint="go"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••••••"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((value) => !value)}
-                    >
-                      {showPassword ? <EyeOff /> : <Eye />}
-                    </button>
-                  </div>
-                  <div className="login-motion-row">
-                    <span>会话仅保存在当前浏览器</span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setError(
-                          "请联系这台音屿实例的管理员，按部署文档中的“恢复管理员访问”流程重置密码。",
-                        )
-                      }
-                    >
-                      忘记密码？
-                    </button>
-                  </div>
-                  {error && (
-                    <div className="form-error login-motion-error">
-                      <CircleAlert />
-                      {error}
-                    </div>
-                  )}
-                  <button
-                    className="login-motion-submit"
-                    disabled={busy || !password}
-                  >
-                    {busy ? <LoaderCircle className="spin" /> : <LogIn />}
-                    进入音屿控制台
-                  </button>
-                </form>
-
-                <footer>
-                  <span className="status-dot" />
-                  NAS 本地运行 · 数据不会上传云端
-                </footer>
-              </div>
-            </div>
-          </section>
+      <div className="login__panel">
+        <div className="login__brand">
+          <img src={BRAND.mark} alt="" className="login__mark" />
+          <p className="login__name">{BRAND.cnName}</p>
         </div>
+
+        <form className="login__form" onSubmit={submit}>
+          <Field
+            label="用户名"
+            leading={User}
+            name="username"
+            type="text"
+            autoComplete="username"
+            autoCapitalize="none"
+            spellCheck="false"
+            enterKeyHint="next"
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+          />
+
+          <Field
+            label="密码"
+            leading={KeyRound}
+            name="password"
+            type={showPassword ? "text" : "password"}
+            autoComplete="current-password"
+            enterKeyHint="go"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            trailing={
+              <IconButton
+                icon={showPassword ? EyeOff : Eye}
+                label={showPassword ? "隐藏密码" : "显示密码"}
+                size="sm"
+                onClick={() => setShowPassword((value) => !value)}
+              />
+            }
+          />
+
+          {error && (
+            <Notice tone="danger" icon={CircleAlert}>
+              {error}
+            </Notice>
+          )}
+
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            block
+            loading={busy}
+            disabled={!password}
+          >
+            {busy ? "正在登录" : "登录"}
+          </Button>
+        </form>
+
+        <button
+          type="button"
+          className="login__help"
+          onClick={() =>
+            setError(
+              "重置密码需要在运行这个服务的机器上操作，具体步骤见部署文档里的「恢复管理员访问」。",
+            )
+          }
+        >
+          忘记密码了？
+        </button>
       </div>
     </main>
   );

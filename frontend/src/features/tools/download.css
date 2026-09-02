@@ -193,6 +193,77 @@
     border-block-start: 1px solid var(--border-subtle);
   }
 
+  /* =============================================================
+   * 曲库里已经有的同一首
+   *
+   * 跨满整行（从第 2 列到末列），和上面那行的文字左对齐。
+   * 塞进路径那一格的话，两份规格并排比较根本放不下。
+   * ============================================================= */
+
+  .inbox-dupe {
+    grid-column: 2 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-block-start: var(--space-1);
+    padding: var(--space-3);
+    border: 1px solid var(--warning-solid);
+    border-radius: var(--radius-md);
+    background: var(--warning-soft);
+  }
+
+  .inbox-dupe__lead {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
+    line-height: var(--leading-normal);
+    color: var(--warning-text);
+  }
+
+  .inbox-dupe__lead svg {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    margin-block-start: 1px;
+  }
+
+  .inbox-dupe ul {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* 徽标列和规格列都定宽，两份的路径才会从同一个横坐标开始 ——
+     对齐是"并排比较"能成立的前提。 */
+  .inbox-dupe li {
+    display: grid;
+    grid-template-columns: 5.5em minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-2xs);
+    color: var(--text-tertiary);
+  }
+
+  .inbox-dupe li > span {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .inbox-dupe__incoming {
+    color: var(--text-secondary);
+  }
+
+  @media (max-width: 700px) {
+    .inbox-dupe li {
+      grid-template-columns: minmax(0, 1fr);
+      row-gap: 2px;
+    }
+  }
+
   .inbox-table__text {
     display: flex;
     flex-direction: column;

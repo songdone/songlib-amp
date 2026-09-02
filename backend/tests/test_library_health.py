@@ -118,6 +118,54 @@ class DuplicateDetectionTests(unittest.TestCase):
         self.assertEqual(self.service._duplicate_groups(40)["total"], 1)
 
 
+class FindSimilarTests(unittest.TestCase):
+    """入库前查"曲库里是不是已经有了"。
+
+    这个判据必须和体检的判重一致：体检说是重复、入库却不提醒，
+    或者反过来，都比统一用一个稍严或稍松的规则更糟。
+    """
+
+    def setUp(self):
+        self.service = LocalLibraryService()
+        insert([
+            {"id": "flac", "path": "/m/Beyond/乐与怒/03 - 海阔天空.flac",
+             "filename": "03 - 海阔天空.flac", "ext": ".flac", "duration": 313,
+             "bitrate": 982, "size": 44_100_000, "title": "海阔天空", "artist": "Beyond"},
+            {"id": "other", "path": "/m/别人/翻唱/海阔天空.flac",
+             "filename": "海阔天空.flac", "ext": ".flac", "duration": 313,
+             "bitrate": 900, "size": 40_000_000, "title": "海阔天空", "artist": "某翻唱歌手"},
+        ])
+
+    def test_finds_the_same_song_at_a_different_path(self):
+        """target.exists() 发现不了的正是这种情况。"""
+        found = self.service.find_similar("海阔天空", "Beyond", 313)
+        self.assertEqual([entry["id"] for entry in found], ["flac"])
+
+    def test_a_cover_by_another_artist_is_not_reported(self):
+        found = self.service.find_similar("海阔天空", "完全不同的歌手", 313)
+        self.assertEqual(found, [])
+
+    def test_a_clip_with_the_same_name_is_not_reported(self):
+        found = self.service.find_similar("海阔天空", "Beyond", 30)
+        self.assertEqual(found, [])
+
+    def test_unknown_incoming_duration_still_reports_by_title_and_artist(self):
+        """时长不知道时宁可多提醒一次，也好过入完库才发现重了。"""
+        found = self.service.find_similar("海阔天空", "Beyond", 0)
+        self.assertEqual([entry["id"] for entry in found], ["flac"])
+
+    def test_empty_artist_matches_on_title_alone(self):
+        found = self.service.find_similar("海阔天空", "", 313)
+        self.assertEqual({entry["id"] for entry in found}, {"flac", "other"})
+
+    def test_results_are_sorted_best_first(self):
+        found = self.service.find_similar("海阔天空", "", 313)
+        self.assertEqual(found[0]["id"], "flac", "码率高的排前面，用户先看到最好的那份")
+
+    def test_blank_title_matches_nothing_instead_of_everything(self):
+        self.assertEqual(self.service.find_similar("", "Beyond", 313), [])
+
+
 class HealthReportTests(unittest.TestCase):
     def setUp(self):
         self.service = LocalLibraryService()

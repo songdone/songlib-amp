@@ -108,15 +108,27 @@ class DownloadInboxService:
                 filename = f"{int(track):02d} - {safe_name(title, path.stem)}{path.suffix.casefold()}" if track.isdigit() and int(track) > 0 else f"{safe_name(title, path.stem)}{path.suffix.casefold()}"
                 target = (settings.music_root / safe_name(artist, "Unknown Artist") / album_dir / filename).resolve()
                 _inside(target, settings.music_root, "音乐库")
+                duration = round(float(getattr(info, "length", 0) or 0))
+                bitrate = round(int(getattr(info, "bitrate", 0) or 0) / 1000)
+                # 曲库里已经有的同一首。target.exists() 只能发现同路径撞车，
+                # 发现不了"同一首歌换个路径又存了一份"——那才是常见情况。
+                existing = local_library.find_similar(title, artist, duration)
                 items.append({
                     "sourcePath": str(path),
                     "targetPath": str(target),
                     "title": title,
                     "artist": artist,
                     "album": album,
-                    "duration": round(float(getattr(info, "length", 0) or 0)),
+                    "duration": duration,
+                    "bitrate": bitrate,
+                    "size": path.stat().st_size,
                     "format": path.suffix.casefold().lstrip(".").upper(),
                     "conflict": target.exists(),
+                    "existing": existing,
+                    # 已经有更好或一样的版本了。真正值得拦一下的是这种：
+                    # 入库之后曲库里就是两份，而且新的那份还更差。
+                    "worseThanExisting": bool(existing) and bitrate > 0
+                    and max(entry["bitrate"] for entry in existing) > bitrate,
                     "metadataSource": "tags" if tags else "path",
                     "needsReview": artist == "Unknown Artist" or album == "Unknown Album",
                 })
@@ -127,9 +139,12 @@ class DownloadInboxService:
             "errors": errors,
             "summary": {
                 "total": len(items),
-                "ready": len([item for item in items if not item["conflict"] and not item["needsReview"]]),
+                "ready": len([item for item in items
+                              if not item["conflict"] and not item["needsReview"]
+                              and not item["existing"]]),
                 "review": len([item for item in items if item["needsReview"]]),
                 "conflicts": len([item for item in items if item["conflict"]]),
+                "duplicates": len([item for item in items if item["existing"]]),
             },
             "downloadRoot": str(settings.download_mount),
             "musicRoot": str(settings.music_root),

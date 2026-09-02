@@ -680,6 +680,48 @@ class LocalLibraryService:
         found.sort(key=lambda group: len(group["items"]), reverse=True)
         return {"groups": found[:limit], "total": len(found)}
 
+    def find_similar(self, title: str, artist: str, duration: int = 0, limit: int = 4):
+        """Library files that look like the same recording as the one described.
+
+        Used before ingesting a download, so the user finds out *before* the
+        move that they already own this song at a different path. The existing
+        `conflict` flag only catches a same-path collision, which misses the
+        common case entirely: dropping `晴天.mp3` in when the library already
+        has `周杰伦/叶惠美/03 - 晴天.flac` produces two different targets and
+        therefore no conflict, and you silently end up with two copies.
+
+        Same matching rule as _duplicate_groups, deliberately: if the checkup
+        would call two files duplicates, ingest should warn about them too.
+        Different rules in the two places would be worse than either rule.
+        """
+        key_title = _norm(title)
+        if not key_title:
+            return []
+        key_artist = _norm(artist)
+        found = []
+        for item in rows("""SELECT id,path,title,artist,album,duration,bitrate,size,ext
+                            FROM files WHERE title IS NOT NULL"""):
+            if _norm(item.get("title") or "") != key_title:
+                continue
+            if key_artist and _norm(item.get("artist") or "") != key_artist:
+                continue
+            existing_duration = int(item.get("duration") or 0)
+            # 两边都知道时长才比；有一边不知道就只靠曲名歌手，
+            # 宁可多提醒一次，也好过入库之后才发现重了。
+            if duration and existing_duration and abs(existing_duration - duration) > 3:
+                continue
+            found.append({
+                "id": item["id"],
+                "path": item["path"],
+                "album": item.get("album") or "",
+                "ext": item.get("ext") or "",
+                "bitrate": int(item.get("bitrate") or 0),
+                "size": int(item.get("size") or 0),
+                "duration": existing_duration,
+            })
+        found.sort(key=lambda entry: entry["bitrate"], reverse=True)
+        return found[:limit]
+
     def _missing_on_disk(self, limit: int = 60):
         """Rows whose file is gone. A stale index makes every count wrong."""
         gone = []

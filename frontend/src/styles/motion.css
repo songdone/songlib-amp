@@ -746,12 +746,17 @@
     width: min(38vw, 460px);
     translate: -50% 0;
     pointer-events: none;
-    background: linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--accent-solid) 16%, transparent) 0%,
-      transparent 62%
+    /*
+     * 用椭圆径向渐变而不是线性渐变：线性渐变只在垂直方向淡出，
+     * 左右两侧是硬边，会在画面上留下一个看得见的矩形带。
+     * 径向渐变四周都自然收口。
+     */
+    background: radial-gradient(
+      ellipse 50% 100% at 50% 0%,
+      color-mix(in srgb, var(--accent-solid) 20%, transparent) 0%,
+      color-mix(in srgb, var(--accent-solid) 7%, transparent) 38%,
+      transparent 72%
     );
-    mask-image: linear-gradient(to bottom, #000, transparent 70%);
     animation: beam-breathe calc(6400ms / max(var(--motion-scale), 0.001))
       var(--ease-in-out) infinite;
   }

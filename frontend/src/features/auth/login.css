@@ -54,16 +54,16 @@
      */
     mask-image:
       radial-gradient(
-        ellipse 40% 52% at 50% 44%,
+        ellipse 46% 60% at 52% 46%,
         #000 0%,
-        #000 34%,
+        #000 48%,
         transparent 100%
       ),
       linear-gradient(
         to right,
         transparent 0%,
-        #000 18%,
-        #000 82%,
+        #000 16%,
+        #000 84%,
         transparent 100%
       );
     mask-composite: intersect;
@@ -89,7 +89,13 @@
     opacity: 1;
   }
 
-  /* 压暗遮罩：左侧更重（那边有大段文字），右侧稍轻（让岛屿露出来）。 */
+  /*
+   * 压暗遮罩。
+   *
+   * 只在左栏文字所在的区域压重，中间和右侧要放开 ——
+   * 压太满会把视频里的光线变化一起吃掉，背景就变成一张死图了。
+   * 左 86% → 中 40% → 右 30%，右侧那点压暗只是为了让登录卡片浮起来。
+   */
   .login__scrim {
     position: absolute;
     inset: 0;
@@ -98,22 +104,64 @@
     background:
       linear-gradient(
         100deg,
-        color-mix(in srgb, var(--surface-canvas) 94%, transparent) 0%,
-        color-mix(in srgb, var(--surface-canvas) 74%, transparent) 42%,
-        color-mix(in srgb, var(--surface-canvas) 52%, transparent) 100%
+        color-mix(in srgb, var(--surface-canvas) 86%, transparent) 0%,
+        color-mix(in srgb, var(--surface-canvas) 62%, transparent) 26%,
+        color-mix(in srgb, var(--surface-canvas) 40%, transparent) 52%,
+        color-mix(in srgb, var(--surface-canvas) 30%, transparent) 100%
       ),
       linear-gradient(
         to bottom,
-        color-mix(in srgb, var(--surface-canvas) 60%, transparent) 0%,
-        transparent 30%,
-        transparent 70%,
-        color-mix(in srgb, var(--surface-canvas) 78%, transparent) 100%
+        color-mix(in srgb, var(--surface-canvas) 52%, transparent) 0%,
+        transparent 26%,
+        transparent 74%,
+        color-mix(in srgb, var(--surface-canvas) 72%, transparent) 100%
       );
   }
 
+  /*
+   * 声波地平线。
+   *
+   * 这是氛围层，不是可视化组件：矮、稀、淡，只在画面最底部透出一点起伏。
+   * 之前给到 34vh + 0.5 不透明度，结果像一排琴键横在页面下方，
+   * 比没有还糟。现在压到 14vh、0.16 不透明度，并且顶部大幅渐隐。
+   */
   .login .sound-field {
-    z-index: 1;
-    opacity: 0.45;
+    z-index: 2;
+    height: min(14vh, 130px);
+    gap: clamp(4px, 1.1vw, 12px);
+    opacity: 0.13;
+    /* 上下都收，两侧也收 —— 否则底部会留下一条横贯全宽的"条形码"。 */
+    mask-image:
+      linear-gradient(to top, #000 0%, transparent 88%),
+      linear-gradient(to right, transparent 0%, #000 22%, #000 78%, transparent 100%);
+    mask-composite: intersect;
+    -webkit-mask-composite: source-in;
+  }
+
+  .login .sound-field > span {
+    max-width: 7px;
+  }
+
+  .login .light-beam {
+    z-index: 2;
+  }
+
+  /*
+   * 岛屿上方的同心环。
+   * 只留极淡的一层 —— 环的轮廓一旦看得出是个正圆，
+   * 就会读成一条多余的辅助线，而不是光的扩散。
+   */
+  .login__halo {
+    position: absolute;
+    z-index: 2;
+    inset-block-start: 14%;
+    inset-inline-start: 52%;
+    width: min(40vw, 520px);
+    aspect-ratio: 1;
+    translate: -50% 0;
+    opacity: 0.3;
+    pointer-events: none;
+    mask-image: radial-gradient(circle, #000 30%, transparent 72%);
   }
 
   /* =============================================================

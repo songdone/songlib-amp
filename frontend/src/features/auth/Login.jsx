@@ -20,9 +20,10 @@
 
 import { CircleAlert, Disc3, Eye, EyeOff, KeyRound, Radio, ShieldCheck, User } from "lucide-react";
 import { useEffect, useState } from "react";
-import { LiveBadge } from "../../components/ui/Badge";
+import { Halo, LiveBadge } from "../../components/ui/Badge";
 import { Button, IconButton } from "../../components/ui/Button";
 import { Field, Notice } from "../../components/ui/Field";
+import { SoundField } from "../../components/ui/SoundField";
 import { VideoBackdrop } from "../../components/ui/VideoBackdrop";
 import { BRAND } from "../../config/brand";
 import { api } from "../../lib/api";
@@ -106,6 +107,12 @@ export function Login({ onLogin }) {
         ]}
       />
       <span className="light-beam" aria-hidden="true" />
+      {/* 同心环从岛屿位置向外扩散，呼应视频里那束光。 */}
+      <span className="login__halo">
+        <Halo />
+      </span>
+      {/* 贴底的声波条，给画面持续的动，也点题"这是个音乐应用"。 */}
+      <SoundField />
       <div className="login__scrim" aria-hidden="true" />
 
       <div className="login__grid">

@@ -9,11 +9,11 @@ const STATIC_ASSETS = [
   '/icons/maskable-192.png',
   '/icons/maskable-512.png',
   '/apple-touch-icon.png',
-  '/visuals/login-bg.jpg',
-  '/visuals/songlib-login-bg-base.jpg',
-  '/visuals/fallback-artist.svg',
-  '/visuals/fallback-player.svg',
-  '/visuals/fallback-cover-vinyl.svg',
+  // 登录/首装页的岛屿静帧。三张带品牌水印的 fallback SVG 已删除 ——
+  // 缺封面由前端 Cover 组件生成占位，不再需要预缓存兜底图。
+  // 注意：这里列的文件必须真实存在，否则 addAll 会整体失败，
+  // Service Worker 装不上，离线能力全丢。
+  '/visuals/login-island.jpg',
 ]
 
 const isMusicOrMutableRequest = request => {

@@ -1,20 +1,31 @@
-import { VISUAL_FALLBACKS } from "../lib/media";
+/**
+ * 背景层。
+ *
+ * 这里原先有一套"兜底图"机制：拿不到歌手背景 / 播放器背景时，
+ * 铺上 fallback-artist.svg 或 fallback-player.svg —— 两张印着
+ * "SONGLIB AMP" 金色水印的图。缺图时整屏都是品牌噪音。
+ *
+ * 现在没有兜底图：拿不到图就什么都不铺，由 styles/motion.css 的
+ * .ambient 环境光晕撑起画面纵深。没有内容时应该是安静的，
+ * 不该用一张占位图假装有内容。
+ */
 
-function AppBackdrop({
-  image,
-  variant = "default",
-  fallback = VISUAL_FALLBACKS.artist,
-}) {
-  const resolved = image || fallback;
+/**
+ * @param image 背景图地址。空值时只渲染渐变层，不渲染 img。
+ */
+function AppBackdrop({ image, variant = "default" }) {
   return (
     <div className={`app-backdrop ${variant}`} aria-hidden="true">
-      <img
-        key={resolved}
-        className="backdrop-image current"
-        src={resolved}
-        alt=""
-        decoding="async"
-      />
+      {image && (
+        <img
+          key={image}
+          className="backdrop-image current"
+          src={image}
+          alt=""
+          decoding="async"
+          loading="lazy"
+        />
+      )}
       <i className="backdrop-vignette" />
       <i className="backdrop-aurora" />
     </div>
@@ -22,69 +33,11 @@ function AppBackdrop({
 }
 
 export function ArtistBackdrop({ imageUrl }) {
-  return (
-    <AppBackdrop
-      image={imageUrl}
-      variant="home artist-backdrop"
-      fallback={VISUAL_FALLBACKS.artist}
-    />
-  );
+  return <AppBackdrop image={imageUrl} variant="home artist-backdrop" />;
 }
 
-function PlayerBackdrop({ imageUrl }) {
-  return (
-    <AppBackdrop
-      image={imageUrl}
-      variant="player player-backdrop"
-      fallback={VISUAL_FALLBACKS.player}
-    />
-  );
+export function PlayerBackdrop({ imageUrl }) {
+  return <AppBackdrop image={imageUrl} variant="player player-backdrop" />;
 }
 
-export function LoginMotionBackdrop() {
-  return (
-    <div className="login-motion-bg" aria-hidden="true">
-      <div className="login-base-map">
-        <div className="login-base-vignette" />
-      </div>
-      <svg
-        className="login-flow-lines"
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-      >
-        <defs>
-          <linearGradient
-            id="songlib-login-line-gradient"
-            x1="0%"
-            y1="0%"
-            x2="100%"
-            y2="0%"
-          >
-            <stop offset="0%" stopColor="rgba(245, 158, 11, 0)" />
-            <stop offset="50%" stopColor="rgba(245, 158, 11, 0.8)" />
-            <stop offset="100%" stopColor="rgba(245, 158, 11, 0)" />
-          </linearGradient>
-        </defs>
-        {Array.from({ length: 4 }, (_, index) => (
-          <path
-            key={index}
-            d={`M -10 ${20 + index * 15} Q ${40 + index * 5} ${30 - index * 5} ${70 + index * 10} ${50 + index * 10} T 110 ${40 + index * 10}`}
-            fill="none"
-            stroke="url(#songlib-login-line-gradient)"
-            strokeWidth={0.55}
-            strokeLinecap="round"
-            strokeOpacity={0.42}
-            vectorEffect="non-scaling-stroke"
-          />
-        ))}
-      </svg>
-      <div className="login-gradient-top" />
-      <div className="login-gradient-side" />
-      <div className="login-breath-glow top-left" />
-      <div className="login-breath-glow top-right" />
-      <div className="login-ambient-glow" />
-      <div className="login-card-glow" />
-    </div>
-  );
-}
+export { AppBackdrop };

@@ -26,7 +26,6 @@ import { buildAmbientDeck } from "../lib/ambient";
 import { api } from "../lib/api";
 import { DEFAULT_APPEARANCE, appearanceStyle, normalizeAppearance, resolvedTheme } from "../lib/appearance";
 import { clearFastCache, readFastCache, writeFastCache } from "../lib/cache";
-import { VISUAL_FALLBACKS } from "../lib/media";
 import { managementNav, pageMeta } from "../lib/nav-model";
 import { userIsAdmin } from "../lib/permissions";
 import { knownPage, libraryDetailFromPath, libraryTabFromPath, pageFromPath, pathForLibraryDetail, pathForLibraryTab, pathForPage, pathForPlaylist, pathForSettingsTab, playlistIdFromPath, settingsTabFromPath } from "../lib/routes";
@@ -231,7 +230,8 @@ export function AuthenticatedShell({ setAuthenticated }) {
     ambientDeck[ambientIndex % Math.max(ambientDeck.length, 1)] ||
     {};
   const playerTrack = player.currentTrack || {};
-  const shellBackdrop = hero.imageUrl || VISUAL_FALLBACKS.artist;
+  // 没有歌手背景图时不铺兜底图 —— 环境光晕已经撑起纵深。
+  const shellBackdrop = hero.imageUrl || "";
   const showMiniPlayer = !!player.currentTrack && active !== "player";
   return (
     <div
@@ -254,6 +254,11 @@ export function AuthenticatedShell({ setAuthenticated }) {
         />
       )}
       <main className="main">
+        {/*
+          深浅切换直接放在顶栏 —— 原先只能进设置里翻三层才能换。
+          themePreference 传的是用户偏好（可能是 system），
+          不是 resolvedTheme 的结果 —— 这样按钮才能显示"跟随系统"这一档。
+        */}
         {active !== "player" && <Topbar
           title={title}
           subtitle={subtitle}
@@ -261,6 +266,11 @@ export function AuthenticatedShell({ setAuthenticated }) {
           onNavigate={navigate}
           logout={logout}
           profile={settingsData.user}
+          themePreference={appearance.theme}
+          onThemeChange={(next) => changeAppearance({ ...appearance, theme: next })}
+          hasTaskActivity={jobs.some((job) =>
+            ["running", "queued", "waiting_confirm"].includes(job.status),
+          )}
         />}
         {loading &&
           (active === "manage" ||

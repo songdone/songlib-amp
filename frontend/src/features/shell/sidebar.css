@@ -185,3 +185,156 @@
     border-color: var(--border-subtle);
   }
 }
+
+@layer components {
+  /* =============================================================
+   * 顶栏操作区
+   *
+   * 重构前这排图标是歪的：.icon-button 38px、.avatar 38px 但内部布局不同、
+   * brand-status 又是另一套尺寸，三者基线对不齐；头像里还塞了两个图标
+   * 却没做对齐。现在整排走同一个 IconButton，头像单独定义并显式对齐。
+   * ============================================================= */
+
+  .topbar__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-inline-start: auto;
+    min-width: 0;
+  }
+
+  .topbar__actions .top-search {
+    /* 搜索框在这一排里是唯一可伸缩的元素。 */
+    flex: 0 1 320px;
+    min-width: 0;
+  }
+
+  /* 任务按钮上的活动指示点。用 ::after 画，
+     不再往按钮里塞一个空 <span>（那会打乱 flex 居中）。 */
+  .topbar__tasks {
+    position: relative;
+  }
+
+  .topbar__tasks--live::after {
+    content: "";
+    position: absolute;
+    inset-block-start: 6px;
+    inset-inline-end: 6px;
+    width: 6px;
+    height: 6px;
+    border-radius: var(--radius-pill);
+    background: var(--accent-solid);
+    box-shadow: 0 0 0 2px var(--surface-1);
+  }
+
+  /* --- 头像 --- */
+
+  .topbar__user {
+    position: relative;
+    flex: none;
+  }
+
+  .topbar__avatar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    height: var(--control-height-md);
+    padding-inline: var(--space-1) var(--space-2);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-pill);
+    background: var(--surface-3);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition:
+      background-color var(--duration-fast) var(--ease-out),
+      border-color var(--duration-fast) var(--ease-out);
+  }
+
+  .topbar__avatar:hover {
+    background: var(--surface-2);
+    border-color: var(--border-strong);
+    color: var(--text-primary);
+  }
+
+  /* 头像本体固定为圆形，无论是图片还是占位图标。 */
+  .topbar__avatar > img,
+  .topbar__avatar > svg:first-child {
+    flex: none;
+    width: 26px;
+    height: 26px;
+    border-radius: var(--radius-pill);
+    object-fit: cover;
+  }
+
+  .topbar__avatar > svg:first-child {
+    padding: 5px;
+    background: var(--surface-1);
+    stroke-width: 1.9;
+  }
+
+  .topbar__avatar-caret {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    stroke-width: 2;
+  }
+
+  /* --- 用户菜单 --- */
+
+  .topbar__menu {
+    position: absolute;
+    inset-block-start: calc(100% + var(--space-2));
+    inset-inline-end: 0;
+    z-index: var(--z-overlay);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 200px;
+    padding: var(--space-2);
+    border-radius: var(--radius-lg);
+    animation: rise-in calc(180ms * var(--motion-scale)) var(--ease-out) both;
+  }
+
+  .topbar__menu-name {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .topbar__menu button {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    height: var(--control-height-md);
+    padding-inline: var(--space-3);
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    text-align: start;
+    cursor: pointer;
+  }
+
+  .topbar__menu button:hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+  }
+
+  .topbar__menu button svg {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    stroke-width: 1.8;
+  }
+
+  /* 窄屏收掉搜索框，只留图标按钮 —— 搜索从底栏"曲库"进。 */
+  @media (max-width: 720px) {
+    .topbar__actions .top-search {
+      display: none;
+    }
+  }
+}

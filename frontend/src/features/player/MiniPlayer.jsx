@@ -1,13 +1,13 @@
 import { ChevronRight, Heart, ListMusic, Pause, Play, Volume2, X } from "lucide-react";
 import { formatTime, pct } from "../../lib/format";
-import { VISUAL_FALLBACKS, coverUrlFor } from "../../lib/media";
+import { coverUrlFor } from "../../lib/media";
 import { sourceLabel, usePlayer } from "./PlayerProvider";
 
 export function MiniPlayer({ openPlayer, navigate }) {
   const player = usePlayer(),
     current = player.currentTrack;
   if (!current) return null;
-  const cover = coverUrlFor(current) || VISUAL_FALLBACKS.cover;
+  const cover = coverUrlFor(current);
   const liked = player.isFavorite(current);
   return (
     <div className="mini-player">

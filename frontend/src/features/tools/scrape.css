@@ -1,0 +1,331 @@
+/**
+ * 封面与歌词。
+ *
+ * 这一页的核心是"让人看清会改什么"，所以版式优先保证：
+ *   - 新旧值在同一行、同一视线高度上对比；
+ *   - 图片候选直接出缩略图，文字候选出片段；
+ *   - 冲突和跳过用标签标出来，不靠颜色单独表意。
+ */
+
+@layer components {
+  .scrape__lead {
+    max-width: 62ch;
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    color: var(--text-secondary);
+  }
+
+  /* =============================================================
+   * 第一步：补什么
+   * ============================================================= */
+
+  .scrape__jobs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--space-3);
+  }
+
+  .scrape__job {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    text-align: start;
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    transition:
+      background-color var(--duration-fast) var(--ease-out),
+      border-color var(--duration-fast) var(--ease-out);
+  }
+
+  .scrape__job:hover {
+    background: var(--surface-2);
+    border-color: var(--border-default);
+  }
+
+  .scrape__job--on {
+    border-color: var(--accent-border);
+    background: var(--accent-soft);
+  }
+
+  .scrape__job-icon {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-md);
+    background: var(--surface-3);
+    color: var(--text-secondary);
+  }
+
+  .scrape__job--on .scrape__job-icon {
+    background: var(--accent-soft-hover);
+    color: var(--accent-text);
+  }
+
+  .scrape__job-icon svg {
+    width: 18px;
+    height: 18px;
+    stroke-width: 1.8;
+  }
+
+  .scrape__job-text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .scrape__job-head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .scrape__job-head strong {
+    font-size: var(--text-base);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+  }
+
+  .scrape__job-text small {
+    font-size: var(--text-xs);
+    line-height: var(--leading-normal);
+    color: var(--text-tertiary);
+  }
+
+  /* =============================================================
+   * 第二步：范围与策略
+   * ============================================================= */
+
+  .scrape__scope {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+
+  .scrape__chips,
+  .scrape__views {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .scrape__chip {
+    height: var(--control-height-sm);
+    padding-inline: var(--space-4);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    transition:
+      background-color var(--duration-fast) var(--ease-out),
+      border-color var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out);
+  }
+
+  .scrape__chip:hover {
+    color: var(--text-primary);
+    border-color: var(--border-strong);
+  }
+
+  .scrape__chip--on {
+    color: var(--accent-on-solid);
+    background: var(--accent-solid);
+    border-color: transparent;
+  }
+
+  .scrape__scope .ui-field {
+    width: min(100%, 340px);
+  }
+
+  .scrape__modes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--space-2);
+    width: 100%;
+  }
+
+  .scrape__mode {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--space-3);
+    text-align: start;
+    background: var(--surface-inset);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+  }
+
+  .scrape__mode strong {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+  }
+
+  .scrape__mode small {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+  }
+
+  .scrape__mode--on {
+    border-color: var(--accent-border);
+    background: var(--accent-soft);
+  }
+
+  /* =============================================================
+   * 第三步：逐条清单
+   * ============================================================= */
+
+  .scrape__list {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .scrape__row {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .scrape__row + .scrape__row {
+    border-block-start: 1px solid var(--border-subtle);
+  }
+
+  /* 勾掉或跳过的条目整体压暗，但仍然可读 ——
+     用户需要知道自己排除了什么。 */
+  .scrape__row--off {
+    opacity: 0.5;
+  }
+
+  .scrape__row-skip {
+    width: 20px;
+  }
+
+  .scrape__row-main {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .scrape__row-head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .scrape__row-head strong {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+  }
+
+  .scrape__row-note {
+    font-size: var(--text-xs);
+    color: var(--warning-text);
+  }
+
+  /* 新旧对比。旧值划掉、新值高亮，和标签编辑器保持同一套语言。 */
+  .scrape__diff {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+    font-size: var(--text-xs);
+  }
+
+  .scrape__diff svg {
+    flex: none;
+    width: 12px;
+    height: 12px;
+    color: var(--text-tertiary);
+  }
+
+  .scrape__diff-old {
+    flex: none;
+    color: var(--text-tertiary);
+    text-decoration: line-through;
+  }
+
+  .scrape__diff-new {
+    min-width: 0;
+    color: var(--accent-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .scrape__diff .ui-cover {
+    flex: none;
+  }
+
+  .scrape__row-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    flex: none;
+    font-size: var(--text-2xs);
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* --- 确认条 --- */
+
+  .scrape__confirm {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+  }
+
+  .scrape__confirm-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+  }
+
+  .scrape__confirm-text strong {
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+  }
+
+  @media (max-width: 720px) {
+    .scrape__row {
+      grid-template-columns: 20px minmax(0, 1fr);
+    }
+
+    /* 窄屏把来源和匹配度移到第二行左对齐，不再挤在右边。 */
+    .scrape__row-meta {
+      grid-column: 2;
+      flex-direction: row;
+      align-items: center;
+      gap: var(--space-3);
+    }
+  }
+}

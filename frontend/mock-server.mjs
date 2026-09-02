@@ -4,8 +4,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'dist')
-const artists = ['Beyond','S.H.E','G.E.M.邓紫棋','周杰伦','孙燕姿','五月天','林俊杰','张学友','梁静茹','蔡依林','王菲','田馥甄'].map((title,index)=>({ratingKey:String(index+1),type:'artist',title,summary:`${title} 的音乐跨越不同阶段，作品兼具鲜明旋律与个人表达。这里汇集已入库的专辑、热门曲目和完整媒体资料。`,tags:{genre:index%2?['华语流行']:['摇滚']},thumb:index%4?'mock':'',thumbUrl:index%4?'/visuals/fallback-cover-vinyl.svg':'',art:index%3?'mock-bg':'',artUrl:index%3?'/visuals/fallback-artist.svg':''}))
-const albums = ['女生宿舍','范特西','七里香','我要我们在一起','寓言','叶惠美','逆光','勇气','十一月的萧邦','盖世英雄','神的孩子都在跳舞','八度空间'].map((title,index)=>({ratingKey:String(index+30),type:'album',title,parentTitle:artists[index%artists.length].title,parentRatingKey:artists[index%artists.length].ratingKey,year:2000+index,thumb:index%5?'mock':'',thumbUrl:index%5?'/visuals/fallback-cover-vinyl.svg':'',artUrl:'/visuals/fallback-artist.svg'}))
+const artists = ['Beyond','S.H.E','G.E.M.邓紫棋','周杰伦','孙燕姿','五月天','林俊杰','张学友','梁静茹','蔡依林','王菲','田馥甄'].map((title,index)=>({ratingKey:String(index+1),type:'artist',title,summary:`${title} 的音乐跨越不同阶段，作品兼具鲜明旋律与个人表达。这里汇集已入库的专辑、热门曲目和完整媒体资料。`,tags:{genre:index%2?['华语流行']:['摇滚']},thumb:index%4?'mock':'',thumbUrl:index%4?`/mock-cover/${encodeURIComponent(title)}.svg`:'',art:index%3?'mock-bg':'',artUrl:index%3?`/mock-cover/bg-${encodeURIComponent(title)}.svg`:''}))
+const albums = ['女生宿舍','范特西','七里香','我要我们在一起','寓言','叶惠美','逆光','勇气','十一月的萧邦','盖世英雄','神的孩子都在跳舞','八度空间'].map((title,index)=>({ratingKey:String(index+30),type:'album',title,parentTitle:artists[index%artists.length].title,parentRatingKey:artists[index%artists.length].ratingKey,year:2000+index,thumb:index%5?'mock':'',thumbUrl:index%5?`/mock-cover/${encodeURIComponent(title)}.svg`:'',artUrl:`/mock-cover/bg-${encodeURIComponent(title)}.svg`}))
 const tracks = Array.from({length:30},(_,index)=>({ratingKey:String(100+index),title:['恋人未满','晴天','勇气','海阔天空','光年之外'][index%5],grandparentTitle:artists[index%artists.length].title,parentTitle:albums[index%albums.length].title,duration:215000+index*1400}))
 const jobs = [
   {id:8,kind:'scrape_artists',title:'更新歌手海报、背景与中文简介',status:'running',progress:68,message:'正在处理 梁静茹 (72/105)',created_at:new Date(Date.now()-180000).toISOString()},
@@ -19,10 +19,38 @@ const localFiles=tracks.slice(0,14).map((t,i)=>({id:`file-${i}`,path:`/music/${t
 const pendingDownloads=[{jobId:5,title:'晴天',artist:'周杰伦',album:'叶惠美',quality:'320k',source:'[独家音源]',downloadPath:'/music/_incoming/周杰伦-晴天.mp3',targetPath:'/music/周杰伦/叶惠美/03 - 晴天.mp3',tagStatus:'已写入',coverStatus:'已保存',lyricStatus:'已保存',conflict:false,preview:jobs[3].result.preview}]
 const plexSettings={enabled:true,name:'极空间 Plex',serverUrl:'http://127.0.0.1:32400',externalUrl:'http://127.0.0.1:32400',token:'',hasToken:true,selectedLibraryKeys:'all',lastConnectedAt:new Date(Date.now()-600000).toISOString(),lastSyncAt:new Date(Date.now()-1200000).toISOString(),libraries:[{key:'26',title:'音乐',type:'artist',enabled:true},{key:'27',title:'演唱会音乐',type:'artist',enabled:true}],syncedLibraryCount:2}
 const users=[{id:'admin',username:'admin',displayName:'管理员',role:'admin',enabled:true,createdAt:new Date(Date.now()-86400000).toISOString(),updatedAt:new Date().toISOString(),lastLoginAt:new Date(Date.now()-300000).toISOString()}]
+/**
+ * 生成一张无品牌、无文字的渐变封面。
+ *
+ * 之前 mock 把 /visuals/fallback-cover-vinyl.svg（印着 "SONGLIB AMP /
+ * NO COVER ART" 金色水印的兜底图）当成真封面塞进 thumbUrl，
+ * 于是开发预览里整屏都是重复的品牌水印 —— 那不是产品的真实样子，
+ * 反而误导了对界面观感的判断。
+ *
+ * 现在按 seed 生成稳定的双色渐变，代表"这条数据有封面"。
+ * 真正缺封面的条目 thumbUrl 留空，由前端 Cover 组件给出首字占位。
+ */
+const mockCover = (seed) => {
+  let hash = 0
+  for (let i = 0; i < seed.length; i += 1) hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0
+  const hue = Math.abs(hash) % 360
+  const hue2 = (hue + 38) % 360
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="hsl(${hue} 42% 32%)"/>
+    <stop offset="1" stop-color="hsl(${hue2} 38% 14%)"/>
+  </linearGradient></defs>
+  <rect width="600" height="600" fill="url(#g)"/>
+  <circle cx="420" cy="170" r="200" fill="hsl(${hue} 55% 46%)" opacity=".18"/>
+  <circle cx="150" cy="470" r="240" fill="hsl(${hue2} 50% 20%)" opacity=".35"/>
+</svg>`
+}
+
 const json = (res,data,status=200)=>{res.writeHead(status,{'content-type':'application/json; charset=utf-8'});res.end(JSON.stringify(data))}
 const port = Number(process.env.PORT || 4174)
 http.createServer((req,res)=>{
   const url=new URL(req.url,'http://localhost')
+  if(url.pathname.startsWith('/mock-cover/')){res.writeHead(200,{'content-type':'image/svg+xml; charset=utf-8','cache-control':'public,max-age=3600'});return res.end(mockCover(decodeURIComponent(url.pathname.slice(12))))}
   if(url.pathname.startsWith('/api/')){
     if(url.pathname==='/api/auth/status')return json(res,{authenticated:!String(req.headers.referer||'').includes('login=1'),user:users[0]})
     if(url.pathname==='/api/auth/login')return json(res,{ok:true})
@@ -30,7 +58,7 @@ http.createServer((req,res)=>{
     if(url.pathname==='/api/users')return json(res,{items:users})
     if(/^\/api\/users\/[^/]+\/password$/.test(url.pathname))return json(res,{ok:true})
     if(/^\/api\/users\/[^/]+$/.test(url.pathname)&&['PATCH','DELETE'].includes(req.method))return json(res,req.method==='DELETE'?{ok:true}:users[0])
-    if(url.pathname==='/api/dashboard')return json(res,{artists:105,artistPosters:104,artistBackgrounds:35,chineseBios:102,albums:302,albumCovers:299,tracks:1439,localLyrics:1427,missingLyrics:12,musicRoot:'/music',plexConnected:true,heroImages:[{type:'plex_artist_background',title:'S.H.E',subtitle:'Plex 歌手背景',imageUrl:'/visuals/fallback-artist.svg',coverUrl:'/visuals/fallback-cover-vinyl.svg'},{type:'local_artist_background',title:'周杰伦',subtitle:'本地 artist-background',imageUrl:'/visuals/fallback-player.svg',coverUrl:'/visuals/fallback-cover-vinyl.svg'}]})
+    if(url.pathname==='/api/dashboard')return json(res,{artists:105,artistPosters:104,artistBackgrounds:35,chineseBios:102,albums:302,albumCovers:299,tracks:1439,localLyrics:1427,missingLyrics:12,musicRoot:'/music',plexConnected:true,heroImages:[{type:'plex_artist_background',title:'S.H.E',subtitle:'Plex 歌手背景',imageUrl:'/mock-cover/bg-S.H.E.svg',coverUrl:'/mock-cover/%E9%80%86%E5%85%89.svg'},{type:'local_artist_background',title:'周杰伦',subtitle:'本地 artist-background',imageUrl:'/mock-cover/bg-jay.svg',coverUrl:'/mock-cover/qingtian.svg'}]})
     if(url.pathname==='/api/jobs')return json(res,jobs)
     if(/^\/api\/jobs\/\d+$/.test(url.pathname)){const job=jobs.find(item=>String(item.id)===url.pathname.split('/').pop())||jobs[0];return json(res,{...job,logs:[{id:'1',level:'info',message:'任务开始执行。',created_at:job.created_at},{id:'2',level:job.status==='waiting_confirm'?'info':'success',message:job.status==='waiting_confirm'?'下载完成，等待用户确认入库预览。':'任务全部步骤执行完成。',created_at:new Date().toISOString()}]})}
     if(url.pathname==='/api/sources')return json(res,[source])
@@ -56,7 +84,7 @@ http.createServer((req,res)=>{
     if(url.pathname==='/api/plex/test')return json(res,{ok:true,message:'Plex 连接成功，已识别到 2 个音乐资料库。',identity:{friendlyName:'Mock Plex'},libraryCount:2,libraries:plexSettings.libraries,connectedAt:new Date().toISOString()})
     if(url.pathname==='/api/plex/libraries')return json(res,{items:plexSettings.libraries})
     if(url.pathname==='/api/plex/sync')return json(res,{id:11,kind:'plex_sync',title:'同步 Plex 音乐资料库',status:'queued',progress:0,created_at:new Date().toISOString()})
-    if(/^\/api\/plex\/items\/[^/]+\/playback$/.test(url.pathname)){const key=url.pathname.split('/')[4];const item=tracks.find(track=>track.ratingKey===key)||tracks[0];return json(res,{ratingKey:key,title:item.title,artist:item.grandparentTitle,album:item.parentTitle,duration:item.duration,coverUrl:'/visuals/fallback-cover-vinyl.svg',artistBackgroundUrl:'/visuals/fallback-artist.svg',directPlayUrl:`/api/player/plex/${key}/stream?bitrate=original`,transcodeUrls:{original:`/api/player/plex/${key}/stream?bitrate=original`,'320k':`/api/player/plex/${key}/stream?bitrate=320k`},lyrics:'[00:00.00]模拟 Plex 歌词\\n[00:10.00]底部播放器现在会动了',file:`/music/${item.grandparentTitle}/${item.parentTitle}/${item.title}.flac`,openPlexUrl:'http://127.0.0.1:32400/web'})}
+    if(/^\/api\/plex\/items\/[^/]+\/playback$/.test(url.pathname)){const key=url.pathname.split('/')[4];const item=tracks.find(track=>track.ratingKey===key)||tracks[0];return json(res,{ratingKey:key,title:item.title,artist:item.grandparentTitle,album:item.parentTitle,duration:item.duration,coverUrl:`/mock-cover/${encodeURIComponent(item.title)}.svg`,artistBackgroundUrl:`/mock-cover/bg-${encodeURIComponent(item.grandparentTitle)}.svg`,directPlayUrl:`/api/player/plex/${key}/stream?bitrate=original`,transcodeUrls:{original:`/api/player/plex/${key}/stream?bitrate=original`,'320k':`/api/player/plex/${key}/stream?bitrate=320k`},lyrics:'[00:00.00]模拟 Plex 歌词\\n[00:10.00]底部播放器现在会动了',file:`/music/${item.grandparentTitle}/${item.parentTitle}/${item.title}.flac`,openPlexUrl:'http://127.0.0.1:32400/web'})}
     if(/^\/api\/player\/plex\/[^/]+\/stream$/.test(url.pathname)){res.writeHead(204,{'accept-ranges':'bytes'});return res.end()}
     if(url.pathname==='/api/settings')return json(res,{appName:'SongLib Amp｜音屿',version:'1.0.5',plex:plexSettings,plexServerName:plexSettings.name,musicRoot:'/music',plexUrl:plexSettings.serverUrl,externalPlexUrl:plexSettings.externalUrl,plexSection:'26',downloadDir:'_downloads',downloadTempDir:'/music/_downloads',incomingDir:'/music/_incoming',manualDownloadDir:'/downloads',trashDir:'/music/.trash',lyricRule:'同名 .lrc',coverRule:'专辑目录 cover.jpg + 音频内嵌封面',scrapeRules:{defaultMode:'missing',writeCover:true,writeLyrics:true,refreshPlex:true,skipExistingCover:true,skipExistingLyrics:true},namingTemplates:{album:'/{artist}/{album} ({year})/{trackNumber} - {title}.{ext}',multiDisc:'/{artist}/{album} ({year})/{discNumber}{trackNumber} - {title}.{ext}',compilation:'/Various Artists/{album} ({year})/{trackNumber} - {artist} - {title}.{ext}',unknown:'/{artist}/Unknown Album/{title}.{ext}'},excludeDirs:['/music/_incoming','/music/_downloads','/music/.trash','/music/@eaDir','/music/#recycle'],player:{},user:{username:'admin',role:'admin',permissions:['manage_users','manage_library','manage_sources'],fontSize:'standard',defaultSource:'tx',defaultQuality:'320k'},maxDownloadMb:500,sourceMaxSizeMb:2,fnosMusic:{configured:false,serverUrl:'http://127.0.0.1:5666/music',authMode:'password',accountLabel:''}})
     if(/^\/api\/library\/artists\/[^/]+$/.test(url.pathname)){const item=artists.find(value=>value.ratingKey===url.pathname.split('/').at(-1))||artists[0];const related=albums.filter(value=>value.parentRatingKey===item.ratingKey);return json(res,{artist:item,albums:related,popularTracks:tracks.slice(0,8).map(value=>({...value,grandparentTitle:item.title})),trackCount:24,albumCount:related.length})}
@@ -69,6 +97,60 @@ http.createServer((req,res)=>{
     if(url.pathname==='/api/discovery/playlists')return json(res,{source:'netease-hottags',updatedAt:new Date().toISOString(),platforms:['网易云音乐','QQ 音乐','酷狗音乐'],categories:['热门','华语','流行','粤语','影视原声','经典','摇滚','民谣','电子','轻音乐','怀旧','治愈'].map((name,index)=>({id:`cat-${index}`,platform:index%3===0?'QQ 音乐':index%3===1?'网易云音乐':'酷狗音乐',name,count:10000-index*300,url:'https://music.163.com/'}))})
     if(url.pathname==='/api/local/operations')return json(res,[{id:'op1',action:'tag_write',target_id:'file-1',rollbackable:1,created_at:new Date(Date.now()-3600000).toISOString()}])
     if(url.pathname==='/api/catalog/search')return json(res,tracks.slice(0,8).map((t,i)=>({platform:'tx',id:String(i),title:t.title,artist:t.grandparentTitle,album:t.parentTitle,duration:240+i*3,cover:'',qualities:['128k','320k','flac'],musicInfo:{}})))
+    if(url.pathname==='/api/scrape/preview'&&req.method==='POST'){
+      // 真实后端返回的计划结构（见 backend/app/scraper.py build_diff_preview）：
+      // { id, createdAt, scope, mode, summary:{create,replace,skip,conflicts}, items:[...] }
+      // 每个条目带 oldValue/newValue/candidateSource/confidence/conflict/action，
+      // 足以在前端做逐条对比。mock 之前只回 {ok:true}，
+      // 导致"封面与歌词"页在开发预览里永远是空的，看起来就只是一个按钮。
+      let body=''
+      req.on('data',chunk=>{body+=chunk})
+      req.on('end',()=>{
+        let payload={}
+        try{payload=JSON.parse(body||'{}')}catch{}
+        const kind=payload.kind||'scrape_plex_metadata'
+        const fields=kind==='fill_assets'
+          ? [['专辑封面','album_cover'],['歌词','lyrics']]
+          : [['歌手海报','artist_poster'],['歌手背景','artist_background'],['中文简介','artist_bio'],['专辑封面','album_cover']]
+        const items=[]
+        artists.slice(0,6).forEach((artist,ai)=>{
+          fields.forEach(([field,fieldKey],fi)=>{
+            const exists=(ai+fi)%4===0
+            const conflict=(ai+fi)%7===3
+            const skip=(ai+fi)%9===5
+            items.push({
+              id:`plan-${ai}-${fi}`,
+              entityType:fieldKey.startsWith('artist')?'artist':'album',
+              entityId:artist.ratingKey,
+              sectionKey:'26',
+              target:fieldKey.startsWith('artist')?artist.title:`${artist.title} · ${albums[ai%albums.length].title}`,
+              field,fieldKey,
+              oldValue:exists?'已有内容':'缺失',
+              newValue:fieldKey==='artist_bio'
+                ? `${artist.title} 的中文简介（约 180 字，来自公开资料整理）`
+                : fieldKey==='lyrics'
+                  ? '含时间轴的 LRC，共 42 行'
+                  : `/mock-cover/${encodeURIComponent(artist.title)}.svg`,
+              candidateSource:['Plex 官方','MusicBrainz','公开资料','本地文件'][(ai+fi)%4],
+              confidence:Number((0.72+((ai*3+fi)%25)/100).toFixed(2)),
+              conflict,
+              action:skip?'skip':exists?'replace':'create',
+              skipReason:skip?'无法唯一识别，已跳过':'',
+              execution:null,
+            })
+          })
+        })
+        const summary={
+          create:items.filter(i=>i.action==='create').length,
+          replace:items.filter(i=>i.action==='replace').length,
+          skip:items.filter(i=>i.action==='skip').length,
+          conflicts:items.filter(i=>i.conflict).length,
+        }
+        json(res,{id:`preview-${Date.now()}`,kind,createdAt:new Date().toISOString(),scope:payload.scope||'missing',mode:payload.mode||'missing',summary,items})
+      })
+      return
+    }
+    if(url.pathname==='/api/scrape/apply'&&req.method==='POST')return json(res,{ok:true,jobId:9,message:'已加入任务队列'})
     return json(res,{ok:true})
   }
   let file=path.join(root,url.pathname==='/'?'index.html':url.pathname)

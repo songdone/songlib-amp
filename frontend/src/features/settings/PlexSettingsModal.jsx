@@ -1,6 +1,11 @@
-import { Check, Library, ListMusic, LoaderCircle, RefreshCw, Server, ShieldCheck, TestTube2, X } from "lucide-react";
+import { Check, Library, RefreshCw, ShieldCheck, TestTube2 } from "lucide-react";
 import { useState } from "react";
-import { Empty } from "../../components/Empty";
+import { Badge } from "../../components/ui/Badge";
+import { Button, ButtonGroup } from "../../components/ui/Button";
+import { Field, Notice } from "../../components/ui/Field";
+import { EmptyState } from "../../components/ui/Layout";
+import { Modal } from "../../components/ui/Modal";
+import { ChipGroup } from "../../components/ui/Plan";
 import { api } from "../../lib/api";
 
 export function PlexSettingsModal({ initial, onClose, onSaved }) {
@@ -104,166 +109,154 @@ export function PlexSettingsModal({ initial, onClose, onSaved }) {
       };
     });
   return (
-    <div className="modal-wrap">
-      <button className="modal-backdrop" onClick={onClose} />
-      <section className="modal panel plex-modal">
-        <div className="modal-head">
-          <div>
-            <h3>连接 Plex</h3>
-          </div>
-          <button className="icon-button" onClick={onClose} aria-label="关闭" title="关闭">
-            <X />
-          </button>
+    <Modal
+      open
+      onClose={onClose}
+      title="连接 Plex"
+      description="连上之后，Plex 里的歌就能在这里播，也能接管 Plexamp"
+      size="lg"
+      dismissible={false}
+      actions={
+        <ButtonGroup align="end">
+          <Button onClick={onClose}>取消</Button>
+          <Button
+            variant="primary"
+            icon={Check}
+            loading={busy === "save"}
+            disabled={Boolean(busy)}
+            onClick={save}
+          >
+            保存并连接
+          </Button>
+        </ButtonGroup>
+      }
+    >
+      <div className="plex-form">
+        <label className="plex-switch">
+          <input
+            type="checkbox"
+            checked={draft.enabled}
+            onChange={(event) => setField("enabled", event.target.checked)}
+          />
+          <span>
+            <strong>启用 Plex</strong>
+            <small>关掉之后音屿只用本地音乐目录</small>
+          </span>
+        </label>
+
+        <div className="plex-grid">
+          <Field
+            label="显示名称"
+            placeholder="例如：极空间 Plex"
+            value={draft.name}
+            onChange={(event) => setField("name", event.target.value)}
+          />
+          <Field
+            label="服务器地址"
+            hint="内网地址，音屿从这里读数据"
+            placeholder="http://nas-address:32400"
+            value={draft.serverUrl}
+            onChange={(event) => setField("serverUrl", event.target.value)}
+          />
+          <Field
+            label="外网播放地址"
+            hint="不填就只能在内网放"
+            placeholder="https://plex.example.com"
+            value={draft.externalUrl}
+            onChange={(event) => setField("externalUrl", event.target.value)}
+          />
+          <Field
+            label="X-Plex-Token"
+            type={showToken ? "text" : "password"}
+            placeholder={
+              initial.hasToken ? "留空就沿用已经存好的" : "输入 X-Plex-Token"
+            }
+            value={draft.token}
+            onChange={(event) => setField("token", event.target.value)}
+            trailing={
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => setShowToken((value) => !value)}
+              >
+                {showToken ? "隐藏" : "显示"}
+              </button>
+            }
+          />
         </div>
-        <div className="plex-form">
-          <label className="switch-line">
-            <input
-              type="checkbox"
-              checked={draft.enabled}
-              onChange={(e) => setField("enabled", e.target.checked)}
-            />
-            <span>启用 Plex</span>
-          </label>
-          <div className="plex-grid">
-            <label>
-              显示名称
-              <input
-                value={draft.name}
-                onChange={(e) => setField("name", e.target.value)}
-                placeholder="例如：极空间 Plex"
-              />
-            </label>
-            <label>
-              服务器内网地址
-              <input
-                value={draft.serverUrl}
-                onChange={(e) => setField("serverUrl", e.target.value)}
-                placeholder="http://nas-address:32400"
-              />
-            </label>
-            <label>
-              外网播放地址（可选）
-              <input
-                value={draft.externalUrl}
-                onChange={(e) => setField("externalUrl", e.target.value)}
-                placeholder="https://plex.example.com"
-              />
-            </label>
-            <label>
-              X-Plex-Token
-              <div className="token-row">
+
+        <ChipGroup
+          label="同步哪些音乐库"
+          options={[
+            { id: "all", label: "全部音乐库" },
+            { id: "some", label: "只同步我勾的" },
+          ]}
+          value={selectedAll ? "all" : "some"}
+          onChange={(id) =>
+            setField(
+              "selectedLibraryKeys",
+              id === "all" ? "all" : selectedKeys.length ? selectedKeys : [],
+            )
+          }
+        />
+
+        <div className="plex-tools">
+          <Button
+            size="sm"
+            icon={TestTube2}
+            loading={busy === "test"}
+            disabled={Boolean(busy)}
+            onClick={test}
+          >
+            测一下连接
+          </Button>
+          <Button
+            size="sm"
+            icon={RefreshCw}
+            loading={busy === "libraries"}
+            disabled={Boolean(busy)}
+            onClick={refreshLibraries}
+          >
+            重新读音乐库
+          </Button>
+        </div>
+
+        {libraries.length ? (
+          <div className="plex-libraries">
+            {libraries.map((item) => (
+              <label className="plex-library" key={item.key}>
                 <input
-                  type={showToken ? "text" : "password"}
-                  value={draft.token}
-                  onChange={(e) => setField("token", e.target.value)}
-                  placeholder={
-                    initial.hasToken
-                      ? "留空就沿用已经存好的"
-                      : "输入 X-Plex-Token"
-                  }
+                  type="checkbox"
+                  disabled={selectedAll}
+                  checked={selectedAll || selectedKeys.includes(item.key)}
+                  onChange={() => toggleLibrary(item.key)}
                 />
-                <button type="button" onClick={() => setShowToken((v) => !v)}>
-                  {showToken ? "隐藏" : "显示"}
-                </button>
-              </div>
-            </label>
+                <span className="plex-library__text">
+                  <strong>{item.title}</strong>
+                  <small>{item.type || "music"}</small>
+                </span>
+                {item.enabled ? (
+                  <Badge tone="success">已同步</Badge>
+                ) : (
+                  <Badge>没选</Badge>
+                )}
+              </label>
+            ))}
           </div>
-          <div className="library-mode">
-            <button
-              type="button"
-              className={selectedAll ? "active" : ""}
-              onClick={() => setField("selectedLibraryKeys", "all")}
-            >
-              <Library />
-              同步全部音乐库
-            </button>
-            <button
-              type="button"
-              className={!selectedAll ? "active" : ""}
-              onClick={() =>
-                setField(
-                  "selectedLibraryKeys",
-                  selectedKeys.length ? selectedKeys : [],
-                )
-              }
-            >
-              <ListMusic />
-              仅同步指定音乐库
-            </button>
-          </div>
-          <div className="library-tools">
-            <button
-              className="secondary small"
-              disabled={!!busy}
-              onClick={test}
-            >
-              {busy === "test" ? (
-                <LoaderCircle className="spin" />
-              ) : (
-                <TestTube2 />
-              )}
-              测试连接
-            </button>
-            <button
-              className="secondary small"
-              disabled={!!busy}
-              onClick={refreshLibraries}
-            >
-              {busy === "libraries" ? (
-                <LoaderCircle className="spin" />
-              ) : (
-                <RefreshCw />
-              )}
-              刷新媒体库
-            </button>
-          </div>
-          <div className="library-list">
-            {libraries.length ? (
-              libraries.map((item) => (
-                <label
-                  key={item.key}
-                  className={`library-row ${item.enabled ? "active" : ""}`}
-                >
-                  <input
-                    type="checkbox"
-                    disabled={selectedAll}
-                    checked={selectedAll || selectedKeys.includes(item.key)}
-                    onChange={() => toggleLibrary(item.key)}
-                  />
-                  <div>
-                    <strong>{item.title}</strong>
-                    <span>
-                      {item.type || "music"} · #{item.key}
-                    </span>
-                  </div>
-                  <i>{item.enabled ? "已同步" : "未选中"}</i>
-                </label>
-              ))
-            ) : (
-              <Empty
-                icon={Library}
-                title="还没有媒体库列表"
-                text="先测一下连接，能连上就会列出 Plex 里的音乐库供你勾选。"
-              />
-            )}
-          </div>
-          {message && (
-            <div className="inline-info">
-              <ShieldCheck />
-              {message}
-            </div>
-          )}
-          <div className="modal-actions">
-            <button className="secondary" onClick={onClose}>
-              取消
-            </button>
-            <button className="primary" disabled={!!busy} onClick={save}>
-              {busy === "save" ? <LoaderCircle className="spin" /> : <Check />}
-              确认保存
-            </button>
-          </div>
-        </div>
-      </section>
-    </div>
+        ) : (
+          <EmptyState
+            icon={Library}
+            title="还没读到音乐库"
+            text="先测一下连接，能连上就会列出 Plex 里的音乐库供你勾选。"
+          />
+        )}
+
+        {message && (
+          <Notice tone="info" icon={ShieldCheck}>
+            {message}
+          </Notice>
+        )}
+      </div>
+    </Modal>
   );
 }

@@ -336,36 +336,6 @@
     border-color: rgba(20, 24, 31, 0.12);
   }
 
-  .visual-shell[data-theme="light"] :is(.section-head p, .page-intro p, .setting-card p, small, .muted) {
-    color: #6e6e73;
-  }
-
-  /* Download results: reserve a consistent control gutter instead of pinning icons to the edge. */
-  .visual-shell .result-row {
-    grid-template-columns: 42px minmax(180px, 1fr) 64px 132px 92px;
-    padding: 0 14px 0 6px;
-  }
-
-  .visual-shell .result-row .row-actions.wide {
-    width: 84px;
-    justify-self: end;
-    justify-content: center;
-    gap: 8px;
-  }
-
-  .visual-shell .result-row .row-actions.wide button {
-    width: 36px;
-    height: 36px;
-    flex: 0 0 36px;
-    display: grid;
-    place-items: center;
-  }
-
-  .visual-shell .download-action-button:disabled {
-    opacity: 0.45;
-    cursor: wait;
-  }
-
   /* Appearance controls */
   .appearance-settings-grid {
     grid-template-columns: minmax(0, 920px);
@@ -447,10 +417,6 @@
   }
 
   @media (max-width: 900px) {
-    .visual-shell .result-row {
-      grid-template-columns: 40px minmax(0, 1fr) 86px;
-      padding-right: 8px;
-    }
 
     .appearance-sliders { grid-template-columns: 1fr; }
     .theme-choice { grid-template-columns: 1fr; }

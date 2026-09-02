@@ -17,21 +17,6 @@
   .mobile-only {
     display:none;
   }
-
-  .file-picker {
-    min-height:112px;
-    margin-top:16px;
-    display:flex;
-  }
-
-  .switch-line {
-    display:flex;
-  }
-
-  .library-row {
-    margin:0;
-    display:grid;
-  }
 .route-home .stat-card{
     background:rgba(15,15,18,.42);
   }
@@ -63,8 +48,6 @@
   }
 .route-home .stat-card,
 .source-strip,
-.search-results,
-.pending-ingest,
 .setting-card,
 .settings-workbench{
     background:linear-gradient(135deg,rgba(255,255,255,.07),rgba(255,255,255,.027));
@@ -75,14 +58,6 @@
 .discover-grid button{
     box-shadow:none;
   }
-
-  .download-controls {
-    display:grid;
-    grid-template-columns:minmax(180px,1fr) minmax(210px,1fr) repeat(4,minmax(104px,.7fr));
-    gap:9px;
-    align-items:stretch;
-    padding:14px;
-  }
 .sidebar-like.active,
 .mini-like.active{
     color:#ffd276;
@@ -91,15 +66,6 @@
   }
 .sidebar-player{
     display:none;
-  }
-
-  .match-badge {
-    display:inline-block;
-  }
-
-  .pending-stage {
-    color:#efbd56;
-    border-color:rgba(229,180,89,.28);
   }
 
   .account-create {
@@ -130,10 +96,6 @@
       transform:scale(1.02);
     }
 .profile-form{
-      grid-template-columns:1fr;
-    }
-
-    .download-controls {
       grid-template-columns:1fr;
     }
 
@@ -170,12 +132,6 @@
     }
 .app-backdrop img{
       transform:none;
-    }
-  }
-
-  @media(max-width:1180px) {
-    .download-controls {
-      grid-template-columns:1fr 1fr;
     }
   }
 }

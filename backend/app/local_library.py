@@ -707,25 +707,41 @@ class LocalLibraryService:
             audio = MutagenFile(path, easy=True)
             tags = getattr(audio, "tags", {}) if audio else {}
             inferred = infer_path_metadata(path)
-            fields = []
+            fields, conflicts = [], []
             for tag, value in (("title", inferred["title"]), ("artist", inferred["artist"]),
                                ("album", inferred["album"]), ("albumArtist", inferred["album_artist"])):
                 lookup = "albumartist" if tag == "albumArtist" else tag
-                current = _first(tags, lookup)
-                if value and not current:
-                    fields.append({"field": tag, "oldValue": current or "", "newValue": value})
+                current = _first(tags, lookup) or ""
+                if not value:
+                    continue
+                if not current:
+                    fields.append({"field": tag, "oldValue": "", "newValue": value})
+                elif _norm(current) != _norm(value):
+                    # 路径说的和文件里写的不一样。
+                    #
+                    # 补全任务永远不会碰这种字段（它只填空的），所以在这之前
+                    # 用户根本不会知道两边对不上。但这恰恰是最该由人来判断的
+                    # 情况：可能是标签错了，也可能是目录名错了，程序猜不出来。
+                    #
+                    # 所以报出来但**不放进 fields** —— fields 是"会被写入的",
+                    # 混进去就等于默认帮用户做了决定。
+                    conflicts.append({"field": tag, "oldValue": current, "newValue": value})
             items.append({
                 "fileId": item["id"],
                 "path": item["path"],
                 "fields": fields,
+                "conflicts": conflicts,
                 # 没有可补的字段也返回，前端才能说明"这些已经是全的"，
                 # 而不是让用户猜为什么清单比曲库短。
-                "skipReason": "" if fields else "四个字段都已经有值",
+                "skipReason": "" if fields else (
+                    "四个字段都有值，但和目录名对不上" if conflicts else "四个字段都已经有值"
+                ),
             })
         return {
             "items": items,
             "total": len(items),
             "changeable": sum(1 for item in items if item["fields"]),
+            "conflicted": sum(1 for item in items if item["conflicts"]),
         }
 
     def fill_missing_tags(self, payload: dict, progress):

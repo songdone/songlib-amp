@@ -57,6 +57,13 @@ export function ChangeList({ children }) {
  * @param badges     `{ label, tone }[]`，用来标字段名、冲突、跳过
  * @param oldValue   现在的值；空字符串会显示成"（空）"
  * @param newValue   要写入的值；传 React 节点可以放缩略图
+ * @param fields     多字段变更：`{ label, oldValue, newValue }[]`。
+ *                   传了它就逐字段列出对照，忽略 oldValue / newValue。
+ *
+ *                   写标签是一次改四个字段的事，挤成一行
+ *                   "标题 X · 歌手 Y · 专辑 Z" 之后，用户没法看出
+ *                   每个字段原来是什么 —— 而写标签会覆盖原文件，
+ *                   这正是最需要看清的地方。
  * @param meta       右侧的次要信息，如来源和匹配度
  * @param skipped    true 时不给勾选框，只显示 reason
  */
@@ -65,6 +72,7 @@ export function ChangeRow({
   badges = [],
   oldValue,
   newValue,
+  fields = null,
   meta = [],
   skipped = false,
   skipReason,
@@ -98,10 +106,35 @@ export function ChangeRow({
 
         {skipped ? (
           <small className="ui-plan-row__note">{skipReason}</small>
+        ) : fields?.length ? (
+          <span className="ui-plan-fields">
+            {fields.map((field) => (
+              <span className="ui-plan-field" key={field.label}>
+                <small>{field.label}</small>
+                <span className="ui-plan-diff">
+                  {/* 空值不划删除线 —— 划掉"（空）"没有意义，
+                      而且会让人以为那三个字本身是要被删掉的内容。 */}
+                  <span
+                    className="ui-plan-diff__old"
+                    data-empty={field.oldValue ? undefined : "true"}
+                  >
+                    {field.oldValue || "（空）"}
+                  </span>
+                  <ArrowRight aria-hidden="true" />
+                  <span className="ui-plan-diff__new">{field.newValue}</span>
+                </span>
+              </span>
+            ))}
+          </span>
         ) : (
           <span className="ui-plan-diff">
             {/* 空值显示"（空）"而不是留白 —— 留白会让人以为界面没加载出来。 */}
-            <span className="ui-plan-diff__old">{oldValue || "（空）"}</span>
+            <span
+              className="ui-plan-diff__old"
+              data-empty={oldValue ? undefined : "true"}
+            >
+              {oldValue || "（空）"}
+            </span>
             <ArrowRight aria-hidden="true" />
             <span className="ui-plan-diff__new">{newValue}</span>
           </span>

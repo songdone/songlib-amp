@@ -182,15 +182,26 @@ http.createServer((req,res)=>{
     if(url.pathname==='/api/local/tags/preview')return withJson(req,res,payload=>{
       const ids=new Set((payload.fileIds||[]).map(String))
       const picked=ids.size?localFiles.filter(f=>ids.has(f.id)):localFiles
-      const items=picked.map(f=>{
+      const items=picked.map((f,index)=>{
         const parts=f.path.split('/').filter(Boolean)
-        const fields=[]
+        const fields=[],conflicts=[]
         if(!f.artist)fields.push({field:'artist',oldValue:'',newValue:parts[1]||''})
         if(!f.album)fields.push({field:'album',oldValue:'',newValue:parts[2]||''})
         if(!f.album_artist)fields.push({field:'albumArtist',oldValue:'',newValue:parts[1]||''})
-        return {fileId:f.id,path:f.path,fields,skipReason:fields.length?'':'四个字段都已经有值'}
+        // 每 4 个里造一个"目录名和标签对不上"的例子。
+        // 真后端只在 _norm(现值) != _norm(推断值) 时才算冲突，
+        // 所以 mock 也必须造出真的不一样的值，否则界面上会出现
+        // "五月天 → 五月天" 这种看着像 bug 的对照。
+        if(f.artist&&f.album&&index%4===1){
+          conflicts.push({field:'artist',oldValue:f.artist,newValue:`${parts[1]||'未知'} (Live)`})
+          if(index%8===1)conflicts.push({field:'album',oldValue:f.album,newValue:`${parts[2]||'未知'} 精选集`})
+        }
+        return {fileId:f.id,path:f.path,fields,conflicts,
+          skipReason:fields.length?'':(conflicts.length?'四个字段都有值，但和目录名对不上':'四个字段都已经有值')}
       })
-      json(res,{items,total:items.length,changeable:items.filter(i=>i.fields.length).length})
+      json(res,{items,total:items.length,
+        changeable:items.filter(i=>i.fields.length).length,
+        conflicted:items.filter(i=>i.conflicts.length).length})
     })
     if(url.pathname==='/api/local/organize/preview')return withJson(req,res,payload=>{
       const ids=new Set((payload.fileIds||[]).map(String))

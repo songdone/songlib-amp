@@ -126,7 +126,14 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
   const [pageSize, setPageSize] = useState(50);
 
   // --- 补标签 ---
-  const [tagScope, setTagScope] = useState("selected");
+  /*
+   * 范围默认跟着"有没有勾东西"走。
+   *
+   * 原来死写 "selected"：刚切到这个工作区时一个文件都没勾，
+   * 于是页面上唯一的主按钮点下去只会报错"先去勾几个文件"。
+   * 一个默认状态下必然失败的主操作不该存在。
+   */
+  const [tagScope, setTagScope] = useState("filtered");
   const [tagPlan, setTagPlan] = useState(null);
   const [tagExcluded, setTagExcluded] = useState(() => new Set());
 
@@ -169,6 +176,12 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
     const timer = setTimeout(load, 180);
     return () => clearTimeout(timer);
   }, [search, missing, page, pageSize]);
+
+  /* 勾了文件就把范围切到"已勾选"，全部取消再切回"当前筛选结果"。
+     这样两个胶囊里永远是那个当下有意义的被选中。 */
+  useEffect(() => {
+    setTagScope(selected.length ? "selected" : "filtered");
+  }, [selected.length > 0]);
 
   useEffect(() => {
     if (workspace !== "history") return;
@@ -230,6 +243,10 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
   };
 
   const tagRows = (tagPlan?.items || []).filter((item) => item.fields.length);
+  // 有冲突的单独一组。它们不进 tagRows，所以不会被算进"会写入"的数字里。
+  const tagConflicts = (tagPlan?.items || []).filter(
+    (item) => (item.conflicts || []).length,
+  );
   const tagApplying = tagRows.filter((item) => !tagExcluded.has(item.fileId));
   const tagFieldCount = tagApplying.reduce(
     (sum, item) => sum + item.fields.length,
@@ -687,13 +704,13 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
                       badges={[
                         { label: `补 ${item.fields.length} 个字段`, tone: "accent" },
                       ]}
-                      oldValue=""
-                      newValue={item.fields
-                        .map(
-                          (field) =>
-                            `${FIELD_LABELS[field.field] || field.field} ${field.newValue}`,
-                        )
-                        .join(" · ")}
+                      /* 逐字段列出"原值 → 新值"。写标签会覆盖原文件，
+                         挤成一行的话看不出每个字段原来是什么。 */
+                      fields={item.fields.map((field) => ({
+                        label: FIELD_LABELS[field.field] || field.field,
+                        oldValue: field.oldValue,
+                        newValue: field.newValue,
+                      }))}
                       checked={!tagExcluded.has(item.fileId)}
                       onToggle={() => toggleIn(setTagExcluded)(item.fileId)}
                       toggleLabel={`给 ${shortPath(item.path)} 写入推断出的标签`}
@@ -706,6 +723,42 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
                   title="这些文件不需要补"
                   text="标题、歌手、专辑、专辑歌手都已经有值了。想改已有的值，用「浏览与筛选」里那个标签编辑器。"
                 />
+              )}
+
+              {/*
+                目录名和标签对不上的那些。
+                补全任务只填空字段，永远不会碰这些，所以在这之前用户
+                根本不会知道两边不一致 —— 而这恰恰最该由人判断：
+                可能标签错了，也可能目录名错了，程序猜不出来。
+                所以只展示，不给勾选框，也不放进要写入的计数里。
+              */}
+              {tagConflicts.length > 0 && (
+                <>
+                  <SectionHeader
+                    title="目录名和标签对不上"
+                    note={`${tagConflicts.length} 个文件。这些不会被自动改动`}
+                  />
+                  <Notice tone="warning" icon={CircleAlert}>
+                    左边是文件里现在写的，右边是从目录名推断出来的。
+                    补标签只填空字段，不会覆盖这些 —— 要改就点右边的「改标签」逐个来，
+                    或者反过来去「整理目录」把目录名改成跟标签一致。
+                  </Notice>
+                  <ChangeList>
+                    {tagConflicts.map((item) => (
+                      <ChangeRow
+                        key={`conflict-${item.fileId}`}
+                        target={shortPath(item.path)}
+                        badges={[{ label: "对不上", tone: "warning" }]}
+                        fields={item.conflicts.map((field) => ({
+                          label: FIELD_LABELS[field.field] || field.field,
+                          oldValue: field.oldValue,
+                          newValue: field.newValue,
+                        }))}
+                        meta={["不会自动改"]}
+                      />
+                    ))}
+                  </ChangeList>
+                </>
               )}
 
               {tagRows.length > 0 && (

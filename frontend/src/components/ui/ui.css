@@ -1,0 +1,432 @@
+/**
+ * 组件库样式。
+ *
+ * 所有 .ui-* 类都写在 @layer components 里，排在 legacy.* 之后，
+ * 因此不需要跟旧规则抢特异性，也不需要 !important。
+ *
+ * 原则：对齐和间距由组件自己保证，调用方不为对齐写 CSS。
+ * 颜色一律取自 tokens.css 的语义 token。
+ */
+
+@layer components {
+  /* =============================================================
+   * 按钮
+   * ============================================================= */
+
+  .ui-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    flex: none;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    font-weight: var(--weight-semibold);
+    /* 行高固定为 1，让按钮高度只由 height 决定，
+       中英文混排时不会因为字体基线不同而上下偏移。 */
+    line-height: 1;
+    white-space: nowrap;
+    text-align: center;
+    cursor: pointer;
+    transition:
+      background-color var(--duration-fast) var(--ease-out),
+      border-color var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out);
+  }
+
+  .ui-btn__icon {
+    flex: none;
+    width: 1em;
+    height: 1em;
+    /* 图标跟随字号缩放，并按视觉重心微调，避免图标看起来偏上。 */
+    font-size: 1.15em;
+    stroke-width: 1.9;
+  }
+
+  .ui-btn__label {
+    /* 单行截断，长文案不会把按钮撑破或换行导致高度跳变。 */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ui-btn:disabled {
+    cursor: not-allowed;
+    color: var(--text-disabled);
+    background: var(--surface-3);
+    border-color: transparent;
+  }
+
+  .ui-btn:disabled .ui-btn__icon {
+    opacity: 0.7;
+  }
+
+  /* --- 尺寸 --- */
+
+  .ui-btn--sm {
+    height: var(--control-height-sm);
+    padding-inline: var(--space-3);
+    font-size: var(--text-xs);
+    border-radius: var(--radius-sm);
+  }
+
+  .ui-btn--md {
+    height: var(--control-height-md);
+    padding-inline: var(--space-4);
+    font-size: var(--text-sm);
+  }
+
+  .ui-btn--lg {
+    height: var(--control-height-lg);
+    padding-inline: var(--space-6);
+    font-size: var(--text-base);
+    border-radius: var(--radius-lg);
+  }
+
+  /* 图标按钮宽高相等，保证触控目标不小于高度。 */
+  .ui-btn--icon {
+    padding-inline: 0;
+    aspect-ratio: 1;
+  }
+
+  .ui-btn--icon.ui-btn--sm {
+    width: var(--control-height-sm);
+  }
+  .ui-btn--icon.ui-btn--md {
+    width: var(--control-height-md);
+  }
+  .ui-btn--icon.ui-btn--lg {
+    width: var(--control-height-lg);
+  }
+
+  .ui-btn--block {
+    display: flex;
+    width: 100%;
+  }
+
+  .ui-btn--pill {
+    border-radius: var(--radius-pill);
+  }
+
+  /* --- 变体 --- */
+
+  .ui-btn--primary {
+    color: var(--accent-on-solid);
+    background: var(--accent-solid);
+  }
+  .ui-btn--primary:hover:not(:disabled) {
+    background: var(--accent-solid-hover);
+  }
+
+  .ui-btn--secondary {
+    color: var(--text-primary);
+    background: var(--surface-3);
+    border-color: var(--border-default);
+  }
+  .ui-btn--secondary:hover:not(:disabled) {
+    background: var(--surface-2);
+    border-color: var(--border-strong);
+  }
+
+  .ui-btn--ghost {
+    color: var(--text-secondary);
+    background: transparent;
+  }
+  .ui-btn--ghost:hover:not(:disabled) {
+    color: var(--text-primary);
+    background: var(--surface-hover);
+  }
+
+  .ui-btn--danger {
+    color: var(--danger-text);
+    background: var(--danger-soft);
+  }
+  .ui-btn--danger:hover:not(:disabled) {
+    color: var(--text-inverse);
+    background: var(--danger-solid);
+  }
+
+  /* 只有文字的行内操作，没有容器。用于"查看全部""展开"这类。 */
+  .ui-btn--quiet {
+    height: auto;
+    padding: 0;
+    color: var(--accent-text);
+    background: transparent;
+    border: 0;
+    border-radius: var(--radius-xs);
+  }
+  .ui-btn--quiet:hover:not(:disabled) {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .ui-btn--quiet:disabled {
+    background: transparent;
+  }
+
+  /* --- 忙碌态 --- */
+
+  .ui-btn__spinner {
+    flex: none;
+    width: 1.15em;
+    height: 1.15em;
+    border: 2px solid currentcolor;
+    border-top-color: transparent;
+    border-radius: var(--radius-pill);
+    opacity: 0.85;
+    animation: ui-spin 640ms linear infinite;
+  }
+
+  @keyframes ui-spin {
+    to {
+      transform: rotate(1turn);
+    }
+  }
+
+  /* --- 按钮组 --- */
+
+  .ui-btn-group {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .ui-btn-group--start {
+    justify-content: flex-start;
+  }
+  .ui-btn-group--end {
+    justify-content: flex-end;
+  }
+  .ui-btn-group--between {
+    justify-content: space-between;
+  }
+  .ui-btn-group--wrap {
+    flex-wrap: wrap;
+  }
+}
+
+@layer components {
+  /* =============================================================
+   * 统计磁贴
+   *
+   * 布局在这里定死：图标一列纵向居中，右侧数字与说明各自成行。
+   * 重构前这套网格写在 .task-summary > div 上，而标记渲染的是 button，
+   * 选择器根本没命中，三个元素挤在一行 —— 这是"按钮文字不对齐"的成因。
+   * ============================================================= */
+
+  .ui-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--space-3);
+  }
+
+  .ui-stat {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    text-align: start;
+  }
+
+  .ui-stat__icon {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    background: var(--surface-3);
+    color: var(--text-secondary);
+  }
+
+  .ui-stat__icon svg {
+    width: 18px;
+    height: 18px;
+    stroke-width: 1.8;
+  }
+
+  /* 数字与说明堆叠，min-width:0 让长说明能正常截断。 */
+  .ui-stat__body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .ui-stat__value {
+    font-size: var(--text-xl);
+    font-weight: var(--weight-bold);
+    line-height: var(--leading-tight);
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ui-stat__label {
+    font-size: var(--text-sm);
+    line-height: var(--leading-snug);
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ui-stat__detail {
+    margin-block-start: 2px;
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+  }
+
+  /* --- 色调：只染图标，不染整块，避免一排磁贴变成一排色卡 --- */
+
+  .ui-stat--accent .ui-stat__icon {
+    color: var(--accent-text);
+    background: var(--accent-soft);
+  }
+  .ui-stat--success .ui-stat__icon {
+    color: var(--success-text);
+    background: var(--success-soft);
+  }
+  .ui-stat--warning .ui-stat__icon {
+    color: var(--warning-text);
+    background: var(--warning-soft);
+  }
+  .ui-stat--danger .ui-stat__icon {
+    color: var(--danger-text);
+    background: var(--danger-soft);
+  }
+  .ui-stat--info .ui-stat__icon {
+    color: var(--info-text);
+    background: var(--info-soft);
+  }
+
+  /* --- 作为筛选器时的交互态 --- */
+
+  .ui-stat--interactive {
+    cursor: pointer;
+    transition:
+      background-color var(--duration-fast) var(--ease-out),
+      border-color var(--duration-fast) var(--ease-out);
+  }
+
+  .ui-stat--interactive:hover {
+    background: var(--surface-2);
+    border-color: var(--border-default);
+  }
+
+  .ui-stat--selected {
+    border-color: var(--accent-border);
+    background: var(--accent-soft);
+  }
+
+  .ui-stat--selected .ui-stat__label {
+    color: var(--text-primary);
+  }
+}
+
+@layer components {
+  /* =============================================================
+   * 封面图
+   *
+   * 占位底色由 --cover-hue（组件按标题哈希算出）驱动，
+   * 饱和度和亮度写死在这里，保证一屏封面色相各异但明度一致，
+   * 不会出现某几张特别跳的情况。
+   * ============================================================= */
+
+  .ui-cover {
+    position: relative;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    aspect-ratio: 1;
+    background:
+      linear-gradient(
+        155deg,
+        hsl(var(--cover-hue) 22% 26%) 0%,
+        hsl(var(--cover-hue) 18% 16%) 100%
+      );
+    border-radius: var(--radius-md);
+    /* 缺封面时也保持和有封面一致的边界，网格不会因此错位。 */
+    box-shadow: inset 0 0 0 1px var(--border-subtle);
+  }
+
+  :root[data-theme="light"] .ui-cover {
+    background:
+      linear-gradient(
+        155deg,
+        hsl(var(--cover-hue) 24% 88%) 0%,
+        hsl(var(--cover-hue) 20% 78%) 100%
+      );
+  }
+
+  .ui-cover--round {
+    border-radius: var(--radius-pill);
+  }
+
+  .ui-cover--rounded {
+    border-radius: var(--radius-lg);
+  }
+
+  .ui-cover > img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* 首字占位：字号跟容器宽度走，任何尺寸下比例一致。 */
+  .ui-cover__placeholder {
+    font-size: clamp(14px, 34cqw, 64px);
+    font-weight: var(--weight-medium);
+    line-height: 1;
+    letter-spacing: 0;
+    color: hsl(var(--cover-hue) 30% 82%);
+    opacity: 0.55;
+    user-select: none;
+  }
+
+  :root[data-theme="light"] .ui-cover__placeholder {
+    color: hsl(var(--cover-hue) 34% 28%);
+    opacity: 0.5;
+  }
+
+  /* 让 34cqw 生效：容器查询单位需要显式声明容器。 */
+  .ui-cover {
+    container-type: inline-size;
+  }
+
+  /* 悬停操作层。默认不占位，只在悬停或键盘聚焦时浮现。 */
+  .ui-cover__overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    background: linear-gradient(
+      to top,
+      rgba(0, 0, 0, 0.62) 0%,
+      rgba(0, 0, 0, 0.12) 52%,
+      transparent 100%
+    );
+    opacity: 0;
+    transition: opacity var(--duration-base) var(--ease-out);
+  }
+
+  .ui-cover:hover .ui-cover__overlay,
+  .ui-cover:focus-within .ui-cover__overlay {
+    opacity: 1;
+  }
+
+  /* 触控设备没有悬停，操作层常显但压低，避免功能藏死。 */
+  @media (hover: none) {
+    .ui-cover__overlay {
+      opacity: 1;
+      background: linear-gradient(
+        to top,
+        rgba(0, 0, 0, 0.5) 0%,
+        transparent 62%
+      );
+    }
+  }
+}

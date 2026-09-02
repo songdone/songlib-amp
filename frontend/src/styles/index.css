@@ -38,6 +38,9 @@
 @import "./primitives.css";
 @import "./utilities.css";
 
+/* --- 组件库（@layer components） --- */
+@import "../components/ui/ui.css";
+
 /* --- 已迁移到 token 的业务组件（@layer components） --- */
 @import "../features/shell/sidebar.css";
 

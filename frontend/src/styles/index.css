@@ -52,6 +52,7 @@
 @import "../features/tools/scrape.css";
 @import "../features/library/local.css";
 @import "../features/library/library.css";
+@import "../features/search/search.css";
 @import "../features/discover/discover.css";
 @import "../features/tools/tasks.css";
 @import "../features/me/me.css";

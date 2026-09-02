@@ -810,6 +810,133 @@ class LocalLibraryService:
             conn.execute("INSERT INTO operation_logs(id,action,target_type,target_id,before_state,after_state,rollback_data,rollbackable,status,error_message,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
                          (uuid.uuid4().hex,action,"file",target_id,json.dumps(before,ensure_ascii=False),json.dumps(after,ensure_ascii=False),json.dumps(rollback,ensure_ascii=False),1,status,error,now()))
 
+    ACTION_LABELS = {
+        "tag_write": "写入标签",
+        "organize_move": "整理目录",
+        "download_ingest": "下载入库",
+        "download_inbox_ingest": "下载目录入库",
+    }
+
+    def operation_timeline(self, limit: int = 300, items_per_batch: int = 12):
+        """Change history as a timeline: what happened, when, and to what.
+
+        The old endpoint returned raw rows, `before_state` / `after_state`
+        still JSON strings, and the UI showed only "写入标签 · 3小时前 · 成功".
+        So the one question this page exists to answer — *what did that run
+        actually change?* — had no answer anywhere in the product. On a NAS
+        the scariest thing is files having moved and not knowing where to.
+
+        Two things happen here:
+
+        1. Consecutive operations from the same run are grouped. A tidy-up
+           that moved 37 files was 37 rows; as 37 rows it is unreadable, and
+           it also hides the fact that they were one decision.
+        2. before/after are decoded into per-file lines the UI can render
+           without knowing the storage format.
+        """
+        records = rows(
+            "SELECT * FROM operation_logs ORDER BY created_at DESC LIMIT ?",
+            (limit,),
+        )
+
+        groups = []
+        for record in records:
+            before = _load_json(record.get("before_state"))
+            after = _load_json(record.get("after_state"))
+            entry = {
+                "id": record["id"],
+                "target": self._operation_target(record, before, after),
+                "changes": self._operation_changes(record, before, after),
+                "rollbackable": bool(record.get("rollbackable")),
+                "status": record.get("status") or "success",
+                "error": record.get("error_message") or "",
+            }
+            # 同一次运行 = 同一个动作 + 时间戳到分钟相同。
+            # 没有 batch id 可用（写入时没记），分钟级是能拿到的最好近似：
+            # 一次整理的几十个文件都在同一分钟内落库。
+            bucket = (record["action"], str(record.get("created_at") or "")[:16])
+            if groups and groups[-1]["bucket"] == bucket:
+                groups[-1]["items"].append(entry)
+            else:
+                groups.append({
+                    "bucket": bucket,
+                    "action": record["action"],
+                    "actionLabel": self.ACTION_LABELS.get(record["action"], record["action"]),
+                    "at": record.get("created_at"),
+                    "items": [entry],
+                })
+
+        out = []
+        for group in groups:
+            items = group["items"]
+            rollbackable = [item["id"] for item in items if item["rollbackable"]]
+            out.append({
+                "id": items[0]["id"],
+                "action": group["action"],
+                "actionLabel": group["actionLabel"],
+                "at": group["at"],
+                "count": len(items),
+                "failed": sum(1 for item in items if item["status"] not in ("success", "rolled_back")),
+                "rolledBack": sum(1 for item in items if item["status"] == "rolled_back"),
+                "rollbackableIds": rollbackable,
+                # 一次整理可能有几百个文件，全塞给前端没意义 ——
+                # 先给前几条，剩下的数量单独说。
+                "items": items[:items_per_batch],
+                "more": max(0, len(items) - items_per_batch),
+            })
+
+        return {"groups": out, "total": len(records)}
+
+    @staticmethod
+    def _operation_target(record, before, after):
+        """Which file this row is about, in a form worth showing."""
+        for source in (after, before):
+            for key in ("path", "to", "from"):
+                value = source.get(key)
+                if value:
+                    return str(value)
+        return record.get("target_id") or ""
+
+    @staticmethod
+    def _operation_changes(record, before, after):
+        """Per-row change lines. Shape depends on the action."""
+        action = record.get("action")
+        if action == "tag_write":
+            old_tags = before.get("tags") or {}
+            new_tags = after.get("tags") or {}
+            return [
+                {"kind": "field", "field": field,
+                 "oldValue": str(old_tags.get(field) or ""),
+                 "newValue": str(value or "")}
+                for field, value in new_tags.items()
+                if str(old_tags.get(field) or "") != str(value or "")
+            ]
+        if action in ("organize_move", "download_ingest", "download_inbox_ingest"):
+            source = before.get("path") or before.get("from") or ""
+            target = after.get("path") or after.get("to") or ""
+            if source or target:
+                return [{"kind": "move", "oldValue": str(source), "newValue": str(target)}]
+        return []
+
+    def rollback_many(self, operation_ids: list[str]):
+        """Roll a whole run back.
+
+        Order matters: newest first, same as undo. Rolling an older move back
+        before a newer one can put a file where the newer one still expects
+        to find nothing.
+
+        One failure does not stop the rest — the caller gets a per-id report.
+        Stopping halfway would leave the batch in a state nobody asked for.
+        """
+        done, failed = [], []
+        for operation_id in operation_ids:
+            try:
+                self.rollback(operation_id)
+                done.append(operation_id)
+            except Exception as exc:
+                failed.append({"id": operation_id, "error": str(exc)})
+        return {"restored": len(done), "failed": failed}
+
     def rollback(self, operation_id: str):
         operation = row("SELECT * FROM operation_logs WHERE id=?", (operation_id,))
         if not operation or not operation.get("rollbackable"):
@@ -896,6 +1023,21 @@ class OrganizeService:
             with transaction() as conn: conn.execute("UPDATE files SET path=?,filename=?,path_rule_ok=1,updated_at=? WHERE id=?",(str(target),target.name,now(),preview.get("fileId")))
             moved.append(str(target));progress(int(index/max(1,len(previews))*90),f"正在整理文件 {index}/{len(previews)}")
         return {"moved":moved}
+
+
+def _load_json(value) -> dict:
+    """operation_logs 里的 before/after 存的是 JSON 字符串。
+
+    历史数据里有 None、空串，也有早期版本写进去的非 dict（比如一个字符串），
+    所以这里一律容错成 {} —— 改动历史不该因为一条脏记录整页打不开。
+    """
+    if isinstance(value, dict):
+        return value
+    try:
+        parsed = json.loads(value or "{}")
+    except (TypeError, ValueError):
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
 
 
 def _decode_file(item):

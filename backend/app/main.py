@@ -59,7 +59,7 @@ from .schemas import ( LoginBody, SetupBody, PlaylistBody, PlaylistPatchBody, M3
     UserPasswordBody, SourceBody, SourceImportUrlBody, SourceImportCodeBody, SourceSearchBody,
     SourceResolveBody, JobBody, DownloadBody, BatchDownloadDecisionBody, SourcePreviewBody,
     SettingsPatchBody, PlexSettingsBody, PlexTestBody, PlexRemoteCommandBody, FnosSettingsBody,
-    TagUpdateBody, TagFillPreviewBody, OrganizePreviewBody, OrganizeApplyBody, DownloadInboxApplyBody,
+    TagUpdateBody, TagFillPreviewBody, RollbackBatchBody, OrganizePreviewBody, OrganizeApplyBody, DownloadInboxApplyBody,
     ScrapePreviewBody, ScrapeApplyBody, DiscoveryDownloadBody, AirPlayCastUpdateBody,
     AirPlayCastClockBody,
 )
@@ -1054,9 +1054,19 @@ def download_inbox_ingest(body: DownloadInboxApplyBody):
 
 
 @app.get("/api/local/operations", dependencies=[Depends(auth.current_user)])
-def operation_logs(limit: int = Query(100, ge=1, le=500)):
-    from .db import rows
-    return rows("SELECT * FROM operation_logs ORDER BY created_at DESC LIMIT ?", (limit,))
+def operation_logs(limit: int = Query(300, ge=1, le=500)):
+    """Change history as a timeline, grouped by run, with decoded diffs.
+
+    This used to return raw rows with before/after still JSON-encoded, which
+    is why the page could only ever show "写入标签 · 成功".
+    """
+    return local_library.operation_timeline(limit)
+
+
+@app.post("/api/local/operations/rollback", dependencies=[Depends(auth.current_user)])
+def rollback_operations(body: RollbackBatchBody):
+    """Roll back a whole run. Partial failures are reported, not raised."""
+    return local_library.rollback_many(body.ids)
 
 
 @app.post("/api/local/operations/{operation_id}/rollback", dependencies=[Depends(auth.current_user)])

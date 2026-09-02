@@ -55,6 +55,7 @@ import { StatGrid, StatTile } from "../../components/ui/StatTile";
 import { PageLoader } from "../../components/PageLoader";
 import { api } from "../../lib/api";
 import { fmt, timeAgo } from "../../lib/format";
+import { ChangeHistory } from "./ChangeHistory";
 import { LibraryCheckup } from "./LibraryCheckup";
 import { TagEditor } from "./TagEditor";
 
@@ -144,8 +145,7 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
   const [organizeView, setOrganizeView] = useState("todo");
 
   // --- 改动历史 ---
-  const [operations, setOperations] = useState([]);
-  const [rollbackTarget, setRollbackTarget] = useState(null);
+  const [history, setHistory] = useState({ groups: [], total: 0 });
 
   const [editing, setEditing] = useState(null);
   const [busy, setBusy] = useState("");
@@ -186,7 +186,7 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
   useEffect(() => {
     if (workspace !== "history") return;
     api("/api/local/operations")
-      .then(setOperations)
+      .then(setHistory)
       .catch((err) => setError(err.message));
   }, [workspace]);
 
@@ -361,19 +361,15 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
   // 回滚
   // ------------------------------------------------------------------
 
-  const rollback = async () => {
-    const target = rollbackTarget;
-    setRollbackTarget(null);
-    if (!target) return;
-    try {
-      await api(`/api/local/operations/${target.id}/rollback`, {
-        method: "POST",
-      });
-      setOperations(await api("/api/local/operations"));
-      notify("已恢复到修改前的状态");
-    } catch (err) {
-      setError(err.message);
-    }
+  /* 整批撤销。返回结果交给 ChangeHistory 自己去说明部分失败的情况 ——
+     它比这里更清楚当时展示的是哪一次运行。 */
+  const rollbackRun = async (ids) => {
+    const result = await api("/api/local/operations/rollback", {
+      method: "POST",
+      body: JSON.stringify({ ids }),
+    });
+    setHistory(await api("/api/local/operations"));
+    return result;
   };
 
   const toggleIn = (setter) => (id) =>
@@ -945,46 +941,12 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
 
       {/* ============ 改动历史 ============ */}
       {workspace === "history" && (
-        <Section>
-          <SectionHeader
-            title="改动历史"
-            note="标签写入、文件移动和入库都记着原值，可以逐条恢复"
-          />
-          {operations.length ? (
-            <div className="local-history">
-              {operations.map((item) => (
-                <div className="local-history__row" key={item.id}>
-                  <div className="local-history__text">
-                    <strong>{ACTION_LABELS[item.action] || item.action}</strong>
-                    <small>{timeAgo(item.created_at)}</small>
-                  </div>
-                  {item.status === "success" ? (
-                    <Badge tone="success">成功</Badge>
-                  ) : (
-                    <Badge tone="danger">失败</Badge>
-                  )}
-                  {item.rollbackable ? (
-                    <Button
-                      size="sm"
-                      icon={RotateCcw}
-                      onClick={() => setRollbackTarget(item)}
-                    >
-                      恢复
-                    </Button>
-                  ) : (
-                    <span className="local-history__note">不可恢复</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              icon={RotateCcw}
-              title="还没有改动记录"
-              text="写入标签、移动文件或入库之后，每一次都会记在这里。"
-            />
-          )}
-        </Section>
+        <ChangeHistory
+          data={history}
+          onReload={rollbackRun}
+          notify={notify}
+          onError={setError}
+        />
       )}
 
       {/*
@@ -1035,29 +997,6 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
         </p>
       </Modal>
 
-      <Modal
-        open={Boolean(rollbackTarget)}
-        onClose={() => setRollbackTarget(null)}
-        title="恢复到修改前？"
-        description={
-          rollbackTarget
-            ? `${ACTION_LABELS[rollbackTarget.action] || rollbackTarget.action} · ${timeAgo(rollbackTarget.created_at)}`
-            : ""
-        }
-        actions={
-          <ButtonGroup align="end">
-            <Button onClick={() => setRollbackTarget(null)}>取消</Button>
-            <Button variant="primary" icon={RotateCcw} onClick={rollback}>
-              恢复
-            </Button>
-          </ButtonGroup>
-        }
-      >
-        <p>
-          音屿会先检查原位置有没有被别的文件占用，确认安全后才写回去。
-          如果这之后你又改过同一个文件，那些改动会被这次恢复覆盖。
-        </p>
-      </Modal>
     </Page>
   );
 }

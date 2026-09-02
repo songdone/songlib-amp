@@ -929,3 +929,310 @@
     color: var(--text-secondary);
   }
 }
+
+@layer components {
+  /* =============================================================
+   * 对话框
+   *
+   * 原生 <dialog> 默认样式很强（居中定位、边框、背景），
+   * 全部要显式覆盖，否则会和自定义面板打架。
+   * ============================================================= */
+
+  .ui-modal {
+    width: 100%;
+    max-width: none;
+    max-height: none;
+    height: 100%;
+    margin: 0;
+    padding: var(--space-4);
+    border: 0;
+    background: transparent;
+    overflow: auto;
+    /* dialog 默认不可见，只有 [open] 时才参与布局。 */
+    display: none;
+  }
+
+  .ui-modal[open] {
+    display: grid;
+    place-items: center;
+  }
+
+  .ui-modal::backdrop {
+    background: rgba(4, 5, 8, 0.62);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+
+  .ui-modal__panel {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-height: calc(100dvh - var(--space-8));
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    animation: modal-in calc(240ms * var(--motion-scale)) var(--ease-settle) both;
+  }
+
+  @keyframes modal-in {
+    from {
+      opacity: 0;
+      transform: translate3d(0, calc(12px * var(--motion-scale)), 0)
+        scale(calc(1 - 0.015 * var(--motion-scale)));
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+  }
+
+  .ui-modal--sm .ui-modal__panel {
+    max-width: 400px;
+  }
+  .ui-modal--md .ui-modal__panel {
+    max-width: 560px;
+  }
+  .ui-modal--lg .ui-modal__panel {
+    max-width: 760px;
+  }
+  .ui-modal--xl .ui-modal__panel {
+    max-width: 1000px;
+  }
+
+  .ui-modal__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex: none;
+    padding: var(--space-5) var(--space-5) var(--space-4);
+    border-block-end: 1px solid var(--border-subtle);
+  }
+
+  .ui-modal__head-text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 0;
+  }
+
+  .ui-modal__title {
+    font-size: var(--text-md);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+  }
+
+  .ui-modal__desc {
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+  }
+
+  /* 内容区独立滚动，头部固定 —— 长表单滚动时标题不能跟着跑掉。 */
+  .ui-modal__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+  }
+}
+
+@layer components {
+  /* =============================================================
+   * 标签编辑器
+   * ============================================================= */
+
+  .tag-editor {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 0;
+    min-height: 0;
+  }
+
+  /* --- 左栏：改的是哪些曲目 --- */
+
+  .tag-editor__subject {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-5);
+    background: var(--surface-inset);
+    border-inline-end: 1px solid var(--border-subtle);
+  }
+
+  .tag-editor__subject .ui-cover {
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+  }
+
+  .tag-editor__subject-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .tag-editor__subject-title {
+    font-size: var(--text-base);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-snug);
+    color: var(--text-primary);
+    /* 歌名可能很长，两行截断保留区分度。 */
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
+  .tag-editor__subject-sub {
+    font-size: var(--text-xs);
+    line-height: var(--leading-snug);
+    color: var(--text-tertiary);
+  }
+
+  .tag-editor__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+  }
+
+  /* 路径要能看全，所以允许换行并用等宽字体 —— 
+     路径里的 l/1/I 和 0/O 在比例字体下很难分辨。 */
+  .tag-editor__path {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    line-height: 1.5;
+    color: var(--text-tertiary);
+    word-break: break-all;
+  }
+
+  .tag-editor__path svg {
+    flex: none;
+    width: 12px;
+    height: 12px;
+    margin-block-start: 2px;
+  }
+
+  .tag-editor__list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+  }
+
+  .tag-editor__list li {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* --- 右栏：字段 --- */
+
+  .tag-editor__fields {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    padding: var(--space-5);
+    min-width: 0;
+  }
+
+  .tag-editor__field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .tag-editor__field--wide {
+    grid-column: 1 / -1;
+  }
+
+  /* 新旧对比。旧值划掉、新值高亮，一眼看清改了什么。 */
+  .tag-editor__diff {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    min-width: 0;
+  }
+
+  .tag-editor__diff > span {
+    text-decoration: line-through;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tag-editor__diff svg {
+    flex: none;
+    width: 12px;
+    height: 12px;
+  }
+
+  .tag-editor__diff strong {
+    color: var(--accent-text);
+    font-weight: var(--weight-medium);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* --- 确认区 --- */
+
+  .tag-editor__confirm {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    padding-block-start: var(--space-4);
+    border-block-start: 1px solid var(--border-subtle);
+  }
+
+  .tag-editor__summary {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+  }
+
+  .tag-editor__summary strong {
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+  }
+
+  @media (max-width: 760px) {
+    .tag-editor {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .tag-editor__subject {
+      flex-direction: row;
+      align-items: center;
+      flex-wrap: wrap;
+      border-inline-end: 0;
+      border-block-end: 1px solid var(--border-subtle);
+    }
+
+    .tag-editor__subject .ui-cover {
+      width: 72px;
+      flex: none;
+    }
+
+    .tag-editor__subject-text {
+      flex: 1 1 auto;
+    }
+
+    /* 窄屏隐藏完整路径 —— 它会占掉半屏，而这时用户更需要看到字段。 */
+    .tag-editor__path {
+      display: none;
+    }
+  }
+}

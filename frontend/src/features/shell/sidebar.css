@@ -128,3 +128,22 @@
     }
   }
 }
+
+@layer components {
+  /* 整理曲库索引页里的工具图标块。 */
+  .hub-tool-icon {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    background: var(--surface-3);
+    color: var(--accent-text);
+  }
+
+  .hub-tool-icon svg {
+    width: 18px;
+    height: 18px;
+    stroke-width: 1.8;
+  }
+}

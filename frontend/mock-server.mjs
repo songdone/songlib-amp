@@ -96,6 +96,48 @@ http.createServer((req,res)=>{
     if(url.pathname==='/api/library/albums'){const q=(url.searchParams.get('search')||'').trim();const items=q?albums.filter(a=>a.title.includes(q)||(a.parentTitle||'').includes(q)):albums;return json(res,{items,total:items.length,page:1,pageSize:200})}
     if(url.pathname==='/api/library/tracks'){const q=(url.searchParams.get('search')||'').trim();const items=q?tracks.filter(t=>t.title.includes(q)||t.grandparentTitle.includes(q)||t.parentTitle.includes(q)):tracks;return json(res,{items,total:items.length,page:1,pageSize:200})}
     if(url.pathname==='/api/local/files')return json(res,{items:localFiles,total:localFiles.length,stats:{total:1439,missing_cover:14,missing_lyrics:12,missing_artist:2,missing_album:3,bad_path:9,plex_unmatched:6}})
+    if(url.pathname==='/api/local/health')return json(res,{
+      total:1439,checkedAt:new Date(Date.now()-45000).toISOString(),score:96,clean:false,
+      allChecks:[
+        {id:'cover',label:'缺封面',count:14,hint:'「封面与歌词」能一次补齐',page:'scrape',filter:'cover',severity:'info'},
+        {id:'lyrics',label:'缺歌词',count:12,hint:'「封面与歌词」能一次补齐',page:'scrape',filter:'lyrics',severity:'info'},
+        {id:'artist',label:'没有歌手',count:2,hint:'「文件与标签 → 补标签」可以从路径推断',page:'local',filter:'artist',severity:'warning'},
+        {id:'album',label:'没有专辑',count:3,hint:'「文件与标签 → 补标签」可以从路径推断',page:'local',filter:'album',severity:'warning'},
+        {id:'path',label:'目录不规范',count:9,hint:'「文件与标签 → 整理目录」按命名规则归位',page:'local',filter:'path',severity:'info'},
+        {id:'plex',label:'Plex 没对上',count:6,hint:'同步一次 Plex 对照通常就好了',page:'local',filter:'plex',severity:'info'}
+      ],
+      checks:[
+        {id:'cover',label:'缺封面',count:14,hint:'「封面与歌词」能一次补齐',page:'scrape',filter:'cover',severity:'info'},
+        {id:'lyrics',label:'缺歌词',count:12,hint:'「封面与歌词」能一次补齐',page:'scrape',filter:'lyrics',severity:'info'},
+        {id:'path',label:'目录不规范',count:9,hint:'「文件与标签 → 整理目录」按命名规则归位',page:'local',filter:'path',severity:'info'},
+        {id:'plex',label:'Plex 没对上',count:6,hint:'同步一次 Plex 对照通常就好了',page:'local',filter:'plex',severity:'info'},
+        {id:'album',label:'没有专辑',count:3,hint:'「文件与标签 → 补标签」可以从路径推断',page:'local',filter:'album',severity:'warning'},
+        {id:'artist',label:'没有歌手',count:2,hint:'「文件与标签 → 补标签」可以从路径推断',page:'local',filter:'artist',severity:'warning'},
+        {id:'duplicate',label:'疑似重复',count:3,hint:'同一首歌存了多份，留码率最高的那个就行',page:'local',filter:'',severity:'warning'},
+        {id:'orphan',label:'文件已经不在了',count:2,hint:'曲库里还有记录，但磁盘上找不到 —— 重新扫一次会清掉',page:'local',filter:'',severity:'danger'}
+      ],
+      duplicateTotal:3,
+      duplicates:[
+        {key:'meta|海阔天空|beyond|104',reason:'曲名、歌手和时长都对得上',title:'海阔天空',artist:'Beyond',items:[
+          {id:'d1',path:'/music/Beyond/乐与怒/03 - 海阔天空.flac',ext:'.flac',bitrate:982,size:44_100_000,duration:313,keep:true},
+          {id:'d2',path:'/music/_老备份/海阔天空.mp3',ext:'.mp3',bitrate:320,size:12_600_000,duration:314,keep:false}
+        ]},
+        {key:'hash|9f2c',reason:'文件完全相同',title:'晴天',artist:'周杰伦',items:[
+          {id:'d3',path:'/music/周杰伦/叶惠美/03 - 晴天.flac',ext:'.flac',bitrate:960,size:38_400_000,duration:269,keep:true},
+          {id:'d4',path:'/music/未整理/晴天 (1).flac',ext:'.flac',bitrate:960,size:38_400_000,duration:269,keep:false}
+        ]},
+        {key:'meta|勇气|梁静茹|84',reason:'曲名、歌手和时长都对得上',title:'勇气',artist:'梁静茹',items:[
+          {id:'d5',path:'/music/梁静茹/勇气/01 - 勇气.flac',ext:'.flac',bitrate:940,size:31_200_000,duration:253,keep:true},
+          {id:'d6',path:'/music/梁静茹/精选/05 - 勇气.mp3',ext:'.mp3',bitrate:320,size:10_100_000,duration:254,keep:false},
+          {id:'d7',path:'/downloads/勇气.m4a',ext:'.m4a',bitrate:256,size:8_200_000,duration:253,keep:false}
+        ]}
+      ],
+      missingOnDiskTotal:2,
+      missingOnDisk:[
+        {id:'o1',path:'/music/五月天/后青春的诗/07 - 突然好想你.flac',artist:'五月天',album:'后青春的诗'},
+        {id:'o2',path:'/music/未整理/未命名音轨.mp3',artist:'',album:''}
+      ]
+    })
     if(url.pathname==='/api/local/categories')return json(res,{summary:[{id:'tracks',label:'歌曲',count:1439,note:'首歌曲'},{id:'artists',label:'艺人',count:105,note:'位艺人'},{id:'albums',label:'专辑',count:306,note:'张专辑'},{id:'genres',label:'流派',count:14,note:'种流派'},{id:'folders',label:'文件夹',count:107,note:'个顶层目录'},{id:'lossless',label:'无损',count:720,note:'首高规格'}],groups:{genre:[{id:'华语流行',name:'华语流行',count:880,search:'华语流行'},{id:'摇滚',name:'摇滚',count:120,search:'摇滚'}],artist:artists.slice(0,8).map(a=>({id:a.title,name:a.title,count:12,search:a.title})),album:albums.slice(0,8).map(a=>({id:a.title,name:a.title,count:10,search:a.title})),folder:artists.slice(0,8).map(a=>({id:a.title,name:a.title,count:12,search:a.title})),format:[{id:'FLAC',name:'FLAC',count:900,search:'.flac'},{id:'MP3',name:'MP3',count:539,search:'.mp3'}],quality:[{id:'无损',name:'无损 / Hi-Res',count:900},{id:'标准',name:'标准音质',count:539}],year:[{id:'2003',name:'2003',count:120,search:'2003'}],scene:[{id:'影视原声',name:'影视原声',count:80,search:'原声'}],missing:[{id:'cover',name:'缺封面',count:14,missing:'cover'},{id:'lyrics',name:'缺歌词',count:12,missing:'lyrics'}]}})
     if(url.pathname==='/api/discovery/platforms')return json(res,{items:[
       {id:'netease',name:'网易云音乐',browseOnly:false,siteUrl:'https://music.163.com/',defaultCategory:'热门',note:''},

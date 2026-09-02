@@ -55,10 +55,17 @@ import { StatGrid, StatTile } from "../../components/ui/StatTile";
 import { PageLoader } from "../../components/PageLoader";
 import { api } from "../../lib/api";
 import { fmt, timeAgo } from "../../lib/format";
+import { LibraryCheckup } from "./LibraryCheckup";
 import { TagEditor } from "./TagEditor";
 
-/** 四个工作区。每一个都能独立开始，不依赖先去别处点一下。 */
+/**
+ * 五个工作区。每一个都能独立开始，不依赖先去别处点一下。
+ *
+ * 「体检」排第一是有意的：它是唯一一个不需要你事先知道自己有什么问题
+ * 的入口。其余四个都要求你已经知道要干什么。
+ */
 const WORKSPACES = [
+  { id: "checkup", label: "体检" },
   { id: "browse", label: "浏览与筛选" },
   { id: "tags", label: "补标签" },
   { id: "organize", label: "整理目录" },
@@ -105,7 +112,7 @@ const ACTION_LABELS = {
 };
 
 export function LocalLibraryPage({ runJob, play, notify, navigate }) {
-  const [workspace, setWorkspace] = useState("browse");
+  const [workspace, setWorkspace] = useState("checkup");
 
   // --- 文件浏览 ---
   const [data, setData] = useState({ items: [], total: 0, stats: {} });
@@ -427,6 +434,20 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
       )}
 
       {/* ============ 浏览与筛选 ============ */}
+      {workspace === "checkup" && (
+        <LibraryCheckup
+          navigate={navigate}
+          onRescan={() => runJob("local_scan")}
+          /* 体检里点"去处理"就是切到浏览工作区并把筛选设好 ——
+             跳到另一页再让用户自己选筛选条件，等于没帮上忙。 */
+          onJumpToFilter={(filter) => {
+            setMissing(filter);
+            setPage(1);
+            setWorkspace("browse");
+          }}
+        />
+      )}
+
       {workspace === "browse" && (
         <Section>
           <SectionHeader

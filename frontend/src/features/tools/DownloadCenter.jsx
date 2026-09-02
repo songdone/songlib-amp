@@ -33,6 +33,7 @@ import { Badge } from "../../components/ui/Badge";
 import { Button, ButtonGroup, IconButton } from "../../components/ui/Button";
 import { Cover } from "../../components/ui/Cover";
 import { Field, Notice } from "../../components/ui/Field";
+import { PathText } from "../../components/ui/PathText";
 import {
   EmptyState,
   ListGroup,
@@ -604,9 +605,9 @@ export function DownloadCenter({
                     </small>
                   </div>
                   <div className="download-pending__paths">
-                    <code>{item.currentPath || item.downloadPath}</code>
+                    <PathText path={item.currentPath || item.downloadPath} />
                     <ChevronRight aria-hidden="true" />
-                    <code>{item.proposedPath || item.targetPath}</code>
+                    <PathText path={item.proposedPath || item.targetPath} />
                   </div>
                   <div className="download-pending__flags">
                     {issues.length ? (

@@ -854,6 +854,38 @@
     text-decoration: none;
   }
 
+  /* =============================================================
+   * 文件路径
+   *
+   * 配合 components/ui/PathText.jsx。为什么省略开头、
+   * 以及为什么必须在两端加 LRM，都写在那个文件里。
+   * ============================================================= */
+
+  .ui-path {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: var(--text-2xs);
+    color: var(--text-secondary);
+  }
+
+  /*
+   * dir="rtl" 在 JSX 里给，这里只负责对齐。
+   * 关键是 text-align: left 而不是 start ——
+   * 在 rtl 方向下 start 等于右边，路径会贴到列的右侧，
+   * 和它左边的徽标之间空出一大片，看着像两件不相关的东西。
+   */
+  .ui-path--clip-start {
+    text-align: left;
+  }
+
+  .ui-path--clip-end {
+    text-align: start;
+  }
+
   .ui-field__hint {
     font-size: var(--text-xs);
     color: var(--text-tertiary);

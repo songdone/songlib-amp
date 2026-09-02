@@ -125,17 +125,9 @@
     color: var(--text-tertiary);
   }
 
-  /* 路径用等宽字体，只显示末尾 —— 目录前缀都一样，
-     真正需要核对的是文件名和它上一级。 */
-  .download-pending__paths code {
-    font-family: var(--font-mono);
-    font-size: var(--text-2xs);
-    color: var(--text-secondary);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    direction: rtl;
-    text-align: start;
+  /* 路径的截断和方向交给 components/ui/PathText，这里只给宽度约束。 */
+  .download-pending__paths .ui-path {
+    min-width: 0;
   }
 
   .download-pending__flags {
@@ -241,14 +233,7 @@
 
   /* 和待入库那张表一样：只显示路径末尾，前缀都相同。 */
   .inbox-table__paths code {
-    font-family: var(--font-mono);
-    font-size: var(--text-2xs);
-    color: var(--text-secondary);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    direction: rtl;
-    text-align: start;
+    min-width: 0;
   }
 
   .inbox-table__row > .ui-badge {

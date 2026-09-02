@@ -20,7 +20,12 @@ export function SidebarMiniPlayer({ openPlayer }) {
       <div className="sidebar-player-head">
         {/* 缺封面时由 Cover 给出按标题生成的安静占位，
             不再铺那张带 "SONGLIB AMP" 水印的兜底图。 */}
-        <button className="sidebar-player-cover" onClick={openPlayer}>
+        <button
+          type="button"
+          className="sidebar-player-cover"
+          aria-label="打开正在播放"
+          onClick={openPlayer}
+        >
           <Cover src={cover} title={current.title} shape="square" />
         </button>
         <div>

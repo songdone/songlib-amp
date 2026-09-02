@@ -425,8 +425,16 @@ export default function NowPlayingPage({
           {track ? (
             <AirPlayCastButton cast={cast} />
           ) : (
-            <button className="airplay-cast-button" disabled title="选择歌曲后可投送歌词视频">
-              <Airplay />
+            /* 禁用态的按钮，title 在多数浏览器上不会浮出来，
+               所以原因要写进无障碍名里。 */
+            <button
+              type="button"
+              className="airplay-cast-button"
+              disabled
+              aria-label="投到电视：先选一首歌"
+              title="先选一首歌"
+            >
+              <Airplay aria-hidden="true" />
               <span>投到电视</span>
             </button>
           )}
@@ -567,7 +575,40 @@ export default function NowPlayingPage({
                 <div className="now-cast-actions">
                   {/* 这里只保留歌词时间微调。投屏按钮在页头，
                       同一个动作不在一屏里出现两次。 */}
-                  {track && <div className="now-lyrics-offset" aria-label="歌词同步微调"><button onClick={() => cast.adjustLyricsOffset(-250)} title="歌词延后 0.25 秒"><Minus /></button><button className="value" onClick={cast.resetLyricsOffset} title="重置歌词同步">{cast.lyricsOffsetMs > 0 ? "+" : ""}{(cast.lyricsOffsetMs / 1000).toFixed(2)}s</button><button onClick={() => cast.adjustLyricsOffset(250)} title="歌词提前 0.25 秒"><Plus /></button></div>}
+                  {track && (
+                    /* 三个按钮原来只有 title。title 在触屏上根本不显示，
+                       读屏器对它的支持也不一致 —— 图标按钮必须有 aria-label。
+                       容器上那个 aria-label 也去掉了：div 不是交互元素，
+                       给它加标签只会让读屏器多念一句没有用的话。 */
+                    <div className="now-lyrics-offset" role="group" aria-label="歌词同步微调">
+                      <button
+                        type="button"
+                        aria-label="歌词延后 0.25 秒"
+                        title="歌词延后 0.25 秒"
+                        onClick={() => cast.adjustLyricsOffset(-250)}
+                      >
+                        <Minus aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        className="value"
+                        aria-label={`当前偏移 ${(cast.lyricsOffsetMs / 1000).toFixed(2)} 秒，点击归零`}
+                        title="重置歌词同步"
+                        onClick={cast.resetLyricsOffset}
+                      >
+                        {cast.lyricsOffsetMs > 0 ? "+" : ""}
+                        {(cast.lyricsOffsetMs / 1000).toFixed(2)}s
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="歌词提前 0.25 秒"
+                        title="歌词提前 0.25 秒"
+                        onClick={() => cast.adjustLyricsOffset(250)}
+                      >
+                        <Plus aria-hidden="true" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
               {track && (

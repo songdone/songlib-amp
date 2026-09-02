@@ -86,7 +86,16 @@ export function Sidebar({
           </button>
         </div>
       </aside>
-      {open && <button className="backdrop mobile-only" onClick={close} />}
+      {open && (
+        /* 点遮罩关侧栏。一个没有内容的 <button /> 在无障碍树里是匿名按钮，
+           读屏器只会念"按钮"，不知道点了会发生什么。 */
+        <button
+          type="button"
+          className="backdrop mobile-only"
+          aria-label="关闭导航"
+          onClick={close}
+        />
+      )}
     </>
   );
 }

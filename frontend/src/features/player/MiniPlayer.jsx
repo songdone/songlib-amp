@@ -11,7 +11,12 @@ export function MiniPlayer({ openPlayer, navigate }) {
   const liked = player.isFavorite(current);
   return (
     <div className="mini-player">
-      <button className="mini-cover" onClick={openPlayer}>
+      <button
+        type="button"
+        className="mini-cover"
+        aria-label="打开正在播放"
+        onClick={openPlayer}
+      >
         <img src={cover} alt="" />
       </button>
       <div className="mini-copy">
@@ -28,14 +33,22 @@ export function MiniPlayer({ openPlayer, navigate }) {
         <Heart />
       </button>
       <div className="mini-controls">
-        <button onClick={player.previous}>
-          <ChevronRight className="prev-icon" />
+        <button type="button" aria-label="上一首" onClick={player.previous}>
+          <ChevronRight className="prev-icon" aria-hidden="true" />
         </button>
-        <button onClick={player.toggle}>
-          {player.isPlaying ? <Pause /> : <Play />}
+        <button
+          type="button"
+          aria-label={player.isPlaying ? "暂停" : "播放"}
+          onClick={player.toggle}
+        >
+          {player.isPlaying ? (
+            <Pause aria-hidden="true" />
+          ) : (
+            <Play aria-hidden="true" />
+          )}
         </button>
-        <button onClick={player.next}>
-          <ChevronRight />
+        <button type="button" aria-label="下一首" onClick={player.next}>
+          <ChevronRight aria-hidden="true" />
         </button>
         <div className="mini-progress">
           <i

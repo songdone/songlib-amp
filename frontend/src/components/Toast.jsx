@@ -12,8 +12,8 @@ export function Toast({ toast, clear }) {
     <div className={`toast ${toast.type || "ok"}`}>
       {toast.type === "error" ? <CircleAlert /> : <Check />}
       <span>{toast.message}</span>
-      <button onClick={clear}>
-        <X />
+      <button type="button" aria-label="关掉这条提示" onClick={clear}>
+        <X aria-hidden="true" />
       </button>
     </div>
   );

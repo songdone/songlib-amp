@@ -25,7 +25,6 @@
  */
 
 import {
-  ArrowRight,
   CircleAlert,
   Image as ImageIcon,
   LoaderCircle,
@@ -45,6 +44,12 @@ import {
   Section,
   SectionHeader,
 } from "../../components/ui/Layout";
+import {
+  ChangeList,
+  ChangeRow,
+  ChipGroup,
+  ConfirmBar,
+} from "../../components/ui/Plan";
 import { StatGrid, StatTile } from "../../components/ui/StatTile";
 import { api } from "../../lib/api";
 
@@ -111,6 +116,7 @@ export function ScrapeCenter({ navigate }) {
   const [view, setView] = useState("all");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const [queued, setQueued] = useState(0);
 
   const job = JOBS.find((item) => item.id === jobId) || JOBS[0];
   const activeScope = SCOPES.find((item) => item.id === scope) || SCOPES[0];
@@ -119,6 +125,7 @@ export function ScrapeCenter({ navigate }) {
     setPlan(null);
     setExcluded(new Set());
     setView("all");
+    setQueued(0);
   };
 
   const generate = async () => {
@@ -128,6 +135,9 @@ export function ScrapeCenter({ navigate }) {
     }
     setBusy("preview");
     setError("");
+    // 上一批的"已排队"提示要撤掉，否则会和新清单同屏，
+    // 让人分不清那句话说的是哪一批。
+    setQueued(0);
     try {
       const result = await api("/api/scrape/preview", {
         method: "POST",
@@ -183,7 +193,12 @@ export function ScrapeCenter({ navigate }) {
           excludeIds: [...excluded],
         }),
       });
-      navigate?.("tasks");
+      // 不自动跳到"任务"页。用户刚在这里做完一个决定，
+      // 被甩到另一个页面会不知道刚才那一步到底成没成。
+      // 说清结果，把去哪儿看的选择留给他。
+      setQueued(applying.length);
+      setPlan(null);
+      setExcluded(new Set());
     } catch (err) {
       setError(err.message);
     } finally {
@@ -237,23 +252,16 @@ export function ScrapeCenter({ navigate }) {
           note="范围越小，下一步的清单越能真的看完"
         />
         <div className="scrape__scope">
-          <div className="scrape__chips" role="group" aria-label="范围">
-            {SCOPES.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                aria-pressed={scope === item.id}
-                className={`scrape__chip${scope === item.id ? " scrape__chip--on" : ""}`}
-                onClick={() => {
-                  setScope(item.id);
-                  setScopeValue("");
-                  resetPlan();
-                }}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
+          <ChipGroup
+            label="范围"
+            options={SCOPES}
+            value={scope}
+            onChange={(id) => {
+              setScope(id);
+              setScopeValue("");
+              resetPlan();
+            }}
+          />
 
           {activeScope.needsValue && (
             <Field
@@ -268,23 +276,16 @@ export function ScrapeCenter({ navigate }) {
             />
           )}
 
-          <div className="scrape__modes" role="group" aria-label="遇到已有内容时">
-            {MODES.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                aria-pressed={mode === item.id}
-                className={`scrape__mode${mode === item.id ? " scrape__mode--on" : ""}`}
-                onClick={() => {
-                  setMode(item.id);
-                  resetPlan();
-                }}
-              >
-                <strong>{item.label}</strong>
-                <small>{item.note}</small>
-              </button>
-            ))}
-          </div>
+          <ChipGroup
+            label="遇到已有内容时"
+            columns
+            options={MODES}
+            value={mode}
+            onChange={(id) => {
+              setMode(id);
+              resetPlan();
+            }}
+          />
 
           <Button
             variant="primary"
@@ -323,79 +324,52 @@ export function ScrapeCenter({ navigate }) {
             />
           </StatGrid>
 
-          <div className="scrape__views" role="group" aria-label="筛选">
-            {VIEWS.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                aria-pressed={view === item.id}
-                className={`scrape__chip${view === item.id ? " scrape__chip--on" : ""}`}
-                onClick={() => setView(item.id)}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
+          <ChipGroup
+            label="筛选"
+            options={VIEWS}
+            value={view}
+            onChange={setView}
+          />
 
           {visible.length ? (
-            <ul className="scrape__list">
+            <ChangeList>
               {visible.map((item) => {
                 const skipped = item.action === "skip";
-                const off = excluded.has(item.id);
                 return (
-                  <li
+                  <ChangeRow
                     key={item.id}
-                    className={`scrape__row${off || skipped ? " scrape__row--off" : ""}`}
-                  >
-                    {/* 跳过的条目不给勾选框 —— 它本来就不会被写入，
-                        给个能勾的框只会让人以为可以强制执行。 */}
-                    {skipped ? (
-                      <span className="scrape__row-skip" aria-hidden="true" />
-                    ) : (
-                      <input
-                        type="checkbox"
-                        checked={!off}
-                        onChange={() => toggle(item.id)}
-                        aria-label={`应用「${item.target}」的${item.field}`}
-                      />
-                    )}
-
-                    <span className="scrape__row-main">
-                      <span className="scrape__row-head">
-                        <strong>{item.target}</strong>
-                        <Badge>{item.field}</Badge>
-                        {item.conflict && <Badge tone="danger">冲突</Badge>}
-                        {skipped && <Badge tone="warning">已跳过</Badge>}
-                      </span>
-
-                      {skipped ? (
-                        <small className="scrape__row-note">{item.skipReason}</small>
+                    target={item.target}
+                    badges={[
+                      { label: item.field },
+                      ...(item.conflict ? [{ label: "冲突", tone: "danger" }] : []),
+                      ...(skipped ? [{ label: "已跳过", tone: "warning" }] : []),
+                    ]}
+                    oldValue={item.oldValue}
+                    newValue={
+                      isImageValue(item.newValue) ? (
+                        <Cover
+                          src={item.newValue}
+                          title={item.target}
+                          size="40px"
+                          shape="square"
+                        />
                       ) : (
-                        <span className="scrape__diff">
-                          <span className="scrape__diff-old">{item.oldValue}</span>
-                          <ArrowRight aria-hidden="true" />
-                          {isImageValue(item.newValue) ? (
-                            <Cover
-                              src={item.newValue}
-                              title={item.target}
-                              size="40px"
-                              shape="square"
-                            />
-                          ) : (
-                            <span className="scrape__diff-new">{item.newValue}</span>
-                          )}
-                        </span>
-                      )}
-                    </span>
-
-                    <span className="scrape__row-meta">
-                      <small>{item.candidateSource}</small>
-                      <small>匹配度 {Math.round(item.confidence * 100)}%</small>
-                    </span>
-                  </li>
+                        item.newValue
+                      )
+                    }
+                    meta={[
+                      item.candidateSource,
+                      `匹配度 ${Math.round(item.confidence * 100)}%`,
+                    ]}
+                    skipped={skipped}
+                    skipReason={item.skipReason}
+                    checked={!excluded.has(item.id)}
+                    onToggle={() => toggle(item.id)}
+                    toggleLabel={`应用「${item.target}」的${item.field}`}
+                  />
                 );
               })}
-            </ul>
+            </ChangeList>
           ) : (
             <EmptyState
               icon={ImageIcon}
@@ -405,21 +379,22 @@ export function ScrapeCenter({ navigate }) {
           )}
 
           {/* --- 确认条 --- */}
-          <div className="scrape__confirm">
-            <div className="scrape__confirm-text">
-              {applying.length ? (
-                <>
-                  <strong>将写入 {applying.length} 项</strong>
-                  <span>
-                    {excluded.size > 0 && `已勾掉 ${excluded.size} 项，`}
-                    {plan.summary.skip > 0 && `${plan.summary.skip} 项自动跳过，`}
-                    执行记录和回滚数据会留在任务里
-                  </span>
-                </>
-              ) : (
-                <span>没有要写入的条目</span>
-              )}
-            </div>
+          <ConfirmBar
+            summary={
+              applying.length ? `将写入 ${applying.length} 项` : "没有要写入的条目"
+            }
+            detail={
+              applying.length
+                ? [
+                    excluded.size > 0 && `已勾掉 ${excluded.size} 项`,
+                    plan.summary.skip > 0 && `${plan.summary.skip} 项自动跳过`,
+                    "原值会记录下来，之后可以回滚",
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")
+                : undefined
+            }
+          >
             <ButtonGroup align="end">
               <Button onClick={resetPlan}>重新选择</Button>
               <Button
@@ -432,15 +407,24 @@ export function ScrapeCenter({ navigate }) {
                 应用这 {applying.length} 项
               </Button>
             </ButtonGroup>
-          </div>
+          </ConfirmBar>
         </Section>
       )}
 
-      {!plan && !busy && (
+      {queued > 0 && (
+        <Notice tone="success" icon={ShieldCheck}>
+          {queued} 项已排进后台队列。写入过程中可以继续用其他页面。
+          <Button variant="quiet" onClick={() => navigate?.("tasks")}>
+            去看执行进度
+          </Button>
+        </Notice>
+      )}
+
+      {!plan && !busy && !queued && (
         <EmptyState
           icon={LoaderCircle}
           title="还没有生成清单"
-          text="选好上面的范围，点「看看会改什么」。生成清单不会修改任何东西。"
+          text="选好上面的范围，点「看看会改什么」。生成清单不会改动任何文件。"
         />
       )}
     </Page>

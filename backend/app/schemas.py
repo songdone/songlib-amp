@@ -179,6 +179,10 @@ class TagUpdateBody(BaseModel):
     changes: dict
 
 
+class TagFillPreviewBody(BaseModel):
+    fileIds: list[str] = []
+
+
 class OrganizePreviewBody(BaseModel):
     fileIds: list[str]
 

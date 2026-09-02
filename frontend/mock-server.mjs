@@ -15,7 +15,7 @@ const jobs = [
 ]
 const source={id:'demo-source',name:'[独家音源]',displayName:'[独家音源]',sourceType:'file',status:'resolve_ok',enabled:true,accessGranted:true,catalogReady:true,downloadCapable:true,searchOk:true,resolveOk:true,detectedFormat:'lx-event',compatibility:'full',successRate:100,supportedPlatforms:['kw','kg','tx','wy','mg','local'],supportedQualities:['128k','320k','flac','flac24bit'],lastTestAt:new Date(Date.now()-900000).toISOString(),lastErrorMessage:null,metadata:{author:'洛雪科技',version:'4'}}
 const searchResults=tracks.slice(0,8).map((t,i)=>({sourceId:source.id,sourceName:source.displayName,platform:'tx',trackId:String(i),id:String(i),title:t.title,artist:t.grandparentTitle,album:t.parentTitle,duration:240+i*3,coverUrl:'',cover:'',qualities:['128k','320k','flac'],musicInfo:{source:'tx',id:`tx_${i}`,meta:{songId:String(i)}}}))
-const localFiles=tracks.slice(0,14).map((t,i)=>({id:`file-${i}`,path:`/music/${t.grandparentTitle}/${t.parentTitle}/${String(i+1).padStart(2,'0')} - ${t.title}.flac`,filename:`${String(i+1).padStart(2,'0')} - ${t.title}.flac`,title:t.title,artist:t.grandparentTitle,album:t.parentTitle,album_artist:t.grandparentTitle,year:'2003',track_number:String(i+1),disc_number:'1',genre:'华语流行',format:'FLAC',size:32_000_000,has_cover:i%3!==0,has_lrc:i%4!==0,plex_matched:i%5!==0,path_rule_ok:true}))
+const localFiles=tracks.slice(0,14).map((t,i)=>({id:`file-${i}`,path:`/music/${t.grandparentTitle}/${t.parentTitle}/${String(i+1).padStart(2,'0')} - ${t.title}.flac`,filename:`${String(i+1).padStart(2,'0')} - ${t.title}.flac`,title:t.title,artist:i%3===1?'':t.grandparentTitle,album:i%5===2?'':t.parentTitle,album_artist:i%3===1?'':t.grandparentTitle,year:'2003',track_number:String(i+1),disc_number:'1',genre:'华语流行',format:'FLAC',size:32_000_000,has_cover:i%3!==0,has_lrc:i%4!==0,plex_matched:i%5!==0,path_rule_ok:i%4!==1}))
 const pendingDownloads=[{jobId:5,title:'晴天',artist:'周杰伦',album:'叶惠美',quality:'320k',source:'[独家音源]',downloadPath:'/music/_incoming/周杰伦-晴天.mp3',targetPath:'/music/周杰伦/叶惠美/03 - 晴天.mp3',tagStatus:'已写入',coverStatus:'已保存',lyricStatus:'已保存',conflict:false,preview:jobs[3].result.preview}]
 const plexSettings={enabled:true,name:'极空间 Plex',serverUrl:'http://127.0.0.1:32400',externalUrl:'http://127.0.0.1:32400',token:'',hasToken:true,selectedLibraryKeys:'all',lastConnectedAt:new Date(Date.now()-600000).toISOString(),lastSyncAt:new Date(Date.now()-1200000).toISOString(),libraries:[{key:'26',title:'音乐',type:'artist',enabled:true},{key:'27',title:'演唱会音乐',type:'artist',enabled:true}],syncedLibraryCount:2}
 const users=[{id:'admin',username:'admin',displayName:'管理员',role:'admin',enabled:true,createdAt:new Date(Date.now()-86400000).toISOString(),updatedAt:new Date().toISOString(),lastLoginAt:new Date(Date.now()-300000).toISOString()}]
@@ -47,6 +47,9 @@ const mockCover = (seed) => {
 }
 
 const json = (res,data,status=200)=>{res.writeHead(status,{'content-type':'application/json; charset=utf-8'});res.end(JSON.stringify(data))}
+/** 读完请求体再交给 handler。mock 里多处 POST 需要看 payload。 */
+const withJson=(req,res,handler)=>{let raw='';req.on('data',c=>{raw+=c});req.on('end',()=>{let payload={};try{payload=JSON.parse(raw||'{}')}catch{}handler(payload)})}
+
 const port = Number(process.env.PORT || 4174)
 http.createServer((req,res)=>{
   const url=new URL(req.url,'http://localhost')
@@ -95,6 +98,31 @@ http.createServer((req,res)=>{
     if(url.pathname==='/api/local/files')return json(res,{items:localFiles,total:localFiles.length,stats:{total:1439,missing_cover:14,missing_lyrics:12,missing_artist:2,missing_album:3,bad_path:9,plex_unmatched:6}})
     if(url.pathname==='/api/local/categories')return json(res,{summary:[{id:'tracks',label:'歌曲',count:1439,note:'首歌曲'},{id:'artists',label:'艺人',count:105,note:'位艺人'},{id:'albums',label:'专辑',count:306,note:'张专辑'},{id:'genres',label:'流派',count:14,note:'种流派'},{id:'folders',label:'文件夹',count:107,note:'个顶层目录'},{id:'lossless',label:'无损',count:720,note:'首高规格'}],groups:{genre:[{id:'华语流行',name:'华语流行',count:880,search:'华语流行'},{id:'摇滚',name:'摇滚',count:120,search:'摇滚'}],artist:artists.slice(0,8).map(a=>({id:a.title,name:a.title,count:12,search:a.title})),album:albums.slice(0,8).map(a=>({id:a.title,name:a.title,count:10,search:a.title})),folder:artists.slice(0,8).map(a=>({id:a.title,name:a.title,count:12,search:a.title})),format:[{id:'FLAC',name:'FLAC',count:900,search:'.flac'},{id:'MP3',name:'MP3',count:539,search:'.mp3'}],quality:[{id:'无损',name:'无损 / Hi-Res',count:900},{id:'标准',name:'标准音质',count:539}],year:[{id:'2003',name:'2003',count:120,search:'2003'}],scene:[{id:'影视原声',name:'影视原声',count:80,search:'原声'}],missing:[{id:'cover',name:'缺封面',count:14,missing:'cover'},{id:'lyrics',name:'缺歌词',count:12,missing:'lyrics'}]}})
     if(url.pathname==='/api/discovery/playlists')return json(res,{source:'netease-hottags',updatedAt:new Date().toISOString(),platforms:['网易云音乐','QQ 音乐','酷狗音乐'],categories:['热门','华语','流行','粤语','影视原声','经典','摇滚','民谣','电子','轻音乐','怀旧','治愈'].map((name,index)=>({id:`cat-${index}`,platform:index%3===0?'QQ 音乐':index%3===1?'网易云音乐':'酷狗音乐',name,count:10000-index*300,url:'https://music.163.com/'}))})
+    if(url.pathname==='/api/local/tags/preview')return withJson(req,res,payload=>{
+      const ids=new Set((payload.fileIds||[]).map(String))
+      const picked=ids.size?localFiles.filter(f=>ids.has(f.id)):localFiles
+      const items=picked.map(f=>{
+        const parts=f.path.split('/').filter(Boolean)
+        const fields=[]
+        if(!f.artist)fields.push({field:'artist',oldValue:'',newValue:parts[1]||''})
+        if(!f.album)fields.push({field:'album',oldValue:'',newValue:parts[2]||''})
+        if(!f.album_artist)fields.push({field:'albumArtist',oldValue:'',newValue:parts[1]||''})
+        return {fileId:f.id,path:f.path,fields,skipReason:fields.length?'':'四个字段都已经有值'}
+      })
+      json(res,{items,total:items.length,changeable:items.filter(i=>i.fields.length).length})
+    })
+    if(url.pathname==='/api/local/organize/preview')return withJson(req,res,payload=>{
+      const ids=new Set((payload.fileIds||[]).map(String))
+      const picked=localFiles.filter(f=>ids.has(f.id))
+      json(res,{dryRun:true,items:picked.map((f,i)=>{
+        const artist=f.album_artist||f.artist||'Unknown Artist'
+        const album=f.album||'Unknown Album'
+        const target=`/music/${artist}/${album} (${f.year})/${f.filename}`
+        return {fileId:f.id,sourcePath:f.path,targetPath:f.path_rule_ok?f.path:target,targetDirectory:target.slice(0,target.lastIndexOf('/')),targetFilename:f.filename,lyricPath:target.replace(/\.flac$/,'.lrc'),coverPath:'',conflict:i===1,overwrite:false,safe:true,plexRuleOk:true}
+      })})
+    })
+    if(url.pathname==='/api/local/organize/apply')return json(res,{id:21,kind:'local_organize',title:'确认执行本地曲库整理',status:'queued',progress:0,created_at:new Date().toISOString()})
+    if(/^\/api\/local\/operations\/[^/]+\/rollback$/.test(url.pathname))return json(res,{ok:true})
     if(url.pathname==='/api/local/operations')return json(res,[{id:'op1',action:'tag_write',target_id:'file-1',rollbackable:1,created_at:new Date(Date.now()-3600000).toISOString()}])
     if(url.pathname==='/api/catalog/search')return json(res,tracks.slice(0,8).map((t,i)=>({platform:'tx',id:String(i),title:t.title,artist:t.grandparentTitle,album:t.parentTitle,duration:240+i*3,cover:'',qualities:['128k','320k','flac'],musicInfo:{}})))
     if(url.pathname==='/api/scrape/preview'&&req.method==='POST'){

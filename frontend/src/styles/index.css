@@ -50,6 +50,7 @@
 @import "../features/now-playing/now-playing.refresh.css";
 @import "../features/settings/settings.css";
 @import "../features/tools/scrape.css";
+@import "../features/library/local.css";
 
 /* --- 历史层，待清空 --- */
 @import "../styles.css";

@@ -1,41 +1,154 @@
-import { BookOpenText, Check, ChevronRight, CircleAlert, FileAudio, FolderTree, Image, Play, RefreshCw, RotateCcw, Search, Tags, WandSparkles, X } from "lucide-react";
+/**
+ * 文件与标签。
+ *
+ * 这一页管的是**音频文件本身**：写在文件里的标签、文件名、所在目录。
+ * 配套资料（封面、歌词、歌手照片与简介）在"封面与歌词"页 ——
+ * 边界是"改已有的文件"还是"从外部取内容回来补"。
+ * 这句话也写在页面开头，因为这两页的归属曾经是混的。
+ *
+ * 重构掉的三个问题：
+ *
+ * 1. "本地标签补全"和"重命名与目录整理"原先在"封面与歌词"页，
+ *    各是一个批量按钮，点下去就跑，看不到会改什么。
+ *    它们改的是文件，本来就该在这一页；现在各有一套
+ *    预览 → 逐条核对 → 勾掉不要的 → 执行 的界面。
+ *
+ * 2. 五个平铺标签页（文件浏览 / 分类浏览 / 缺失信息 / 入库预览 / 操作历史）
+ *    里有两个不是"页"：缺失信息只是一组筛选按钮，点了跳回文件浏览；
+ *    入库预览是文件浏览的下一步，自己不能独立开始。
+ *    现在四个工作区，每个都能独立开始、独立完成。
+ *
+ * 3. confirm() 原生弹窗。它没有样式、说不清代价，在深色界面里尤其突兀。
+ *    改用 Modal，把"会发生什么"写在里面。
+ */
+
+import {
+  CircleAlert,
+  FileAudio,
+  FolderTree,
+  Play,
+  RefreshCw,
+  RotateCcw,
+  Search,
+  ShieldCheck,
+  Tags,
+  X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
-import { Empty } from "../../components/Empty";
-import { PageLoader } from "../../components/PageLoader";
-import { SectionHead } from "../../components/SectionHead";
-import { StatCard } from "../../components/StatCard";
-import { Button } from "../../components/ui/Button";
+import { Badge } from "../../components/ui/Badge";
+import { Button, ButtonGroup, IconButton } from "../../components/ui/Button";
+import { Field, Notice } from "../../components/ui/Field";
+import {
+  EmptyState,
+  Page,
+  Section,
+  SectionHeader,
+} from "../../components/ui/Layout";
 import { Modal } from "../../components/ui/Modal";
+import {
+  ChangeList,
+  ChangeRow,
+  ChipGroup,
+  ConfirmBar,
+} from "../../components/ui/Plan";
+import { StatGrid, StatTile } from "../../components/ui/StatTile";
+import { PageLoader } from "../../components/PageLoader";
 import { api } from "../../lib/api";
 import { fmt, timeAgo } from "../../lib/format";
 import { TagEditor } from "./TagEditor";
 
+/** 四个工作区。每一个都能独立开始，不依赖先去别处点一下。 */
+const WORKSPACES = [
+  { id: "browse", label: "浏览与筛选" },
+  { id: "tags", label: "补标签" },
+  { id: "organize", label: "整理目录" },
+  { id: "history", label: "改动历史" },
+];
+
+/** 文件浏览的快捷筛选。数字来自 /api/local/files 的 stats。 */
+const MISSING_FILTERS = [
+  { id: "", label: "全部", statKey: "total" },
+  { id: "cover", label: "缺封面", statKey: "missing_cover" },
+  { id: "lyrics", label: "缺歌词", statKey: "missing_lyrics" },
+  { id: "artist", label: "缺歌手", statKey: "missing_artist" },
+  { id: "album", label: "缺专辑", statKey: "missing_album" },
+  { id: "path", label: "目录不规范", statKey: "bad_path" },
+  { id: "plex", label: "Plex 未识别", statKey: "plex_unmatched" },
+];
+
+/** 标签字段的中文名。界面上不出现 albumArtist 这种内部字段名。 */
+const FIELD_LABELS = {
+  title: "标题",
+  artist: "歌手",
+  album: "专辑",
+  albumArtist: "专辑歌手",
+};
+
+/** 补标签的范围。 */
+const TAG_SCOPES = [
+  { id: "selected", label: "已勾选的文件" },
+  { id: "filtered", label: "当前筛选结果" },
+];
+
+/** 只显示路径的末两级 —— 完整绝对路径在列表里读起来全是噪音。 */
+const shortPath = (path) => {
+  const parts = String(path || "").split("/").filter(Boolean);
+  return parts.slice(-2).join("/") || path || "";
+};
+
+/** 操作历史里的动作名。数据库存的是英文枚举，不能直接摆到界面上。 */
+const ACTION_LABELS = {
+  tag_write: "写入标签",
+  organize_move: "移动文件",
+  download_ingest: "下载入库",
+  download_inbox_ingest: "收件箱入库",
+};
+
 export function LocalLibraryPage({ runJob, play, notify, navigate }) {
-  const [tab, setTab] = useState("files"),
-    [data, setData] = useState({ items: [], total: 0, stats: {} }),
-    [search, setSearch] = useState(
-      () => localStorage.getItem("songlib-global-search") || "",
-    ),
-    [missing, setMissing] = useState(""),
-    [loading, setLoading] = useState(true),
-    [selected, setSelected] = useState([]),
-    [previews, setPreviews] = useState([]),
-    [editing, setEditing] = useState(null),
-    [operations, setOperations] = useState([]),
-    [error, setError] = useState("");
-  const [categories, setCategories] = useState({ summary: [], groups: {} });
+  const [workspace, setWorkspace] = useState("browse");
+
+  // --- 文件浏览 ---
+  const [data, setData] = useState({ items: [], total: 0, stats: {} });
+  const [search, setSearch] = useState(
+    () => localStorage.getItem("songlib-global-search") || "",
+  );
+  const [missing, setMissing] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
-  const [activeFilter, setActiveFilter] = useState(null);
+
+  // --- 补标签 ---
+  const [tagScope, setTagScope] = useState("selected");
+  const [tagPlan, setTagPlan] = useState(null);
+  const [tagExcluded, setTagExcluded] = useState(() => new Set());
+
+  // --- 整理目录 ---
+  const [organizePlan, setOrganizePlan] = useState(null);
+  const [organizeExcluded, setOrganizeExcluded] = useState(() => new Set());
+  const [confirmOrganize, setConfirmOrganize] = useState(false);
+  const [organizeView, setOrganizeView] = useState("todo");
+
+  // --- 改动历史 ---
+  const [operations, setOperations] = useState([]);
+  const [rollbackTarget, setRollbackTarget] = useState(null);
+
+  const [editing, setEditing] = useState(null);
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+  const [queued, setQueued] = useState("");
+
   useEffect(() => {
     if (search) localStorage.removeItem("songlib-global-search");
   }, []);
+
   const load = async () => {
     setLoading(true);
     try {
       setData(
         await api(
-          `/api/local/files?limit=${pageSize}&offset=${(page - 1) * pageSize}&search=${encodeURIComponent(search)}&missing=${missing}`,
+          `/api/local/files?limit=${pageSize}&offset=${(page - 1) * pageSize}` +
+            `&search=${encodeURIComponent(search)}&missing=${missing}`,
         ),
       );
     } catch (err) {
@@ -44,441 +157,763 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     const timer = setTimeout(load, 180);
     return () => clearTimeout(timer);
   }, [search, missing, page, pageSize]);
-  const toggle = (id) =>
+
+  useEffect(() => {
+    if (workspace !== "history") return;
+    api("/api/local/operations")
+      .then(setOperations)
+      .catch((err) => setError(err.message));
+  }, [workspace]);
+
+  const stats = data.stats || {};
+  const toggleFile = (id) =>
     setSelected((value) =>
       value.includes(id) ? value.filter((item) => item !== id) : [...value, id],
     );
-  const preview = async () => {
-    if (!selected.length) return;
+
+  const allOnPageSelected =
+    data.items.length > 0 && data.items.every((item) => selected.includes(item.id));
+
+  const toggleAllOnPage = () =>
+    setSelected((value) => {
+      const ids = data.items.map((item) => item.id);
+      return allOnPageSelected
+        ? value.filter((id) => !ids.includes(id))
+        : [...new Set([...value, ...ids])];
+    });
+
+  /** 两个工作区共用：拿到这次要处理哪些文件。 */
+  const scopeFileIds = (scope) =>
+    scope === "filtered" ? data.items.map((item) => item.id) : selected;
+
+  // ------------------------------------------------------------------
+  // 补标签
+  // ------------------------------------------------------------------
+
+  const previewTags = async () => {
+    const fileIds = scopeFileIds(tagScope);
+    if (!fileIds.length) {
+      setError(
+        tagScope === "selected"
+          ? "先在「浏览与筛选」里勾几个文件"
+          : "当前筛选结果是空的",
+      );
+      return;
+    }
+    setBusy("tag-preview");
+    setError("");
+    setQueued("");
+    try {
+      const result = await api("/api/local/tags/preview", {
+        method: "POST",
+        body: JSON.stringify({ fileIds }),
+      });
+      setTagPlan(result);
+      setTagExcluded(new Set());
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const tagRows = (tagPlan?.items || []).filter((item) => item.fields.length);
+  const tagApplying = tagRows.filter((item) => !tagExcluded.has(item.fileId));
+  const tagFieldCount = tagApplying.reduce(
+    (sum, item) => sum + item.fields.length,
+    0,
+  );
+
+  const applyTags = async () => {
+    if (!tagApplying.length) return;
+    setBusy("tag-apply");
+    setError("");
+    try {
+      await api("/api/jobs", {
+        method: "POST",
+        body: JSON.stringify({
+          kind: "fill_local_tags",
+          payload: {
+            items: tagApplying.map((item) => ({ entityId: item.fileId })),
+          },
+        }),
+      });
+      setQueued(
+        `${tagApplying.length} 个文件的 ${tagFieldCount} 个字段已排进队列`,
+      );
+      setTagPlan(null);
+      setTagExcluded(new Set());
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy("");
+    }
+  };
+
+  // ------------------------------------------------------------------
+  // 整理目录
+  // ------------------------------------------------------------------
+
+  const previewOrganize = async () => {
+    if (!selected.length) {
+      setError("先在「浏览与筛选」里勾几个文件");
+      return;
+    }
+    setBusy("organize-preview");
+    setError("");
+    setQueued("");
     try {
       const result = await api("/api/local/organize/preview", {
         method: "POST",
         body: JSON.stringify({ fileIds: selected }),
       });
-      setPreviews(result.items);
-      setTab("preview");
+      setOrganizePlan(result.items || []);
+      setOrganizeView("todo");
+      // 有冲突的默认勾掉 —— 目标位置已经有文件，执行会直接失败。
+      setOrganizeExcluded(
+        new Set(
+          (result.items || [])
+            .filter((item) => item.conflict)
+            .map((item) => item.fileId),
+        ),
+      );
     } catch (err) {
       setError(err.message);
+    } finally {
+      setBusy("");
     }
   };
-  const apply = async () => {
-    if (!previews.length) return;
-    if (
-      !confirm(
-        `确认按预览结果整理 ${previews.length} 个文件？\n\n执行前请确认目标路径无误，操作会写入回滚记录。`,
-      )
-    )
-      return;
+
+  const organizeRows = organizePlan || [];
+  const organizeApplying = organizeRows.filter(
+    (item) => !organizeExcluded.has(item.fileId),
+  );
+  const organizeConflicts = organizeRows.filter((item) => item.conflict).length;
+  // 已在正确位置的数量必须从数据本身算，不能用"总数减去要移动的"——
+  // 用户勾掉一行，那行并没有变成"位置正确"，但那样算数字会跟着涨。
+  const organizeSettled = organizeRows.filter(
+    (item) => item.sourcePath === item.targetPath,
+  ).length;
+  const organizeMoving = organizeApplying.filter(
+    (item) => item.sourcePath !== item.targetPath,
+  );
+  /*
+   * 默认只列需要处理的行。
+   * 曲库整齐的时候"位置正确"能占九成，把真正要动的那几行挤得到处都是，
+   * 用户得自己在一屏灰字里找。要核对全部的人可以切过去。
+   */
+  const organizeVisible =
+    organizeView === "todo"
+      ? organizeRows.filter((item) => item.sourcePath !== item.targetPath)
+      : organizeRows;
+
+  const applyOrganize = async () => {
+    setConfirmOrganize(false);
+    if (!organizeApplying.length) return;
+    setBusy("organize-apply");
+    setError("");
     try {
       await api("/api/local/organize/apply", {
         method: "POST",
-        body: JSON.stringify({ previews }),
+        body: JSON.stringify({ previews: organizeApplying }),
       });
-      notify("整理任务已加入队列");
-      navigate("tasks");
+      setQueued(`${organizeApplying.length} 个文件的整理已排进队列`);
+      setOrganizePlan(null);
+      setOrganizeExcluded(new Set());
+      setSelected([]);
     } catch (err) {
       setError(err.message);
+    } finally {
+      setBusy("");
     }
   };
-  // 标签写入逻辑已移到 TagEditor —— 它需要知道哪些字段被改过，
-  // 才能在批量模式下只写改动过的字段。原先用 FormData 一把捞，
-  // 会把所有字段（包括没动的）都当成改动写回去。
-  const switchTab = async (value) => {
-    setTab(value);
-    if (value === "history")
-      try {
-        setOperations(await api("/api/local/operations"));
-      } catch (err) {
-        setError(err.message);
-      }
-    if (value === "categories")
-      try {
-        setCategories(await api("/api/local/categories"));
-      } catch (err) {
-        setError(err.message);
-      }
-  };
-  const applyCategory = (item, type, label) => {
-    setMissing(item.missing || "");
-    setSearch(item.search || item.name || "");
-    setPage(1);
-    setActiveFilter({
-      type: label || type,
-      name: item.name,
-      missing: item.missing || "",
-    });
-    setTab("files");
-  };
-  const clearFilter = () => {
-    setSearch("");
-    setMissing("");
-    setActiveFilter(null);
-    setPage(1);
-  };
-  const rollback = async (item) => {
-    if (!confirm("确认回滚这次操作？音屿会检查路径冲突后再执行。")) return;
+
+  // ------------------------------------------------------------------
+  // 回滚
+  // ------------------------------------------------------------------
+
+  const rollback = async () => {
+    const target = rollbackTarget;
+    setRollbackTarget(null);
+    if (!target) return;
     try {
-      await api(`/api/local/operations/${item.id}/rollback`, {
+      await api(`/api/local/operations/${target.id}/rollback`, {
         method: "POST",
       });
       setOperations(await api("/api/local/operations"));
-      notify("操作已安全回滚");
+      notify("已恢复到修改前的状态");
     } catch (err) {
       setError(err.message);
     }
   };
-  const stats = data.stats || {};
+
+  const toggleIn = (setter) => (id) =>
+    setter((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
   return (
-    <div className="page local-page">
-      <section className="local-hero panel">
-        <div>
-          <p>改歌名、歌手、专辑这些写在音频文件里的信息，也可以按规则整理目录。每次改动都留有原值，随时能撤回。</p>
-        </div>
-        <div>
-          <button className="secondary" onClick={() => runJob("plex_sync")}>
-            <RefreshCw />
-            同步 Plex 对照
-          </button>
-          <button className="primary" onClick={() => runJob("local_scan")}>
-            <FolderTree />
-            扫描本地曲库
-          </button>
-        </div>
-      </section>
-      <div className="local-stats">
-        <StatCard icon={FileAudio} label="本地音频" value={stats.total} />
-        <StatCard
-          icon={Image}
-          label="缺封面"
-          value={stats.missing_cover}
-          tone="violet"
+    <Page className="local">
+      <p className="local__lead">
+        改写在音频文件里的标签，或者按命名规则整理目录。
+        每次改动都会先给你看清单，也都留有原值，事后能恢复。
+        封面、歌词这些要从外部取回来的内容在「封面与歌词」。
+      </p>
+
+      <StatGrid>
+        <StatTile icon={FileAudio} value={fmt(stats.total || 0)} label="个音频文件" />
+        <StatTile
+          tone="warning"
+          value={fmt(stats.bad_path || 0)}
+          label="个目录不规范"
+          detail={stats.bad_path ? "可以在「整理目录」里处理" : "都符合命名规则"}
         />
-        <StatCard
-          icon={BookOpenText}
-          label="缺歌词"
-          value={stats.missing_lyrics}
-          tone="blue"
+        <StatTile
+          tone="warning"
+          value={fmt((stats.missing_artist || 0) + (stats.missing_album || 0))}
+          label="个缺歌手或专辑"
+          detail={
+            (stats.missing_artist || 0) + (stats.missing_album || 0)
+              ? "可以在「补标签」里从路径推断"
+              : "标签都是全的"
+          }
         />
-        <StatCard
-          icon={CircleAlert}
-          label="目录待整理"
-          value={stats.bad_path}
-          tone="amber"
+        <StatTile
+          value={fmt(stats.plex_unmatched || 0)}
+          label="个 Plex 未识别"
+          detail="同步对照后 Plex 才能显示"
         />
+      </StatGrid>
+
+      <div className="local__actions">
+        <Button icon={RefreshCw} onClick={() => runJob("plex_sync")}>
+          同步 Plex 对照
+        </Button>
+        <Button variant="primary" icon={FolderTree} onClick={() => runJob("local_scan")}>
+          重新扫描音乐目录
+        </Button>
       </div>
-      <div className="local-tabs">
-        {[
-          ["files", "文件浏览"],
-          ["categories", "分类浏览"],
-          ["missing", "缺失信息"],
-          ["preview", "入库预览"],
-          ["history", "操作历史"],
-        ].map(([id, label]) => (
-          <button
-            className={tab === id ? "active" : ""}
-            onClick={() => switchTab(id)}
-            key={id}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+
+      <ChipGroup
+        label="工作区"
+        options={WORKSPACES}
+        value={workspace}
+        onChange={(id) => {
+          setWorkspace(id);
+          setError("");
+        }}
+      />
+
       {error && (
-        <div className="inline-error">
-          <CircleAlert />
+        <Notice tone="danger" icon={CircleAlert}>
           {error}
-        </div>
+        </Notice>
       )}
-      {tab === "files" && (
-        <section className="panel local-workspace">
-          {activeFilter && (
-            <div className="library-context">
-              <span>分类浏览</span>
-              <ChevronRight />
-              <span>{activeFilter.type}</span>
-              <ChevronRight />
-              <strong>{activeFilter.name}</strong>
-              <button onClick={clearFilter}>
-                {activeFilter.type}={activeFilter.name}
-                <X />
-              </button>
-            </div>
-          )}
-          <div className="local-toolbar">
-            <div className="search-field">
-              <Search />
-              <input
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                  setActiveFilter(null);
-                }}
-                placeholder="搜索文件、歌曲、歌手或专辑…"
-              />
-            </div>
-            <span>{data.total} 个真实文件</span>
-            {/* 选中多首时可以一次改标签。批量模式下只写你动过的字段，
-                没动的保持各自原值 —— 详见 TagEditor。 */}
-            <Button
-              size="sm"
-              icon={Tags}
-              disabled={!selected.length}
-              onClick={() =>
-                setEditing(data.items.filter((item) => selected.includes(item.id)))
-              }
-            >
-              批量改标签{selected.length ? `（${selected.length}）` : ""}
-            </Button>
-            <Button
-              size="sm"
-              icon={WandSparkles}
-              disabled={!selected.length}
-              onClick={preview}
-            >
-              整理预览{selected.length ? `（${selected.length}）` : ""}
-            </Button>
-          </div>
-          {loading ? (
-            <PageLoader />
-          ) : (
-            <div className="local-table">
-              <div className="local-row local-head">
-                <span></span>
-                <span>歌曲 / 文件</span>
-                <span>歌手</span>
-                <span>专辑</span>
-                <span>状态</span>
-                <span>操作</span>
-              </div>
-              {data.items.map((item) => (
-                <div className="local-row" key={item.id}>
-                  <input
-                    type="checkbox"
-                    checked={selected.includes(item.id)}
-                    onChange={() => toggle(item.id)}
-                  />
-                  <div className="local-title">
-                    <strong>{item.title || item.filename}</strong>
-                    <small>{item.path}</small>
-                  </div>
-                  <span>{item.artist || "未知歌手"}</span>
-                  <span>{item.album || "未知专辑"}</span>
-                  <div className="file-flags">
-                    <i className={item.has_cover ? "ok" : ""}>封面</i>
-                    <i className={item.has_lrc ? "ok" : ""}>歌词</i>
-                    <i className={item.plex_matched ? "ok" : ""}>Plex</i>
-                  </div>
-                  <div className="row-actions">
-                    <button title="播放" onClick={() => play(item)}>
-                      <Play />
-                    </button>
-                    <button title="编辑标签" onClick={() => setEditing(item)}>
-                      <Tags />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          {!loading && data.total > pageSize && (
-            <div className="pagination">
-              <button
-                disabled={page <= 1}
-                onClick={() => setPage((value) => Math.max(1, value - 1))}
-              >
-                上一页
-              </button>
-              <span>
-                第 {page} / {Math.ceil(data.total / pageSize)} 页
-              </span>
-              <select
-                value={pageSize}
-                onChange={(event) => {
-                  setPageSize(Number(event.target.value));
-                  setPage(1);
-                }}
-              >
-                <option value="30">每页 30 首</option>
-                <option value="50">每页 50 首</option>
-                <option value="100">每页 100 首</option>
-              </select>
-              <button
-                disabled={page >= Math.ceil(data.total / pageSize)}
-                onClick={() => setPage((value) => value + 1)}
-              >
-                下一页
-              </button>
-            </div>
-          )}
-        </section>
+
+      {queued && (
+        <Notice tone="success" icon={ShieldCheck}>
+          {queued}。执行过程中可以继续用其他页面。
+          <Button variant="quiet" onClick={() => navigate("tasks")}>
+            去看执行进度
+          </Button>
+        </Notice>
       )}
-      {tab === "missing" && (
-        <section className="panel missing-workspace">
-          <SectionHead
-            title="缺失信息扫描"
-            note="筛选真实文件，不修改 Plex 条目"
-          />
-          <div className="missing-filters">
-            {[
-              ["cover", "缺封面", stats.missing_cover],
-              ["lyrics", "缺歌词", stats.missing_lyrics],
-              ["artist", "缺歌手", stats.missing_artist],
-              ["album", "缺专辑", stats.missing_album],
-              ["path", "目录不规范", stats.bad_path],
-              ["plex", "Plex 未识别", stats.plex_unmatched],
-            ].map(([id, label, count]) => (
-              <button
-                className={missing === id ? "active" : ""}
-                onClick={() => {
-                  setMissing(id);
-                  setActiveFilter({
-                    type: "缺失信息",
-                    name: label,
-                    missing: id,
-                  });
-                  setPage(1);
-                  setTab("files");
-                }}
-                key={id}
-              >
-                <b>{count || 0}</b>
-                <span>{label}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-      {tab === "categories" && (
-        <section className="panel category-workspace">
-          <SectionHead
-            title="曲库分类"
-            note="选择分类后可继续筛选、播放或编辑，返回时保留分类上下文。"
-          />
-          <div className="category-summary">
-            {(categories.summary || []).map((item) => (
-              <button
-                key={item.id}
-                onClick={() => {
-                  if (item.id === "tracks") clearFilter();
-                  else setActiveFilter(null);
-                  setTab(item.id === "tracks" ? "files" : "categories");
-                }}
-              >
-                <strong>{fmt(item.count)}</strong>
-                <span>{item.label}</span>
-                <small>{item.note}</small>
-              </button>
-            ))}
-          </div>
-          <div className="category-groups">
-            {[
-              ["genre", "流派 / 风格"],
-              ["artist", "艺人"],
-              ["album", "专辑"],
-              ["folder", "顶层文件夹"],
-              ["format", "文件格式"],
-              ["quality", "音质规格"],
-              ["year", "年份"],
-              ["scene", "场景精选"],
-              ["missing", "待修复"],
-            ].map(([key, title]) => (
-              <div className="category-group" key={key}>
-                <h3>{title}</h3>
-                <div>
-                  {(categories.groups?.[key] || []).map((item) => (
-                    <button
-                      key={item.id || item.name}
-                      onClick={() => applyCategory(item, key, title)}
-                    >
-                      <span>{item.name}</span>
-                      <b>{fmt(item.count)}</b>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-      {tab === "preview" && (
-        <section className="panel preview-workspace">
-          <SectionHead
-            title="整理预览"
-            note="确认前不会移动任何文件"
-            action={
-              previews.length ? (
-                <button className="primary" onClick={apply}>
-                  <Check />
-                  确认执行
-                </button>
+
+      {/* ============ 浏览与筛选 ============ */}
+      {workspace === "browse" && (
+        <Section>
+          <SectionHeader
+            title="浏览与筛选"
+            note={
+              selected.length
+                ? `已勾选 ${selected.length} 个，可以去「补标签」或「整理目录」`
+                : "勾选文件后，另外两个工作区就能对它们操作"
+            }
+            actions={
+              selected.length ? (
+                <ButtonGroup>
+                  <Button size="sm" icon={Tags} onClick={() => setEditing(
+                    data.items.filter((item) => selected.includes(item.id)),
+                  )}>
+                    一次改这 {selected.length} 个的标签
+                  </Button>
+                  <Button size="sm" onClick={() => setSelected([])}>
+                    取消勾选
+                  </Button>
+                </ButtonGroup>
               ) : null
             }
           />
-          {previews.length ? (
-            <div className="preview-list">
-              {previews.map((item) => (
-                <div key={item.fileId}>
-                  <div>
-                    <small>原路径</small>
-                    <code>{item.sourcePath}</code>
+
+          <Field
+            leading={Search}
+            placeholder="搜索文件名、歌曲、歌手或专辑…"
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+          />
+
+          <ChipGroup
+            label="快捷筛选"
+            options={MISSING_FILTERS.map((item) => ({
+              id: item.id,
+              label: `${item.label}${stats[item.statKey] ? ` ${fmt(stats[item.statKey])}` : ""}`,
+            }))}
+            value={missing}
+            onChange={(id) => {
+              setMissing(id);
+              setPage(1);
+            }}
+          />
+
+          {loading ? (
+            <PageLoader />
+          ) : data.items.length ? (
+            <>
+              <div className="local-files">
+                <div className="local-files__head">
+                  <input
+                    type="checkbox"
+                    checked={allOnPageSelected}
+                    onChange={toggleAllOnPage}
+                    aria-label="勾选这一页的全部文件"
+                  />
+                  <span>歌曲与路径</span>
+                  <span>歌手 / 专辑</span>
+                  <span>已有</span>
+                  {/* 操作列不给表头文字，但格子必须在 ——
+                      .visually-hidden 是 position:absolute，会脱离网格，
+                      表头就比数据行少一格，整张表跟着错位。 */}
+                  <span aria-hidden="true" />
+                </div>
+                {data.items.map((item) => (
+                  <div className="local-files__row" key={item.id}>
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(item.id)}
+                      onChange={() => toggleFile(item.id)}
+                      aria-label={`勾选 ${item.title || item.filename}`}
+                    />
+                    <div className="local-files__title">
+                      <strong>{item.title || item.filename}</strong>
+                      <small title={item.path}>{shortPath(item.path)}</small>
+                    </div>
+                    <div className="local-files__meta">
+                      <span data-empty={!item.artist || undefined}>
+                        {item.artist || "未填歌手"}
+                      </span>
+                      <small data-empty={!item.album || undefined}>
+                        {item.album || "未填专辑"}
+                      </small>
+                    </div>
+                    <div className="local-files__flags">
+                      {item.has_cover && <Badge tone="success">封面</Badge>}
+                      {item.has_lrc && <Badge tone="success">歌词</Badge>}
+                      {item.plex_matched && <Badge>Plex</Badge>}
+                    </div>
+                    <div className="local-files__row-actions">
+                      <IconButton
+                        icon={Play}
+                        label={`播放 ${item.title || item.filename}`}
+                        size="sm"
+                        onClick={() => play(item)}
+                      />
+                      <IconButton
+                        icon={Tags}
+                        label={`编辑 ${item.title || item.filename} 的标签`}
+                        size="sm"
+                        onClick={() => setEditing(item)}
+                      />
+                    </div>
                   </div>
-                  <ChevronRight />
-                  <div>
-                    <small>新路径</small>
-                    <code>{item.targetPath}</code>
+                ))}
+              </div>
+
+              {data.total > pageSize && (
+                <div className="local-pager">
+                  <Button
+                    size="sm"
+                    disabled={page <= 1}
+                    onClick={() => setPage((value) => Math.max(1, value - 1))}
+                  >
+                    上一页
+                  </Button>
+                  <span>
+                    第 {page} / {Math.ceil(data.total / pageSize)} 页 · 共{" "}
+                    {fmt(data.total)} 个
+                  </span>
+                  <select
+                    className="ui-select"
+                    value={pageSize}
+                    aria-label="每页显示数量"
+                    onChange={(event) => {
+                      setPageSize(Number(event.target.value));
+                      setPage(1);
+                    }}
+                  >
+                    <option value="30">每页 30 个</option>
+                    <option value="50">每页 50 个</option>
+                    <option value="100">每页 100 个</option>
+                  </select>
+                  <Button
+                    size="sm"
+                    disabled={page >= Math.ceil(data.total / pageSize)}
+                    onClick={() => setPage((value) => value + 1)}
+                  >
+                    下一页
+                  </Button>
+                </div>
+              )}
+            </>
+          ) : (
+            <EmptyState
+              icon={FileAudio}
+              title={search || missing ? "这个条件下没有文件" : "还没扫描到文件"}
+              text={
+                search || missing
+                  ? "换个关键词，或者把筛选切回「全部」。"
+                  : "点上面的「重新扫描音乐目录」，音屿会走一遍 NAS 上的音乐目录。"
+              }
+              action={
+                search || missing ? (
+                  <Button
+                    icon={X}
+                    onClick={() => {
+                      setSearch("");
+                      setMissing("");
+                      setPage(1);
+                    }}
+                  >
+                    清掉筛选
+                  </Button>
+                ) : null
+              }
+            />
+          )}
+        </Section>
+      )}
+
+      {/* ============ 补标签 ============ */}
+      {workspace === "tags" && (
+        <Section>
+          <SectionHeader
+            title="补标签"
+            note="从文件所在的目录结构推断标题、歌手、专辑，只填空着的字段"
+          />
+
+          <div className="local__scope">
+            <ChipGroup
+              label="范围"
+              options={TAG_SCOPES.map((item) => ({
+                id: item.id,
+                label:
+                  item.id === "selected"
+                    ? `已勾选的 ${selected.length} 个`
+                    : `当前筛选结果 ${data.items.length} 个`,
+              }))}
+              value={tagScope}
+              onChange={(id) => {
+                setTagScope(id);
+                setTagPlan(null);
+              }}
+            />
+            <Button
+              variant="primary"
+              icon={Search}
+              loading={busy === "tag-preview"}
+              onClick={previewTags}
+            >
+              看看会补什么
+            </Button>
+          </div>
+
+          {tagPlan && (
+            <>
+              <StatGrid>
+                <StatTile
+                  tone="success"
+                  value={tagRows.length}
+                  label="个文件有空字段可补"
+                />
+                <StatTile
+                  value={tagPlan.total - tagRows.length}
+                  label="个文件标签已经全了"
+                  detail="不会被改动"
+                />
+                <StatTile
+                  value={tagRows.reduce((sum, item) => sum + item.fields.length, 0)}
+                  label="个字段会被写入"
+                />
+              </StatGrid>
+
+              {tagRows.length ? (
+                <ChangeList>
+                    {/* 字段名紧贴各自的值。写成徽章一排、值一排的话，
+                      三个字段时就要靠位置去对应，读起来是道谜题。 */}
+                  {tagRows.map((item) => (
+                    <ChangeRow
+                      key={item.fileId}
+                      target={shortPath(item.path)}
+                      badges={[
+                        { label: `补 ${item.fields.length} 个字段`, tone: "accent" },
+                      ]}
+                      oldValue=""
+                      newValue={item.fields
+                        .map(
+                          (field) =>
+                            `${FIELD_LABELS[field.field] || field.field} ${field.newValue}`,
+                        )
+                        .join(" · ")}
+                      checked={!tagExcluded.has(item.fileId)}
+                      onToggle={() => toggleIn(setTagExcluded)(item.fileId)}
+                      toggleLabel={`给 ${shortPath(item.path)} 写入推断出的标签`}
+                    />
+                  ))}
+                </ChangeList>
+              ) : (
+                <EmptyState
+                  icon={ShieldCheck}
+                  title="这些文件不需要补"
+                  text="标题、歌手、专辑、专辑歌手四个字段都已经有值了。要改已有的值请用「浏览与筛选」里的标签编辑器。"
+                />
+              )}
+
+              {tagRows.length > 0 && (
+                <ConfirmBar
+                  summary={
+                    tagApplying.length
+                      ? `将给 ${tagApplying.length} 个文件写入 ${tagFieldCount} 个字段`
+                      : "没有要写入的文件"
+                  }
+                  detail={
+                    tagApplying.length
+                      ? [
+                          tagExcluded.size > 0 && `已勾掉 ${tagExcluded.size} 个`,
+                          "只填空着的字段，已有的值一律不动",
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")
+                      : undefined
+                  }
+                >
+                  <ButtonGroup align="end">
+                    <Button onClick={() => setTagPlan(null)}>重新选择</Button>
+                    <Button
+                      variant="primary"
+                      icon={ShieldCheck}
+                      loading={busy === "tag-apply"}
+                      disabled={!tagApplying.length}
+                      onClick={applyTags}
+                    >
+                      写入这 {tagApplying.length} 个
+                    </Button>
+                  </ButtonGroup>
+                </ConfirmBar>
+              )}
+            </>
+          )}
+
+          {!tagPlan && (
+            <EmptyState
+              icon={Tags}
+              title="还没有生成清单"
+              text="选好范围，点「看看会补什么」。生成清单只是读取，不会动任何文件。"
+            />
+          )}
+        </Section>
+      )}
+
+      {/* ============ 整理目录 ============ */}
+      {workspace === "organize" && (
+        <Section>
+          <SectionHeader
+            title="整理目录"
+            note="按设置里的命名规则算出每个文件应该放哪儿，确认后才移动"
+          />
+
+          <div className="local__scope">
+            <p className="local__scope-hint">
+              {selected.length
+                ? `已勾选 ${selected.length} 个文件`
+                : "先去「浏览与筛选」勾选文件。建议先按「目录不规范」筛一遍。"}
+            </p>
+            <Button
+              variant="primary"
+              icon={Search}
+              loading={busy === "organize-preview"}
+              disabled={!selected.length}
+              onClick={previewOrganize}
+            >
+              算出新路径
+            </Button>
+          </div>
+
+          {organizePlan && (
+            <>
+              <StatGrid>
+                <StatTile
+                  tone="success"
+                  value={organizeMoving.length}
+                  label="个文件会被移动"
+                />
+                <StatTile
+                  value={organizeSettled}
+                  label="个已经在正确位置"
+                  detail="不会被动"
+                />
+                <StatTile
+                  tone={organizeConflicts ? "danger" : "neutral"}
+                  value={organizeConflicts}
+                  label="个目标位置已被占用"
+                  detail={
+                    organizeConflicts
+                      ? "已默认勾掉 —— 直接执行会失败"
+                      : "没有冲突"
+                  }
+                />
+              </StatGrid>
+
+              {organizeSettled > 0 && (
+                <ChipGroup
+                  label="显示"
+                  options={[
+                    {
+                      id: "todo",
+                      label: `需要处理 ${organizeRows.length - organizeSettled}`,
+                    },
+                    { id: "all", label: `全部 ${organizeRows.length}` },
+                  ]}
+                  value={organizeView}
+                  onChange={setOrganizeView}
+                />
+              )}
+
+              <ChangeList>
+                {organizeVisible.map((item) => {
+                  const unchanged = item.sourcePath === item.targetPath;
+                  return (
+                    <ChangeRow
+                      key={item.fileId}
+                      target={item.targetFilename}
+                      badges={
+                        item.conflict
+                          ? [{ label: "目标已存在", tone: "danger" }]
+                          : unchanged
+                            ? [{ label: "位置正确", tone: "success" }]
+                            : []
+                      }
+                      oldValue={shortPath(item.sourcePath)}
+                      newValue={shortPath(item.targetPath)}
+                      skipped={unchanged}
+                      skipReason="已经在规则算出的位置上，不需要移动"
+                      checked={!organizeExcluded.has(item.fileId)}
+                      onToggle={() => toggleIn(setOrganizeExcluded)(item.fileId)}
+                      toggleLabel={`移动 ${item.targetFilename}`}
+                    />
+                  );
+                })}
+              </ChangeList>
+
+              {organizeVisible.length === 0 && (
+                <EmptyState
+                  icon={ShieldCheck}
+                  title="这批文件都在正确位置"
+                  text="按当前命名规则算下来没有需要移动的。规则可以在「设置 → 命名与目录」里改。"
+                />
+              )}
+
+              <ConfirmBar
+                summary={
+                  organizeMoving.length
+                    ? `将移动 ${organizeMoving.length} 个文件`
+                    : "没有要移动的文件"
+                }
+                detail={
+                  organizeMoving.length
+                    ? "同名的 .lrc 歌词会跟着走；原位置记录下来，之后能恢复"
+                    : undefined
+                }
+              >
+                <ButtonGroup align="end">
+                  <Button onClick={() => setOrganizePlan(null)}>重新选择</Button>
+                  <Button
+                    variant="primary"
+                    icon={FolderTree}
+                    loading={busy === "organize-apply"}
+                    disabled={!organizeMoving.length}
+                    onClick={() => setConfirmOrganize(true)}
+                  >
+                    移动这 {organizeMoving.length} 个
+                  </Button>
+                </ButtonGroup>
+              </ConfirmBar>
+            </>
+          )}
+
+          {!organizePlan && (
+            <EmptyState
+              icon={FolderTree}
+              title="还没有算过路径"
+              text="命名规则在「设置 → 命名与目录」里改。算路径只是计算，不会移动文件。"
+            />
+          )}
+        </Section>
+      )}
+
+      {/* ============ 改动历史 ============ */}
+      {workspace === "history" && (
+        <Section>
+          <SectionHeader
+            title="改动历史"
+            note="标签写入、文件移动和入库都记着原值，可以逐条恢复"
+          />
+          {operations.length ? (
+            <div className="local-history">
+              {operations.map((item) => (
+                <div className="local-history__row" key={item.id}>
+                  <div className="local-history__text">
+                    <strong>{ACTION_LABELS[item.action] || item.action}</strong>
+                    <small>{timeAgo(item.created_at)}</small>
                   </div>
-                  <i className={item.conflict ? "danger" : "safe"}>
-                    {item.conflict ? "存在冲突" : "安全"}
-                  </i>
+                  {item.status === "success" ? (
+                    <Badge tone="success">成功</Badge>
+                  ) : (
+                    <Badge tone="danger">失败</Badge>
+                  )}
+                  {item.rollbackable ? (
+                    <Button
+                      size="sm"
+                      icon={RotateCcw}
+                      onClick={() => setRollbackTarget(item)}
+                    >
+                      恢复
+                    </Button>
+                  ) : (
+                    <span className="local-history__note">不可恢复</span>
+                  )}
                 </div>
               ))}
             </div>
           ) : (
-            <Empty
-              icon={WandSparkles}
-              title="暂无整理预览"
-              text="在文件浏览中勾选歌曲，再点击“整理预览”。"
+            <EmptyState
+              icon={RotateCcw}
+              title="还没有改动记录"
+              text="写入标签、移动文件或入库之后，每一次都会记在这里。"
             />
           )}
-        </section>
+        </Section>
       )}
-      {tab === "history" && (
-        <section className="panel operation-workspace">
-          <SectionHead
-            title="操作历史"
-            note="标签写入、移动和下载入库均有回滚数据"
-          />
-          <div className="operation-list">
-            {operations.length ? (
-              operations.map((item) => (
-                <div key={item.id}>
-                  <span>{item.action}</span>
-                  <code>{item.target_id || "—"}</code>
-                  <i>{item.rollbackable ? "可回滚" : "仅记录"}</i>
-                  <time>{timeAgo(item.created_at)}</time>
-                  {item.rollbackable ? (
-                    <button onClick={() => rollback(item)}>
-                      <RotateCcw />
-                      回滚
-                    </button>
-                  ) : null}
-                </div>
-              ))
-            ) : (
-              <Empty
-                icon={RotateCcw}
-                title="暂无修改记录"
-                text="完成标签写入、文件整理或入库后，记录会显示在这里。"
-              />
-            )}
-          </div>
-        </section>
-      )}
+
       {/*
         标签编辑器。editing 可以是单个文件，也可以是一批（批量编辑）。
         用原生 <dialog>（见 components/ui/Modal），焦点不会跑到背后的列表上。
@@ -488,7 +923,7 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
         open={Boolean(editing)}
         onClose={() => setEditing(null)}
         title="编辑音频标签"
-        description="改动会直接写入音频文件，原值记录在操作历史里，可以回滚"
+        description="改动会写进音频文件，原值记在改动历史里，之后能恢复"
         size="xl"
         dismissible={false}
       >
@@ -498,14 +933,58 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
             onClose={() => setEditing(null)}
             onSaved={(count) => {
               setEditing(null);
-              notify(
-                count > 1 ? `${count} 首的标签已写入` : "标签已写入音频文件",
-              );
+              notify(count > 1 ? `${count} 个文件的标签已写入` : "标签已写入");
               load();
             }}
           />
         )}
       </Modal>
-    </div>
+
+      {/* 移动文件是会改变磁盘布局的操作，值得一次明确的确认。
+          原来用的是 confirm()，说不清代价也没有样式。 */}
+      <Modal
+        open={confirmOrganize}
+        onClose={() => setConfirmOrganize(false)}
+        title={`移动 ${organizeMoving.length} 个文件？`}
+        description="文件会按命名规则挪到新目录，同名歌词一起走"
+        actions={
+          <ButtonGroup align="end">
+            <Button onClick={() => setConfirmOrganize(false)}>先不动</Button>
+            <Button variant="primary" icon={FolderTree} onClick={applyOrganize}>
+              开始移动
+            </Button>
+          </ButtonGroup>
+        }
+      >
+        <p>
+          原位置会记进改动历史，之后可以逐条恢复。
+          正在被播放器占用的文件可能移动失败，失败的那几个会留在原处。
+        </p>
+      </Modal>
+
+      <Modal
+        open={Boolean(rollbackTarget)}
+        onClose={() => setRollbackTarget(null)}
+        title="恢复到修改前？"
+        description={
+          rollbackTarget
+            ? `${ACTION_LABELS[rollbackTarget.action] || rollbackTarget.action} · ${timeAgo(rollbackTarget.created_at)}`
+            : ""
+        }
+        actions={
+          <ButtonGroup align="end">
+            <Button onClick={() => setRollbackTarget(null)}>取消</Button>
+            <Button variant="primary" icon={RotateCcw} onClick={rollback}>
+              恢复
+            </Button>
+          </ButtonGroup>
+        }
+      >
+        <p>
+          音屿会先检查原位置有没有被别的文件占用，确认安全后才写回去。
+          如果这之后你又改过同一个文件，那些改动会被这次恢复覆盖。
+        </p>
+      </Modal>
+    </Page>
   );
 }

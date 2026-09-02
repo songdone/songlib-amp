@@ -4,20 +4,32 @@
  * 层级顺序在这里一次性声明，之后所有优先级问题都由层级解决，
  * 不再需要 !important。越靠后的层赢。
  *
- *   tokens      设计 token，全站唯一颜色/字号/间距来源
- *   reset       浏览器归一化
- *   base        文档级默认值与排版比例
- *   legacy.*    重构前的历史样式层，按当年的叠加顺序排列，逐步清空
- *   primitives  按钮、卡片、输入框等控件原语
- *   components  具体业务组件样式（feature 目录下的新样式写这里）
- *   utilities   少量单一职责工具类，最后兜底
+ *   tokens             设计 token，全站唯一颜色/字号/间距来源
+ *   reset              浏览器归一化
+ *   base               文档级默认值与排版比例
+ *   legacy.base        重构前 styles.css 的普通规则
+ *   legacy.commercial  ┐
+ *   legacy.glass       ├ 三次改版的化石层，按当年的叠加顺序
+ *   legacy.nowplaying  │
+ *   legacy.shell       ┘
+ *   legacy.protected   重构前 styles.css 里带 !important 的声明
+ *   primitives         按钮、卡片、输入框等控件原语
+ *   components         具体业务组件样式（feature 目录下的新样式写这里）
+ *   utilities          少量单一职责工具类，最后兜底
  *
- * legacy 排在 primitives 之前，是为了让新写的设计系统天然压过旧规则，
+ * 两个位置需要解释：
+ *
+ * legacy.protected 排在其他 legacy 子层之后，因为 styles.css 是当年第一个
+ * 被导入的文件，它的 !important 是在保护基础规则不被后面四个文件覆盖，
+ * 而不是压过它们。把这些声明平铺进 legacy.base 会让优先级反转。
+ *
+ * 全部 legacy 排在 primitives 之前，是为了让新写的设计系统天然压过旧规则，
  * 迁移时不用跟旧代码抢特异性。
  */
 
 @layer tokens, reset, base, legacy.base, legacy.commercial, legacy.glass,
-  legacy.nowplaying, legacy.shell, primitives, components, utilities;
+  legacy.nowplaying, legacy.shell, legacy.protected, primitives, components,
+  utilities;
 
 /* --- 设计系统 --- */
 @import "./tokens.css";
@@ -35,3 +47,4 @@
 @import "../liquid-glass.css";
 @import "../features/now-playing/now-playing.css";
 @import "../features/shell/shell-refactor.css";
+@import "./legacy-protected.css";

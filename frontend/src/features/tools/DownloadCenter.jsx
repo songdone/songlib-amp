@@ -1,11 +1,88 @@
-import { Album, ArrowDownToLine, Check, ChevronRight, CircleAlert, Download, LoaderCircle, Music2, Play, RefreshCw, Search, Server, Settings, Trash2, Wifi } from "lucide-react";
+/**
+ * 下载入库。
+ *
+ * 重构掉的：
+ * - 四个裸 <select> 加一个开关挤在一条"source-strip"里，谁也没有标签。
+ *   用户得靠猜每个下拉框是干什么的。现在每个都有可见的标签。
+ * - "下载到哪里"原来是两个按钮的自制开关，也没说清两者的区别；
+ *   现在是带说明的两张卡（下到这台设备 vs 下到 NAS 再入库）。
+ * - 待入库每行五个状态徽章（阶段 / 标签 / 封面 / 歌词 / 冲突）。
+ *   五个徽章一行，等于没有重点。现在只在"缺什么"和"有冲突"时才出徽章，
+ *   齐全的那些不占地方 —— 用户要找的是有问题的那几首。
+ * - confirm() 批量确认。入库会让 Plex 重扫、删除会挪回收区，
+ *   代价要写在弹窗里而不是一行 confirm。
+ * - 平台代码和时长各处手写，改用 lib/sources 和 lib/format。
+ */
+
+import {
+  ArrowDownToLine,
+  Check,
+  ChevronRight,
+  CircleAlert,
+  Download,
+  Play,
+  RefreshCw,
+  Search,
+  Server,
+  Settings,
+  Trash2,
+  Wifi,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Empty } from "../../components/Empty";
+import { Badge } from "../../components/ui/Badge";
+import { Button, ButtonGroup, IconButton } from "../../components/ui/Button";
+import { Cover } from "../../components/ui/Cover";
+import { Field, Notice } from "../../components/ui/Field";
+import {
+  EmptyState,
+  ListGroup,
+  ListRow,
+  Page,
+  Section,
+  SectionHeader,
+} from "../../components/ui/Layout";
+import { Modal } from "../../components/ui/Modal";
+import { MediaCard, MediaGrid } from "../../components/ui/MediaCard";
 import { PageLoader } from "../../components/PageLoader";
-import { SectionHead } from "../../components/SectionHead";
 import { api } from "../../lib/api";
-import { mergeCatalogResults, sourceCatalogReady } from "../../lib/sources";
+import { formatTime } from "../../lib/format";
+import { mergeCatalogResults, platformLabel, sourceCatalogReady } from "../../lib/sources";
 import { DownloadInboxPanel } from "./DownloadInboxPanel";
+
+/** 下到哪里去。两者的区别是"进不进曲库"，必须先说清。 */
+const TARGETS = [
+  {
+    id: "nas",
+    label: "下到 NAS",
+    icon: Server,
+    note: "先落在暂存区，你核对过再放进曲库",
+  },
+  {
+    id: "device",
+    label: "下到这台设备",
+    icon: Download,
+    note: "直接存进浏览器的下载目录，不进曲库",
+  },
+];
+
+const PLATFORMS = [
+  { id: "tx", label: "QQ 音乐" },
+  { id: "wy", label: "网易云" },
+  { id: "all", label: "全部音源" },
+];
+
+const SEARCH_TYPES = [
+  { id: "song", label: "按歌曲列" },
+  { id: "album", label: "按专辑归组" },
+  { id: "artist", label: "按歌手归组" },
+];
+
+const QUALITIES = [
+  { id: "128k", label: "标准 128K" },
+  { id: "320k", label: "高品质 320K" },
+  { id: "flac", label: "无损 FLAC" },
+  { id: "flac24bit", label: "Hi-Res" },
+];
 
 export function DownloadCenter({
   sources,
@@ -183,22 +260,21 @@ export function DownloadCenter({
       setDownloadBusy("");
     }
   };
+  const [deciding, setDeciding] = useState("");
   const togglePending = (id) =>
     setSelectedPending((value) =>
       value.includes(id) ? value.filter((item) => item !== id) : [...value, id],
     );
-  const decide = async (action) => {
-    const ids = selectedPending.length
-      ? selectedPending
-      : pending.map((item) => item.jobId);
+  /** 这次批量操作影响哪些。没勾就是全部。 */
+  const pendingScope = () =>
+    selectedPending.length ? selectedPending : pending.map((item) => item.jobId);
+
+  const decide = async () => {
+    const action = deciding;
+    setDeciding("");
+    if (!action) return;
+    const ids = pendingScope();
     if (!ids.length) return;
-    const verb = action === "confirm" ? "确认入库" : "删除下载文件";
-    if (
-      !confirm(
-        `${verb}这 ${ids.length} 首？\n\n入库后会让 Plex 重扫一遍。不要的会挪到回收区，不是直接删。`,
-      )
-    )
-      return;
     await api(
       `/api/downloads/${action === "confirm" ? "batch-confirm" : "batch-cancel"}`,
       { method: "POST", body: JSON.stringify({ jobIds: ids }) },
@@ -207,351 +283,388 @@ export function DownloadCenter({
     await loadPending();
     notify?.(action === "confirm" ? "批量入库任务已创建" : "已移入回收站");
   };
+  /**
+   * 待入库这一首缺什么。齐全的不返回徽章 ——
+   * 五个"已准备"徽章排一行等于没有重点，用户要找的是有问题的那几首。
+   */
+  const pendingIssues = (item) => {
+    const issues = [];
+    if (item.tagStatus && !item.tagStatus.includes("已准备"))
+      issues.push({ label: item.tagStatus, tone: "warning" });
+    if (item.coverStatus && !item.coverStatus.includes("已准备"))
+      issues.push({ label: item.coverStatus, tone: "warning" });
+    if (item.lyricStatus && !item.lyricStatus.includes("已准备"))
+      issues.push({ label: item.lyricStatus, tone: "warning" });
+    if (item.conflict) issues.push({ label: "目标位置有冲突", tone: "danger" });
+    return issues;
+  };
+
+  const activeTarget = TARGETS.find((item) => item.id === target) || TARGETS[0];
+  const scopeCount = selectedPending.length || pending.length;
+
   if (!ready.length)
     return (
-      <div className="page download-page">
-        <section className="download-hero">
-          <div>
-            <p>搜歌、下载，确认无误后再放进正式曲库。</p>
-          </div>
-        </section>
-        <section className="panel download-empty">
-          <Empty
-            icon={Wifi}
-            title="还没有可用的音乐源"
-            text="先去「音乐源」导入一个你有权使用的源，回来就能搜歌了。"
-          />
-          <button className="primary" onClick={() => navigate("sources")}>
-            <Wifi />
-            去添加音乐源
-          </button>
-        </section>
-        <DownloadInboxPanel notify={notify} navigate={navigate} />
-      </div>
-    );
-  return (
-    <div className="page download-page">
-      <section className="download-hero">
-        <div>
-          <p>
-            {target === "device"
-              ? "下载到这台设备：文件直接存进浏览器的下载目录，不进曲库。适合临时听一下。"
-              : "下载到 NAS：文件先落在暂存区，你核对过歌曲信息和存放位置，再放进正式曲库。"}
-          </p>
-        </div>
-        <div className="hero-actions">
-          <button className="secondary" onClick={loadPending}>
-            <RefreshCw />
-            刷新待入库
-          </button>
-          <button className="secondary" onClick={() => navigate("sources")}>
-            <Settings />
-            管理音乐源
-          </button>
-        </div>
-      </section>
-      <section className="source-strip download-controls">
-        <div className="source-summary">
-          <div className="status-orb">
-            <Wifi />
-          </div>
-          <div>
-            <strong>{ready.length} 个已启用来源</strong>
-            <span>
-              {selected?.resolveOk
-                ? "最近一次地址解析成功"
-                : "已启用，可以搜歌"}
-            </span>
-          </div>
-        </div>
-        <div className="target-toggle">
-          <button
-            className={target === "nas" ? "active" : ""}
-            onClick={() => setTarget("nas")}
-          >
-            <Server />
-            NAS 入库
-          </button>
-          <button
-            className={target === "device" ? "active" : ""}
-            onClick={() => setTarget("device")}
-          >
-            <Download />
-            当前设备
-          </button>
-        </div>
-        <select value={sourceId} onChange={(e) => setSourceId(e.target.value)}>
-          {ready.map((source) => (
-            <option value={source.id} key={source.id}>
-              {source.displayName}
-            </option>
-          ))}
-        </select>
-        <select value={platform} onChange={(e) => setPlatform(e.target.value)}>
-          <option value="tx">QQ 音乐</option>
-          <option value="wy">网易云</option>
-          <option value="all">全源</option>
-        </select>
-        <select
-          value={searchType}
-          onChange={(e) => setSearchType(e.target.value)}
-        >
-          <option value="song">歌曲列表</option>
-          <option value="album">按专辑分组</option>
-          <option value="artist">按歌手分组</option>
-        </select>
-        <select value={quality} onChange={(e) => setQuality(e.target.value)}>
-          <option value="128k">标准 128K</option>
-          <option value="320k">高品质 320K</option>
-          <option value="flac">无损 FLAC</option>
-          <option value="flac24bit">Hi-Res</option>
-        </select>
-      </section>
-      <form className="catalog-search" onSubmit={submit}>
-        <div className="big-search">
-          <Search />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="搜索歌曲、专辑名或歌手"
-          />
-          <button className="primary" disabled={loading || !selected}>
-            {loading ? <LoaderCircle className="spin" /> : "搜索"}
-          </button>
-        </div>
-      </form>
-      {error && (
-        <div className="inline-error">
-          <CircleAlert />
-          {error}
-        </div>
-      )}
-      <section className="search-results panel">
-        <SectionHead
-          title={
-            searchType === "album"
-              ? "专辑结果"
-              : searchType === "artist"
-                ? "歌手结果"
-                : "歌曲结果"
+      <Page className="download">
+        <EmptyState
+          icon={Wifi}
+          title="还没有可用的音乐源"
+          text="音屿不自带音源。先去「音乐源」导入一个你有权使用的，回来就能搜歌了。"
+          action={
+            <Button variant="primary" icon={Wifi} onClick={() => navigate("sources")}>
+              去添加音乐源
+            </Button>
           }
+        />
+        <DownloadInboxPanel notify={notify} navigate={navigate} />
+      </Page>
+    );
+
+  return (
+    <Page className="download">
+      {/* --- 下到哪里 --- */}
+      <Section>
+        <SectionHeader
+          title="下到哪里"
+          note={`${ready.length} 个音源已启用`}
+          actions={
+            <Button size="sm" icon={Settings} onClick={() => navigate("sources")}>
+              管理音源
+            </Button>
+          }
+        />
+        <div className="ui-chips ui-chips--cards" role="group" aria-label="下到哪里">
+          {TARGETS.map(({ id, label, icon: Icon, note }) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={target === id}
+              className={`ui-chip${target === id ? " ui-chip--on" : ""}`}
+              onClick={() => setTarget(id)}
+            >
+              <strong>
+                <Icon aria-hidden="true" />
+                {label}
+              </strong>
+              <small>{note}</small>
+            </button>
+          ))}
+        </div>
+      </Section>
+
+      {/* --- 搜什么 --- */}
+      <Section>
+        <SectionHeader title="搜什么" />
+        <div className="download__options">
+          <label>
+            <span>用哪个音源</span>
+            <select
+              className="ui-select"
+              value={sourceId}
+              onChange={(event) => setSourceId(event.target.value)}
+            >
+              {ready.map((source) => (
+                <option value={source.id} key={source.id}>
+                  {source.displayName}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>搜哪个平台</span>
+            <select
+              className="ui-select"
+              value={platform}
+              onChange={(event) => setPlatform(event.target.value)}
+            >
+              {PLATFORMS.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>结果怎么排</span>
+            <select
+              className="ui-select"
+              value={searchType}
+              onChange={(event) => setSearchType(event.target.value)}
+            >
+              {SEARCH_TYPES.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>下什么音质</span>
+            <select
+              className="ui-select"
+              value={quality}
+              onChange={(event) => setQuality(event.target.value)}
+            >
+              {QUALITIES.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <form className="download__search" onSubmit={submit}>
+          <Field
+            label="搜索"
+            hideLabel
+            leading={Search}
+            placeholder="歌名、专辑名，或者歌手"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <Button
+            type="submit"
+            variant="primary"
+            loading={loading}
+            disabled={!selected || !query.trim()}
+          >
+            搜索
+          </Button>
+        </form>
+      </Section>
+
+      {error && (
+        <Notice tone="danger" icon={CircleAlert}>
+          {error}
+        </Notice>
+      )}
+
+      {/* --- 搜索结果 --- */}
+      <Section>
+        <SectionHeader
+          title="搜到了什么"
           note={
             results.length
-              ? `找到 ${results.length} 首候选歌曲 · 当前目标：${target === "device" ? "当前设备" : "NAS 待入库"}`
-              : "能解析出地址的才可以下载"
+              ? `${results.length} 首候选 · 会${activeTarget.label}`
+              : undefined
           }
         />
         {loading ? (
           <PageLoader />
-        ) : results.length ? (
-          ["album", "artist"].includes(searchType) ? (
-            <div className="album-results">
-              {(searchType === "album" ? albumGroups : artistGroups).map((group) => (
-                <article
-                  className="album-result"
-                  key={searchType === "album" ? `${group.album}-${group.artist}` : group.artist}
-                >
-                  <div className="result-cover big">
-                    {group.coverUrl ? <img src={group.coverUrl} /> : <Album />}
-                  </div>
-                  <div>
-                    <strong>{searchType === "album" ? group.album : group.artist}</strong>
-                    <span>
-                      {searchType === "album" ? `${group.artist} · ` : ""}
-                      {group.tracks.length} 首 ·{" "}
-                      {platform === "tx"
-                        ? "QQ 音乐"
-                        : platform === "wy"
-                          ? "网易云"
-                          : "全源"}
-                    </span>
-                    <div className="quality-dots">
-                      <i>{quality}</i>
-                      <i>
-                        {target === "device" ? "浏览器下载" : "本地匹配待检查"}
-                      </i>
-                    </div>
-                  </div>
-                  <div className="album-actions">
-                    <button
-                      className="secondary small"
-                      onClick={() => {
-                        setResults(group.tracks);
-                        setSearchType("song");
-                      }}
-                    >
-                      查看歌曲
-                    </button>
-                    <button
-                      className="primary small"
-                      onClick={() => downloadMany(group.tracks)}
-                    >
-                      <Download />
-                      {target === "device"
-                        ? "下载到设备"
-                        : searchType === "album"
-                          ? "下载整张专辑"
-                          : "下载歌手结果"}
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className="result-list">
-              {results.map((item) => (
-                <div
-                  className="result-row"
-                  key={`${item.platform}-${item.trackId}`}
-                >
-                  <div className="result-cover">
-                    {item.coverUrl ? <img src={item.coverUrl} /> : <Music2 />}
-                  </div>
-                  <div className="result-main">
-                    <strong>{item.title}</strong>
-                    <span>
-                      {item.artist} · {item.album || "单曲"}
-                    </span>
-                  </div>
-                  <span className="duration">
-                    {Math.floor(item.duration / 60)}:
-                    {String(item.duration % 60).padStart(2, "0")}
-                  </span>
-                  <div className="quality-dots">
-                    {item.qualities.slice(-2).map((q) => (
-                      <i key={q}>{q}</i>
-                    ))}
-                  </div>
-                  <div className="row-actions wide">
-                    <button
-                      title="试听"
-                      onClick={() =>
-                        playPreview?.({
-                          ...item,
-                          source: "source_preview",
-                          sourceId,
-                          quality,
-                          item,
-                        })
-                      }
-                    >
-                      <Play />
-                    </button>
-                    <button
-                      title={
-                        target === "device"
-                          ? "下载到当前设备"
-                          : "下载并加入待入库"
-                      }
-                      disabled={
-                        !!downloadBusy &&
-                        downloadBusy !== `${item.platform}-${item.trackId || item.id}`
-                      }
-                      className="download-action-button"
-                      onClick={() => downloadOne(item)}
-                    >
-                      {downloadBusy === `${item.platform}-${item.trackId || item.id}` ? (
-                        <LoaderCircle className="spin" />
-                      ) : (
-                        <Download />
-                      )}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )
-        ) : (
-          <Empty
+        ) : !results.length ? (
+          <EmptyState
             icon={Search}
-            title="搜索歌曲、专辑或歌手"
-            text="搜到的歌可以先试听，再决定下不下"
+            title="还没搜过"
+            text="搜到的歌可以先试听，再决定下不下。"
           />
+        ) : ["album", "artist"].includes(searchType) ? (
+          <MediaGrid min={200}>
+            {(searchType === "album" ? albumGroups : artistGroups).map((group) => (
+              <MediaCard
+                key={
+                  searchType === "album"
+                    ? `${group.album}-${group.artist}`
+                    : group.artist
+                }
+                kind={searchType === "album" ? "album" : "artist"}
+                title={searchType === "album" ? group.album : group.artist}
+                subtitle={[
+                  searchType === "album" ? group.artist : null,
+                  `${group.tracks.length} 首`,
+                  platformLabel(platform === "all" ? "" : platform),
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+                coverUrl={group.coverUrl}
+                onOpen={() => {
+                  // 点开就是"把这一组摊成歌曲列表"，不是进详情页。
+                  setResults(group.tracks);
+                  setSearchType("song");
+                }}
+                onPlay={() => downloadMany(group.tracks)}
+                playLabel={`把这 ${group.tracks.length} 首都下下来`}
+              />
+            ))}
+          </MediaGrid>
+        ) : (
+          <ListGroup>
+            {results.map((item) => {
+              const key = `${item.platform}-${item.trackId || item.id}`;
+              return (
+                <ListRow
+                  key={key}
+                  leading={
+                    <Cover
+                      src={item.coverUrl}
+                      title={item.title}
+                      size="40px"
+                      shape="square"
+                    />
+                  }
+                  title={item.title}
+                  subtitle={[item.artist, item.album || "单曲"]
+                    .filter(Boolean)
+                    .join(" · ")}
+                  chevron={false}
+                  trailing={
+                    <span className="download__row-actions">
+                      <small>{formatTime(item.duration)}</small>
+                      {item.qualities.slice(-2).map((q) => (
+                        <Badge key={q}>{q}</Badge>
+                      ))}
+                      <IconButton
+                        icon={Play}
+                        size="sm"
+                        label={`试听 ${item.title}`}
+                        onClick={() =>
+                          playPreview?.({
+                            ...item,
+                            source: "source_preview",
+                            sourceId,
+                            quality,
+                            item,
+                          })
+                        }
+                      />
+                      <IconButton
+                        icon={Download}
+                        size="sm"
+                        variant="primary"
+                        loading={downloadBusy === key}
+                        disabled={Boolean(downloadBusy) && downloadBusy !== key}
+                        label={
+                          target === "device"
+                            ? `把 ${item.title} 下到这台设备`
+                            : `把 ${item.title} 下到 NAS`
+                        }
+                        onClick={() => downloadOne(item)}
+                      />
+                    </span>
+                  }
+                />
+              );
+            })}
+          </ListGroup>
         )}
-      </section>
-      <section className="panel pending-ingest">
-        <SectionHead
-          title="待入库"
-          note={`${pending.length} 首下好了，等你确认再进曲库`}
-          action={
-            <div className="pending-actions">
-              <button
-                className="secondary small"
+      </Section>
+
+      {/* --- 待入库 --- */}
+      <Section reveal>
+        <SectionHeader
+          title="下好了，等你确认"
+          note={
+            pending.length
+              ? `${pending.length} 首在暂存区${selectedPending.length ? `，已勾 ${selectedPending.length} 首` : ""}`
+              : undefined
+          }
+          actions={
+            <ButtonGroup>
+              <Button size="sm" icon={RefreshCw} onClick={loadPending}>
+                刷新
+              </Button>
+              <Button
+                size="sm"
+                icon={Trash2}
+                variant="danger"
                 disabled={!pending.length}
-                onClick={() => decide("cancel")}
+                onClick={() => setDeciding("cancel")}
               >
-                <Trash2 />
-                批量删除下载文件
-              </button>
-              <button
-                className="primary small"
+                不要了
+              </Button>
+              <Button
+                size="sm"
+                variant="primary"
+                icon={Check}
                 disabled={!pending.length}
-                onClick={() => decide("confirm")}
+                onClick={() => setDeciding("confirm")}
               >
-                <Check />
-                批量确认入库
-              </button>
-            </div>
+                放进曲库
+              </Button>
+            </ButtonGroup>
           }
         />
         {pending.length ? (
-          <div className="pending-table">
-            <div className="pending-row pending-head">
-              <span></span>
-              <span>歌曲</span>
-              <span>来源 / 音质</span>
-              <span>当前位置 / 入库位置</span>
-              <span>状态</span>
-            </div>
-            {pending.map((item) => (
-              <div className="pending-row" key={item.jobId}>
-                <input
-                  type="checkbox"
-                  checked={selectedPending.includes(item.jobId)}
-                  onChange={() => togglePending(item.jobId)}
-                />
-                <div>
-                  <strong>{item.title}</strong>
-                  <small>
-                    {item.artist} · {item.album}
-                  </small>
+          <div className="download-pending">
+            {pending.map((item) => {
+              const issues = pendingIssues(item);
+              return (
+                <div className="download-pending__row" key={item.jobId}>
+                  <input
+                    type="checkbox"
+                    checked={selectedPending.includes(item.jobId)}
+                    onChange={() => togglePending(item.jobId)}
+                    aria-label={`勾选 ${item.title}`}
+                  />
+                  <div className="download-pending__text">
+                    <strong>{item.title}</strong>
+                    <small>
+                      {[item.artist, item.album, item.source || "音乐源", item.quality]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </small>
+                  </div>
+                  <div className="download-pending__paths">
+                    <code>{item.currentPath || item.downloadPath}</code>
+                    <ChevronRight aria-hidden="true" />
+                    <code>{item.proposedPath || item.targetPath}</code>
+                  </div>
+                  <div className="download-pending__flags">
+                    {issues.length ? (
+                      issues.map((issue) => (
+                        <Badge key={issue.label} tone={issue.tone}>
+                          {issue.label}
+                        </Badge>
+                      ))
+                    ) : (
+                      <Badge tone="success">都齐了</Badge>
+                    )}
+                  </div>
                 </div>
-                <span>
-                  {item.source || "音乐源"} · {item.quality}
-                </span>
-                <div className="pending-paths">
-                  <code>{item.currentPath || item.downloadPath}</code>
-                  <ChevronRight />
-                  <code>{item.proposedPath || item.targetPath}</code>
-                </div>
-                <div className="file-flags">
-                  <i className="pending-stage">
-                    {item.stageLabel || "临时区 · 待确认"}
-                  </i>
-                  <i className={item.tagStatus === "标签已准备" ? "ok" : ""}>
-                    {item.tagStatus}
-                  </i>
-                  <i className={item.coverStatus === "封面已准备" ? "ok" : ""}>
-                    {item.coverStatus}
-                  </i>
-                  <i className={item.lyricStatus === "歌词已准备" ? "ok" : ""}>
-                    {item.lyricStatus}
-                  </i>
-                  <i className={!item.conflict ? "ok" : ""}>
-                    {item.conflict ? "冲突" : "无冲突"}
-                  </i>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
-          <Empty
+          <EmptyState
             icon={Download}
-            title="暂无待入库歌曲"
+            title="暂存区是空的"
             text="下好的歌会先停在这里，核对完再一起放进曲库。"
           />
         )}
-      </section>
-    </div>
+      </Section>
+
+      <DownloadInboxPanel notify={notify} navigate={navigate} />
+
+      {/* 入库会让 Plex 重扫、删除会挪回收区，代价要写清。 */}
+      <Modal
+        open={Boolean(deciding)}
+        onClose={() => setDeciding("")}
+        title={
+          deciding === "confirm"
+            ? `把这 ${scopeCount} 首放进曲库？`
+            : `不要这 ${scopeCount} 首了？`
+        }
+        description={
+          selectedPending.length ? "只处理你勾上的那些" : "暂存区里的全部"
+        }
+        actions={
+          <ButtonGroup align="end">
+            <Button onClick={() => setDeciding("")}>先不动</Button>
+            <Button
+              variant={deciding === "confirm" ? "primary" : "danger"}
+              icon={deciding === "confirm" ? ArrowDownToLine : Trash2}
+              onClick={decide}
+            >
+              {deciding === "confirm" ? "放进曲库" : "移到回收区"}
+            </Button>
+          </ButtonGroup>
+        }
+      >
+        <p>
+          {deciding === "confirm"
+            ? "文件会从暂存区挪进音乐目录，然后让 Plex 重扫一遍。原位置记下来了，之后能退回去。"
+            : "文件会挪到下载回收区，不是直接删掉 —— 反悔了还能找回来。"}
+        </p>
+      </Modal>
+    </Page>
   );
 }

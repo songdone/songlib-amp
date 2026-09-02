@@ -1,0 +1,159 @@
+/**
+ * 下载入库。
+ *
+ * 列表、卡片、胶囊、弹窗都来自 components/ui。
+ * 这里只有：四个带标签的下拉、搜索表单、待入库表格。
+ */
+
+@layer components {
+  /* 四个下拉自适应换行。每个都带可见标签 ——
+     原来是四个裸 <select> 挤一行，谁也不知道哪个是干什么的。 */
+  .download__options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--space-4);
+  }
+
+  .download__options label {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .download__options span {
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+  }
+
+  .download__options .ui-select {
+    width: 100%;
+  }
+
+  .download__search {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .download__search .ui-field {
+    flex: 1 1 auto;
+    max-width: 520px;
+  }
+
+  /* 搜索结果行尾随：时长 + 音质徽章 + 两个动作 */
+  .download__row-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-2);
+  }
+
+  .download__row-actions small {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* =============================================================
+   * 待入库
+   *
+   * 路径那一列是这张表的重点（用户要核对文件会挪到哪儿），
+   * 所以给它最多的宽度，而不是平分。
+   * ============================================================= */
+
+  .download-pending {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .download-pending__row {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1.2fr) minmax(0, 1.8fr) 180px;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .download-pending__row + .download-pending__row {
+    border-block-start: 1px solid var(--border-subtle);
+  }
+
+  .download-pending__row:hover {
+    background: var(--surface-2);
+  }
+
+  .download-pending__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .download-pending__text strong {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .download-pending__text small {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .download-pending__paths {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 12px minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .download-pending__paths svg {
+    width: 12px;
+    height: 12px;
+    color: var(--text-tertiary);
+  }
+
+  /* 路径用等宽字体，只显示末尾 —— 目录前缀都一样，
+     真正需要核对的是文件名和它上一级。 */
+  .download-pending__paths code {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    direction: rtl;
+    text-align: start;
+  }
+
+  .download-pending__flags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    justify-content: flex-end;
+  }
+
+  @media (max-width: 1000px) {
+    .download-pending__row {
+      grid-template-columns: 20px minmax(0, 1fr) 180px;
+      row-gap: var(--space-2);
+    }
+
+    /* 路径折到第二行整行铺开 —— 它是这张表最需要看清的东西。 */
+    .download-pending__paths {
+      grid-column: 2 / -1;
+    }
+  }
+}

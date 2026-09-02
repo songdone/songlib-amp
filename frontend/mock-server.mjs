@@ -97,7 +97,46 @@ http.createServer((req,res)=>{
     if(url.pathname==='/api/library/tracks')return json(res,{items:tracks,total:tracks.length,page:1,pageSize:200})
     if(url.pathname==='/api/local/files')return json(res,{items:localFiles,total:localFiles.length,stats:{total:1439,missing_cover:14,missing_lyrics:12,missing_artist:2,missing_album:3,bad_path:9,plex_unmatched:6}})
     if(url.pathname==='/api/local/categories')return json(res,{summary:[{id:'tracks',label:'歌曲',count:1439,note:'首歌曲'},{id:'artists',label:'艺人',count:105,note:'位艺人'},{id:'albums',label:'专辑',count:306,note:'张专辑'},{id:'genres',label:'流派',count:14,note:'种流派'},{id:'folders',label:'文件夹',count:107,note:'个顶层目录'},{id:'lossless',label:'无损',count:720,note:'首高规格'}],groups:{genre:[{id:'华语流行',name:'华语流行',count:880,search:'华语流行'},{id:'摇滚',name:'摇滚',count:120,search:'摇滚'}],artist:artists.slice(0,8).map(a=>({id:a.title,name:a.title,count:12,search:a.title})),album:albums.slice(0,8).map(a=>({id:a.title,name:a.title,count:10,search:a.title})),folder:artists.slice(0,8).map(a=>({id:a.title,name:a.title,count:12,search:a.title})),format:[{id:'FLAC',name:'FLAC',count:900,search:'.flac'},{id:'MP3',name:'MP3',count:539,search:'.mp3'}],quality:[{id:'无损',name:'无损 / Hi-Res',count:900},{id:'标准',name:'标准音质',count:539}],year:[{id:'2003',name:'2003',count:120,search:'2003'}],scene:[{id:'影视原声',name:'影视原声',count:80,search:'原声'}],missing:[{id:'cover',name:'缺封面',count:14,missing:'cover'},{id:'lyrics',name:'缺歌词',count:12,missing:'lyrics'}]}})
-    if(url.pathname==='/api/discovery/playlists')return json(res,{source:'netease-hottags',updatedAt:new Date().toISOString(),platforms:['网易云音乐','QQ 音乐','酷狗音乐'],categories:['热门','华语','流行','粤语','影视原声','经典','摇滚','民谣','电子','轻音乐','怀旧','治愈'].map((name,index)=>({id:`cat-${index}`,platform:index%3===0?'QQ 音乐':index%3===1?'网易云音乐':'酷狗音乐',name,count:10000-index*300,url:'https://music.163.com/'}))})
+    if(url.pathname==='/api/discovery/platforms')return json(res,{items:[
+      {id:'netease',name:'网易云音乐',browseOnly:false,siteUrl:'https://music.163.com/',defaultCategory:'热门',note:''},
+      {id:'qq',name:'QQ 音乐',browseOnly:false,siteUrl:'https://y.qq.com/',defaultCategory:'10000000',note:''},
+      {id:'kugou',name:'酷狗音乐',browseOnly:true,siteUrl:'https://www.kugou.com/',defaultCategory:'',note:'酷狗的歌单接口需要客户端签名，暂时只能跳到官网浏览'}
+    ]})
+    if(url.pathname==='/api/discovery/playlists'){
+      const platform=url.searchParams.get('platform')||'netease'
+      if(platform==='kugou')return json(res,{platform,platformName:'酷狗音乐',browseOnly:true,siteUrl:'https://www.kugou.com/',categories:[],playlists:[],selectedCategory:'',errors:['酷狗的歌单接口需要客户端签名，暂时只能跳到官网浏览'],updatedAt:new Date().toISOString()})
+      const isQQ=platform==='qq'
+      const cats=isQQ
+        ? [['全部','10000000','热门'],['华语','167','语种'],['欧美','168','语种'],['粤语','169','语种'],['流行','3','风格'],['摇滚','11','风格'],['开车','116','场景'],['运动','117','场景']]
+        : [['热门','热门','分类'],['华语','华语','分类'],['流行','流行','分类'],['粤语','粤语','分类'],['影视原声','影视原声','分类'],['经典','经典','分类'],['摇滚','摇滚','分类'],['民谣','民谣','分类']]
+      const selected=url.searchParams.get('category')||cats[0][1]
+      const platformName=isQQ?'QQ 音乐':'网易云音乐'
+      const names=['甜度爆表 | 旋律说唱狙击少女心','循环了一整个夏天的华语','深夜driving：城市霓虹','那些年我们一起听的粤语','独立民谣：房间里的下午','影视原声：那些哭过的片段','清晨通勤的轻电子','八十年代的港台金曲']
+      return json(res,{
+        platform,platformName,browseOnly:false,
+        siteUrl:isQQ?'https://y.qq.com/':'https://music.163.com/',
+        selectedCategory:selected,errors:[],updatedAt:new Date().toISOString(),
+        categories:cats.map(([name,value,group],i)=>({id:`${platform}-${i}`,value,name,count:isQQ?0:12000-i*900,group,url:'#'})),
+        playlists:names.map((title,i)=>({id:String(7000000000+i),platform,platformName,title,description:'',coverUrl:`/mock-cover/${encodeURIComponent(title.slice(0,4))}.svg`,trackCount:isQQ?0:40+i*13,playCount:(i+1)*8_540_000,creator:['我想要两颗西柚','捡钱的Penny','夜航西飞','小城故事'][i%4],sourceUrl:'#'}))
+      })
+    }
+    if(/^\/api\/discovery\/playlists\/[^/]+$/.test(url.pathname)){
+      const platform=url.searchParams.get('platform')||'netease'
+      const list=Array.from({length:24},(_,i)=>{
+        const t=tracks[i%tracks.length]
+        const matched=i%3!==2
+        return {platform:platform==='qq'?'tx':'wy',platformTrackId:`p-${i}`,title:t.title,artist:t.grandparentTitle,album:t.parentTitle,duration:Math.round(t.duration/1000),coverUrl:t.thumbUrl,
+          matchStatus:matched?'matched':'missing',canDownload:!matched&&i%2===0,
+          localTrack:matched?{...t,sourceSummary:i%2?'本地文件':'Plex',sourceTypes:[i%2?'local_file':'plex_item'],resources:[{type:i%2?'local_file':'plex_item',id:t.ratingKey,path:`/music/${t.grandparentTitle}/${t.parentTitle}/${t.title}.flac`}]}:null}
+      })
+      return json(res,{
+        playlist:{id:url.pathname.split('/').pop(),platform,platformName:platform==='qq'?'QQ 音乐':'网易云音乐',title:'循环了一整个夏天的华语',description:'',coverUrl:'/mock-cover/%E5%A4%8F%E5%A4%A9.svg',trackCount:list.length,playCount:85_400_000,creator:'捡钱的Penny',sourceUrl:'#'},
+        tracks:list,
+        summary:{total:list.length,matched:list.filter(i=>i.matchStatus==='matched').length,downloadable:list.filter(i=>i.canDownload).length,unavailable:list.filter(i=>i.matchStatus!=='matched'&&!i.canDownload).length},
+        downloadSource:{id:source.id,name:'[独家音源]'}
+      })
+    }
+    if(url.pathname==='/api/discovery/download-missing')return withJson(req,res,payload=>json(res,{created:(payload.tracks||[]).length,errors:[]}))
     if(url.pathname==='/api/local/tags/preview')return withJson(req,res,payload=>{
       const ids=new Set((payload.fileIds||[]).map(String))
       const picked=ids.size?localFiles.filter(f=>ids.has(f.id)):localFiles

@@ -1,0 +1,224 @@
+/**
+ * 发现。
+ *
+ * 两块内容共用一套曲目行（.discover-tracks）：平台歌单的逐首匹配结果，
+ * 和本地推荐列表。两者信息结构一样（序号、封面、标题歌手、状态、动作），
+ * 没有理由长得不一样。
+ */
+
+@layer components {
+  .discover__lead {
+    max-width: 62ch;
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    color: var(--text-secondary);
+  }
+
+  .discover__category {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+  }
+
+  .discover__category .ui-select {
+    /* 分类名最长的是"影视原声"这类四字词，320px 有余量又不铺满整行。 */
+    width: min(100%, 320px);
+  }
+
+  .discover__bulk {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  .discover__pager {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .discover__slider {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    max-width: 420px;
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+  }
+
+  .discover__slider small {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+  }
+
+  /* =============================================================
+   * 歌单卡片
+   * ============================================================= */
+
+  .discover-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: var(--space-5);
+  }
+
+  .discover-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: 0;
+    text-align: start;
+    background: none;
+    border: 0;
+    cursor: pointer;
+  }
+
+  .discover-card .ui-cover {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    transition: transform var(--duration-base) var(--ease-out);
+  }
+
+  .discover-card:hover .ui-cover,
+  .discover-card:focus-visible .ui-cover {
+    transform: translateY(-3px);
+  }
+
+  .discover-card:focus-visible {
+    outline: 2px solid var(--accent-border);
+    outline-offset: 3px;
+    border-radius: var(--radius-md);
+  }
+
+  .discover-card strong {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-snug);
+    color: var(--text-primary);
+    /* 歌单名普遍很长（"甜度爆表 | 旋律说唱狙击少女心"），
+       限两行，超出省略；不要单行截断，那样一半歌单名都读不出来。 */
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
+  .discover-card small {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .discover-card:hover .ui-cover,
+    .discover-card:focus-visible .ui-cover {
+      transform: none;
+    }
+  }
+
+  /* =============================================================
+   * 曲目行
+   * ============================================================= */
+
+  .discover-tracks {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  /* 状态列和动作列固定宽度：内容多少不同的行之间要能对齐。 */
+  .discover-tracks__row {
+    display: grid;
+    grid-template-columns: 28px 36px minmax(0, 1fr) 168px 72px;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-4);
+  }
+
+  .discover-tracks__row + .discover-tracks__row {
+    border-block-start: 1px solid var(--border-subtle);
+  }
+
+  .discover-tracks__row:hover {
+    background: var(--surface-2);
+  }
+
+  .discover-tracks__index {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .discover-tracks__text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+  }
+
+  .discover-tracks__text strong {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .discover-tracks__text small {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .discover-tracks__state {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    justify-content: flex-end;
+  }
+
+  .discover-tracks__actions {
+    display: flex;
+    gap: var(--space-1);
+    justify-content: flex-end;
+    opacity: 0.45;
+    transition: opacity var(--duration-fast) var(--ease-out);
+  }
+
+  .discover-tracks__row:hover .discover-tracks__actions,
+  .discover-tracks__row:focus-within .discover-tracks__actions {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    .discover-tracks__actions {
+      opacity: 1;
+    }
+  }
+
+  @media (max-width: 860px) {
+    .discover-tracks__row {
+      grid-template-columns: 28px 36px minmax(0, 1fr) 72px;
+      row-gap: var(--space-2);
+    }
+
+    /* 状态徽章折到第二行，跟标题左对齐。 */
+    .discover-tracks__state {
+      grid-column: 3;
+      justify-content: flex-start;
+    }
+  }
+}

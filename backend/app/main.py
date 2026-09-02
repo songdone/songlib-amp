@@ -13,16 +13,18 @@ import uuid
 from datetime import datetime
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Optional
 from urllib.parse import quote, urlparse
 
 import httpx
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, HttpUrl
 
 from . import auth
+from .routers.health import router as health_router
+from .routers.accounts import router as accounts_router
+from .routers.insights import router as insights_router
+from .routers.backups import router as backups_router
 from . import audit
 from .airplay_cast import cast_manager
 from .catalog import search as catalog_search
@@ -50,226 +52,16 @@ from .sources import (
 from mutagen import File as MutagenFile
 
 
-class LoginBody(BaseModel):
-    username: str = "admin"
-    password: str
-
-
-class SetupBody(BaseModel):
-    username: str = Field(default="admin", min_length=2, max_length=40)
-    displayName: str = Field(default="", max_length=80)
-    password: str = Field(min_length=12, max_length=200)
-
-
-class PlaylistBody(BaseModel):
-    name: str = Field(min_length=1, max_length=120)
-    description: str = Field(default="", max_length=500)
-    items: list[dict] = Field(default_factory=list, max_length=20_000)
-
-
-class PlaylistPatchBody(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=120)
-    description: str | None = Field(default=None, max_length=500)
-    items: list[dict] | None = Field(default=None, max_length=20_000)
-
-
-class M3UImportBody(BaseModel):
-    name: str = Field(min_length=1, max_length=120)
-    content: str = Field(max_length=2_100_000)
-    pathMappings: list[dict] = Field(default_factory=list, max_length=100)
-
-
-class PlaylistSharePreviewBody(BaseModel):
-    shareUrl: str = Field(min_length=10, max_length=2_000)
-
-
-class PlaylistMigrationBody(BaseModel):
-    sourceUrl: str = Field(min_length=10, max_length=2_000)
-    targets: list[str] = Field(default_factory=lambda: ["songlib"], max_length=3)
-    downloadMissing: bool = False
-    sourceId: str | None = None
-    quality: str = "320k"
-
-
-class PlaylistSyncBody(BaseModel):
-    targets: list[str] = Field(min_length=1, max_length=2)
-
-
-class ListeningEventBody(BaseModel):
-    eventType: str
-    fileId: str | None = None
-    externalRef: str | None = None
-    positionMs: int = Field(default=0, ge=0)
-    durationMs: int = Field(default=0, ge=0)
-    context: dict = Field(default_factory=dict)
-
-
-class RecommendationRefreshBody(BaseModel):
-    exploration: float = Field(default=0.35, ge=0, le=1)
-    discoveries: list[dict] = Field(default_factory=list, max_length=500)
-
-
-class ChangePasswordBody(BaseModel):
-    currentPassword: str
-    newPassword: str = Field(min_length=10, max_length=200)
-
-
-class UserCreateBody(BaseModel):
-    username: str
-    displayName: str = ""
-    password: str = Field(min_length=10, max_length=200)
-    role: str = "listener"
-    permissions: list[str] = Field(default_factory=lambda: ["listen"])
-    libraryScopes: list[str] = Field(default_factory=list)
-
-
-class UserUpdateBody(BaseModel):
-    username: str | None = None
-    displayName: str | None = None
-    enabled: bool | None = None
-    permissions: list[str] | None = None
-    libraryScopes: list[str] | None = None
-
-
-class UserPasswordBody(BaseModel):
-    password: str = Field(min_length=10, max_length=200)
-
-
-class SourceBody(BaseModel):
-    name: str = ""
-    url: HttpUrl
-
-
-class SourceImportUrlBody(BaseModel):
-    name: str = ""
-    url: str
-
-
-class SourceImportCodeBody(BaseModel):
-    name: str = ""
-    code: str
-
-
-class SourceSearchBody(BaseModel):
-    keyword: str = Field(min_length=1, max_length=100)
-    platform: Optional[str] = None
-
-
-class SourceResolveBody(BaseModel):
-    track: dict
-    quality: str = "320k"
-
-
-class JobBody(BaseModel):
-    kind: str
-    payload: dict = Field(default_factory=dict)
-
-
-class DownloadBody(BaseModel):
-    sourceId: str
-    quality: str
-    item: dict
-
-
-class BatchDownloadDecisionBody(BaseModel):
-    jobIds: list[int] = Field(default_factory=list)
-
-
-class SourcePreviewBody(BaseModel):
-    sourceId: str
-    quality: str = "128k"
-    item: dict
-
-
-class SettingsPatchBody(BaseModel):
-    values: dict = Field(default_factory=dict)
-
-
-class PlexSettingsBody(BaseModel):
-    enabled: bool = True
-    name: str = Field(default="Plex", min_length=1, max_length=80)
-    serverUrl: str
-    externalUrl: str = ""
-    token: str = ""
-    selectedLibraryKeys: list[str] | str = "all"
-
-
-class PlexTestBody(BaseModel):
-    serverUrl: str | None = None
-    token: str | None = None
-
-
-class PlexRemoteCommandBody(BaseModel):
-    action: str = Field(pattern="^(play|pause|stop|previous|next|seek|volume)$")
-    value: int | None = None
-
-
-class FnosSettingsBody(BaseModel):
-    serverUrl: str
-    authMode: str = Field(default="password", pattern="^(password|token)$")
-    username: str = Field(default="", max_length=120)
-    password: str = Field(default="", max_length=300)
-    token: str = Field(default="", max_length=2_000)
-
-
-class TagUpdateBody(BaseModel):
-    changes: dict
-
-
-class OrganizePreviewBody(BaseModel):
-    fileIds: list[str]
-
-
-class OrganizeApplyBody(BaseModel):
-    previews: list[dict]
-
-
-class DownloadInboxApplyBody(BaseModel):
-    items: list[dict] = Field(min_length=1, max_length=2_000)
-
-
-class ScrapePreviewBody(BaseModel):
-    kind: str
-    scope: str = "missing"
-    scopeValue: str = Field(default="", max_length=300)
-    mode: str = "missing"
-    limit: int = Field(default=100, ge=1, le=500)
-
-
-class ScrapeApplyBody(BaseModel):
-    planId: str
-
-
-class DiscoveryDownloadBody(BaseModel):
-    sourceId: str
-    quality: str = "320k"
-    tracks: list[dict] = Field(default_factory=list, max_length=100)
-
-
-class AirPlayCastUpdateBody(BaseModel):
-    trackId: str = Field(default="", max_length=300)
-    title: str = Field(default="", max_length=200)
-    artist: str = Field(default="", max_length=200)
-    album: str = Field(default="", max_length=200)
-    quality: str = Field(default="", max_length=40)
-    lyrics: str = Field(default="", max_length=300_000)
-    position: float = Field(default=0, ge=0, le=60 * 60 * 24)
-    duration: float = Field(default=0, ge=0, le=60 * 60 * 24)
-    playing: bool = False
-    sourceType: str = Field(default="", max_length=40)
-    localFileId: str = Field(default="", max_length=300)
-    plexRatingKey: str = Field(default="", max_length=300)
-    coverKey: str = Field(default="", max_length=2_000)
-    lyricsOffsetMs: int = Field(default=0, ge=-5000, le=5000)
-    transportLatencyMs: int = Field(default=0, ge=0, le=5000)
-
-
-class AirPlayCastClockBody(BaseModel):
-    position: float = Field(default=0, ge=0, le=60 * 60 * 24)
-    duration: float = Field(default=0, ge=0, le=60 * 60 * 24)
-    playing: bool = False
-    lyricsOffsetMs: int = Field(default=0, ge=-5000, le=5000)
-    transportLatencyMs: int = Field(default=0, ge=0, le=5000)
+from .schemas import ( LoginBody, SetupBody, PlaylistBody, PlaylistPatchBody, M3UImportBody,
+    PlaylistSharePreviewBody, PlaylistMigrationBody, PlaylistSyncBody, ListeningEventBody,
+    RecommendationRefreshBody, ChangePasswordBody, UserCreateBody, UserUpdateBody,
+    UserPasswordBody, SourceBody, SourceImportUrlBody, SourceImportCodeBody, SourceSearchBody,
+    SourceResolveBody, JobBody, DownloadBody, BatchDownloadDecisionBody, SourcePreviewBody,
+    SettingsPatchBody, PlexSettingsBody, PlexTestBody, PlexRemoteCommandBody, FnosSettingsBody,
+    TagUpdateBody, OrganizePreviewBody, OrganizeApplyBody, DownloadInboxApplyBody,
+    ScrapePreviewBody, ScrapeApplyBody, DiscoveryDownloadBody, AirPlayCastUpdateBody,
+    AirPlayCastClockBody,
+)
 
 
 @asynccontextmanager
@@ -291,171 +83,15 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title=settings.app_name, version=settings.app_version, lifespan=lifespan)
 app.add_middleware(SecurityMiddleware)
+app.include_router(health_router)
+app.include_router(accounts_router)
+app.include_router(insights_router)
+app.include_router(backups_router)
 
 
 @app.exception_handler(SourceError)
 def source_error_handler(request: Request, exc: SourceError):
     return JSONResponse(status_code=exc.status_code, content={"ok": False, "error_code": exc.code, "message": exc.message})
-
-
-@app.get("/api/health")
-def health():
-    checks = _health_checks()
-    return {
-        "status": "ok" if checks["database"]["ok"] and checks["storage"]["ok"] else "error",
-        "version": settings.app_version,
-        "checks": checks,
-    }
-
-
-@app.get("/api/health/live")
-def health_live():
-    return {"status": "ok", "version": settings.app_version}
-
-
-@app.get("/api/health/ready")
-def health_ready():
-    checks = _health_checks()
-    ready = checks["database"]["ok"] and checks["storage"]["ok"]
-    return JSONResponse(
-        status_code=200 if ready else 503,
-        content={"status": "ready" if ready else "not_ready", "version": settings.app_version, "checks": checks},
-    )
-
-
-def _health_checks():
-    database = {"ok": False, "message": "数据库不可用"}
-    storage = {"ok": False, "message": "数据目录不可写"}
-    try:
-        database = {"ok": bool(row("SELECT 1 AS value")), "message": "数据库可用"}
-    except Exception:
-        pass
-    try:
-        settings.data_dir.mkdir(parents=True, exist_ok=True)
-        storage = {"ok": settings.data_dir.exists() and os.access(settings.data_dir, os.W_OK), "message": "数据目录可用"}
-    except Exception:
-        pass
-    plex_config = plex.saved_settings()
-    if not plex_config["enabled"]:
-        plex_status = {"ok": True, "status": "disabled", "message": "Plex 已停用"}
-    elif not plex_config["serverUrl"]:
-        plex_status = {"ok": True, "status": "not_configured", "message": "尚未连接 Plex"}
-    else:
-        try:
-            plex.xml("/identity")
-            plex_status = {"ok": True, "status": "connected", "message": "Plex 已连接"}
-        except Exception:
-            plex_status = {"ok": False, "status": "unavailable", "message": "Plex 暂时不可用"}
-    heartbeat = get_kv("worker_heartbeat", {}) or {}
-    heartbeat_at = heartbeat.get("at")
-    heartbeat_fresh = False
-    if heartbeat_at:
-        try:
-            heartbeat_fresh = (datetime.now().astimezone() - datetime.fromisoformat(heartbeat_at)).total_seconds() < max(15, settings.worker_poll_seconds * 4)
-        except (TypeError, ValueError):
-            pass
-    embedded_running = settings.worker_mode == "embedded" and manager.started
-    worker_ok = embedded_running or heartbeat_fresh
-    return {
-        "database": database,
-        "storage": storage,
-        "worker": {
-            "ok": worker_ok,
-            "mode": settings.worker_mode,
-            "message": "后台任务服务在线" if worker_ok else "后台任务服务尚未上报状态",
-            "lastSeenAt": heartbeat_at,
-        },
-        "plex": plex_status,
-    }
-
-
-@app.get("/api/setup/status")
-def setup_status():
-    return {
-        "required": auth.setup_required(),
-        "version": settings.app_version,
-        "checks": _health_checks(),
-    }
-
-
-@app.post("/api/setup/complete")
-def complete_setup(body: SetupBody, request: Request, response: Response):
-    rate_limiter.check(client_key(request, "setup"), limit=5, window_seconds=900)
-    user = auth.complete_setup(body.username, body.password, body.displayName)
-    auth.login(response, body.password, body.username)
-    audit.record(user["id"], request.state.request_id, "setup.complete", "installation", None, "success")
-    return {"ok": True, "user": user}
-
-
-@app.get("/api/auth/status")
-def auth_status(request: Request, response: Response):
-    try:
-        user = auth.current_user(request)
-        authenticated = True
-        if not request.cookies.get("songlib_csrf"):
-            issue_csrf(response)
-    except HTTPException:
-        user = None
-        authenticated = False
-    return {"authenticated": authenticated, "setupRequired": auth.setup_required(), "user": user}
-
-
-@app.post("/api/auth/login")
-def login(body: LoginBody, request: Request, response: Response):
-    if auth.setup_required():
-        raise HTTPException(status_code=409, detail="请先完成初始设置")
-    key = client_key(request, "login")
-    rate_limiter.check(key, limit=8, window_seconds=900)
-    try:
-        user = auth.login(response, body.password, body.username)
-    except HTTPException:
-        audit.record(None, request.state.request_id, "auth.login", "session", None, "denied", {"username": body.username})
-        raise
-    audit.record(user["id"], request.state.request_id, "auth.login", "session", None, "success")
-    return {"ok": True, "user": user}
-
-
-@app.post("/api/auth/logout")
-def logout(response: Response):
-    auth.logout(response)
-    return {"ok": True}
-
-
-@app.post("/api/auth/change-password")
-def change_password(body: ChangePasswordBody, response: Response, user=Depends(auth.current_user)):
-    auth.change_password(user, body.currentPassword, body.newPassword)
-    auth.logout(response)
-    return {"ok": True}
-
-
-@app.get("/api/users", dependencies=[Depends(auth.current_user)])
-def users():
-    return {"items": auth.list_users()}
-
-
-@app.post("/api/users", dependencies=[Depends(auth.current_user)])
-def create_user(body: UserCreateBody):
-    return auth.create_user(body.username, body.password, body.displayName, body.role, body.permissions, body.libraryScopes)
-
-
-@app.patch("/api/users/{user_id}", dependencies=[Depends(auth.current_user)])
-def update_user(user_id: str, body: UserUpdateBody):
-    result = auth.update_user(user_id, username=body.username, display_name=body.displayName, enabled=body.enabled)
-    if body.permissions is not None or body.libraryScopes is not None:
-        result = auth.set_user_access(user_id, body.permissions or result.get("permissions") or [], body.libraryScopes or result.get("libraryScopes") or [])
-    return result
-
-
-@app.post("/api/users/{user_id}/password", dependencies=[Depends(auth.current_user)])
-def reset_user_password(user_id: str, body: UserPasswordBody):
-    auth.reset_password(user_id, body.password)
-    return {"ok": True}
-
-
-@app.delete("/api/users/{user_id}", dependencies=[Depends(auth.current_user)])
-def delete_user(user_id: str):
-    auth.delete_user(user_id)
-    return {"ok": True}
 
 
 _dashboard_plex_cache = {"at": 0.0, "value": None}
@@ -2309,109 +1945,8 @@ def export_playlist_m3u(playlist_id: str, user=Depends(auth.current_user)):
     )
 
 
-@app.post("/api/listening/events")
-def listening_event(body: ListeningEventBody, user=Depends(auth.current_user)):
-    return recommendation_service.record_event(
-        user["id"],
-        body.eventType,
-        body.fileId,
-        body.externalRef,
-        body.positionMs,
-        body.durationMs,
-        body.context,
-    )
 
 
-@app.get("/api/recommendations")
-def recommendations(user=Depends(auth.current_user)):
-    return recommendation_service.list_recommendations(user["id"])
-
-
-@app.post("/api/recommendations/refresh")
-def refresh_recommendations(body: RecommendationRefreshBody, request: Request, user=Depends(auth.current_user)):
-    result = recommendation_service.refresh(user["id"], body.discoveries, body.exploration)
-    audit.record(
-        user["id"],
-        request.state.request_id,
-        "recommendation.refresh",
-        "profile",
-        user["id"],
-        "success",
-        {"candidateCount": len(result["items"]), "exploration": body.exploration},
-    )
-    return result
-
-
-@app.get("/api/audit/events")
-def audit_events(limit: int = Query(default=100, ge=1, le=500), user=Depends(auth.current_user)):
-    if user["role"] not in ("owner", "admin"):
-        raise HTTPException(status_code=403, detail="只有管理员可以查看审计记录")
-    return {"items": audit.list_events(limit)}
-
-
-def _backup_dir() -> Path:
-    directory = settings.data_dir / "backups"
-    directory.mkdir(parents=True, exist_ok=True)
-    return directory
-
-
-def _backup_path(name: str) -> Path:
-    safe = Path(name).name
-    if safe != name or not re.fullmatch(r"songlib-\d{8}-\d{6}\.db", safe):
-        raise HTTPException(status_code=400, detail="备份文件名无效")
-    return _backup_dir() / safe
-
-
-@app.get("/api/backups", dependencies=[Depends(auth.current_user)])
-def list_backups():
-    items = []
-    for path in sorted(_backup_dir().glob("songlib-*.db"), reverse=True):
-        stat = path.stat()
-        items.append({"name": path.name, "size": stat.st_size, "createdAt": datetime.fromtimestamp(stat.st_mtime).isoformat()})
-    return {"items": items}
-
-
-@app.post("/api/backups", dependencies=[Depends(auth.current_user)])
-def create_backup():
-    if not settings.db_path.exists():
-        raise HTTPException(status_code=404, detail="当前数据库不存在")
-    name = datetime.now().strftime("songlib-%Y%m%d-%H%M%S.db")
-    target = _backup_dir() / name
-    source = sqlite3.connect(settings.db_path)
-    destination = sqlite3.connect(target)
-    try:
-        source.backup(destination)
-    finally:
-        destination.close()
-        source.close()
-    target.chmod(0o600)
-    return {"ok": True, "item": {"name": name, "size": target.stat().st_size, "createdAt": datetime.now().isoformat()}}
-
-
-@app.get("/api/backups/{name}/download", dependencies=[Depends(auth.current_user)])
-def download_backup(name: str):
-    path = _backup_path(name)
-    if not path.exists():
-        raise HTTPException(status_code=404, detail="备份不存在")
-    return FileResponse(path, filename=path.name, media_type="application/x-sqlite3")
-
-
-@app.post("/api/backups/{name}/restore", dependencies=[Depends(auth.current_user)])
-def restore_backup(name: str):
-    path = _backup_path(name)
-    if not path.exists():
-        raise HTTPException(status_code=404, detail="备份不存在")
-    source = sqlite3.connect(path)
-    destination = sqlite3.connect(settings.db_path)
-    try:
-        check = source.execute("PRAGMA integrity_check").fetchone()
-        if not check or check[0] != "ok":
-            raise HTTPException(status_code=409, detail="备份完整性检查未通过")
-        source.backup(destination)
-    finally:
-        destination.close()
-        source.close()
-    return {"ok": True, "restored": name, "message": "备份已恢复，请重新登录以刷新会话。"}
 
 
 STATIC_DIR = Path(os.getenv("STATIC_DIR", "/app/static"))

@@ -53,6 +53,7 @@
 @import "../features/library/local.css";
 @import "../features/discover/discover.css";
 @import "../features/tools/tasks.css";
+@import "../features/me/me.css";
 
 /* --- 历史层，待清空 --- */
 @import "../styles.css";

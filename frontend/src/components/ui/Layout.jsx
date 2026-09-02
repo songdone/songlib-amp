@@ -6,12 +6,20 @@
  * 区块标题的"查看全部"有时是 text-button，有时是 secondary 按钮。
  *
  * 层级约定（不要打破）：
- *   PageHeader 的标题是页面上唯一的 h1；
- *   SectionHeader 是 h2；
+ *
+ *   h1 只有一个，而且不在这里 —— 是顶栏那个页名（见 shell/Topbar）。
+ *   它每页都在、每页唯一，正是这一页的名字。
+ *   PageHeader 和 SectionHeader 都是 h2：PageHeader 是页首的引导块，
+ *   不是各个 Section 的容器，两者是兄弟关系而不是父子关系。
  *   EmptyState 的标题永远是区块级，不参与和页面标题争大小。
+ *
+ * 页面正文里不要再写 <h1>。之前 PageHeader 渲染 h1，
+ * 首页于是有两个 h1（顶栏"首页" + 正文"听点喜欢的"），
+ * 读屏器报出来是两个页面标题。
  */
 
 import { forwardRef } from "react";
+import { useReveal } from "../../hooks/useReveal";
 import { ChevronRight } from "lucide-react";
 import { Button } from "./Button";
 
@@ -30,7 +38,7 @@ export function PageHeader({ eyebrow, title, lead, actions }) {
         {eyebrow && <p className="ui-page-header__eyebrow">{eyebrow}</p>}
         {/* 标题用自上而下的渐变填充，底部略淡。
             只在页面级大标题上用 —— 小字加渐变会糊。 */}
-        <h1 className="ui-page-header__title text-gradient">{title}</h1>
+        <h2 className="ui-page-header__title text-gradient">{title}</h2>
         {lead && <p className="ui-page-header__lead">{lead}</p>}
       </div>
       {actions && <div className="ui-page-header__actions">{actions}</div>}
@@ -62,6 +70,10 @@ export function SectionHeader({ title, note, moreLabel = "查看全部", onMore,
 /**
  * 列表行。左侧视觉、中间主次文案、右侧尾随内容。
  * 传 onClick 就是可点的，会渲染成 button 并带上箭头。
+ *
+ * 传了 onClick 就不要往 trailing 里放按钮 —— 整行是 <button>，
+ * 里面再放一个就是嵌套交互元素：HTML 无效，键盘和读屏行为都不确定。
+ * 一行需要两个以上动作时，不要给行本身 onClick，把动作都放进 trailing。
  */
 export function ListRow({
   leading,
@@ -143,12 +155,19 @@ export const Page = forwardRef(function Page({ children, className = "" }, ref) 
 /**
  * 区块。把标题和内容绑在一起，间距由这里给。
  *
- * @param reveal 传 true 时加上 .rise，进入视口才淡入上浮。
+ * @param reveal 传 true 时进入视口才淡入上浮。
  *               首屏就在视野里的区块不要传 —— 那会让人看到一次多余的动画。
+ *
+ * 观察器挂在自己身上，不依赖上层记得调 useReveal。
+ * 之前是"加上 .rise 类，等页面容器上的观察器来标记"，
+ * 而 .rise 的初始状态是 opacity:0 —— 页面忘了挂 ref，
+ * 整个区块就永久不可见，而且不报任何错。这种 API 迟早会出事。
  */
 export function Section({ children, className = "", reveal = false }) {
+  const revealRef = useReveal({ enabled: reveal });
   return (
     <section
+      ref={reveal ? revealRef : undefined}
       className={["ui-section", reveal && "rise", className]
         .filter(Boolean)
         .join(" ")}

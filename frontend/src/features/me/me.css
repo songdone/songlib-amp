@@ -1,0 +1,169 @@
+/**
+ * 我的。
+ *
+ * 列表、空状态、统计磁贴都来自 components/ui，
+ * 这里只写这一页独有的两块：近 7 天柱状条、常听歌手排行。
+ */
+
+@layer components {
+  .me-columns {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--space-10) var(--space-8);
+  }
+
+  .me-insights {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: var(--space-6);
+    padding: var(--space-5);
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+  }
+
+  @media (max-width: 720px) {
+    .me-insights {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  /* =============================================================
+   * 近 7 天
+   *
+   * 柱子从底部长起来，所以每天是一个上下三段的格子：
+   * 数字 / 柱槽 / 日期。柱槽用 flex-end 对齐，柱子只给高度百分比。
+   * ============================================================= */
+
+  .me-week {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: var(--space-2);
+    align-items: stretch;
+    min-height: 132px;
+  }
+
+  .me-week__day {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: var(--space-1);
+    justify-items: center;
+  }
+
+  .me-week__count {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .me-week__track {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .me-week__track i {
+    display: block;
+    /* 限宽并居中。不限的话七天分完一行有一百多像素，
+       满格那天会长成一个方块，读不出"柱状"这件事。 */
+    width: min(100%, 26px);
+    border-radius: var(--radius-sm);
+    /* 上浅下深，柱子看起来是从底部长出来的。 */
+    background: linear-gradient(
+      180deg,
+      var(--accent-solid),
+      var(--accent-soft-hover)
+    );
+  }
+
+  .me-week__label {
+    font-size: var(--text-2xs);
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* =============================================================
+   * 常听歌手
+   * ============================================================= */
+
+  .me-artists h3 {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+  }
+
+  .me-artists ol {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: var(--space-3) 0 0;
+    padding: 0;
+    /* 自带序号，不需要列表标记 */
+    list-style: none;
+    counter-reset: artist;
+  }
+
+  .me-artists li {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-2);
+    counter-increment: artist;
+    font-size: var(--text-sm);
+  }
+
+  /* 序号用 counter 生成，不写进 JSX —— 排序变了不用改两处。 */
+  .me-artists li::before {
+    content: counter(artist, decimal-leading-zero);
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .me-artists li span {
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .me-artists li em {
+    font-style: normal;
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .me-artists p {
+    margin: var(--space-3) 0 0;
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+  }
+
+  /* =============================================================
+   * 歌单行
+   * ============================================================= */
+
+  .me-playlist-icon {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    background: var(--surface-3);
+    color: var(--text-secondary);
+  }
+
+  .me-playlist-icon svg {
+    width: 18px;
+    height: 18px;
+    stroke-width: 1.8;
+  }
+
+  .me-playlist-actions {
+    display: flex;
+    gap: var(--space-1);
+  }
+}

@@ -1,0 +1,270 @@
+/**
+ * 任务。
+ *
+ * 行内一共五个格子：状态图标、文字、状态徽章、操作按钮、时间。
+ * 后三个固定宽度 —— 否则每行的宽度取决于这一行有几个按钮，
+ * 状态徽章的位置会上下错开。
+ */
+
+@layer components {
+  .task-list {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .task-row {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr) 92px 132px 72px;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .task-row + .task-row {
+    border-block-start: 1px solid var(--border-subtle);
+  }
+
+  .task-row__icon {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-md);
+    background: var(--surface-3);
+    color: var(--text-secondary);
+  }
+
+  .task-row__icon svg {
+    width: 16px;
+    height: 16px;
+    stroke-width: 1.9;
+  }
+
+  .task-row__icon--accent {
+    background: var(--accent-soft);
+    color: var(--accent-text);
+  }
+
+  .task-row__icon--warning {
+    background: var(--warning-soft);
+    color: var(--warning-text);
+  }
+
+  .task-row__icon--danger {
+    background: var(--danger-soft);
+    color: var(--danger-text);
+  }
+
+  .task-row__icon--success {
+    background: var(--success-soft);
+    color: var(--success-text);
+  }
+
+  .task-row__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  /* 标题是按钮，但要看着像标题：去掉按钮外观，只保留可点的手感。 */
+  .task-row__title {
+    padding: 0;
+    border: 0;
+    background: none;
+    text-align: start;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-primary);
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .task-row__title:hover {
+    color: var(--accent-text);
+  }
+
+  .task-row__title:focus-visible {
+    outline: 2px solid var(--accent-border);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  .task-row__text small {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .task-row__bar {
+    height: 3px;
+    margin-block-start: var(--space-1);
+    border-radius: var(--radius-pill);
+    background: var(--surface-3);
+    overflow: hidden;
+  }
+
+  .task-row__bar i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--accent-solid);
+    transition: width var(--duration-slow) var(--ease-out);
+  }
+
+  .task-row__actions {
+    display: flex;
+    gap: var(--space-1);
+    justify-content: flex-end;
+  }
+
+  .task-row__time {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 860px) {
+    .task-row {
+      grid-template-columns: 32px minmax(0, 1fr) 92px;
+      row-gap: var(--space-2);
+    }
+
+    /* 操作按钮和时间折到第二行。 */
+    .task-row__actions {
+      grid-column: 2;
+      justify-content: flex-start;
+    }
+
+    .task-row__time {
+      grid-column: 3;
+    }
+  }
+
+  /* =============================================================
+   * 详情弹窗里的内容
+   * ============================================================= */
+
+  .task-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--space-4);
+    margin: 0;
+  }
+
+  .task-meta dt {
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+
+  .task-meta dd {
+    margin: 2px 0 0;
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+  }
+
+  .task-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    background: var(--surface-inset);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+  }
+
+  .task-preview__lead {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+  }
+
+  .task-preview dl {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    width: 100%;
+    margin: 0;
+  }
+
+  .task-preview dl > div {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+
+  .task-preview dt {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+  }
+
+  .task-preview dd {
+    margin: 0;
+    min-width: 0;
+    font-size: var(--text-xs);
+    color: var(--text-primary);
+  }
+
+  /* 路径用等宽字体并允许换行 —— 绝对路径经常比弹窗还宽。 */
+  .task-preview code {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    overflow-wrap: anywhere;
+  }
+
+  .task-logs {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    max-height: 40vh;
+    overflow-y: auto;
+    padding: var(--space-3);
+    background: var(--surface-inset);
+    border-radius: var(--radius-md);
+  }
+
+  .task-logs__line {
+    display: grid;
+    grid-template-columns: 132px minmax(0, 1fr);
+    gap: var(--space-3);
+    font-size: var(--text-xs);
+  }
+
+  .task-logs__line time {
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .task-logs__line p {
+    margin: 0;
+    color: var(--text-secondary);
+    overflow-wrap: anywhere;
+  }
+
+  .task-logs__line.error p,
+  .task-logs__line.failed p {
+    color: var(--danger-text);
+  }
+
+  .task-logs__line.success p {
+    color: var(--success-text);
+  }
+
+  @media (max-width: 720px) {
+    .task-logs__line {
+      grid-template-columns: minmax(0, 1fr);
+      row-gap: 2px;
+    }
+  }
+}

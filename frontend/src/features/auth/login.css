@@ -27,11 +27,25 @@
    * 前景文字的对比度都是可预期的。
    * ============================================================= */
 
+  /*
+   * 视频容器。
+   *
+   * 关键：岛屿是**主体**，不是纹理。主体一旦拉伸铺满就会糊 ——
+   * 源片只有 1150×646，铺满 1440px+ 的视口等于放大 1.3 倍以上，
+   * 叠加上编码损失就是一团模糊。
+   *
+   * 所以这里按原生尺寸容纳（宽度上限 1150px），宁可让它在超宽屏上
+   * 只占中间一块，也不放大。视口比它窄时才等比缩小 —— 缩小不损画质。
+   */
   .login .video-backdrop {
     position: absolute;
-    inset: 0;
     z-index: 0;
-    overflow: hidden;
+    inset-block-start: 50%;
+    inset-inline-start: 52%;
+    width: min(1150px, 104vw);
+    aspect-ratio: 1150 / 646;
+    translate: -50% -50%;
+    overflow: visible;
   }
 
   .login .video-backdrop img,
@@ -40,7 +54,8 @@
     inset: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    /* contain 而不是 cover：不裁切、不为填满容器而放大。 */
+    object-fit: contain;
     /*
      * 双层遮罩，两个作用叠加：
      *
@@ -52,18 +67,33 @@
      *
      * mask-composite: intersect 让两层同时生效，取最严格的那个。
      */
+    /*
+     * 边缘遮罩，两个作用：
+     * 1. 让视频融进页面底色，不是一块边界清晰的矩形；
+     * 2. 源片有一处水印沿画面四周游走（右侧 → 左侧 → 右下角），
+     *    它始终贴边不进中心，外圈彻底透明就看不见。
+     *
+     * 容器现在就是视频本身的尺寸，所以百分比直接对应画面比例。
+     */
     mask-image:
       radial-gradient(
-        ellipse 46% 60% at 52% 46%,
+        ellipse 52% 58% at 50% 48%,
         #000 0%,
-        #000 48%,
-        transparent 100%
+        #000 46%,
+        transparent 96%
       ),
       linear-gradient(
         to right,
         transparent 0%,
-        #000 16%,
-        #000 84%,
+        #000 14%,
+        #000 86%,
+        transparent 100%
+      ),
+      linear-gradient(
+        to bottom,
+        transparent 0%,
+        #000 10%,
+        #000 88%,
         transparent 100%
       );
     mask-composite: intersect;

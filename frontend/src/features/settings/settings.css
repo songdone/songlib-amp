@@ -1,0 +1,79 @@
+/**
+ * 设置页。
+ *
+ * 迁移这一块的直接原因：浅色主题下设置页的二级导航是一块深色孤岛。
+ * 根因是旧规则把深色值写死了 ——
+ *   background: rgba(20, 21, 26, 0.7)
+ *   color: rgba(245, 245, 247, 0.58) / #f5f5f7 / #f6d48e
+ * 这些值只在深色下成立，浅色主题的组件级重写又没覆盖到这里。
+ *
+ * 换成语义 token 之后，主题切换自动跟随，不需要为浅色再写一遍。
+ * 这也是整个 legacy 层要迁走的原因：靠逐个选择器枚举来支持第二套主题，
+ * 必然会漏。
+ */
+
+@layer components {
+  .settings-page .settings-tabs {
+    position: sticky;
+    top: calc(var(--topbar-height) + var(--space-4));
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin: 0;
+    padding: var(--space-2);
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    /* 去掉 backdrop-filter：这块是贴在页面上的实体面板，不是浮层。
+       每一层 backdrop-filter 都要重采样背后内容，用在不需要的地方只是浪费。 */
+  }
+
+  .settings-page .settings-tabs button {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: var(--control-height-lg);
+    padding-inline: var(--space-3);
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    text-align: start;
+    white-space: nowrap;
+    box-shadow: none;
+  }
+
+  .settings-page .settings-tabs button:hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+  }
+
+  .settings-page .settings-tabs button.active {
+    background: var(--accent-soft);
+    color: var(--accent-text);
+  }
+
+  .settings-page .settings-tabs button svg {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    stroke-width: 1.8;
+  }
+
+  /* 分组标签。原先没有独立样式，靠 button 的默认色蒙混过去。 */
+  .settings-page .settings-tab-group {
+    display: block;
+    padding: var(--space-3) var(--space-3) var(--space-1);
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+
+  .settings-page .settings-tab-group:first-child {
+    padding-block-start: var(--space-1);
+  }
+}

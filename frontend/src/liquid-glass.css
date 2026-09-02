@@ -30,11 +30,8 @@
     background: #f5f5f7;
     color: #1d1d1f;
   }
-.visual-shell .panel,
 .visual-shell .setting-card,
-.visual-shell .stat-card,
 .visual-shell .source-strip,
-.visual-shell .modal,
 .visual-shell .mini-player{
     background: linear-gradient(
         145deg,
@@ -132,27 +129,6 @@
 .visual-shell[data-theme="light"]:not(.route-player) .eyebrow{
     color: var(--light-gold);
     opacity: 1;
-  }
-
-  .visual-shell[data-theme="light"]:not(.route-player) .text-button {
-    min-height: 32px;
-    padding: 0 11px;
-    border: 1px solid rgba(117, 80, 0, 0.18);
-    border-radius: 999px;
-    background: rgba(255, 252, 244, 0.76);
-    color: #704b00;
-    font-weight: 720;
-    box-shadow: 0 7px 20px rgba(67, 51, 18, 0.08);
-  }
-
-  .visual-shell[data-theme="light"]:not(.route-player) .text-button:hover {
-    background: #fff8e8;
-    border-color: rgba(117, 80, 0, 0.32);
-  }
-
-  .visual-shell[data-theme="light"]:not(.route-player) :is(.secondary, .icon-button) {
-    font-weight: 650;
-    box-shadow: 0 7px 20px rgba(41, 46, 55, 0.07);
   }
 
   .visual-shell[data-theme="light"]:not(.route-player) :is(.bar, .mini-progress) {
@@ -264,18 +240,6 @@
     color: #664500;
   }
 
-  .visual-shell[data-theme="light"]:not(.route-player) .avatar {
-    border-color: rgba(35, 38, 44, 0.16);
-    background: rgba(255, 255, 255, 0.78);
-    color: #38383d;
-    box-shadow: 0 7px 20px rgba(41, 46, 55, 0.08);
-  }
-
-  .visual-shell[data-theme="light"]:not(.route-player) .avatar svg {
-    color: #38383d;
-    opacity: 1;
-  }
-
   .visual-shell[data-theme="light"]:not(.route-player) .mini-player {
     color: #202024;
   }
@@ -318,22 +282,13 @@
     border-color: rgba(190, 128, 16, 0.38);
   }
 .visual-shell[data-theme="light"] .page,
-.visual-shell[data-theme="light"] .panel,
 .visual-shell[data-theme="light"] .setting-card,
-.visual-shell[data-theme="light"] .stat-card,
 .visual-shell[data-theme="light"] .source-strip{
     color: #1d1d1f;
   }
-.visual-shell[data-theme="light"] .panel :is(h1, h2, h3, h4, strong),
 .visual-shell[data-theme="light"] .setting-card :is(h1, h2, h3, h4, strong),
 .visual-shell[data-theme="light"] .topbar h2{
     color: #1d1d1f;
-  }
-
-  .visual-shell[data-theme="light"] :is(.secondary, .icon-button, .text-button, input, select, textarea) {
-    background: rgba(255, 255, 255, 0.58);
-    color: #2c2c2e;
-    border-color: rgba(20, 24, 31, 0.12);
   }
 
   /* Appearance controls */
@@ -410,10 +365,6 @@
     min-height: 100dvh;
     background: #0b0908;
     color: #fff;
-  }
-
-  .route-player .player-progress {
-    margin: 10px 0 8px;
   }
 
   @media (max-width: 900px) {

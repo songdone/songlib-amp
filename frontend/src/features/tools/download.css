@@ -157,3 +157,112 @@
     }
   }
 }
+
+@layer components {
+  /* =============================================================
+   * 下载目录（手动丢进来的）
+   * ============================================================= */
+
+  .inbox__roots {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+  }
+
+  .inbox__roots svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .inbox__roots code {
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+  }
+
+  .inbox-table {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .inbox-table__row {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1.1fr) minmax(0, 2fr) 120px;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .inbox-table__row + .inbox-table__row {
+    border-block-start: 1px solid var(--border-subtle);
+  }
+
+  .inbox-table__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .inbox-table__text strong {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .inbox-table__text small {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .inbox-table__paths {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 12px minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .inbox-table__paths svg {
+    width: 12px;
+    height: 12px;
+    color: var(--text-tertiary);
+  }
+
+  /* 和待入库那张表一样：只显示路径末尾，前缀都相同。 */
+  .inbox-table__paths code {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    direction: rtl;
+    text-align: start;
+  }
+
+  .inbox-table__row > .ui-badge {
+    justify-self: end;
+  }
+
+  @media (max-width: 1000px) {
+    .inbox-table__row {
+      grid-template-columns: 20px minmax(0, 1fr) 120px;
+      row-gap: var(--space-2);
+    }
+
+    .inbox-table__paths {
+      grid-column: 2 / -1;
+    }
+  }
+}

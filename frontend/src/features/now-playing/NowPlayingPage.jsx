@@ -46,8 +46,6 @@ import {
 } from "../airplay/AirPlayLyricsCast";
 import { usePlexSessions } from "./usePlexSessions";
 
-const fallbackCover = "/visuals/fallback-cover-vinyl.svg";
-const fallbackPlayer = "/visuals/fallback-player.svg";
 
 const formatTime = (value) => {
   const seconds = Math.max(0, Math.floor(Number(value || 0)));
@@ -144,7 +142,7 @@ function LyricsOverlay({
   cast,
   onClose,
 }) {
-  const cover = coverFor(track) || fallbackCover;
+  const cover = coverFor(track);
   useEffect(() => {
     const close = (event) => event.key === "Escape" && onClose();
     window.addEventListener("keydown", close);
@@ -399,8 +397,8 @@ export default function NowPlayingPage({
     player: effectivePlayer,
   });
 
-  const cover = coverFor(track) || fallbackCover;
-  const background = coverFor(track) || fallbackPlayer;
+  const cover = coverFor(track);
+  const background = coverFor(track);
   const queue = usingRemote ? [] : localPlayer.queue || [];
   const liked = !usingRemote && track ? localPlayer.isFavorite(track) : false;
   const remoteIds = new Set(remote.sessions.map((session) => session.clientId));

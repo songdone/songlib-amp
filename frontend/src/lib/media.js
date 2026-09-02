@@ -1,10 +1,21 @@
 import { playbackDurationSeconds } from "./contracts";
 
+/**
+ * 视觉兜底资源。
+ *
+ * 这里原先还有三张 SVG：fallback-cover-vinyl / fallback-artist / fallback-player。
+ * 它们上面印着大号金色 "SONGLIB AMP / NO COVER ART" 水印，
+ * 缺封面时整屏铺开就是一堵重复的品牌噪音，还会盖过真正有封面的内容。
+ * 已经删除。
+ *
+ * 缺封面现在交给 components/ui/Cover：按标题哈希生成低饱和底色 + 标题首字，
+ * 同一张专辑颜色稳定、不同专辑互相区分，安静但可辨认。
+ * 缺背景图交给 styles/motion.css 的 .ambient 环境光晕。
+ *
+ * 不要再往这里加"带字的占位图"。
+ */
 export const VISUAL_FALLBACKS = Object.freeze({
-  login: "/visuals/login-bg.jpg",
-  artist: "/visuals/fallback-artist.svg",
-  player: "/visuals/fallback-player.svg",
-  cover: "/visuals/fallback-cover-vinyl.svg",
+  login: "/visuals/login-island.jpg",
 });
 
 export const coverUrlFor = (track) =>

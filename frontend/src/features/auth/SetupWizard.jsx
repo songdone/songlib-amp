@@ -1,7 +1,7 @@
 import { ChevronRight, CircleAlert, LoaderCircle, ShieldCheck } from "lucide-react";
 import { useState } from "react";
-import { LoginMotionBackdrop } from "../../components/Backdrops";
 import { Brand } from "../../components/Brand";
+import { VideoBackdrop } from "../../components/ui/VideoBackdrop";
 import { api } from "../../lib/api";
 
 export function SetupWizard({ onComplete }) {
@@ -39,8 +39,18 @@ export function SetupWizard({ onComplete }) {
     }
   };
   return (
-    <main className="setup-page">
-      <LoginMotionBackdrop />
+    <main className="setup-page login">
+      {/* 和登录页用同一套背景：环境光晕 + 音乐岛屿 + 压暗遮罩。
+          首装是用户见到的第一屏，和登录页保持一致的观感。 */}
+      <div className="ambient" aria-hidden="true" />
+      <VideoBackdrop
+        poster="/visuals/login-island.jpg"
+        sources={[
+          { src: "/visuals/login-island.webm", type: "video/webm" },
+          { src: "/visuals/login-island.mp4", type: "video/mp4" },
+        ]}
+      />
+      <div className="login__scrim" aria-hidden="true" />
       <section className="setup-card panel">
         <Brand />
         <span className="eyebrow"><ShieldCheck />首次设置</span>

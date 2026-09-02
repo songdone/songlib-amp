@@ -1,111 +1,187 @@
-import { Album, BookOpenText, Check, ChevronRight, CircleAlert, FolderTree, Gauge, LoaderCircle, ScrollText, ShieldCheck, Tags, UsersRound, Zap } from "lucide-react";
-import { useState } from "react";
+/**
+ * 封面与歌词。
+ *
+ * 重构前的问题（两条，都是结构性的）：
+ *
+ * 1. 归类重叠。这一页原先挂了五个"工具"：
+ *      Plex 元数据补全 / 本地标签补全 / 封面与歌词 / 重命名与目录整理 / 任务记录
+ *    其中"本地标签补全"写的是标题、歌手、专辑、年份、音轨号、风格 ——
+ *    和主导航"文件与标签"里的标签编辑器是同一件事；
+ *    "重命名与目录整理"调的是 /api/local/organize/preview + /apply ——
+ *    和"文件与标签"的整理预览是同一个接口。
+ *    "任务记录"更离谱：它是个假标签页，点了直接跳到主导航的"任务"页。
+ *
+ *    现在边界清楚了：
+ *      文件与标签 = 作用于音频文件本身（标签、目录、重命名）
+ *      封面与歌词 = 作用于配套资料（封面、歌词、歌手照片与简介）
+ *
+ * 2. 没有真正的界面。四个工具共用一组下拉框加一个"生成差异预览"按钮，
+ *    而 mock 对预览接口只回 {ok:true}，所以开发时永远看不到内容 ——
+ *    整页看起来就是"一个批量按钮"。
+ *
+ *    现在是三步的工作流：选范围 → 看清会改什么（逐条新旧对比、来源、
+ *    置信度、冲突）→ 勾掉不想改的 → 应用。
+ *    补齐资料是会覆盖文件和 Plex 数据的操作，必须让人看清再点。
+ */
+
+import {
+  ArrowRight,
+  CircleAlert,
+  Image as ImageIcon,
+  LoaderCircle,
+  ScrollText,
+  Search,
+  ShieldCheck,
+  UsersRound,
+} from "lucide-react";
+import { useMemo, useState } from "react";
+import { Badge } from "../../components/ui/Badge";
+import { Button, ButtonGroup } from "../../components/ui/Button";
+import { Cover } from "../../components/ui/Cover";
+import { Field, Notice } from "../../components/ui/Field";
+import {
+  EmptyState,
+  Page,
+  Section,
+  SectionHeader,
+} from "../../components/ui/Layout";
+import { StatGrid, StatTile } from "../../components/ui/StatTile";
 import { api } from "../../lib/api";
 
-const scrapeTabs = [
+/**
+ * 两类补齐任务。区别不是"用哪个模块"，而是**改到哪里去** ——
+ * 一个写进 Plex 的资料库，一个写成音乐目录里的文件。
+ * 用户需要先明白这个区别，才知道该选哪个。
+ */
+const JOBS = [
   {
     id: "plex",
     kind: "scrape_plex_metadata",
     icon: UsersRound,
-    tone: "amber",
-    title: "Plex 元数据补全",
-    desc: "补齐歌手海报、背景、中文简介与专辑封面，并触发 Plex 扫描。",
-    chips: ["歌手海报", "歌手背景", "中文简介", "专辑封面"],
-  },
-  {
-    id: "tags",
-    kind: "fill_local_tags",
-    icon: Tags,
-    tone: "blue",
-    title: "本地标签补全",
-    desc: "扫描标题、歌手、专辑、年份、音轨号与流派，为后续整理提供依据。",
-    chips: ["标题", "歌手", "专辑", "年份", "音轨号", "流派"],
+    title: "歌手资料与专辑封面",
+    where: "写入 Plex 资料库",
+    desc: "歌手海报、背景图、中文简介，以及 Plex 里缺封面的专辑。改完会触发一次 Plex 扫描。",
   },
   {
     id: "assets",
     kind: "fill_assets",
-    icon: BookOpenText,
-    tone: "violet",
-    title: "封面与歌词",
-    desc: "补齐 cover.jpg、内嵌封面、同名 .lrc 与 UTF-8 歌词文件。",
-    chips: ["cover.jpg", "内嵌封面", "同名 LRC", "UTF-8"],
-  },
-  {
-    id: "rename",
-    kind: "local_organize",
-    icon: FolderTree,
-    tone: "green",
-    title: "重命名与目录整理",
-    desc: "按 Plex 规则生成目标路径，先预览冲突，再批量移动目录。",
-    chips: ["路径预览", "冲突检测", "Unknown 修复", "回滚"],
-  },
-  {
-    id: "tasks",
-    kind: "tasks",
     icon: ScrollText,
-    tone: "pink",
-    title: "任务记录",
-    desc: "查看刮削、扫描、整理的进度、计数、错误和日志。",
-    chips: ["进度", "成功/失败/跳过", "错误日志", "取消/重试"],
+    title: "封面与歌词文件",
+    where: "写入音乐目录",
+    desc: "在音频文件旁边补 cover.jpg、写入内嵌封面、生成同名 .lrc 歌词（UTF-8）。",
   },
 ];
 
-export function ScrapeCenter({ jobs, navigate, settings }) {
-  const activeKinds = new Set(
-    jobs
-      .filter((j) => ["queued", "running"].includes(j.status))
-      .map((j) => j.kind),
-  );
-  const [tab, setTab] = useState("plex"),
-    [mode, setMode] = useState(settings?.scrapeRules?.defaultMode || "missing"),
-    [scope, setScope] = useState("missing"),
-    [scopeValue, setScopeValue] = useState("");
-  const [plan, setPlan] = useState(null),
-    [planPage, setPlanPage] = useState(1),
-    [busy, setBusy] = useState(""),
-    [error, setError] = useState("");
-  const action = scrapeTabs.find((item) => item.id === tab) || scrapeTabs[0];
-  const generatePlan = async () => {
+/** 范围。缩小范围是为了让预览条目少到能真的看完。 */
+const SCOPES = [
+  { id: "missing", label: "只补缺失的" },
+  { id: "all", label: "全部" },
+  { id: "specific_artist", label: "指定歌手", needsValue: "输入歌手名" },
+  { id: "specific_album", label: "指定专辑", needsValue: "输入专辑名" },
+  { id: "folder", label: "指定目录", needsValue: "/music/歌手/专辑" },
+];
+
+/** 遇到已有内容时怎么办。 */
+const MODES = [
+  { id: "missing", label: "只补空的", note: "已有内容一律不动" },
+  { id: "incremental", label: "补空 + 补更好的", note: "只在候选明显更好时替换" },
+  { id: "refresh", label: "全部重取", note: "已有内容也会被替换" },
+];
+
+/** 预览条目的筛选视图。 */
+const VIEWS = [
+  { id: "all", label: "全部" },
+  { id: "create", label: "新增" },
+  { id: "replace", label: "替换" },
+  { id: "conflict", label: "有冲突" },
+];
+
+/** newValue 是图片地址还是文字？图片要显示缩略图，文字显示片段。 */
+const isImageValue = (value) =>
+  typeof value === "string" && /^(https?:|\/)/.test(value) && !value.includes(" ");
+
+export function ScrapeCenter({ navigate }) {
+  const [jobId, setJobId] = useState("plex");
+  const [scope, setScope] = useState("missing");
+  const [scopeValue, setScopeValue] = useState("");
+  const [mode, setMode] = useState("missing");
+
+  const [plan, setPlan] = useState(null);
+  const [excluded, setExcluded] = useState(() => new Set());
+  const [view, setView] = useState("all");
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+
+  const job = JOBS.find((item) => item.id === jobId) || JOBS[0];
+  const activeScope = SCOPES.find((item) => item.id === scope) || SCOPES[0];
+
+  const resetPlan = () => {
+    setPlan(null);
+    setExcluded(new Set());
+    setView("all");
+  };
+
+  const generate = async () => {
+    if (activeScope.needsValue && !scopeValue.trim()) {
+      setError(`请先填写${activeScope.label}`);
+      return;
+    }
     setBusy("preview");
     setError("");
     try {
-      setPlan(
-        await api("/api/scrape/preview", {
-          method: "POST",
-          body: JSON.stringify({ kind: action.kind, scope, scopeValue, mode, limit: 150 }),
+      const result = await api("/api/scrape/preview", {
+        method: "POST",
+        body: JSON.stringify({
+          kind: job.kind,
+          scope,
+          scopeValue: scopeValue.trim(),
+          mode,
+          limit: 150,
         }),
-      );
-      setPlanPage(1);
+      });
+      setPlan(result);
+      setExcluded(new Set());
+      setView("all");
     } catch (err) {
       setError(err.message);
     } finally {
       setBusy("");
     }
   };
-  const planPageSize = 50;
-  const planItems = plan?.items || [];
-  const planPages = Math.max(1, Math.ceil(planItems.length / planPageSize));
-  const visiblePlanItems = planItems.slice(
-    (planPage - 1) * planPageSize,
-    planPage * planPageSize,
+
+  const items = plan?.items || [];
+
+  /** 会真正被写入的条目：动作不是 skip，且没被勾掉。 */
+  const applying = useMemo(
+    () => items.filter((item) => item.action !== "skip" && !excluded.has(item.id)),
+    [items, excluded],
   );
-  const applyPlan = async () => {
-    if (!plan) {
-      generatePlan();
-      return;
-    }
-    if (
-      !confirm(
-        `确认应用“${action.title}”？\n\n范围：${scope}\n模式：${mode}\n执行后会进入任务中心，可在日志/回滚记录中追踪。`,
-      )
-    )
-      return;
+
+  const visible = useMemo(() => {
+    if (view === "conflict") return items.filter((item) => item.conflict);
+    if (view === "all") return items;
+    return items.filter((item) => item.action === view);
+  }, [items, view]);
+
+  const toggle = (id) =>
+    setExcluded((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const apply = async () => {
+    if (!plan || !applying.length) return;
     setBusy("apply");
     setError("");
     try {
       await api("/api/scrape/apply", {
         method: "POST",
-        body: JSON.stringify({ planId: plan.id }),
+        body: JSON.stringify({
+          planId: plan.id,
+          excludeIds: [...excluded],
+        }),
       });
       navigate?.("tasks");
     } catch (err) {
@@ -114,237 +190,259 @@ export function ScrapeCenter({ jobs, navigate, settings }) {
       setBusy("");
     }
   };
+
   return (
-    <div className="page scrape-page">
-      <section className="page-intro">
-        <p>找出缺封面、缺歌词、缺歌手照片和简介的条目，把它们补上。每一处都会先给你看现在是什么、要换成什么，你确认了才写入。</p>
-      </section>
-      <div className="scrape-tabs">
-        {scrapeTabs.map((item) => (
-          <button
-            className={tab === item.id ? "active" : ""}
-            onClick={() => {
-              if (item.id === "tasks") {
-                navigate?.("tasks");
-                return;
-              }
-              setTab(item.id);
-              setPlan(null);
-              setPlanPage(1);
-            }}
-            key={item.id}
-          >
-            <item.icon />
-            {item.title}
-          </button>
-        ))}
-      </div>
-      <section className="panel scrape-workbench">
-        <div className="scrape-main">
-          <div className={`action-icon ${action.tone}`}>
-            <action.icon />
-          </div>
-          <div>
-            <h3>{action.title}</h3>
-            <p>{action.desc}</p>
-            <div className="chips">
-              {action.chips.map((chip) => (
-                <span key={chip}>{chip}</span>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="scrape-options">
-          <label>
-            范围
-            <select
-              value={scope}
-              onChange={(e) => {
-                setScope(e.target.value);
-                setPlan(null);
-                setPlanPage(1);
+    <Page className="scrape">
+      <p className="scrape__lead">
+        找出缺封面、缺歌词、缺歌手照片和简介的条目，把它们补上。
+        每一条都会先给你看现在是什么、要换成什么，你确认了才写入。
+      </p>
+
+      {/* --- 第一步：补什么，改到哪里 --- */}
+      <Section>
+        <SectionHeader title="补什么" note="两者写入的位置不同，先选清楚" />
+        <div className="scrape__jobs">
+          {JOBS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              aria-pressed={jobId === item.id}
+              className={`scrape__job${jobId === item.id ? " scrape__job--on" : ""}`}
+              onClick={() => {
+                setJobId(item.id);
+                resetPlan();
               }}
             >
-              <option value="all">全部</option>
-              <option value="missing">缺失项</option>
-              <option value="specific_artist">指定歌手</option>
-              <option value="specific_album">指定专辑</option>
-              <option value="folder">指定文件夹</option>
-              <option value="missing_cover">仅缺失封面</option>
-              <option value="missing_lyrics">仅缺失歌词</option>
-              <option value="missing_background">仅缺失背景图</option>
-              <option value="missing_bio">仅缺失中文简介</option>
-              <option value="unknown">Unknown Artist / Album</option>
-            </select>
-          </label>
-          {["specific_artist", "specific_album", "folder"].includes(scope) && (
-            <label>
-              {scope === "folder" ? "目录" : "名称"}
-              <input
-                value={scopeValue}
-                onChange={(e) => {
-                  setScopeValue(e.target.value);
-                  setPlan(null);
+              <span className="scrape__job-icon">
+                <item.icon />
+              </span>
+              <span className="scrape__job-text">
+                <span className="scrape__job-head">
+                  <strong>{item.title}</strong>
+                  <Badge tone={jobId === item.id ? "accent" : "neutral"}>
+                    {item.where}
+                  </Badge>
+                </span>
+                <small>{item.desc}</small>
+              </span>
+            </button>
+          ))}
+        </div>
+      </Section>
+
+      {/* --- 第二步：范围与覆盖策略 --- */}
+      <Section>
+        <SectionHeader
+          title="改哪些"
+          note="范围越小，下一步的清单越能真的看完"
+        />
+        <div className="scrape__scope">
+          <div className="scrape__chips" role="group" aria-label="范围">
+            {SCOPES.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                aria-pressed={scope === item.id}
+                className={`scrape__chip${scope === item.id ? " scrape__chip--on" : ""}`}
+                onClick={() => {
+                  setScope(item.id);
+                  setScopeValue("");
+                  resetPlan();
                 }}
-                placeholder={scope === "folder" ? "/music/歌手/专辑" : "输入准确名称"}
-              />
-            </label>
-          )}
-          <label>
-            模式
-            <select
-              value={mode}
-              onChange={(e) => {
-                setMode(e.target.value);
-                setPlan(null);
-                setPlanPage(1);
-              }}
-            >
-              <option value="missing">只补缺失</option>
-              <option value="incremental">增量更新</option>
-              <option value="refresh">全量刷新</option>
-              <option value="force">强制覆盖</option>
-            </select>
-          </label>
-        </div>
-        {error && (
-          <div className="inline-error">
-            <CircleAlert />
-            {error}
+              >
+                {item.label}
+              </button>
+            ))}
           </div>
-        )}
-        <div className="preview-list scrape-preview">
-          {plan ? (
-            <>
-              <div>
-                <div>
-                  <small>预览生成时间</small>
-                  <code>
-                    {new Date(plan.createdAt).toLocaleString("zh-CN")}
-                  </code>
-                </div>
-                <ChevronRight />
-                <div>
-                  <small>策略</small>
-                  <code>
-                    {plan.scope} · {plan.mode}
-                  </code>
-                </div>
-                <i className="safe">未执行</i>
-              </div>
-              <div className="scrape-summary">
-                <span>新增 {plan.summary.create}</span>
-                <span>替换 {plan.summary.replace}</span>
-                <span>跳过 {plan.summary.skip}</span>
-                <span>冲突 {plan.summary.conflicts}</span>
-              </div>
-              <div className="scrape-diff-head">
-                <span>对象 / 字段</span>
-                <span>旧值</span>
-                <span>候选新值</span>
-                <span>来源 / 置信度</span>
-                <span>结果</span>
-              </div>
-              {visiblePlanItems.map((item) => (
-                <div className="scrape-diff-row" key={item.id}>
-                  <div>
-                    <strong>{item.target}</strong>
-                    <small>{item.field}</small>
-                  </div>
-                  <code>{item.oldValue}</code>
-                  <code>{item.newValue}</code>
-                  <div>
-                    <strong>{item.candidateSource}</strong>
-                    <small>{Math.round(item.confidence * 100)}% 置信度</small>
-                  </div>
-                  <i
-                    className={
-                      item.conflict || item.action === "skip"
-                        ? "danger"
-                        : "safe"
-                    }
-                  >
-                    {item.skipReason ||
-                      (item.conflict
-                        ? "存在冲突"
-                        : item.action === "replace"
-                          ? "将替换"
-                          : "将新增")}
-                  </i>
-                </div>
-              ))}
-              {planItems.length > planPageSize && (
-                <div className="pagination scrape-pagination">
-                  <button
-                    className="secondary small"
-                    disabled={planPage <= 1}
-                    onClick={() => setPlanPage((value) => value - 1)}
-                  >
-                    上一页
-                  </button>
-                  <span>
-                    第 {planPage} / {planPages} 页 · 共 {planItems.length} 项
-                  </span>
-                  <button
-                    className="secondary small"
-                    disabled={planPage >= planPages}
-                    onClick={() => setPlanPage((value) => value + 1)}
-                  >
-                    下一页
-                  </button>
-                </div>
-              )}
-            </>
-          ) : (
-            <div>
-              <div>
-                <small>预览状态</small>
-                <code>尚未生成</code>
-              </div>
-              <ChevronRight />
-              <div>
-                <small>下一步</small>
-                <code>先点击生成差异预览</code>
-              </div>
-              <i>不会执行</i>
-            </div>
+
+          {activeScope.needsValue && (
+            <Field
+              label={activeScope.label}
+              leading={Search}
+              placeholder={activeScope.needsValue}
+              value={scopeValue}
+              onChange={(event) => {
+                setScopeValue(event.target.value);
+                resetPlan();
+              }}
+            />
           )}
-        </div>
-        <div className="scrape-actions">
-          <button
-            className="secondary"
-            disabled={activeKinds.has(action.kind) || !!busy}
-            onClick={generatePlan}
+
+          <div className="scrape__modes" role="group" aria-label="遇到已有内容时">
+            {MODES.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                aria-pressed={mode === item.id}
+                className={`scrape__mode${mode === item.id ? " scrape__mode--on" : ""}`}
+                onClick={() => {
+                  setMode(item.id);
+                  resetPlan();
+                }}
+              >
+                <strong>{item.label}</strong>
+                <small>{item.note}</small>
+              </button>
+            ))}
+          </div>
+
+          <Button
+            variant="primary"
+            icon={busy === "preview" ? undefined : Search}
+            loading={busy === "preview"}
+            onClick={generate}
           >
-            {busy === "preview" ? <LoaderCircle className="spin" /> : <Gauge />}
-            生成差异预览
-          </button>
-          <button
-            className="primary"
-            disabled={
-              activeKinds.has(action.kind) ||
-              !plan ||
-              !!busy ||
-              plan.summary.create + plan.summary.replace === 0
-            }
-            onClick={applyPlan}
-          >
-            {activeKinds.has(action.kind) || busy === "apply" ? (
-              <LoaderCircle className="spin" />
-            ) : (
-              <Check />
-            )}
-            应用修改
-          </button>
+            看看会改什么
+          </Button>
         </div>
-      </section>
-      <section className="safe-note">
-        <ShieldCheck />
-        <div>
-          <strong>安全写入策略</strong>
-          <p>无法精确匹配的条目会自动跳过；完成后可在任务中心查看结果。</p>
-        </div>
-      </section>
-    </div>
+      </Section>
+
+      {error && (
+        <Notice tone="danger" icon={CircleAlert}>
+          {error}
+        </Notice>
+      )}
+
+      {/* --- 第三步：逐条核对 --- */}
+      {plan && (
+        <Section>
+          <SectionHeader
+            title="会改这些"
+            note={`生成于 ${new Date(plan.createdAt).toLocaleString("zh-CN")} · 还没有执行`}
+          />
+
+          <StatGrid>
+            <StatTile tone="success" value={plan.summary.create} label="项要新增" />
+            <StatTile tone="warning" value={plan.summary.replace} label="项会被替换" />
+            <StatTile value={plan.summary.skip} label="项自动跳过" />
+            <StatTile
+              tone={plan.summary.conflicts ? "danger" : "neutral"}
+              value={plan.summary.conflicts}
+              label="项有冲突"
+              detail={plan.summary.conflicts ? "建议逐条看过再应用" : "没有冲突"}
+            />
+          </StatGrid>
+
+          <div className="scrape__views" role="group" aria-label="筛选">
+            {VIEWS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                aria-pressed={view === item.id}
+                className={`scrape__chip${view === item.id ? " scrape__chip--on" : ""}`}
+                onClick={() => setView(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          {visible.length ? (
+            <ul className="scrape__list">
+              {visible.map((item) => {
+                const skipped = item.action === "skip";
+                const off = excluded.has(item.id);
+                return (
+                  <li
+                    key={item.id}
+                    className={`scrape__row${off || skipped ? " scrape__row--off" : ""}`}
+                  >
+                    {/* 跳过的条目不给勾选框 —— 它本来就不会被写入，
+                        给个能勾的框只会让人以为可以强制执行。 */}
+                    {skipped ? (
+                      <span className="scrape__row-skip" aria-hidden="true" />
+                    ) : (
+                      <input
+                        type="checkbox"
+                        checked={!off}
+                        onChange={() => toggle(item.id)}
+                        aria-label={`应用「${item.target}」的${item.field}`}
+                      />
+                    )}
+
+                    <span className="scrape__row-main">
+                      <span className="scrape__row-head">
+                        <strong>{item.target}</strong>
+                        <Badge>{item.field}</Badge>
+                        {item.conflict && <Badge tone="danger">冲突</Badge>}
+                        {skipped && <Badge tone="warning">已跳过</Badge>}
+                      </span>
+
+                      {skipped ? (
+                        <small className="scrape__row-note">{item.skipReason}</small>
+                      ) : (
+                        <span className="scrape__diff">
+                          <span className="scrape__diff-old">{item.oldValue}</span>
+                          <ArrowRight aria-hidden="true" />
+                          {isImageValue(item.newValue) ? (
+                            <Cover
+                              src={item.newValue}
+                              title={item.target}
+                              size="40px"
+                              shape="square"
+                            />
+                          ) : (
+                            <span className="scrape__diff-new">{item.newValue}</span>
+                          )}
+                        </span>
+                      )}
+                    </span>
+
+                    <span className="scrape__row-meta">
+                      <small>{item.candidateSource}</small>
+                      <small>匹配度 {Math.round(item.confidence * 100)}%</small>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <EmptyState
+              icon={ImageIcon}
+              title="这个筛选下没有条目"
+              text="换一个筛选看看，或者把范围放宽再生成一次。"
+            />
+          )}
+
+          {/* --- 确认条 --- */}
+          <div className="scrape__confirm">
+            <div className="scrape__confirm-text">
+              {applying.length ? (
+                <>
+                  <strong>将写入 {applying.length} 项</strong>
+                  <span>
+                    {excluded.size > 0 && `已勾掉 ${excluded.size} 项，`}
+                    {plan.summary.skip > 0 && `${plan.summary.skip} 项自动跳过，`}
+                    执行记录和回滚数据会留在任务里
+                  </span>
+                </>
+              ) : (
+                <span>没有要写入的条目</span>
+              )}
+            </div>
+            <ButtonGroup align="end">
+              <Button onClick={resetPlan}>重新选择</Button>
+              <Button
+                variant="primary"
+                icon={busy === "apply" ? undefined : ShieldCheck}
+                loading={busy === "apply"}
+                disabled={!applying.length}
+                onClick={apply}
+              >
+                应用这 {applying.length} 项
+              </Button>
+            </ButtonGroup>
+          </div>
+        </Section>
+      )}
+
+      {!plan && !busy && (
+        <EmptyState
+          icon={LoaderCircle}
+          title="还没有生成清单"
+          text="选好上面的范围，点「看看会改什么」。生成清单不会修改任何东西。"
+        />
+      )}
+    </Page>
   );
 }

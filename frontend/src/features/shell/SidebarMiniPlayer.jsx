@@ -1,13 +1,14 @@
-import { ChevronRight, Heart, Music2, Pause, Play } from "lucide-react";
+import { ChevronRight, Heart, Pause, Play } from "lucide-react";
+import { Cover } from "../../components/ui/Cover";
 import { formatTime, pct } from "../../lib/format";
-import { VISUAL_FALLBACKS, coverUrlFor } from "../../lib/media";
+import { coverUrlFor } from "../../lib/media";
 import { usePlayer } from "../player/PlayerProvider";
 
 export function SidebarMiniPlayer({ openPlayer }) {
   const player = usePlayer();
   const current = player.currentTrack;
   if (!current) return null;
-  const cover = coverUrlFor(current) || VISUAL_FALLBACKS.cover;
+  const cover = coverUrlFor(current);
   const title = current.title || "未命名歌曲";
   const artist = current.artist || "未知歌手";
   const progress = player.duration
@@ -17,8 +18,10 @@ export function SidebarMiniPlayer({ openPlayer }) {
   return (
     <section className="sidebar-player" aria-label="侧边栏迷你播放器">
       <div className="sidebar-player-head">
+        {/* 缺封面时由 Cover 给出按标题生成的安静占位，
+            不再铺那张带 "SONGLIB AMP" 水印的兜底图。 */}
         <button className="sidebar-player-cover" onClick={openPlayer}>
-          {cover ? <img src={cover} alt="" /> : <Music2 />}
+          <Cover src={cover} title={current.title} shape="square" />
         </button>
         <div>
           <strong>{title}</strong>

@@ -5,7 +5,6 @@ import { PageLoader } from "../../components/PageLoader";
 import { TrackTable } from "../../components/TrackTable";
 import { api } from "../../lib/api";
 import { fmt } from "../../lib/format";
-import { VISUAL_FALLBACKS } from "../../lib/media";
 import { LibraryDetailPage } from "./LibraryDetailPage";
 
 export function MediaLibrary({
@@ -110,7 +109,8 @@ export function MediaLibrary({
     const artist = detailData.artist;
     const subject =
       detail.type === "artists" ? detailData.artist : detailData.album;
-    const imageUrl = artist?.backgroundUrl || VISUAL_FALLBACKS.artist;
+    // 拿不到歌手背景就不铺图，交给 .ambient 环境光晕。
+    const imageUrl = artist?.backgroundUrl || "";
     onDetailBackdrop?.({
       imageUrl,
       coverUrl: subject?.thumbUrl || artist?.thumbUrl || "",

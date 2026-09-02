@@ -1565,6 +1565,33 @@
   }
 
   /* 新旧对比。旧值划掉、新值高亮，和标签编辑器保持同一套语言。 */
+  /*
+   * 多字段对照。
+   *
+   * 字段名列定宽，右边的"原值 → 新值"才会在每一行同一个位置起跳；
+   * 用 auto 的话"标题"和"专辑歌手"会把箭头推到不同的横坐标，
+   * 四行看下来对不齐，很难比较。
+   */
+  .ui-plan-fields {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 0;
+  }
+
+  .ui-plan-field {
+    display: grid;
+    grid-template-columns: 4.5em minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .ui-plan-field > small {
+    font-size: var(--text-2xs);
+    color: var(--text-tertiary);
+  }
+
   .ui-plan-diff {
     display: flex;
     align-items: center;
@@ -1578,6 +1605,12 @@
     width: 12px;
     height: 12px;
     color: var(--text-tertiary);
+  }
+
+  .ui-plan-diff__old[data-empty="true"] {
+    text-decoration: none;
+    font-style: italic;
+    opacity: 0.7;
   }
 
   .ui-plan-diff__old {

@@ -2,6 +2,19 @@ import { Activity, ArrowDownToLine, Check, ChevronRight, CircleAlert, Clock3, Lo
 import { useState } from "react";
 import { Empty } from "../../components/Empty";
 import { SectionHead } from "../../components/SectionHead";
+import { StatGrid, StatTile } from "../../components/ui/StatTile";
+
+/**
+ * 任务按处理方式分四类，顺序就是用户该关注的顺序：
+ * 正在跑的、等我拍板的、需要重试的、已经完事的。
+ * id 与 groups 的键一致，磁贴同时充当筛选器。
+ */
+const TASK_FILTERS = [
+  { id: "running", icon: LoaderCircle, label: "正在执行", tone: "accent" },
+  { id: "confirm", icon: WandSparkles, label: "等我确认", tone: "warning" },
+  { id: "failed", icon: CircleAlert, label: "需要重试", tone: "danger" },
+  { id: "history", icon: Check, label: "已完成", tone: "success" },
+];
 import { api } from "../../lib/api";
 import { timeAgo } from "../../lib/format";
 
@@ -68,40 +81,21 @@ export function Tasks({ jobs, refresh, navigate }) {
           {error}
         </div>
       )}
-      <div className="task-summary">
-        <button
-          className={filter === "running" ? "active" : ""}
-          onClick={() => setFilter("running")}
-        >
-          <LoaderCircle />
-          <strong>{groups.running.length}</strong>
-          <span>正在执行</span>
-        </button>
-        <button
-          className={filter === "confirm" ? "active" : ""}
-          onClick={() => setFilter("confirm")}
-        >
-          <WandSparkles />
-          <strong>{groups.confirm.length}</strong>
-          <span>待我确认</span>
-        </button>
-        <button
-          className={filter === "failed" ? "active" : ""}
-          onClick={() => setFilter("failed")}
-        >
-          <CircleAlert />
-          <strong>{groups.failed.length}</strong>
-          <span>失败任务</span>
-        </button>
-        <button
-          className={filter === "history" ? "active" : ""}
-          onClick={() => setFilter("history")}
-        >
-          <Check />
-          <strong>{groups.history.length}</strong>
-          <span>历史记录</span>
-        </button>
-      </div>
+      {/* 四个磁贴同时是当前筛选器。选中态用 aria-pressed 表达，
+          读屏能听出"哪一类正在被查看"。 */}
+      <StatGrid>
+        {TASK_FILTERS.map(({ id, icon, label, tone }) => (
+          <StatTile
+            key={id}
+            icon={icon}
+            tone={tone}
+            value={groups[id].length}
+            label={label}
+            selected={filter === id}
+            onClick={() => setFilter(id)}
+          />
+        ))}
+      </StatGrid>
       <section className="panel task-list">
         <div className="task-list-head">
           <span>任务</span>

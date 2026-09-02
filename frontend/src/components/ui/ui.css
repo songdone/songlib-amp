@@ -745,3 +745,187 @@
     margin-block-start: var(--space-2);
   }
 }
+
+@layer components {
+  /* =============================================================
+   * 表单控件
+   * ============================================================= */
+
+  .ui-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .ui-field__label {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+  }
+
+  .ui-field__control {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: var(--surface-inset);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    transition:
+      border-color var(--duration-fast) var(--ease-out),
+      background-color var(--duration-fast) var(--ease-out);
+  }
+
+  .ui-field__control:hover {
+    border-color: var(--border-strong);
+  }
+
+  /* 焦点环画在容器上而不是 input 上，图标和按钮才会一起被框住。 */
+  .ui-field__control:focus-within {
+    border-color: var(--accent-border);
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 1px;
+  }
+
+  .ui-field__control--invalid {
+    border-color: var(--danger-solid);
+  }
+
+  .ui-field__input {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: var(--control-height-lg);
+    padding-inline: var(--space-3);
+    color: var(--text-primary);
+    background: transparent;
+    border: 0;
+    font-size: var(--text-base);
+  }
+
+  .ui-field__input:focus {
+    outline: none;
+  }
+
+  .ui-field__input::placeholder {
+    color: var(--text-tertiary);
+  }
+
+  .ui-field__input:disabled {
+    color: var(--text-disabled);
+  }
+
+  .ui-field__icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-inline-start: var(--space-3);
+    color: var(--text-tertiary);
+    stroke-width: 1.8;
+  }
+
+  .ui-field__control--has-leading .ui-field__input {
+    padding-inline-start: var(--space-2);
+  }
+
+  .ui-field__trailing {
+    flex: none;
+    display: flex;
+    align-items: center;
+    padding-inline-end: var(--space-1);
+  }
+
+  .ui-field__hint {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+  }
+
+  .ui-field__error {
+    font-size: var(--text-xs);
+    color: var(--danger-text);
+  }
+
+  /* --- 表单项组 --- */
+
+  .ui-fieldset {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .ui-fieldset__legend {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+  }
+
+  .ui-fieldset__grid {
+    display: grid;
+    grid-template-columns: repeat(var(--fieldset-columns, 1), minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+
+  @media (max-width: 640px) {
+    .ui-fieldset__grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  /* --- 提示条 --- */
+
+  .ui-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md);
+    border: 1px solid transparent;
+  }
+
+  .ui-notice__icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-block-start: 1px;
+    stroke-width: 1.8;
+  }
+
+  .ui-notice__body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .ui-notice__title {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+  }
+
+  .ui-notice__text {
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+  }
+
+  .ui-notice--info {
+    color: var(--info-text);
+    background: var(--info-soft);
+  }
+  .ui-notice--success {
+    color: var(--success-text);
+    background: var(--success-soft);
+  }
+  .ui-notice--warning {
+    color: var(--warning-text);
+    background: var(--warning-soft);
+  }
+  .ui-notice--danger {
+    color: var(--danger-text);
+    background: var(--danger-soft);
+  }
+
+  /* 提示条里的正文用主文字色，只有标题和图标带语气色，
+     否则整段彩色文字在深色底上很难读。 */
+  .ui-notice__text {
+    color: var(--text-secondary);
+  }
+}

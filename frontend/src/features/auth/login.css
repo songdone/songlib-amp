@@ -1,0 +1,110 @@
+/**
+ * 登录页。
+ *
+ * 一屏居中，不分左右栏。重构前的左半屏营销区在窄屏上会把表单挤到
+ * 第二屏之外，为此又加了一整段 @media 用 !important 把它压回来 ——
+ * 布局本身不成立的时候，补丁只会越叠越多。居中布局天然没有这个问题。
+ */
+
+@layer components {
+  .login {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 100dvh;
+    padding: var(--space-6);
+    overflow: hidden;
+    background: var(--surface-canvas);
+  }
+
+  /* --- 背景：曲库封面模糊铺底 --- */
+
+  .login__backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+  }
+
+  .login__backdrop img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* 压暗并去饱和，保证前景表单始终可读，
+       不管随机取到的是哪张封面。 */
+    filter: blur(48px) saturate(0.7) brightness(0.35);
+    transform: scale(1.15);
+  }
+
+  /* 无论有没有封面，都盖一层从中心向外的暗角，
+     让表单区域的对比度可预测。 */
+  .login__backdrop::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(
+        circle at 50% 45%,
+        rgba(232, 184, 92, 0.08),
+        transparent 45%
+      ),
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--surface-canvas) 82%, transparent),
+        var(--surface-canvas)
+      );
+  }
+
+  /* --- 表单面板 --- */
+
+  .login__panel {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-6);
+    width: min(100%, 360px);
+  }
+
+  .login__brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .login__mark {
+    width: 56px;
+    height: 56px;
+  }
+
+  .login__name {
+    font-size: var(--text-lg);
+    font-weight: var(--weight-semibold);
+    letter-spacing: 0.02em;
+    color: var(--text-primary);
+  }
+
+  .login__form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    width: 100%;
+  }
+
+  .login__help {
+    padding: var(--space-2);
+    color: var(--text-tertiary);
+    background: none;
+    border: 0;
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    cursor: pointer;
+  }
+
+  .login__help:hover {
+    color: var(--text-secondary);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}

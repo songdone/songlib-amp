@@ -52,6 +52,7 @@
 @import "../features/tools/scrape.css";
 @import "../features/library/local.css";
 @import "../features/discover/discover.css";
+@import "../features/tools/tasks.css";
 
 /* --- 历史层，待清空 --- */
 @import "../styles.css";

@@ -17,9 +17,6 @@
   .mobile-only {
     display:none;
   }
-.route-home .stat-card{
-    background:rgba(15,15,18,.42);
-  }
 
   .airplay-cast-video {
     position:fixed;
@@ -46,7 +43,6 @@
     background-image:radial-gradient(circle at 18% 24%,rgba(255,255,255,.05) 0 1px,transparent 1px),radial-gradient(circle at 78% 48%,rgba(246,199,107,.08),transparent 32%);
     background-size:3px 3px,auto;
   }
-.route-home .stat-card,
 .source-strip,
 .setting-card,
 .settings-workbench{

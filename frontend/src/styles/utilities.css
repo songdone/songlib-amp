@@ -1,0 +1,100 @@
+/**
+ * 工具类。只保留高频、单一职责的布局原语。
+ *
+ * 这一层刻意很小。它不是 Tailwind —— 出现"要给某个组件加十个工具类"
+ * 的时候，说明该组件应该在 components 层有自己的类。
+ */
+
+@layer utilities {
+  /* 纵向堆叠，间距用 token 阶梯。 */
+  .stack {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+  }
+
+  .row--between {
+    justify-content: space-between;
+  }
+
+  .row--wrap {
+    flex-wrap: wrap;
+  }
+
+  .gap-1 {
+    gap: var(--space-1);
+  }
+  .gap-2 {
+    gap: var(--space-2);
+  }
+  .gap-3 {
+    gap: var(--space-3);
+  }
+  .gap-4 {
+    gap: var(--space-4);
+  }
+  .gap-6 {
+    gap: var(--space-6);
+  }
+  .gap-8 {
+    gap: var(--space-8);
+  }
+
+  .grow {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .shrink-0 {
+    flex: none;
+  }
+
+  /* 文本截断。min-width:0 一并带上，避免在 flex 子项里失效。 */
+  .truncate {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .clamp-2 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
+  .text-secondary {
+    color: var(--text-secondary);
+  }
+  .text-tertiary {
+    color: var(--text-tertiary);
+  }
+  .text-accent {
+    color: var(--accent-text);
+  }
+  .text-danger {
+    color: var(--danger-text);
+  }
+
+  /* 响应式显隐。断点与 --page-gutter 一致，只有一个移动断点。 */
+  .desktop-only {
+    display: revert;
+  }
+  .mobile-only {
+    display: none;
+  }
+
+  @media (max-width: 900px) {
+    .desktop-only {
+      display: none;
+    }
+    .mobile-only {
+      display: revert;
+    }
+  }
+}

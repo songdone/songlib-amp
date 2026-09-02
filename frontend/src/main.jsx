@@ -72,11 +72,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import "./styles.css";
-import "./commercial.css";
-import "./liquid-glass.css";
-import "./features/now-playing/now-playing.css";
-import "./features/shell/shell-refactor.css";
+import "./styles/index.css";
 import { BRAND } from "./config/brand";
 import {
   playbackDurationSeconds,

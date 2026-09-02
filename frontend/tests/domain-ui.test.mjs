@@ -340,9 +340,11 @@ test("compact login keeps the form in the first mobile viewport", () => {
     "utf8",
   );
   const compactRule = styles.slice(styles.lastIndexOf("@media (max-width: 900px)"));
-  assert.match(compactRule, /\.login-motion-shell\s*\{[\s\S]*?min-height:\s*0\s*!important/);
-  assert.match(compactRule, /\.login-motion-card-group\s*\{[\s\S]*?margin:\s*8px auto 0\s*!important/);
-  assert.match(compactRule, /\.login-motion-logo,[\s\S]*?opacity:\s*1\s*!important/);
+  // 断言的是布局保证本身，不是它靠什么手法生效。
+  // 重构后优先级由 src/styles/index.css 的 @layer 顺序决定，不再用 !important。
+  assert.match(compactRule, /\.login-motion-shell\s*\{[\s\S]*?min-height:\s*0\s*[;}]/);
+  assert.match(compactRule, /\.login-motion-card-group\s*\{[\s\S]*?margin:\s*8px auto 0\s*[;}]/);
+  assert.match(compactRule, /\.login-motion-logo,[\s\S]*?opacity:\s*1\s*[;}]/);
   const indexHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
   assert.match(indexHtml, /#root:empty::before/);
   assert.match(indexHtml, /正在连接本地音乐库/);

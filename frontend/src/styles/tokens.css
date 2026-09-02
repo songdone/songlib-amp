@@ -1,0 +1,321 @@
+/**
+ * SongLib Amp 设计 token —— 全站唯一的颜色、字号、间距真相来源。
+ *
+ * 规则（重构后必须守住的三条）：
+ *
+ * 1. 组件样式只允许引用语义 token（--surface-*、--text-*、--accent-*…），
+ *    不允许写颜色字面量。原始色阶 --palette-* 只在本文件里被语义 token 消费。
+ * 2. 换主题只改语义 token 的值，绝不逐个组件选择器重写。
+ *    浅色主题在本文件底部一次性完成，其他文件不出现 [data-theme] 选择器。
+ * 3. 成对使用的前景/背景组合由 scripts/check-contrast.mjs 守门，
+ *    正文 ≥ 4.5:1，大字与非文字图形 ≥ 3:1。改颜色后跑 pnpm test。
+ */
+
+@layer tokens {
+  :root {
+    /* ---------------------------------------------------------------
+     * 原始色阶：只被下面的语义 token 引用，组件里不要直接用。
+     * --------------------------------------------------------------- */
+
+    /* 中性色阶，带一点冷紫底调，贴合"夜里的岛屿"。 */
+    --palette-neutral-0: #ffffff;
+    --palette-neutral-25: #fbfbfc;
+    --palette-neutral-50: #f6f6f8;
+    --palette-neutral-100: #ecedf1;
+    --palette-neutral-200: #dcdee5;
+    --palette-neutral-300: #c2c5d0;
+    --palette-neutral-400: #9ea3b1;
+    --palette-neutral-500: #767c8b;
+    --palette-neutral-600: #565c6a;
+    --palette-neutral-700: #3b404b;
+    --palette-neutral-800: #24272f;
+    --palette-neutral-850: #1a1c23;
+    --palette-neutral-900: #13151a;
+    --palette-neutral-950: #0d0e13;
+    --palette-neutral-1000: #08090c;
+
+    /* 品牌暖金，沿用原有 #e8b85c 主色并补齐上下色阶。 */
+    --palette-gold-100: #fbf0d6;
+    --palette-gold-200: #f6e0ab;
+    --palette-gold-300: #f0cd7f;
+    --palette-gold-400: #e8b85c;
+    --palette-gold-500: #d9a244;
+    --palette-gold-600: #b8842f;
+    --palette-gold-700: #8f6522;
+    --palette-gold-800: #6a4a19;
+    --palette-gold-900: #241906;
+
+    /* 语义状态色，各自备好深色可读与浅色可读两档。 */
+    --palette-green-300: #6ee7b0;
+    --palette-green-500: #2ba36f;
+    --palette-green-700: #17603f;
+    --palette-amber-300: #f5cf7a;
+    --palette-amber-500: #c48a1b;
+    --palette-amber-700: #7a5510;
+    --palette-red-300: #f9a3a8;
+    --palette-red-500: #d9434f;
+    --palette-red-700: #8f232c;
+    --palette-blue-300: #9dc2ff;
+    --palette-blue-500: #3f7fe0;
+    --palette-blue-700: #23508f;
+
+    /* ---------------------------------------------------------------
+     * 语义颜色 —— 深色为默认主题。
+     * --------------------------------------------------------------- */
+
+    /* 表面层级：canvas 最深，数字越大越靠前。只有四层，不要再加。 */
+    --surface-canvas: var(--palette-neutral-1000);
+    --surface-1: var(--palette-neutral-900);
+    --surface-2: var(--palette-neutral-850);
+    --surface-3: var(--palette-neutral-800);
+    --surface-inset: rgba(0, 0, 0, 0.32);
+    --surface-overlay: rgba(8, 9, 12, 0.72);
+    --surface-hover: rgba(255, 255, 255, 0.05);
+    --surface-active: rgba(255, 255, 255, 0.08);
+
+    /* 文字层级：primary 标题正文，secondary 次要说明，tertiary 元信息。 */
+    --text-primary: #f4f5f7;
+    --text-secondary: #b2b7c2;
+    --text-tertiary: #8a909e;
+    --text-disabled: #646a77;
+    --text-inverse: var(--palette-neutral-1000);
+
+    /* 描边：subtle 分隔，default 卡片，strong 需要被看清的控件边界。 */
+    --border-subtle: rgba(255, 255, 255, 0.07);
+    --border-default: rgba(255, 255, 255, 0.12);
+    --border-strong: rgba(255, 255, 255, 0.32);
+
+    /* 强调色：accent-text 用于文字/图标，accent-solid 用于实心按钮底。 */
+    --accent-text: var(--palette-gold-300);
+    --accent-solid: var(--palette-gold-400);
+    --accent-solid-hover: var(--palette-gold-300);
+    --accent-on-solid: var(--palette-gold-900);
+    --accent-soft: rgba(232, 184, 92, 0.14);
+    --accent-soft-hover: rgba(232, 184, 92, 0.22);
+    --accent-border: rgba(232, 184, 92, 0.38);
+
+    --success-text: var(--palette-green-300);
+    --success-solid: var(--palette-green-500);
+    --success-soft: rgba(43, 163, 111, 0.16);
+    --warning-text: var(--palette-amber-300);
+    --warning-solid: var(--palette-amber-500);
+    --warning-soft: rgba(196, 138, 27, 0.16);
+    --danger-text: var(--palette-red-300);
+    --danger-solid: var(--palette-red-500);
+    --danger-soft: rgba(217, 67, 79, 0.16);
+    --info-text: var(--palette-blue-300);
+    --info-solid: var(--palette-blue-500);
+    --info-soft: rgba(63, 127, 224, 0.16);
+
+    --focus-ring: var(--palette-gold-300);
+
+    /* ---------------------------------------------------------------
+     * 字号：1.2 倍模块化比例，围绕 14px 正文。
+     * --font-delta 由"外观"设置注入，让整套比例一起缩放。
+     * --------------------------------------------------------------- */
+    --font-delta: 0px;
+    --font-sans:
+      -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+      "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+    --font-mono:
+      ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+    --text-2xs: calc(10px + var(--font-delta));
+    --text-xs: calc(11px + var(--font-delta));
+    --text-sm: calc(12px + var(--font-delta));
+    --text-base: calc(14px + var(--font-delta));
+    --text-md: calc(16px + var(--font-delta));
+    --text-lg: calc(19px + var(--font-delta));
+    --text-xl: calc(23px + var(--font-delta));
+    --text-2xl: calc(28px + var(--font-delta));
+    --text-3xl: calc(34px + var(--font-delta));
+
+    --leading-tight: 1.2;
+    --leading-snug: 1.35;
+    --leading-normal: 1.55;
+
+    --weight-normal: 400;
+    --weight-medium: 500;
+    --weight-semibold: 600;
+    --weight-bold: 700;
+
+    --tracking-tight: -0.01em;
+    --tracking-normal: 0;
+    --tracking-wide: 0.06em;
+    --tracking-caps: 0.12em;
+
+    /* ---------------------------------------------------------------
+     * 间距：4px 基准阶梯。组件里只用这些值，不写裸 px。
+     * --------------------------------------------------------------- */
+    --space-0: 0;
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-10: 40px;
+    --space-12: 48px;
+    --space-16: 64px;
+
+    /* 页面水平留白与内容最大宽度，桌面/移动共用一处定义。 */
+    --page-gutter: clamp(16px, 2.4vw, 40px);
+    --page-max: 1440px;
+
+    /* ---------------------------------------------------------------
+     * 圆角、阴影、动效
+     * --------------------------------------------------------------- */
+    --radius-xs: 4px;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 20px;
+    --radius-pill: 999px;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.34);
+    --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.44);
+    --shadow-focus: 0 0 0 2px var(--surface-canvas), 0 0 0 4px var(--focus-ring);
+
+    --duration-fast: 120ms;
+    --duration-base: 200ms;
+    --duration-slow: 320ms;
+    --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+    --ease-in-out: cubic-bezier(0.45, 0.05, 0.55, 0.95);
+
+    /* ---------------------------------------------------------------
+     * 布局常量
+     * --------------------------------------------------------------- */
+    --sidebar-width: 224px;
+    --topbar-height: 60px;
+    --miniplayer-height: 68px;
+    --mobile-nav-height: 58px;
+    --control-height-sm: 30px;
+    --control-height-md: 36px;
+    --control-height-lg: 44px;
+
+    /* 层级：不要在组件里写裸 z-index。 */
+    --z-base: 0;
+    --z-sticky: 10;
+    --z-sidebar: 20;
+    --z-miniplayer: 30;
+    --z-overlay: 40;
+    --z-modal: 50;
+    --z-toast: 60;
+
+    color-scheme: dark;
+  }
+
+  /**
+   * 浅色主题：只重新声明语义 token 的值。
+   * 这里不出现任何组件选择器 —— 这是修掉旧 liquid-glass.css 里
+   * 93 条 !important 组件级重写的关键。
+   */
+  :root[data-theme="light"] {
+    --surface-canvas: var(--palette-neutral-50);
+    --surface-1: var(--palette-neutral-0);
+    --surface-2: var(--palette-neutral-25);
+    --surface-3: var(--palette-neutral-100);
+    --surface-inset: rgba(15, 18, 26, 0.05);
+    --surface-overlay: rgba(255, 255, 255, 0.78);
+    --surface-hover: rgba(15, 18, 26, 0.045);
+    --surface-active: rgba(15, 18, 26, 0.075);
+
+    --text-primary: #14161c;
+    --text-secondary: #4c525f;
+    --text-tertiary: #656b78;
+    --text-disabled: #8b909d;
+    --text-inverse: var(--palette-neutral-0);
+
+    --border-subtle: rgba(15, 18, 26, 0.08);
+    --border-default: rgba(15, 18, 26, 0.14);
+    --border-strong: rgba(15, 18, 26, 0.38);
+
+    --accent-text: var(--palette-gold-700);
+    --accent-solid: var(--palette-gold-400);
+    --accent-solid-hover: var(--palette-gold-500);
+    --accent-on-solid: var(--palette-gold-900);
+    --accent-soft: rgba(184, 132, 47, 0.12);
+    --accent-soft-hover: rgba(184, 132, 47, 0.2);
+    --accent-border: rgba(184, 132, 47, 0.4);
+
+    --success-text: var(--palette-green-700);
+    --success-soft: rgba(43, 163, 111, 0.14);
+    --warning-text: var(--palette-amber-700);
+    --warning-soft: rgba(196, 138, 27, 0.16);
+    --danger-text: var(--palette-red-700);
+    --danger-soft: rgba(217, 67, 79, 0.12);
+    --info-text: var(--palette-blue-700);
+    --info-soft: rgba(63, 127, 224, 0.12);
+
+    --focus-ring: var(--palette-gold-700);
+
+    --shadow-sm: 0 1px 2px rgba(15, 18, 26, 0.08);
+    --shadow-md: 0 6px 16px rgba(15, 18, 26, 0.1);
+    --shadow-lg: 0 18px 44px rgba(15, 18, 26, 0.14);
+
+    color-scheme: light;
+  }
+
+  /* 跟随系统：只有用户没显式选过主题时生效。 */
+  @media (prefers-color-scheme: light) {
+    :root[data-theme="system"] {
+      --surface-canvas: var(--palette-neutral-50);
+      --surface-1: var(--palette-neutral-0);
+      --surface-2: var(--palette-neutral-25);
+      --surface-3: var(--palette-neutral-100);
+      --surface-inset: rgba(15, 18, 26, 0.05);
+      --surface-overlay: rgba(255, 255, 255, 0.78);
+      --surface-hover: rgba(15, 18, 26, 0.045);
+      --surface-active: rgba(15, 18, 26, 0.075);
+
+      --text-primary: #14161c;
+      --text-secondary: #4c525f;
+      --text-tertiary: #656b78;
+      --text-disabled: #969ba7;
+      --text-inverse: var(--palette-neutral-0);
+
+      --border-subtle: rgba(15, 18, 26, 0.08);
+      --border-default: rgba(15, 18, 26, 0.14);
+      --border-strong: rgba(15, 18, 26, 0.38);
+
+      --accent-text: var(--palette-gold-700);
+      --accent-solid-hover: var(--palette-gold-500);
+      --accent-soft: rgba(184, 132, 47, 0.12);
+      --accent-soft-hover: rgba(184, 132, 47, 0.2);
+      --accent-border: rgba(184, 132, 47, 0.4);
+
+      --success-text: var(--palette-green-700);
+      --warning-text: var(--palette-amber-700);
+      --danger-text: var(--palette-red-700);
+      --info-text: var(--palette-blue-700);
+
+      --focus-ring: var(--palette-gold-700);
+
+      --shadow-sm: 0 1px 2px rgba(15, 18, 26, 0.08);
+      --shadow-md: 0 6px 16px rgba(15, 18, 26, 0.1);
+      --shadow-lg: 0 18px 44px rgba(15, 18, 26, 0.14);
+
+      color-scheme: light;
+    }
+  }
+
+  /* 高对比与降低动效：系统级偏好一次性接住。 */
+  @media (prefers-contrast: more) {
+    :root {
+      --border-subtle: rgba(255, 255, 255, 0.18);
+      --border-default: rgba(255, 255, 255, 0.3);
+      --border-strong: rgba(255, 255, 255, 0.56);
+      --text-secondary: #d2d6de;
+      --text-tertiary: #b9bec8;
+    }
+    :root[data-theme="light"] {
+      --border-subtle: rgba(15, 18, 26, 0.2);
+      --border-default: rgba(15, 18, 26, 0.34);
+      --border-strong: rgba(15, 18, 26, 0.6);
+      --text-secondary: #2c313b;
+      --text-tertiary: #3d4350;
+    }
+  }
+}

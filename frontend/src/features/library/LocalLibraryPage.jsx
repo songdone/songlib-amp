@@ -1,11 +1,14 @@
-import { BookOpenText, Check, ChevronRight, CircleAlert, FileAudio, FolderTree, Image, Play, RefreshCw, RotateCcw, Search, ShieldCheck, Tags, WandSparkles, X } from "lucide-react";
+import { BookOpenText, Check, ChevronRight, CircleAlert, FileAudio, FolderTree, Image, Play, RefreshCw, RotateCcw, Search, Tags, WandSparkles, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Empty } from "../../components/Empty";
 import { PageLoader } from "../../components/PageLoader";
 import { SectionHead } from "../../components/SectionHead";
 import { StatCard } from "../../components/StatCard";
+import { Button } from "../../components/ui/Button";
+import { Modal } from "../../components/ui/Modal";
 import { api } from "../../lib/api";
 import { fmt, timeAgo } from "../../lib/format";
+import { TagEditor } from "./TagEditor";
 
 export function LocalLibraryPage({ runJob, play, notify, navigate }) {
   const [tab, setTab] = useState("files"),
@@ -81,22 +84,9 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
       setError(err.message);
     }
   };
-  const saveTags = async (event) => {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const changes = Object.fromEntries(form.entries());
-    try {
-      await api(`/api/local/files/${editing.id}/tags`, {
-        method: "PATCH",
-        body: JSON.stringify({ changes }),
-      });
-      setEditing(null);
-      notify("标签已写入音频文件");
-      load();
-    } catch (err) {
-      setError(err.message);
-    }
-  };
+  // 标签写入逻辑已移到 TagEditor —— 它需要知道哪些字段被改过，
+  // 才能在批量模式下只写改动过的字段。原先用 FormData 一把捞，
+  // 会把所有字段（包括没动的）都当成改动写回去。
   const switchTab = async (value) => {
     setTab(value);
     if (value === "history")
@@ -237,14 +227,26 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
               />
             </div>
             <span>{data.total} 个真实文件</span>
-            <button
-              className="secondary small"
+            {/* 选中多首时可以一次改标签。批量模式下只写你动过的字段，
+                没动的保持各自原值 —— 详见 TagEditor。 */}
+            <Button
+              size="sm"
+              icon={Tags}
+              disabled={!selected.length}
+              onClick={() =>
+                setEditing(data.items.filter((item) => selected.includes(item.id)))
+              }
+            >
+              批量改标签{selected.length ? `（${selected.length}）` : ""}
+            </Button>
+            <Button
+              size="sm"
+              icon={WandSparkles}
               disabled={!selected.length}
               onClick={preview}
             >
-              <WandSparkles />
-              整理预览 ({selected.length})
-            </button>
+              整理预览{selected.length ? `（${selected.length}）` : ""}
+            </Button>
           </div>
           {loading ? (
             <PageLoader />
@@ -482,60 +484,33 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
           </div>
         </section>
       )}
-      {editing && (
-        <div className="modal-wrap">
-          <button className="modal-backdrop" onClick={() => setEditing(null)} />
-          <form className="modal panel tag-modal" onSubmit={saveTags}>
-            <div className="modal-head">
-              <div>
-                <span className="eyebrow">AUDIO TAGS</span>
-                <h3>{editing.filename}</h3>
-              </div>
-              <button
-                type="button"
-                className="icon-button"
-                onClick={() => setEditing(null)}
-              >
-                <X />
-              </button>
-            </div>
-            <div className="tag-grid">
-              {[
-                ["title", "标题"],
-                ["artist", "歌手"],
-                ["album", "专辑"],
-                ["albumArtist", "专辑艺术家"],
-                ["year", "年份"],
-                ["trackNumber", "音轨号"],
-                ["discNumber", "碟号"],
-                ["genre", "流派"],
-              ].map(([key, label]) => (
-                <label key={key}>
-                  {label}
-                  <input
-                    name={key}
-                    defaultValue={
-                      editing[key] ||
-                      editing[
-                        key.replace(/[A-Z]/g, (m) => "_" + m.toLowerCase())
-                      ] ||
-                      ""
-                    }
-                  />
-                </label>
-              ))}
-            </div>
-            <p className="modal-note">
-              <ShieldCheck />
-              保存会直接写入真实音频标签，并记录可回滚的旧值。
-            </p>
-            <button className="primary full">
-              <Tags />
-              确认写入标签
-            </button>
-          </form>
-        </div>
-      )}
+      {/*
+        标签编辑器。editing 可以是单个文件，也可以是一批（批量编辑）。
+        用原生 <dialog>（见 components/ui/Modal），焦点不会跑到背后的列表上。
+        dismissible=false：里面可能有未写入的改动，点遮罩不应该直接丢掉。
+      */}
+      <Modal
+        open={Boolean(editing)}
+        onClose={() => setEditing(null)}
+        title="编辑音频标签"
+        description="改动会直接写入音频文件，原值记录在操作历史里，可以回滚"
+        size="xl"
+        dismissible={false}
+      >
+        {editing && (
+          <TagEditor
+            files={Array.isArray(editing) ? editing : [editing]}
+            onClose={() => setEditing(null)}
+            onSaved={(count) => {
+              setEditing(null);
+              notify(
+                count > 1 ? `${count} 首的标签已写入` : "标签已写入音频文件",
+              );
+              load();
+            }}
+          />
+        )}
+      </Modal>
     </div>
   );
 }

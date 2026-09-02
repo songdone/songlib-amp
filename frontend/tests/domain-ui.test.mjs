@@ -23,6 +23,7 @@ import {
   settingsTabFromPath,
 } from "../src/lib/routes.js";
 import {
+  mobileMoreTarget,
   mobileNavigationIds,
   mobileNavigationTarget,
 } from "../src/lib/navigation.js";
@@ -243,19 +244,27 @@ test("library tabs and playlist details keep their secondary URL", () => {
   assert.equal(pageFromPath("/playlists/abc123"), "playlists");
 });
 
-test("mobile navigation exposes music tools without hiding settings", () => {
+test("手机底栏放得下的四个听歌目的地，加一个通往其余全部的入口", () => {
+  // 五格是拇指能舒服覆盖的上限。四个听歌目的地 + 一个"更多"。
   assert.deepEqual(mobileNavigationIds, [
     "home",
     "library",
     "player",
     "playlists",
-    "manage",
-    "settings",
+    "more",
   ]);
-  assert.equal(mobileNavigationTarget("settings"), "settings");
-  assert.equal(mobileNavigationTarget("sources", ["sources", "tasks"]), "manage");
+
+  // "更多"必须真的通往某处 —— 桌面侧栏改版时这里漏掉过：
+  // nav 数组里删掉了 manage，底栏按 id 查不到就把整格过滤没了，
+  // 手机上所有整理工具直接不可达。
+  assert.equal(mobileMoreTarget(true), "manage");
+  // 普通听众没有整理权限，直接落到设置，不让他们先撞一次"无权限"。
+  assert.equal(mobileMoreTarget(false), "settings");
+
+  // 子页面各自归到对应的格子。
   assert.equal(mobileNavigationTarget("discover"), "home");
   assert.equal(mobileNavigationTarget("me"), "library");
+  assert.equal(mobileNavigationTarget("search"), "library");
   assert.equal(mobileNavigationTarget("library"), "library");
 });
 
@@ -338,15 +347,38 @@ test("PWA install guidance never exposes a no-op install action", () => {
   );
 });
 
-test("mobile navigation has exactly one semantic active destination", () => {
-  assert.equal(
-    mobileNavigationTarget("settings", ["local", "scrape", "download", "settings"]),
-    "settings",
-  );
-  assert.equal(
-    mobileNavigationTarget("download", ["local", "scrape", "download", "settings"]),
+test("手机底栏任何时刻只有一格高亮", () => {
+  // 重构前这里会同时高亮"播放""工具""设置"三格 ——
+  // 三个判断各自独立返回 true。现在函数只有一个出口，逐条 return。
+  const toolIds = ["local", "scrape", "download", "sources", "tasks"];
+  const pages = [
+    "home",
+    "library",
+    "player",
+    "playlists",
+    "discover",
+    "me",
+    "search",
     "manage",
-  );
+    "settings",
+    ...toolIds,
+  ];
+
+  for (const page of pages) {
+    const target = mobileNavigationTarget(page, toolIds);
+    // 结果必须是底栏真实存在的五格之一，否则那一页会一格都不亮。
+    assert.ok(
+      mobileNavigationIds.includes(target),
+      `${page} 高亮到了 ${target}，不是底栏里的格子`,
+    );
+  }
+
+  // 整理曲库下的每一页，以及设置，都归到"更多"这一格。
+  for (const page of [...toolIds, "manage", "settings"]) {
+    assert.equal(mobileNavigationTarget(page, toolIds), "more");
+  }
+
+  // 旧样式里用 nth-child(3) 硬指第三格，一旦格子数量变化就会指错。
   const shellCss = readFileSync(
     new URL("../src/features/shell/shell-refactor.css", import.meta.url),
     "utf8",

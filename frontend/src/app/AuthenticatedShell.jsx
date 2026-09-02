@@ -59,6 +59,13 @@ export function AuthenticatedShell({ setAuthenticated }) {
   const player = usePlayerCore();
   const prefersDark = useMediaQuery("(prefers-color-scheme: dark)");
   const theme = resolvedTheme(appearance.theme, prefersDark);
+  // 主题必须落到 :root 上，不能只挂在下面那个 .visual-shell div 上：
+  // 设计 token 定义在 :root[data-theme="light"]，而且 color-scheme 只有在
+  // 根元素上才会影响滚动条、表单控件和 body 背景。
+  // div 上的 data-theme 仍然保留，legacy 样式层还依赖它。
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
   const changeAppearance = useCallback((value) => {
     const normalized = normalizeAppearance(value);
     setAppearance(normalized);

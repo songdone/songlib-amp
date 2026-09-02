@@ -1,11 +1,34 @@
-import { LoaderCircle, Plus, Search } from "lucide-react";
+/**
+ * 音乐库。
+ *
+ * 歌手 / 专辑 / 单曲三个视图共用一条工具条。
+ * 卡片和网格已经是设计系统的（MediaCard / MediaGrid），
+ * 这次把工具条、"继续载入"和空状态也换过来。
+ *
+ * 补上的一个缺口：搜不到东西时原来是一片空白网格 ——
+ * 没有任何说明，看起来像加载失败。现在有空状态和清掉搜索的入口。
+ */
+
+import { Plus, Search, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { Button } from "../../components/ui/Button";
+import { Field } from "../../components/ui/Field";
+import { EmptyState, Page } from "../../components/ui/Layout";
 import { MediaCard, MediaGrid } from "../../components/ui/MediaCard";
+import { ChipGroup } from "../../components/ui/Plan";
 import { PageLoader } from "../../components/PageLoader";
 import { TrackTable } from "../../components/TrackTable";
 import { api } from "../../lib/api";
 import { fmt } from "../../lib/format";
 import { LibraryDetailPage } from "./LibraryDetailPage";
+
+const TABS = [
+  { id: "artists", label: "歌手" },
+  { id: "albums", label: "专辑" },
+  { id: "tracks", label: "单曲" },
+];
+
+const TAB_NAME = { artists: "歌手", albums: "专辑", tracks: "单曲" };
 
 export function MediaLibrary({
   initialTab = "artists",
@@ -184,42 +207,57 @@ export function MediaLibrary({
       />
     );
   }
+  const tabName = TAB_NAME[tab] || "内容";
+
   return (
-    <div className="page library-page">
+    <Page className="library">
       <div className="library-toolbar">
-        <div className="segmented">
-          {[
-            ["artists", "歌手"],
-            ["albums", "专辑"],
-            ["tracks", "单曲"],
-          ].map(([id, label]) => (
-            <button
-              className={tab === id ? "active" : ""}
-              onClick={() => {
-                setTab(id);
-                setDetail(null);
-                onTabChange?.(id);
-              }}
-              key={id}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <div className="search-field">
-          <Search />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={`搜索${tab === "artists" ? "歌手" : tab === "albums" ? "专辑" : "单曲"}…`}
-          />
-        </div>
-        <span className="result-count">
-          {fmt(data.items.length)} / {fmt(data.total)} 项
+        <ChipGroup
+          label="浏览方式"
+          options={TABS}
+          value={tab}
+          onChange={(id) => {
+            setTab(id);
+            setDetail(null);
+            onTabChange?.(id);
+          }}
+        />
+
+        <Field
+          label={`搜索${tabName}`}
+          hideLabel
+          leading={Search}
+          placeholder={`搜索${tabName}…`}
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+
+        <span className="library-toolbar__count">
+          {data.items.length >= data.total
+            ? `${fmt(data.total)} 项`
+            : `${fmt(data.items.length)} / ${fmt(data.total)} 项`}
         </span>
       </div>
+
       {loading ? (
         <PageLoader />
+      ) : !data.items.length ? (
+        <EmptyState
+          icon={Search}
+          title={search ? `没有找到匹配的${tabName}` : `曲库里还没有${tabName}`}
+          text={
+            search
+              ? "换个关键词试试。刚加进来的歌可能还没扫到。"
+              : "连上 Plex 或指定 NAS 上的音乐目录，扫描完成后这里就会有内容。"
+          }
+          action={
+            search ? (
+              <Button icon={X} onClick={() => setSearch("")}>
+                清掉搜索
+              </Button>
+            ) : null
+          }
+        />
       ) : tab === "tracks" ? (
         <TrackTable items={data.items} play={play} />
       ) : (
@@ -246,16 +284,20 @@ export function MediaLibrary({
           ))}
         </MediaGrid>
       )}
-      {!loading && data.items.length < data.total && (
-        <div className="library-load-more">
-          <button className="secondary" onClick={loadMore} disabled={loadingMore}>
-            {loadingMore ? <LoaderCircle className="spin" /> : <Plus />}
+
+      {!loading && data.items.length > 0 && data.items.length < data.total && (
+        <div className="library-more">
+          <Button
+            icon={Plus}
+            loading={loadingMore}
+            onClick={loadMore}
+          >
             {loadingMore
               ? `正在载入剩余 ${fmt(data.total - data.items.length)} 项`
               : `继续载入剩余 ${fmt(data.total - data.items.length)} 项`}
-          </button>
+          </Button>
         </div>
       )}
-    </div>
+    </Page>
   );
 }

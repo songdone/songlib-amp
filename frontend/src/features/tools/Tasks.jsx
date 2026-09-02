@@ -1,0 +1,309 @@
+import { Activity, ArrowDownToLine, Check, ChevronRight, CircleAlert, Clock3, LoaderCircle, RefreshCw, WandSparkles, X } from "lucide-react";
+import { useState } from "react";
+import { Empty } from "../../components/Empty";
+import { SectionHead } from "../../components/SectionHead";
+import { api } from "../../lib/api";
+import { timeAgo } from "../../lib/format";
+
+export function Tasks({ jobs, refresh, navigate }) {
+  const [detail, setDetail] = useState(null),
+    [error, setError] = useState("");
+  const [filter, setFilter] = useState("running");
+  const inspect = async (id) => {
+    try {
+      setDetail(await api(`/api/jobs/${id}`));
+      setError("");
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  const control = async (job, action) => {
+    if (!confirm(`${action === "retry" ? "重试" : "安全取消"}：${job.title}？`)) return;
+    try {
+      await api(`/api/jobs/${job.id}/${action}`, { method: "POST" });
+      setDetail(null);
+      await refresh();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  const label = (status) =>
+    status === "running"
+      ? "执行中"
+      : status === "completed"
+        ? "完成"
+        : status === "failed"
+          ? "失败"
+          : status === "waiting_confirm"
+            ? "待确认"
+            : status === "cancelled"
+              ? "已取消"
+              : "排队";
+  const groups = {
+    running: jobs.filter((j) => ["running", "queued"].includes(j.status)),
+    confirm: jobs.filter((j) => j.status === "waiting_confirm"),
+    failed: jobs.filter((j) => j.status === "failed"),
+    history: jobs.filter(
+      (j) =>
+        !["running", "queued", "waiting_confirm", "failed"].includes(j.status),
+    ),
+    all: jobs,
+  };
+  const visible = groups[filter] || jobs;
+  return (
+    <div className="page tasks-page">
+      <SectionHead
+        title="任务中心"
+        note="运行中、待确认、失败和历史任务分开处理"
+        action={
+          <button className="secondary small" onClick={refresh}>
+            <RefreshCw />
+            刷新
+          </button>
+        }
+      />
+      {error && (
+        <div className="inline-error">
+          <CircleAlert />
+          {error}
+        </div>
+      )}
+      <div className="task-summary">
+        <button
+          className={filter === "running" ? "active" : ""}
+          onClick={() => setFilter("running")}
+        >
+          <LoaderCircle />
+          <strong>{groups.running.length}</strong>
+          <span>正在执行</span>
+        </button>
+        <button
+          className={filter === "confirm" ? "active" : ""}
+          onClick={() => setFilter("confirm")}
+        >
+          <WandSparkles />
+          <strong>{groups.confirm.length}</strong>
+          <span>待我确认</span>
+        </button>
+        <button
+          className={filter === "failed" ? "active" : ""}
+          onClick={() => setFilter("failed")}
+        >
+          <CircleAlert />
+          <strong>{groups.failed.length}</strong>
+          <span>失败任务</span>
+        </button>
+        <button
+          className={filter === "history" ? "active" : ""}
+          onClick={() => setFilter("history")}
+        >
+          <Check />
+          <strong>{groups.history.length}</strong>
+          <span>历史记录</span>
+        </button>
+      </div>
+      <section className="panel task-list">
+        <div className="task-list-head">
+          <span>任务</span>
+          <span>状态</span>
+          <span>时间</span>
+        </div>
+        {visible.length ? (
+          visible.map((job) => (
+            <div
+              className="task-detail"
+              key={job.id}
+              onClick={() => inspect(job.id)}
+            >
+              <div className={`job-state ${job.status}`}>
+                {job.status === "running" ? (
+                  <LoaderCircle className="spin" />
+                ) : job.status === "completed" ? (
+                  <Check />
+                ) : job.status === "failed" ? (
+                  <CircleAlert />
+                ) : job.status === "waiting_confirm" ? (
+                  <WandSparkles />
+                ) : (
+                  <Clock3 />
+                )}
+              </div>
+              <div className="task-copy">
+                <strong>{job.title}</strong>
+                <span>
+                  {job.error_message ||
+                    job.message ||
+                    `任务 #${job.id} · 发起时间 ${timeAgo(job.created_at)}`}
+                </span>
+                {!["queued", "running", "waiting_confirm"].includes(job.status) && (
+                  <small>成功 {job.success_count || 0} · 失败 {job.failed_count || 0} · 跳过 {job.skipped_count || 0}</small>
+                )}
+                {job.status === "running" && (
+                  <div className="bar">
+                    <i
+                      className="amber"
+                      style={{ width: `${job.progress}%` }}
+                    />
+                  </div>
+                )}
+                {job.status === "waiting_confirm" && (
+                  <div className="inline-task-actions">
+                    <button
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        navigate?.("download");
+                      }}
+                    >
+                      打开待入库
+                    </button>
+                  </div>
+                )}
+                {["running", "queued"].includes(job.status) && (
+                  <div className="inline-task-actions">
+                    <button onClick={(event) => { event.stopPropagation(); control(job, "cancel"); }}>
+                      取消任务
+                    </button>
+                  </div>
+                )}
+                {["failed", "cancelled"].includes(job.status) && (
+                  <div className="inline-task-actions">
+                    <button className="confirm" onClick={(event) => { event.stopPropagation(); control(job, "retry"); }}>
+                      重试
+                    </button>
+                  </div>
+                )}
+              </div>
+              <em className={`status-pill ${job.status}`}>
+                {label(job.status)}
+              </em>
+              <time>{timeAgo(job.created_at)}</time>
+            </div>
+          ))
+        ) : (
+          <Empty
+            icon={Activity}
+            title="这一类暂时没有任务"
+            text="任务会按运行、确认、失败和历史自动归类。"
+          />
+        )}
+      </section>
+      {detail && (
+        <div className="modal-wrap">
+          <button className="modal-backdrop" onClick={() => setDetail(null)} />
+          <section className="modal panel log-modal job-modal">
+            <div className="modal-head">
+              <div>
+                <span className="eyebrow">任务详情</span>
+                <h3>{detail.title}</h3>
+              </div>
+              <button className="icon-button" onClick={() => setDetail(null)}>
+                <X />
+              </button>
+            </div>
+            <dl className="task-detail-meta">
+              <div>
+                <dt>任务名称</dt>
+                <dd>{detail.title}</dd>
+              </div>
+              <div>
+                <dt>开始时间</dt>
+                <dd>
+                  {detail.created_at
+                    ? new Date(detail.created_at).toLocaleString("zh-CN")
+                    : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt>当前进度</dt>
+                <dd>{detail.progress || 0}%</dd>
+              </div>
+              <div>
+                <dt>状态</dt>
+                <dd>{label(detail.status)}</dd>
+              </div>
+              <div>
+                <dt>执行范围</dt>
+                <dd>{detail.payload?.scope || "全部"}{detail.payload?.scopeValue ? ` · ${detail.payload.scopeValue}` : ""}</dd>
+              </div>
+              <div>
+                <dt>结果</dt>
+                <dd>成功 {detail.success_count || 0} · 失败 {detail.failed_count || 0} · 跳过 {detail.skipped_count || 0}</dd>
+              </div>
+              <div>
+                <dt>结束时间</dt>
+                <dd>{detail.finished_at ? new Date(detail.finished_at).toLocaleString("zh-CN") : "—"}</dd>
+              </div>
+            </dl>
+            {detail.error_message && (
+              <div className="inline-error">
+                <CircleAlert />
+                {detail.error_code}: {detail.error_message}
+              </div>
+            )}
+            {detail.status === "waiting_confirm" && detail.result?.preview && (
+              <div className="ingest-preview">
+                <div>
+                  <small>临时文件</small>
+                  <code>{detail.result.preview.incomingPath}</code>
+                </div>
+                <ChevronRight />
+                <div>
+                  <small>目标路径</small>
+                  <code>{detail.result.preview.targetPath}</code>
+                </div>
+                <dl>
+                  <div>
+                    <dt>歌曲</dt>
+                    <dd>{detail.result.preview.title}</dd>
+                  </div>
+                  <div>
+                    <dt>歌手 / 专辑</dt>
+                    <dd>
+                      {detail.result.preview.artist} ·{" "}
+                      {detail.result.preview.album}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>音质</dt>
+                    <dd>{detail.result.preview.quality}</dd>
+                  </div>
+                  <div>
+                    <dt>冲突</dt>
+                    <dd>
+                      {detail.result.preview.conflictAdjusted
+                        ? "已自动使用安全新文件名"
+                        : "无"}
+                    </dd>
+                  </div>
+                </dl>
+                <div className="decision-actions">
+                  <button className="primary" onClick={() => { setDetail(null); navigate?.("download"); }}>
+                    <ArrowDownToLine />打开待入库批量处理
+                  </button>
+                </div>
+              </div>
+            )}
+            <div className="decision-actions">
+              {["running", "queued"].includes(detail.status) && (
+                <button className="secondary" onClick={() => control(detail, "cancel")}><X />取消任务</button>
+              )}
+              {["failed", "cancelled"].includes(detail.status) && (
+                <button className="primary" onClick={() => control(detail, "retry")}><RefreshCw />重试任务</button>
+              )}
+            </div>
+            <div className="log-list">
+              {detail.logs?.map((item) => (
+                <div className={item.level} key={item.id}>
+                  <time>
+                    {new Date(item.created_at).toLocaleString("zh-CN")}
+                  </time>
+                  <p>{item.message}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}

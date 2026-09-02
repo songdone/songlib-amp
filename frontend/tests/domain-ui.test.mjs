@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -38,6 +38,26 @@ import {
   resolvedTheme,
 } from "../src/lib/appearance.js";
 import { clearFastCache, readFastCache, writeFastCache } from "../src/lib/cache.js";
+
+/** 读取 src 下的单个源文件。 */
+const readSource = (relativePath) =>
+  readFileSync(new URL(`../src/${relativePath}`, import.meta.url), "utf8");
+
+/**
+ * 把 src 下所有源文件拼起来。
+ * "整个前端都不应该出现某个东西"这类断言要扫全树，
+ * 否则代码一搬家断言就悄悄失效了。
+ */
+const readAllSources = () => {
+  const root = new URL("../src/", import.meta.url);
+  const walk = (dir) =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const child = new URL(`${entry.name}${entry.isDirectory() ? "/" : ""}`, dir);
+      if (entry.isDirectory()) return walk(child);
+      return /\.(jsx?|mjs)$/.test(entry.name) ? [readFileSync(child, "utf8")] : [];
+    });
+  return walk(root).join("\n");
+};
 
 test("unsafe requests can recover the encoded CSRF cookie", () => {
   assert.equal(
@@ -351,12 +371,17 @@ test("compact login keeps the form in the first mobile viewport", () => {
 });
 
 test("touch startup and the global shell avoid continuous media work", () => {
-  const source = readFileSync(new URL("../src/main.jsx", import.meta.url), "utf8");
-  assert.doesNotMatch(source, /from ["']motion\/react["']/);
-  assert.doesNotMatch(source, /songlib-login-background\.mp4/);
-  assert.match(source, /const PlayerClockContext = createContext/);
-  assert.match(source, /function AuthenticatedShell[\s\S]*?const player = usePlayerCore\(\)/);
-  assert.match(source, /<PlayerClockContext\.Provider value=\{clock\}>/);
+  // 这两条是"整个前端都不该出现"，扫全树而不是只看单个文件。
+  const allSources = readAllSources();
+  assert.doesNotMatch(allSources, /from ["']motion\/react["']/);
+  assert.doesNotMatch(allSources, /songlib-login-background\.mp4/);
+
+  const player = readSource("features/player/PlayerProvider.jsx");
+  assert.match(player, /const PlayerClockContext = createContext/);
+  assert.match(player, /<PlayerClockContext\.Provider value=\{clock\}>/);
+
+  const shell = readSource("app/AuthenticatedShell.jsx");
+  assert.match(shell, /function AuthenticatedShell[\s\S]*?const player = usePlayerCore\(\)/);
 });
 
 test("startup cannot remain on the static connecting screen forever", () => {
@@ -365,23 +390,32 @@ test("startup cannot remain on the static connecting screen forever", () => {
     new URL("../public/startup-v105.js", import.meta.url),
     "utf8",
   );
-  const source = readFileSync(new URL("../src/main.jsx", import.meta.url), "utf8");
+  const entry = readSource("main.jsx");
   assert.match(index, /startup-v105\.js/);
   assert.match(startup, /window\.setTimeout\(recoverOnce, 12000\)/);
   assert.match(startup, /清理本应用缓存并重新连接/);
   assert.match(startup, /registration\.unregister\(\)/);
-  assert.match(source, /dataset\.songlibStarted = BRAND\.version/);
-  assert.match(source, /new Event\("songlib:started"\)/);
-  const apiSource = readFileSync(new URL("../src/lib/api.js", import.meta.url), "utf8");
-  assert.match(apiSource, /timeoutMs = 20000/);
-  assert.match(source, /api\("\/api\/auth\/status", \{ timeoutMs: 8000 \}\)/);
+  assert.match(entry, /dataset\.songlibStarted = BRAND\.version/);
+  assert.match(entry, /new Event\("songlib:started"\)/);
+  assert.match(readSource("lib/api.js"), /timeoutMs = 20000/);
+  assert.match(
+    readSource("app/App.jsx"),
+    /api\("\/api\/auth\/status", \{ timeoutMs: 8000 \}\)/,
+  );
 });
 
 test("logged-in player chrome defines the time formatter it renders", () => {
-  const source = readFileSync(new URL("../src/main.jsx", import.meta.url), "utf8");
-  assert.match(source, /const formatTime = \(value\) => \{/);
-  assert.match(source, /function SidebarMiniPlayer[\s\S]*?formatTime\(player\.currentTime\)/);
-  assert.match(source, /function MiniPlayer[\s\S]*?formatTime\(player\.duration\)/);
+  // formatTime 现在是 lib/format.js 里的共享工具，两个播放器组件从那里导入。
+  assert.match(readSource("lib/format.js"), /const formatTime = \(value\) => \{/);
+  const sidebarPlayer = readSource("features/shell/SidebarMiniPlayer.jsx");
+  assert.match(sidebarPlayer, /import \{[^}]*formatTime[^}]*\} from "\.\.\/\.\.\/lib\/format"/);
+  assert.match(
+    sidebarPlayer,
+    /function SidebarMiniPlayer[\s\S]*?formatTime\(player\.currentTime\)/,
+  );
+  const miniPlayer = readSource("features/player/MiniPlayer.jsx");
+  assert.match(miniPlayer, /import \{[^}]*formatTime[^}]*\} from "\.\.\/\.\.\/lib\/format"/);
+  assert.match(miniPlayer, /function MiniPlayer[\s\S]*?formatTime\(player\.duration\)/);
 });
 
 test("ambient deck keeps every unique artist image and prioritizes larger libraries", () => {

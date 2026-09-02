@@ -1,21 +1,79 @@
-import { CircleAlert, Code2, FileUp, Gauge, Link2, LoaderCircle, Music2, Plus, Power, ScrollText, Search, ShieldCheck, TestTube2, Trash2, Wifi, X } from "lucide-react";
-import { useState } from "react";
-import { Empty } from "../../components/Empty";
-import { SectionHead } from "../../components/SectionHead";
-import { api } from "../../lib/api";
-import { timeAgo } from "../../lib/format";
+/**
+ * 音乐源。
+ *
+ * 重构掉的：
+ * - "导入之后要做什么"那个四步有序列表。那是文档，不是界面 ——
+ *   用户看的时候已经在这一页了，四步里有三步是系统自动做的。
+ *   压成区块标题旁边一句话。
+ * - 每张源卡片一个六项的 <dl>（检测格式 / 使用权限 / 运行验证 /
+ *   支持平台 / 支持音质 / 最近测试）。六行键值对是接口文档的排版。
+ *   卡片上只留"能不能用、支持什么、上次测什么时候"，
+ *   剩下的挪进"检查格式"弹窗 —— 想看细节的人本来就会点它。
+ * - confirm() 删源、两个自绘的 modal-wrap 弹窗，都换成 Modal。
+ * - 图标按钮只有 title 没有 aria-label。
+ * - 时长在这里手算 mm:ss，改用 lib/format 的 formatTime。
+ */
 
+import {
+  CircleAlert,
+  Code2,
+  FileUp,
+  Gauge,
+  Link2,
+  Music2,
+  Plus,
+  Power,
+  ScrollText,
+  Search,
+  ShieldCheck,
+  TestTube2,
+  Trash2,
+  Wifi,
+} from "lucide-react";
+import { useState } from "react";
+import { Badge } from "../../components/ui/Badge";
+import { Button, ButtonGroup, IconButton } from "../../components/ui/Button";
+import { Cover } from "../../components/ui/Cover";
+import { Field, Notice } from "../../components/ui/Field";
+import {
+  EmptyState,
+  ListGroup,
+  ListRow,
+  Page,
+  Section,
+  SectionHeader,
+} from "../../components/ui/Layout";
+import { Modal } from "../../components/ui/Modal";
+import { ChipGroup } from "../../components/ui/Plan";
+import { api } from "../../lib/api";
+import { formatTime, timeAgo } from "../../lib/format";
+import { platformLabel, sourceTypeLabel } from "../../lib/sources";
+
+/** 源状态 → 中文名 + 徽章色。数据库存的是英文枚举。 */
 const SOURCE_STATES = {
-  unverified: ["未验证", "muted"],
-  imported: ["已导入", "amber"],
-  search_ok: ["搜索可用", "blue"],
-  inspect_ok: ["接口已授权", "green"],
-  partial: ["接口已授权", "green"],
-  degraded: ["已授权 · 运行异常", "amber"],
-  resolve_ok: ["解析可用", "green"],
-  unavailable: ["不可用", "red"],
-  disabled: ["已禁用", "muted"],
+  unverified: ["还没验证", "neutral"],
+  imported: ["已导入", "warning"],
+  search_ok: ["搜索可用", "info"],
+  inspect_ok: ["可以用", "success"],
+  partial: ["可以用", "success"],
+  degraded: ["能用但不稳", "warning"],
+  resolve_ok: ["解析可用", "success"],
+  unavailable: ["用不了", "danger"],
+  disabled: ["已停用", "neutral"],
 };
+
+const IMPORT_MODES = [
+  { id: "url", label: "在线 URL", icon: Link2 },
+  { id: "file", label: "本地文件", icon: FileUp },
+  { id: "code", label: "粘贴源码", icon: Code2 },
+];
+
+const QUALITIES = [
+  { id: "128k", label: "128K" },
+  { id: "320k", label: "320K" },
+  { id: "flac", label: "FLAC" },
+  { id: "flac24bit", label: "Hi-Res" },
+];
 
 export function SourceManager({ sources, refreshSources, notify }) {
   const [mode, setMode] = useState("url"),
@@ -27,6 +85,7 @@ export function SourceManager({ sources, refreshSources, notify }) {
     [error, setError] = useState(""),
     [keyword, setKeyword] = useState(""),
     [quality, setQuality] = useState("320k");
+  const [removing, setRemoving] = useState(null);
   const [testing, setTesting] = useState(""),
     [testData, setTestData] = useState(null),
     [logs, setLogs] = useState(null),
@@ -140,9 +199,10 @@ export function SourceManager({ sources, refreshSources, notify }) {
       setError(err.message);
     }
   };
-  const remove = async (source) => {
-    if (!confirm(`删掉「${source.displayName}」？只是移除这个源，曲库里的歌不受影响。`))
-      return;
+  const remove = async () => {
+    const source = removing;
+    setRemoving(null);
+    if (!source) return;
     try {
       await api(`/api/sources/${source.id}`, { method: "DELETE" });
       if (logs?.source.id === source.id) setLogs(null);
@@ -158,406 +218,359 @@ export function SourceManager({ sources, refreshSources, notify }) {
       setError(err.message);
     }
   };
+  const state = (source) =>
+    SOURCE_STATES[source.status] || [source.status, "neutral"];
+
   return (
-    <div className="page sources-page">
-      <section className="source-layout">
-        <form className="panel source-import" onSubmit={importSource}>
-          <SectionHead
-            title="导入音乐源"
-            note="识别到音乐接口后会立即启用"
+    <Page className="sources">
+      <div className="sources__top">
+        {/* --- 导入 --- */}
+        <Section>
+          <SectionHeader
+            title="导入一个音乐源"
+            note="检查通过就直接启用，可以马上去搜歌"
           />
-          <div className="import-tabs">
-            {[
-              ["url", Link2, "在线 URL"],
-              ["file", FileUp, "本地文件"],
-              ["code", Code2, "粘贴源码"],
-            ].map(([id, Icon, label]) => (
-              <button
-                type="button"
-                className={mode === id ? "active" : ""}
-                onClick={() => {
-                  setMode(id);
-                  setError("");
-                }}
-                key={id}
-              >
-                <Icon />
-                {label}
-              </button>
-            ))}
-          </div>
-          <label>
-            显示名称（可选）
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="例如：我的无损源"
+          <form className="sources__import" onSubmit={importSource}>
+            <ChipGroup
+              label="从哪里导入"
+              options={IMPORT_MODES}
+              value={mode}
+              onChange={(id) => {
+                setMode(id);
+                setError("");
+              }}
             />
-          </label>
-          {mode === "url" && (
-            <label>
-              Raw JavaScript URL
-              <input
+
+            <Field
+              label="给它起个名字"
+              hint="不填就用脚本自己声明的名字"
+              placeholder="例如：我的无损源"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
+
+            {mode === "url" && (
+              <Field
+                label="脚本地址"
                 required
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
+                type="url"
+                leading={Link2}
                 placeholder="https://…/latest.js"
+                value={url}
+                onChange={(event) => setUrl(event.target.value)}
               />
-            </label>
-          )}
-          {mode === "file" && (
-            <label className="file-picker">
-              <input
-                type="file"
-                accept=".js,application/javascript,text/javascript"
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
-              />
-              <FileUp />
-              <strong>{file?.name || "选择本地 .js 文件"}</strong>
-              <span>从这台电脑选文件，最大 2 MB</span>
-            </label>
-          )}
-          {mode === "code" && (
-            <label>
-              JavaScript 源码
-              <textarea
-                required
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="粘贴完整 LX 自定义音乐源源码…"
-              />
-            </label>
-          )}
-          <p className="modal-note">
-            <ShieldCheck />
-            音屿不自带任何音乐源。只导入你信得过、也有权使用的脚本 —— 它不会绕过任何版权保护。
-          </p>
-          <button className="primary full" disabled={busy}>
-            {busy ? <LoaderCircle className="spin" /> : <Plus />}导入并启用
-          </button>
-        </form>
-        <section className="panel source-guide">
-          <h3>导入之后要做什么</h3>
-          <p>
-            导入时会先检查一遍脚本，通过就直接启用，可以马上去搜歌。
-            旁边那两个测试是看这个源支持到什么程度，测不过也照样能用。
-          </p>
-          <ol>
-            <li>
-              <b>01</b> 导入并检查脚本结构
-            </li>
-            <li>
-              <b>02</b> 校验通过后自动启用
-            </li>
-            <li>
-              <b>03</b> 搜索与下载权限立即开放
-            </li>
-            <li>
-              <b>04</b> 实际使用时记录接口状态
-            </li>
-          </ol>
-        </section>
-      </section>
+            )}
+
+            {mode === "file" && (
+              <label className="sources__file">
+                <input
+                  type="file"
+                  accept=".js,application/javascript,text/javascript"
+                  onChange={(event) => setFile(event.target.files?.[0] || null)}
+                />
+                <FileUp aria-hidden="true" />
+                <strong>{file?.name || "选一个 .js 文件"}</strong>
+                <small>从这台电脑选，最大 2 MB</small>
+              </label>
+            )}
+
+            {mode === "code" && (
+              <label className="sources__code">
+                <span>脚本源码</span>
+                <textarea
+                  required
+                  rows={8}
+                  value={code}
+                  onChange={(event) => setCode(event.target.value)}
+                  placeholder="把完整的源码粘进来…"
+                />
+              </label>
+            )}
+
+            <Notice tone="info" icon={ShieldCheck}>
+              音屿不自带任何音乐源。只导入你信得过、也有权使用的脚本 ——
+              它不会绕过任何版权保护。
+            </Notice>
+
+            <Button type="submit" variant="primary" icon={Plus} loading={busy}>
+              导入并启用
+            </Button>
+          </form>
+        </Section>
+      </div>
+
       {error && (
-        <div className="inline-error">
-          <CircleAlert />
+        <Notice tone="danger" icon={CircleAlert}>
           {error}
-        </div>
+        </Notice>
       )}
-      <section className="panel installed-sources">
-        <SectionHead
-          title="已安装音乐源"
-          note={`共 ${sources.length} 个`}
+
+      {/* --- 已装的源 --- */}
+      <Section reveal>
+        <SectionHeader
+          title="已经装上的"
+          note={sources.length ? `共 ${sources.length} 个` : undefined}
         />
         {sources.length ? (
-          <div className="source-cards">
+          <div className="sources__list">
             {sources.map((source) => {
-              const [label, tone] = SOURCE_STATES[source.status] || [
-                source.status,
-                "muted",
-              ];
+              const [label, tone] = state(source);
               return (
-                <article className="source-card" key={source.id}>
-                  <div className="source-card-head">
-                    <div className="source-logo">
+                <article className="sources__card" key={source.id}>
+                  <div className="sources__card-head">
+                    <span className="sources__logo">
                       <Music2 />
-                    </div>
-                    <div>
+                    </span>
+                    <div className="sources__card-text">
                       <strong>{source.displayName}</strong>
-                      <span>
-                        {source.metadata?.author || "自定义来源"} ·{" "}
-                        {source.sourceType}
-                      </span>
+                      <small>
+                        {[
+                          source.metadata?.author || "自定义来源",
+                          sourceTypeLabel(source.sourceType),
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </small>
                     </div>
-                    <i className={`source-state ${tone}`}>{label}</i>
+                    <Badge tone={tone}>{label}</Badge>
                   </div>
-                  <dl>
-                    <div>
-                      <dt>检测格式</dt>
-                      <dd>
-                        {source.detectedFormat || "待检查"} ·{" "}
-                        {source.compatibility || "未知"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>使用权限</dt>
-                      <dd>
-                        {source.accessGranted
-                          ? "搜索与下载已开放"
-                          : source.enabled
-                            ? "等待接口识别"
-                            : "已停用"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>运行验证</dt>
-                      <dd>
-                        搜索 {source.searchOk ? "成功" : "待运行"} · 解析{" "}
-                        {source.resolveOk ? "成功" : "待运行"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>支持平台</dt>
-                      <dd>
-                        {source.supportedPlatforms?.join(" · ") || "未知"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>支持音质</dt>
-                      <dd>
-                        {source.supportedQualities?.join(" · ") || "待测试"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>最近测试</dt>
-                      <dd>
-                        {source.lastTestAt
-                          ? timeAgo(source.lastTestAt)
-                          : "尚未测试"}
-                      </dd>
-                    </div>
-                  </dl>
+
+                  {/* 卡片上只留三件事：支持哪些平台、哪些音质、上次测的时候。
+                      更细的接口能力在"检查格式"里看。 */}
+                  <p className="sources__facts">
+                    {source.supportedPlatforms?.length
+                      ? source.supportedPlatforms.map(platformLabel).join(" · ")
+                      : "支持的平台还没测出来"}
+                    {source.supportedQualities?.length
+                      ? ` · 最高 ${source.supportedQualities.at(-1)}`
+                      : ""}
+                    {source.lastTestAt
+                      ? ` · ${timeAgo(source.lastTestAt)}测过`
+                      : " · 还没测过"}
+                  </p>
+
                   {source.lastErrorMessage && (
-                    <p className="source-error">
-                      <CircleAlert />
+                    <Notice tone="danger" icon={CircleAlert}>
                       {source.lastErrorMessage}
-                    </p>
+                    </Notice>
                   )}
-                  <div className="source-actions">
-                    <button
-                      className="secondary small"
-                      disabled={testing === `inspect-${source.id}`}
+
+                  <div className="sources__card-actions">
+                    <Button
+                      size="sm"
+                      icon={Gauge}
+                      loading={testing === `inspect-${source.id}`}
                       onClick={() => inspect(source)}
                     >
-                      {testing === `inspect-${source.id}` ? (
-                        <LoaderCircle className="spin" />
-                      ) : (
-                        <Gauge />
-                      )}
                       检查格式
-                    </button>
-                    <button
-                      className="secondary small"
-                      disabled={testing === source.id}
+                    </Button>
+                    <Button
+                      size="sm"
+                      icon={Search}
+                      loading={testing === source.id}
                       onClick={() => testSearch(source)}
                     >
-                      {testing === source.id ? (
-                        <LoaderCircle className="spin" />
-                      ) : (
-                        <Search />
-                      )}
-                      测试搜索
-                    </button>
-                    <button
-                      className="icon-button"
-                      title="查看日志"
-                      aria-label="查看日志"
+                      试搜一首
+                    </Button>
+                    <IconButton
+                      icon={ScrollText}
+                      size="sm"
+                      label={`查看 ${source.displayName} 的日志`}
                       onClick={() => showLogs(source)}
-                    >
-                      <ScrollText />
-                    </button>
-                    <button
-                      className={`icon-button ${source.enabled ? "powered" : ""}`}
-                      title={source.enabled ? "禁用" : "启用"}
+                    />
+                    <IconButton
+                      icon={Power}
+                      size="sm"
+                      variant={source.enabled ? "primary" : "ghost"}
+                      label={
+                        source.enabled
+                          ? `停用 ${source.displayName}`
+                          : `启用 ${source.displayName}`
+                      }
                       onClick={() => toggle(source)}
-                    >
-                      <Power />
-                    </button>
-                    <button
-                      className="icon-button danger"
-                      title="删除"
-                      onClick={() => remove(source)}
-                    >
-                      <Trash2 />
-                    </button>
+                    />
+                    <IconButton
+                      icon={Trash2}
+                      size="sm"
+                      variant="danger"
+                      label={`删除 ${source.displayName}`}
+                      onClick={() => setRemoving(source)}
+                    />
                   </div>
                 </article>
               );
             })}
           </div>
         ) : (
-          <Empty
+          <EmptyState
             icon={Wifi}
             title="还没有音乐源"
-            text="填地址、选本地文件，或者直接粘源码。"
+            text="上面填个地址、选个本地文件，或者直接粘源码。"
           />
         )}
-      </section>
+      </Section>
+
+      {/* --- 试搜结果 --- */}
       {testData && (
-        <section className="panel source-test">
-          <SectionHead
-            title={`测试搜索 · ${testData.source.displayName}`}
-            note={`找到 ${testData.result.count} 首候选歌曲，可选择一首测试播放地址`}
-            action={
+        <Section reveal>
+          <SectionHeader
+            title={`「${testData.source.displayName}」搜到了什么`}
+            note={`${testData.result.count} 首候选，挑一首试试能不能拿到播放地址`}
+            actions={
               <select
+                className="ui-select"
+                aria-label="测试用的音质"
                 value={quality}
-                onChange={(e) => setQuality(e.target.value)}
+                onChange={(event) => setQuality(event.target.value)}
               >
-                <option value="128k">128K</option>
-                <option value="320k">320K</option>
-                <option value="flac">FLAC</option>
-                <option value="flac24bit">Hi-Res</option>
+                {QUALITIES.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.label}
+                  </option>
+                ))}
               </select>
             }
           />
-          <div className="result-list">
+          <ListGroup>
             {testData.result.results.map((item) => (
-              <div
-                className="result-row source-result"
+              <ListRow
                 key={`${item.platform}-${item.trackId}`}
-              >
-                <div className="result-cover">
-                  {item.coverUrl ? <img src={item.coverUrl} /> : <Music2 />}
-                </div>
-                <div className="result-main">
-                  <strong>{item.title}</strong>
-                  <span>
-                    {item.artist} · {item.album || "单曲"}
+                leading={
+                  <Cover
+                    src={item.coverUrl}
+                    title={item.title}
+                    size="40px"
+                    shape="square"
+                  />
+                }
+                title={item.title}
+                subtitle={[item.artist, item.album || "单曲"]
+                  .filter(Boolean)
+                  .join(" · ")}
+                chevron={false}
+                trailing={
+                  <span className="sources__result-actions">
+                    <small>{formatTime(item.duration)}</small>
+                    {item.qualities.slice(-2).map((q) => (
+                      <Badge key={q}>{q}</Badge>
+                    ))}
+                    <Button
+                      size="sm"
+                      icon={TestTube2}
+                      loading={testing === `resolve-${item.trackId}`}
+                      onClick={() => testResolve(item)}
+                    >
+                      试解析
+                    </Button>
                   </span>
-                </div>
-                <span className="duration">
-                  {Math.floor(item.duration / 60)}:
-                  {String(item.duration % 60).padStart(2, "0")}
-                </span>
-                <div className="quality-dots">
-                  {item.qualities.slice(-2).map((q) => (
-                    <i key={q}>{q}</i>
-                  ))}
-                </div>
-                <button
-                  className="secondary small"
-                  disabled={testing === `resolve-${item.trackId}`}
-                  onClick={() => testResolve(item)}
-                >
-                  {testing === `resolve-${item.trackId}` ? (
-                    <LoaderCircle className="spin" />
-                  ) : (
-                    <TestTube2 />
-                  )}
-                  测试解析
-                </button>
+                }
+              />
+            ))}
+          </ListGroup>
+        </Section>
+      )}
+
+      {/* --- 日志 --- */}
+      <Modal
+        open={Boolean(logs)}
+        onClose={() => setLogs(null)}
+        title={logs ? `${logs.source.displayName} 的记录` : "记录"}
+        description="导入和测试都会记在这里"
+        size="lg"
+      >
+        {logs?.items?.length ? (
+          <div className="task-logs">
+            {logs.items.map((item) => (
+              <div className={`task-logs__line ${item.level}`} key={item.id}>
+                <time>{new Date(item.created_at).toLocaleString("zh-CN")}</time>
+                <p>
+                  <b>{item.action}</b> {item.message}
+                </p>
               </div>
             ))}
           </div>
-        </section>
-      )}
-      {logs && (
-        <div className="modal-wrap">
-          <button className="modal-backdrop" onClick={() => setLogs(null)} />
-          <section className="modal panel log-modal">
-            <div className="modal-head">
-              <div>
-                <h3>{logs.source.displayName}</h3>
-              </div>
-              <button className="icon-button" onClick={() => setLogs(null)} aria-label="关闭日志" title="关闭">
-                <X />
-              </button>
-            </div>
-            <div className="log-list">
-              {logs.items.length ? (
-                logs.items.map((item) => (
-                  <div className={item.level} key={item.id}>
-                    <time>
-                      {new Date(item.created_at).toLocaleString("zh-CN")}
-                    </time>
-                    <b>{item.action}</b>
-                    <p>{item.message}</p>
-                  </div>
-                ))
-              ) : (
-                <Empty
-                  icon={ScrollText}
-                  title="暂无日志"
-                  text="导入和测试的结果都会记在这里。"
-                />
-              )}
-            </div>
-          </section>
-        </div>
-      )}
-      {inspection && (
-        <div className="modal-wrap">
-          <button
-            className="modal-backdrop"
-            onClick={() => setInspection(null)}
+        ) : (
+          <EmptyState
+            icon={ScrollText}
+            title="还没有记录"
+            text="导入和测试的结果都会记在这里。"
           />
-          <section className="modal panel inspect-modal">
-            <div className="modal-head">
-              <div>
-                <h3>{inspection.source.displayName}</h3>
-              </div>
-              <button
-                className="icon-button"
-                onClick={() => setInspection(null)}
-                aria-label="关闭格式检查"
-                title="关闭"
-              >
-                <X />
-              </button>
-            </div>
-            <div className="inspect-summary">
-              <i
-                className={`source-state ${inspection.result.ok ? "green" : "red"}`}
-              >
-                {inspection.result.compatibility}
-              </i>
-              <strong>{inspection.result.detected_format}</strong>
-              <p>{inspection.result.message}</p>
-            </div>
-            <dl>
-              <div>
-                <dt>顶层接口</dt>
-                <dd>{inspection.result.top_level_keys?.join(" · ") || "无"}</dd>
-              </div>
+        )}
+      </Modal>
+
+      {/* --- 格式检查 --- */}
+      <Modal
+        open={Boolean(inspection)}
+        onClose={() => setInspection(null)}
+        title={inspection ? `${inspection.source.displayName} 支持到什么程度` : ""}
+        size="lg"
+      >
+        {inspection && (
+          <>
+            <Notice
+              tone={inspection.result.ok ? "success" : "danger"}
+              icon={inspection.result.ok ? ShieldCheck : CircleAlert}
+              title={`${inspection.result.detected_format} · ${inspection.result.compatibility}`}
+            >
+              {inspection.result.message}
+            </Notice>
+            <dl className="task-meta">
               <div>
                 <dt>搜索</dt>
                 <dd>
                   {inspection.result.methods?.search
-                    ? "源内置"
-                    : "音屿目录适配器"}
+                    ? "这个源自己实现了"
+                    : "用音屿的目录适配器"}
                 </dd>
               </div>
               <div>
                 <dt>地址解析</dt>
-                <dd>{inspection.result.methods?.resolve ? "支持" : "缺失"}</dd>
+                <dd>{inspection.result.methods?.resolve ? "支持" : "没有"}</dd>
               </div>
               <div>
                 <dt>歌词 / 封面</dt>
                 <dd>
-                  {inspection.result.methods?.lyric ? "支持" : "—"} /{" "}
-                  {inspection.result.methods?.cover ? "支持" : "—"}
+                  {inspection.result.methods?.lyric ? "支持" : "没有"} ·{" "}
+                  {inspection.result.methods?.cover ? "支持" : "没有"}
                 </dd>
               </div>
               <div>
-                <dt>平台</dt>
+                <dt>支持平台</dt>
                 <dd>
-                  {inspection.result.supported_platforms?.join(" · ") || "未知"}
+                  {inspection.result.supported_platforms
+                    ?.map(platformLabel)
+                    .join(" · ") || "没测出来"}
                 </dd>
               </div>
+              <div>
+                <dt>顶层接口</dt>
+                <dd>{inspection.result.top_level_keys?.join(" · ") || "没有"}</dd>
+              </div>
             </dl>
-          </section>
-        </div>
-      )}
-    </div>
+          </>
+        )}
+      </Modal>
+
+      {/* --- 删除确认 --- */}
+      <Modal
+        open={Boolean(removing)}
+        onClose={() => setRemoving(null)}
+        title={`删掉「${removing?.displayName}」？`}
+        size="sm"
+        actions={
+          <ButtonGroup align="end">
+            <Button onClick={() => setRemoving(null)}>留着</Button>
+            <Button variant="danger" icon={Trash2} onClick={remove}>
+              删掉
+            </Button>
+          </ButtonGroup>
+        }
+      >
+        <p>
+          只是把这个源移掉，已经下载进曲库的歌不受影响。
+          之后想用还得重新导入一次。
+        </p>
+      </Modal>
+    </Page>
   );
 }

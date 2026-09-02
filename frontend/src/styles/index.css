@@ -59,6 +59,7 @@
 @import "../features/tools/download.css";
 
 @import "../features/player/player.css";
+@import "../features/share/share.css";
 @import "../features/discover/discover.css";
 @import "../features/tools/tasks.css";
 @import "../features/me/me.css";

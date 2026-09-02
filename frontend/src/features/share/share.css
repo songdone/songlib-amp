@@ -1,0 +1,182 @@
+/**
+ * 分享海报编辑器。
+ *
+ * 两栏：左边控件，右边预览。窄屏改成上下，预览排在**上面** ——
+ * 手机上第一眼要看到图，不是看到一列选项。
+ */
+
+@layer components {
+  .poster-studio {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
+    gap: var(--space-6);
+    align-items: start;
+  }
+
+  .poster-studio__controls {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+  }
+
+  /* =============================================================
+   * 预览
+   * ============================================================= */
+
+  /*
+   * 容器负责比例（aspect-ratio 由 JSX 按当前比例写在 style 上），
+   * canvas 只负责填满它。
+   *
+   * canvas 的 width/height 属性是位图像素数（1080×1440），
+   * CSS 的 width/height 是显示尺寸 —— 两者是独立的。
+   * 只设一边就会拉伸变形，所以这里显式写 100%。
+   */
+  .poster-studio__stage {
+    position: sticky;
+    /* 跟着滚 —— 左边歌词列表可能很长，预览不该滚出视野。 */
+    inset-block-start: 0;
+    width: 100%;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: var(--surface-3);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .poster-studio__canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .poster-studio__hint {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
+    line-height: var(--leading-normal);
+    color: var(--text-tertiary);
+  }
+
+  .poster-studio__hint svg {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    margin-block-start: 2px;
+    color: var(--accent-text);
+  }
+
+  /* =============================================================
+   * 歌词逐句勾选
+   * ============================================================= */
+
+  .poster-lyrics {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .poster-lyrics header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .poster-lyrics h3 {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+  }
+
+  .poster-lyrics header small {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 定高滚动。一首歌四十多句，全铺开会把导出按钮挤到屏幕外。 */
+  .poster-lyrics ul {
+    max-height: 46vh;
+    overflow-y: auto;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--surface-1);
+    /* 上下边缘淡出，暗示还能继续滚。 */
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0,
+      #000 12px,
+      #000 calc(100% - 12px),
+      transparent 100%
+    );
+  }
+
+  .poster-lyrics li + li {
+    border-block-start: 1px solid var(--border-subtle);
+  }
+
+  .poster-lyrics label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    cursor: pointer;
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    color: var(--text-secondary);
+    transition: background-color var(--duration-fast) var(--ease-out);
+  }
+
+  .poster-lyrics label:hover {
+    background: var(--surface-2);
+  }
+
+  /* 选满之后剩下的行变灰并且不响应 —— 比"点了没反应"清楚。 */
+  .poster-lyrics label.is-full {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .poster-lyrics label:has(input:checked) {
+    background: var(--accent-soft);
+    color: var(--text-primary);
+  }
+
+  .poster-lyrics input {
+    flex: none;
+    accent-color: var(--accent-solid);
+  }
+
+  .poster-lyrics span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  /* =============================================================
+   * 窄屏
+   * ============================================================= */
+
+  @media (max-width: 860px) {
+    .poster-studio {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    /* 预览提到最前面，并且不再 sticky ——
+       上下布局里 sticky 会让它盖住下面的选项。 */
+    .poster-studio__stage {
+      order: -1;
+      position: static;
+      max-width: 320px;
+      margin-inline: auto;
+    }
+
+    .poster-lyrics ul {
+      max-height: 34vh;
+    }
+  }
+}

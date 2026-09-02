@@ -37,14 +37,14 @@ export function DownloadInboxPanel({ notify, navigate }) {
   const ingest = async () => {
     const items = data.items.filter((item) => selected.includes(item.sourcePath));
     if (!items.length) return;
-    if (!confirm(`确认整理并入库 ${items.length} 首歌曲？\n\n文件会从独立下载目录移动到正式音乐库，原路径会写入回滚记录。`)) return;
+    if (!confirm(`把这 ${items.length} 首放进曲库？\n\n文件会从下载目录挪到音乐库。原位置记下来了，之后能退回去。`)) return;
     setBusy(true);
     try {
       await api("/api/local/download-inbox/ingest", {
         method: "POST",
         body: JSON.stringify({ items }),
       });
-      notify?.(`${items.length} 首歌曲已进入整理队列`);
+      notify?.(`${items.length} 首已排进队列`);
       navigate?.("tasks");
     } catch (err) {
       setError(err.message);
@@ -56,7 +56,7 @@ export function DownloadInboxPanel({ notify, navigate }) {
     <section className="panel download-inbox-panel">
       <SectionHead
         title="下载目录"
-        note="先预览规范命名与目标层级，再移动到正式音乐库"
+        note="先看清楚会改成什么名字、放到哪儿，再挪"
         action={
           <div className="pending-actions">
             <button className="secondary small" onClick={load} disabled={busy}><RefreshCw className={busy ? "spin" : ""} />重新扫描</button>
@@ -89,7 +89,7 @@ export function DownloadInboxPanel({ notify, navigate }) {
           ))}
         </div>
       ) : busy ? <PageLoader /> : (
-        <Empty icon={Download} title="下载目录是空的" text="放入这里的音频会先经过标签、命名和路径预览。" />
+        <Empty icon={Download} title="下载目录是空的" text="手动丢进这个目录的音频，也会先给你看一遍再入库。" />
       )}
     </section>
   );

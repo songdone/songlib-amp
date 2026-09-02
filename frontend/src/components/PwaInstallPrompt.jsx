@@ -59,7 +59,7 @@ export function PwaInstallPrompt() {
         localStorage.setItem("songlib-pwa-dismissed", "1");
         setVisible(false);
       } else {
-        setStatus("安装已取消。浏览器再次允许安装时，这里会重新出现安装入口。");
+        setStatus("好，先不装。想装的时候这个入口还会出现。");
         setHelpOpen(true);
       }
     } else {

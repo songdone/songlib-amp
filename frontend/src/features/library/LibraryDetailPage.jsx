@@ -135,7 +135,7 @@ export function LibraryDetailPage({ type, data, back, play, openDetail }) {
         title={isArtist ? "热门曲目" : "曲目"}
         note={
           isArtist
-            ? "根据 Plex 播放数据排列"
+            ? "按 Plex 统计的播放次数排"
             : `${data.trackCount || tracks.length} 首 · ${durationLabel(data.duration)}`
         }
       />

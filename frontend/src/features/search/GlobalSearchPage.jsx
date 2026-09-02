@@ -91,7 +91,7 @@ export function GlobalSearchPage({ play, navigate, isAdmin }) {
     <div className="page global-search-page">
       <section className="page-intro">
         <h1>全局搜索</h1>
-        <p>同一首歌只显示一次，本地文件与 Plex 作为可切换资源附在歌曲下。</p>
+        <p>同一首歌只出现一次。本地文件和 Plex 里的版本都归在它下面，可以随时换。</p>
       </section>
       <form className="catalog-search" onSubmit={search}>
         <div className="big-search">
@@ -121,13 +121,13 @@ export function GlobalSearchPage({ play, navigate, isAdmin }) {
             <Empty
               icon={Search}
               title="没有找到匹配内容"
-              text="换个关键词，或先扫描本地曲库/同步 Plex。"
+              text="换个词试试。刚加进来的歌可能还没扫到，可以去「文件与标签」重扫一遍。"
             />
           ) : null}
           <section className="panel">
             <SectionHead
               title="单曲"
-              note={`${groups.tracks.length} 首标准歌曲实体`}
+              note={`${groups.tracks.length} 首`}
             />
             {groups.tracks.map((item) => (
               <div className="search-result-row" key={item.id}>
@@ -148,7 +148,7 @@ export function GlobalSearchPage({ play, navigate, isAdmin }) {
           <section className="panel">
             <SectionHead
               title="艺人 / 专辑"
-              note={`${groups.artists.length} 位艺人 · ${groups.albums.length} 张专辑`}
+              note={`${groups.artists.length} 位歌手 · ${groups.albums.length} 张专辑`}
             />
             <div className="search-card-grid">
               {[
@@ -179,7 +179,7 @@ export function GlobalSearchPage({ play, navigate, isAdmin }) {
             <section className="panel">
               <SectionHead
                 title="待修复 / 待入库"
-                note={`${groups.pending.length} 个下载候选`}
+                note={`${groups.pending.length} 首可以下载`}
               />
               {groups.pending.map((item) => (
                 <div className="search-result-row" key={item.jobId}>

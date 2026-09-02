@@ -463,7 +463,7 @@ export default function NowPlayingPage({
               用 data-empty 区分，字号在 now-playing.refresh.css 里分开给。 */}
           <div className="now-track-copy" data-empty={track ? undefined : "true"}>
             <h2>{track?.title || "先选一个播放来源"}</h2>
-            <p>{track ? `${track.artist || "未知歌手"} · ${track.album || "未知专辑"}` : "可以跟随其他设备上的 Plexamp，也可以直接在这个浏览器里放。"}</p>
+            <p>{track ? `${track.artist || "未知歌手"} · ${track.album || "未知专辑"}` : "在这个浏览器里放，或者跟着别的设备上的 Plexamp 一起听。"}</p>
             {track && (
               <div className="now-quality">
                 <span>{usingRemote ? "PLEX" : effectivePlayer.quality === "original" ? "无损" : String(effectivePlayer.quality).toUpperCase()}</span>
@@ -559,11 +559,11 @@ export default function NowPlayingPage({
               ) : (
                 <div className="now-centered">
                   <Mic2 /><strong>{lyricsError ? "歌词获取失败" : track ? "这首歌还没有可用歌词" : "选择正在播放的来源"}</strong>
-                  <p>{lyricsError || (track ? "SongLib 会优先使用本地 LRC 和增强歌词。" : "选择设备后，这里会显示歌曲、实时进度和歌词。")}</p>
+                  <p>{lyricsError || (track ? "优先用歌曲旁边的 .lrc，没有再去线上找" : "挑一个设备，它在放什么、放到哪儿、歌词都会同步过来。")}</p>
                 </div>
               )}
               <div className="now-cast-bar">
-                <span><Airplay /><span><strong>歌词投到电视</strong><small>{track ? (usingRemote ? `从右上角投屏，音频继续由 ${selectedSession.deviceName} 播放` : "从右上角投屏，音频继续由这个浏览器播放") : "先选一首正在播放的歌"}</small></span></span>
+                <span><Airplay /><span><strong>歌词投到电视</strong><small>{track ? (usingRemote ? `从右上角投屏，音频继续由 ${selectedSession.deviceName} 播放` : "歌词投到电视上，声音还是这个浏览器出") : "先选一首正在播放的歌"}</small></span></span>
                 <div className="now-cast-actions">
                   {/* 这里只保留歌词时间微调。投屏按钮在页头，
                       同一个动作不在一屏里出现两次。 */}
@@ -588,19 +588,19 @@ export default function NowPlayingPage({
                 {remote.sessions.map((session) => (
                   <DeviceRow key={session.id} session={session} active={usingRemote && selectedSession?.id === session.id} onSelect={() => chooseSource(`plex:${session.id}`)} />
                 ))}
-                {idleClients.map((client) => <DeviceRow key={client.id} session={client} active={false} onSelect={() => setControlMessage("这个 Plex 播放器当前没有活动会话，请先在设备上播放音乐。")}/>) }
+                {idleClients.map((client) => <DeviceRow key={client.id} session={client} active={false} onSelect={() => setControlMessage("这台设备现在没在放歌。先在它上面点开一首。")}/>) }
               </div>
               {!remote.loading && !remote.sessions.length && !idleClients.length && (
-                <div className="now-centered compact"><MonitorSpeaker /><strong>没有发现 Plex 播放器</strong><p>请打开 Plexamp，并在 Plex 设置中允许远程控制。</p></div>
+                <div className="now-centered compact"><MonitorSpeaker /><strong>没有发现 Plex 播放器</strong><p>打开 Plexamp，并在 Plex 设置里允许远程控制。</p></div>
               )}
-              <div className="now-device-help"><CircleAlert /><span>这里选择要跟随或控制的播放来源；Apple TV 请从顶部“投到电视”进入。标为“仅跟随”的 Plexamp 仍会同步歌曲、歌词和进度。</span></div>
+              <div className="now-device-help"><CircleAlert /><span>挑一个来源。写着「仅跟随」的设备不接受遥控，但歌曲、进度和歌词照样同步。想投到 Apple TV 走上面的「歌词投屏」。</span></div>
             </div>
           )}
 
           {tab === "queue" && (
             <div className="now-pane">
               {usingRemote ? (
-                <div className="now-centered"><ListMusic /><strong>正在跟随外部 Plexamp 队列</strong><p>Plex 会话接口不返回完整待播列表，但上一首、下一首仍会发送到所选播放器。</p></div>
+                <div className="now-centered"><ListMusic /><strong>正在跟随外部 Plexamp 队列</strong><p>Plex 不告诉我们它后面排了什么，所以这里列不出来。上一首、下一首照样能按。</p></div>
               ) : queue.length ? (
                 <div className="now-queue-list">
                   {queue.map((item, index) => (
@@ -610,7 +610,7 @@ export default function NowPlayingPage({
                   ))}
                 </div>
               ) : (
-                <div className="now-centered"><ListMusic /><strong>待播队列为空</strong><p>从音乐库选择歌曲，或切换到正在播放的 Plexamp 设备。</p><button className="secondary" onClick={() => navigate("library")}><Library />打开音乐库</button></div>
+                <div className="now-centered"><ListMusic /><strong>待播队列为空</strong><p>去音乐库挑几首，或者切到正在放歌的 Plexamp。</p><button className="secondary" onClick={() => navigate("library")}><Library />打开音乐库</button></div>
               )}
             </div>
           )}

@@ -127,7 +127,7 @@ export function SettingsPage({
       body: JSON.stringify({ values }),
     });
     setDraft(values);
-    setMessage("播放器偏好已保存，播放器页面会立即按“显示歌词”等选项刷新。");
+    setMessage("已保存，播放器那边马上生效");
   };
   const togglePlayerPref = (key) =>
     setPlayerPrefs((value) => ({ ...value, [key]: !value[key] }));
@@ -148,7 +148,7 @@ export function SettingsPage({
     try {
       const result = await api("/api/profile/avatar", { method: "POST", body });
       setProfile(result.profile);
-      setMessage("头像已更新，刷新页面后顶部菜单也会同步。");
+      setMessage("头像已换好");
     } catch (err) {
       setMessage(err.message);
     } finally {
@@ -189,7 +189,7 @@ export function SettingsPage({
   const restoreBackup = async (item) => {
     if (
       !confirm(
-        `恢复备份 ${item.name}？\n\n当前账号、设置、任务和索引会回到该备份时间。音乐文件不会被覆盖。`,
+        `恢复到 ${item.name}？\n\n账号和各项设置会回到那个时间点，这之后改的会丢。音乐文件不动。`,
       )
     )
       return;
@@ -338,7 +338,7 @@ export function SettingsPage({
             <SettingBlock
               icon={Server}
               title="Plex 连接"
-              note="Plex 负责展示、播放、扫描、刷新与远程播放。"
+              note="连上之后，Plex 里的歌就能在这里播，也能接管 Plexamp"
             >
               <dl>
                 <div>
@@ -407,7 +407,7 @@ export function SettingsPage({
             <SettingBlock
               icon={Library}
               title="Plex 音乐资料库"
-              note="配置窗口中可以刷新并选择全部或指定音乐库。"
+              note="只同步你勾的这几个库，其余的不动"
             >
               {plex.libraries?.length ? (
                 <div className="plex-library-chips">
@@ -425,14 +425,14 @@ export function SettingsPage({
                 <Empty
                   icon={Library}
                   title="未读取到音乐库"
-                  text="请先在配置窗口测试连接并刷新媒体库列表。"
+                  text="先点上面的「配置 Plex」连上，音乐库列表会自动列出来。"
                 />
               )}
             </SettingBlock>
             <SettingBlock
               icon={Radio}
               title="飞牛音乐"
-              note="连接后可将歌单按原顺序同步到飞牛音乐。"
+              note="连上之后，这里的歌单可以按原顺序同步过去"
             >
               <dl>
                 <div>
@@ -568,7 +568,7 @@ export function SettingsPage({
             <SettingBlock
               icon={Activity}
               title="系统信息"
-              note="当前部署版本与运行限制。"
+              note="报问题的时候带上这几项，排查会快很多"
             >
               <dl>
                 <div>
@@ -596,7 +596,7 @@ export function SettingsPage({
             <SettingBlock
               icon={FolderTree}
               title="本地路径"
-              note="这里显示音屿可以读取和整理的音乐目录。"
+              note="音屿只会读写这几个目录，别的地方一概不碰"
             >
               <dl>
                 <div>
@@ -628,7 +628,7 @@ export function SettingsPage({
             <SettingBlock
               icon={Image}
               title="保存规则"
-              note="封面与歌词优先保存到本地曲库。"
+              note="补回来的封面和歌词存在哪里"
             >
               <dl>
                 <div>
@@ -648,7 +648,7 @@ export function SettingsPage({
             <SettingBlock
               icon={Download}
               title="下载与入库"
-              note="下载先进入临时目录，再批量确认到正式曲库。"
+              note="下载完的歌先落在临时目录，你确认了才进曲库"
             >
               <dl>
                 <div>
@@ -674,11 +674,13 @@ export function SettingsPage({
             </SettingBlock>
             <SettingBlock
               icon={RotateCcw}
-              title="回滚策略"
-              note="移动、标签写入与下载入库均记录操作日志。"
+              title="改错了怎么办"
+              note="标签写入、文件移动、下载入库都留了原值"
             >
               <p className="setting-copy">
-                确认入库前会检查冲突；取消入库会移动到回收站目录。
+                每次改动都能在「文件与标签 → 改动历史」里逐条退回去。
+                入库前会先检查目标位置有没有冲突；不要的歌取消入库会挪到回收站，
+                不会直接删掉。
               </p>
             </SettingBlock>
           </div>
@@ -687,7 +689,7 @@ export function SettingsPage({
           <SettingBlock
             icon={WandSparkles}
             title="刮削规则"
-            note="默认只补缺失；覆盖模式仍需在刮削中心逐次确认。"
+            note="这里定的是默认值，「封面与歌词」页每次还能单独调"
           >
             <div className="settings-switches">
               <label>
@@ -726,7 +728,7 @@ export function SettingsPage({
           <SettingBlock
             icon={Tags}
             title="命名规则"
-            note="模板会在整理预览中生成目标路径。"
+            note="整理目录时按这些模板算出每个文件该放哪儿"
           >
             <div className="template-list">
               {Object.entries(templates).map(([key, value]) => (
@@ -761,7 +763,7 @@ export function SettingsPage({
           <SettingBlock
             icon={ShieldCheck}
             title="扫描排除规则"
-            note="这些目录不会被当作正式曲库扫描。"
+            note="列在这里的目录，扫描时会跳过"
           >
             <label className="exclude-editor">
               每行一个目录
@@ -791,7 +793,7 @@ export function SettingsPage({
             <SettingBlock
               icon={Palette}
               title="外观与主题"
-              note="调整会即时预览，并保存在当前设备；无需重启服务。"
+              note="拖动就能看到效果，只影响这台设备"
             >
               <div className="theme-choice" role="group" aria-label="界面主题">
                 {[
@@ -877,7 +879,7 @@ export function SettingsPage({
           <SettingBlock
             icon={Play}
             title="播放器设置"
-            note="这些偏好会保存到服务端，并立即影响播放器的歌词显示等行为。"
+            note="换设备也跟着走"
           >
             <div className="settings-switches">
               {[
@@ -891,7 +893,7 @@ export function SettingsPage({
                 <label
                   key={key}
                   title={
-                    derived ? "策略项会参与后续播放解析默认值" : "可立即保存"
+                    derived ? "改了要保存才生效" : "可以直接保存"
                   }
                 >
                   <input
@@ -947,7 +949,7 @@ export function SettingsPage({
             <SettingBlock
               icon={UserRound}
               title="用户偏好"
-              note="头像、主题、默认音乐源与默认音质。"
+              note="这些只影响你自己的账号"
             >
               <div className="profile-card">
                 <div className="profile-avatar">
@@ -1045,7 +1047,7 @@ export function SettingsPage({
                 <KeyRound />
                 <div>
                   <h3>修改密码</h3>
-                  <p>更换音屿 Web 控制台密码。</p>
+                  <p>换掉登录音屿用的密码。改完需要重新登录一次。</p>
                 </div>
               </div>
               <form className="password-form" onSubmit={change}>
@@ -1081,7 +1083,7 @@ export function SettingsPage({
             <SettingBlock
               icon={ShieldCheck}
               title="备份与恢复"
-              note="备份账号、设置、任务、索引和操作记录；音乐文件不会复制。"
+              note="备份的是账号和各项设置，音乐文件不会被复制一份"
             >
               <div className="backup-toolbar">
                 <button
@@ -1135,7 +1137,7 @@ export function SettingsPage({
                   <Empty
                     icon={ShieldCheck}
                     title="还没有备份"
-                    text="创建首个备份后，可在这里导出或恢复。"
+                    text="做一份备份，之后换机器或者出问题都能直接恢复回来。"
                   />
                 )}
               </div>
@@ -1143,7 +1145,7 @@ export function SettingsPage({
             <SettingBlock
               icon={ScrollText}
               title="运行日志"
-              note="操作日志、任务日志、音乐源日志与回滚记录集中查看。"
+              note="出问题的时候先来这里看"
             >
               <div className="log-toolbar">
                 <button

@@ -46,19 +46,19 @@ export function MePage({ navigate }) {
       <section className="page-intro">
         <span className="eyebrow">
           <UserRound />
-          MY MUSIC
+          我的
         </span>
         <h1>我的音乐</h1>
-        <p>收藏、回听与个人歌单，按你的聆听习惯自然汇集。</p>
+        <p>你喜欢过的、听过的，和自己攒的歌单。</p>
       </section>
       <div className="me-dashboard">
         <section className="me-listening-surface">
           <header className="me-section-head">
             <div>
-              <span>本地聆听报告</span>
-              <h2>最近的音乐足迹</h2>
+              <span>只算本机</span>
+              <h2>最近都在听什么</h2>
             </div>
-            <small>仅根据本机记录生成</small>
+            <small>播放记录不出这台机器</small>
           </header>
           <div className="me-metric-strip">
             {[
@@ -105,7 +105,7 @@ export function MePage({ navigate }) {
                   ))}
                 </ol>
               ) : (
-                <p>播放几首歌曲后，这里会出现你的常听音乐人。</p>
+                <p>多听几首，这里就会排出你的常听歌手。</p>
               )}
             </div>
           </div>
@@ -141,7 +141,7 @@ export function MePage({ navigate }) {
               <span><Heart /></span>
               <div>
                 <strong>还没有收藏</strong>
-                <p>播放歌曲时点亮喜欢，它就会留在这里。</p>
+                <p>听到喜欢的点一下爱心，就收在这儿。</p>
               </div>
             </div>
           )}
@@ -179,7 +179,7 @@ export function MePage({ navigate }) {
               <span><Play /></span>
               <div>
                 <strong>暂无播放记录</strong>
-                <p>从音乐库开始播放，最近听过的内容会保留在这里。</p>
+                <p>放过的歌会留在这里，方便接着听。</p>
               </div>
             </div>
           )}
@@ -214,7 +214,7 @@ export function MePage({ navigate }) {
                   <button
                     className="icon-button danger"
                     onClick={() =>
-                      confirm(`删除歌单“${name}”？歌曲文件不会被删除。`) &&
+                      confirm(`删掉歌单「${name}」？歌本身还在曲库里，不会被删。`) &&
                       player.deletePlaylist(name)
                     }
                     aria-label={`删除歌单 ${name}`}
@@ -229,7 +229,7 @@ export function MePage({ navigate }) {
               <span><ListMusic /></span>
               <div>
                 <strong>还没有歌单</strong>
-                <p>新建歌单，把想反复听的歌曲放在一起。</p>
+                <p>想反复听的歌，攒成一张歌单。</p>
               </div>
             </div>
           )}

@@ -94,7 +94,7 @@ export function MediaLibrary({
         if (!cancelled) setDetailData(result);
       })
       .catch(() => {
-        if (!cancelled) setDetailData({ error: "无法读取这项资料，请稍后重试。" });
+        if (!cancelled) setDetailData({ error: "这项读不出来，过会儿再试。" });
       });
     return () => {
       cancelled = true;

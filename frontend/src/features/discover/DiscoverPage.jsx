@@ -562,7 +562,7 @@ export function DiscoverPage({ play, navigate, isAdmin = true }) {
             title="猜你想听"
             note={
               recs.profile.explanation ||
-              "根据你听完、收藏和跳过的歌算出来，只在本机计算"
+              "按你听完、收藏和跳过的歌算出来，算在本机"
             }
             actions={
               <Button

@@ -195,7 +195,7 @@ export function DownloadCenter({
     const verb = action === "confirm" ? "确认入库" : "删除下载文件";
     if (
       !confirm(
-        `${verb} ${ids.length} 首待入库歌曲？\n\n音屿会创建任务并写入操作记录，确认入库后会触发 Plex 扫描；删除会移入下载回收区。`,
+        `${verb}这 ${ids.length} 首？\n\n入库后会让 Plex 重扫一遍。不要的会挪到回收区，不是直接删。`,
       )
     )
       return;
@@ -219,7 +219,7 @@ export function DownloadCenter({
           <Empty
             icon={Wifi}
             title="还没有可用的音乐源"
-            text="导入一个你有权使用的音乐源，识别到接口后就能在这里搜歌了。"
+            text="先去「音乐源」导入一个你有权使用的源，回来就能搜歌了。"
           />
           <button className="primary" onClick={() => navigate("sources")}>
             <Wifi />
@@ -260,7 +260,7 @@ export function DownloadCenter({
             <span>
               {selected?.resolveOk
                 ? "最近一次地址解析成功"
-                : "接口已授权，下载时实时解析"}
+                : "已启用，可以搜歌"}
             </span>
           </div>
         </div>
@@ -338,7 +338,7 @@ export function DownloadCenter({
           note={
             results.length
               ? `找到 ${results.length} 首候选歌曲 · 当前目标：${target === "device" ? "当前设备" : "NAS 待入库"}`
-              : "可解析的歌曲可加入下载队列"
+              : "能解析出地址的才可以下载"
           }
         />
         {loading ? (
@@ -465,14 +465,14 @@ export function DownloadCenter({
           <Empty
             icon={Search}
             title="搜索歌曲、专辑或歌手"
-            text="结果会展示歌手、专辑、时长与可选音质。"
+            text="搜到的歌可以先试听，再决定下不下"
           />
         )}
       </section>
       <section className="panel pending-ingest">
         <SectionHead
           title="待入库"
-          note={`${pending.length} 首歌曲已下载到临时区，尚未进入正式曲库`}
+          note={`${pending.length} 首下好了，等你确认再进曲库`}
           action={
             <div className="pending-actions">
               <button
@@ -548,7 +548,7 @@ export function DownloadCenter({
           <Empty
             icon={Download}
             title="暂无待入库歌曲"
-            text="下载完成后，歌曲会在这里等待批量确认入库。"
+            text="下好的歌会先停在这里，核对完再一起放进曲库。"
           />
         )}
       </section>

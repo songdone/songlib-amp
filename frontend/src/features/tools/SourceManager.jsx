@@ -73,7 +73,7 @@ export function SourceManager({ sources, refreshSources, notify }) {
     const probe = keyword.trim();
     if (!probe) {
       setError(
-        "请输入一首你真实想测试的歌曲或歌手，系统不会再使用演示关键词。",
+        "填一首你真会去搜的歌，测出来的结果才有参考价值。",
       );
       return;
     }
@@ -141,7 +141,7 @@ export function SourceManager({ sources, refreshSources, notify }) {
     }
   };
   const remove = async (source) => {
-    if (!confirm(`确定删除“${source.displayName}”？这不会删除音乐库文件。`))
+    if (!confirm(`删掉「${source.displayName}」？只是移除这个源，曲库里的歌不受影响。`))
       return;
     try {
       await api(`/api/sources/${source.id}`, { method: "DELETE" });
@@ -214,7 +214,7 @@ export function SourceManager({ sources, refreshSources, notify }) {
               />
               <FileUp />
               <strong>{file?.name || "选择本地 .js 文件"}</strong>
-              <span>最大 2 MB · 浏览器上传，不填写电脑路径</span>
+              <span>从这台电脑选文件，最大 2 MB</span>
             </label>
           )}
           {mode === "code" && (
@@ -230,7 +230,7 @@ export function SourceManager({ sources, refreshSources, notify }) {
           )}
           <p className="modal-note">
             <ShieldCheck />
-            不内置第三方音乐源。仅导入你信任且有权使用的脚本；音屿不绕过 DRM。
+            音屿不自带任何音乐源。只导入你信得过、也有权使用的脚本 —— 它不会绕过任何版权保护。
           </p>
           <button className="primary full" disabled={busy}>
             {busy ? <LoaderCircle className="spin" /> : <Plus />}导入并启用
@@ -239,8 +239,8 @@ export function SourceManager({ sources, refreshSources, notify }) {
         <section className="panel source-guide">
           <h3>导入之后要做什么</h3>
           <p>
-            导入时会检查脚本结构和安全性，通过就直接启用，可以马上去搜歌。
-            旁边的搜索和解析测试是用来确认这个源具体支持哪些能力的，测不过也不影响使用。
+            导入时会先检查一遍脚本，通过就直接启用，可以马上去搜歌。
+            旁边那两个测试是看这个源支持到什么程度，测不过也照样能用。
           </p>
           <ol>
             <li>
@@ -267,7 +267,7 @@ export function SourceManager({ sources, refreshSources, notify }) {
       <section className="panel installed-sources">
         <SectionHead
           title="已安装音乐源"
-          note={`${sources.length} 个来源 · 格式、搜索、解析与启用状态分别记录`}
+          note={`共 ${sources.length} 个`}
         />
         {sources.length ? (
           <div className="source-cards">
@@ -399,7 +399,7 @@ export function SourceManager({ sources, refreshSources, notify }) {
           <Empty
             icon={Wifi}
             title="还没有音乐源"
-            text="可通过 URL、本地 .js 文件或粘贴源码导入。"
+            text="填地址、选本地文件，或者直接粘源码。"
           />
         )}
       </section>
@@ -488,7 +488,7 @@ export function SourceManager({ sources, refreshSources, notify }) {
                 <Empty
                   icon={ScrollText}
                   title="暂无日志"
-                  text="执行导入或测试后会记录在这里。"
+                  text="导入和测试的结果都会记在这里。"
                 />
               )}
             </div>

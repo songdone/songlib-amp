@@ -109,7 +109,7 @@ export function PlexSettingsModal({ initial, onClose, onSaved }) {
       <section className="modal panel plex-modal">
         <div className="modal-head">
           <div>
-            <h3>配置 Plex 媒体服务器</h3>
+            <h3>连接 Plex</h3>
           </div>
           <button className="icon-button" onClick={onClose} aria-label="关闭" title="关闭">
             <X />
@@ -122,7 +122,7 @@ export function PlexSettingsModal({ initial, onClose, onSaved }) {
               checked={draft.enabled}
               onChange={(e) => setField("enabled", e.target.checked)}
             />
-            <span>启用 Plex 联动与媒体库同步</span>
+            <span>启用 Plex</span>
           </label>
           <div className="plex-grid">
             <label>
@@ -158,7 +158,7 @@ export function PlexSettingsModal({ initial, onClose, onSaved }) {
                   onChange={(e) => setField("token", e.target.value)}
                   placeholder={
                     initial.hasToken
-                      ? "留空则继续使用已保存 Token"
+                      ? "留空就沿用已经存好的"
                       : "输入 X-Plex-Token"
                   }
                 />
@@ -243,7 +243,7 @@ export function PlexSettingsModal({ initial, onClose, onSaved }) {
               <Empty
                 icon={Library}
                 title="还没有媒体库列表"
-                text="先测试连接或刷新媒体库，音屿会只展示 Plex 音乐资料库。"
+                text="先测一下连接，能连上就会列出 Plex 里的音乐库供你勾选。"
               />
             )}
           </div>

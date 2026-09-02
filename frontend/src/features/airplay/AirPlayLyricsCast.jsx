@@ -97,12 +97,12 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
       video.classList.toggle("is-active", active);
       setMessage(
         active
-          ? "Apple TV 歌词视频已连接；切歌无需重连"
+          ? "已连上 Apple TV，切歌不用重连"
           : "",
       );
       if (active) {
         video.play().catch(() => {
-          setMessage("Apple TV 已选择，但视频传输未能启动，请重新打开设备选择器");
+          setMessage("选上了 Apple TV，但视频没传过去。重新打开一次设备选择器。");
         });
       } else {
         video.pause();
@@ -148,7 +148,7 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
       const code = Number(video.error?.code || 0);
       setMessage(
         code
-          ? `歌词视频流加载失败（媒体错误 ${code}），请重新投屏`
+          ? `视频加载失败（错误码 ${code}）。重新投一次。`
           : "歌词视频流加载失败，请重新投屏",
       );
     };
@@ -370,13 +370,13 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
     const video = videoRef.current;
     if (!nativeAirPlayAvailable(video)) {
       setMessage(
-        "此设备保留投屏控制，但不能原生发起 AirPlay；请使用 iPhone、iPad 或 macOS Safari。",
+        "这台设备发不出 AirPlay。用 iPhone、iPad，或者 macOS 上的 Safari。",
       );
       return;
     }
     const ready = sessionRef.current;
     if (!ready) {
-      setMessage("正在准备固定投屏地址，准备好后请再点一次“投到电视”。");
+      setMessage("正在准备投屏地址，好了再点一次「投到电视」。");
       try {
         await prepare();
       } catch {}
@@ -394,7 +394,7 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
       // source as H.264 video with a silent AAC compatibility track.
       primeAirPlayVideo(video, ready.streamUrl).catch(() => {
         if (!wirelessRef.current) {
-          setMessage("歌词视频流未能启动，请确认 Apple TV 可访问 NAS 直连地址");
+          setMessage("视频没能开始传。检查一下 Apple TV 能不能访问到这台 NAS。");
         }
       });
       video.webkitShowPlaybackTargetPicker();

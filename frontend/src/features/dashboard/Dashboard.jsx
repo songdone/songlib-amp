@@ -131,7 +131,8 @@ export function Dashboard({
       {/* --- 焦点专辑：封面即视觉 --- */}
       {heroAlbum ? (
         <Section className="home-hero">
-          <div className="home-hero__art">
+          {/* 封面外一圈跟随品牌色的柔光描边，让它从卡片表面浮起来。 */}
+          <div className="home-hero__art glow-ring">
             <Cover src={heroCover} title={heroAlbum.title} shape="square" />
           </div>
           <div className="home-hero__copy">

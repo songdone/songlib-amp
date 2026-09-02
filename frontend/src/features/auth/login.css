@@ -1,110 +1,348 @@
 /**
  * 登录页。
  *
- * 一屏居中，不分左右栏。重构前的左半屏营销区在窄屏上会把表单挤到
- * 第二屏之外，为此又加了一整段 @media 用 !important 把它压回来 ——
- * 布局本身不成立的时候，补丁只会越叠越多。居中布局天然没有这个问题。
+ * 保留旧版左右分栏的构图和暖金氛围，修掉这几处：
+ *   - 旧版左上角 logo 用绝对定位，压在标题和上方小字上（真实重叠）。
+ *     现在 logo 是左栏文档流里的第一个元素，压不到任何东西。
+ *   - 旧版窄屏靠一整段 !important 把表单拽回首屏。
+ *     这里用单列回退，不需要补丁。
  */
 
 @layer components {
   .login {
     position: relative;
-    display: grid;
-    place-items: center;
     min-height: 100dvh;
-    padding: var(--space-6);
+    padding: clamp(var(--space-6), 4vw, var(--space-12));
     overflow: hidden;
     background: var(--surface-canvas);
+    display: grid;
+    align-items: center;
   }
 
-  /* --- 背景：曲库封面模糊铺底 --- */
+  /* =============================================================
+   * 背景层
+   *
+   * 三层叠加，从下到上：环境光晕 → 视频/海报 → 压暗遮罩。
+   * 遮罩是关键 —— 它保证不管视频哪一帧、亮到什么程度，
+   * 前景文字的对比度都是可预期的。
+   * ============================================================= */
 
-  .login__backdrop {
+  .login .video-backdrop {
     position: absolute;
     inset: 0;
     z-index: 0;
+    overflow: hidden;
   }
 
-  .login__backdrop img {
+  .login .video-backdrop img,
+  .login .video-backdrop video {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    /* 压暗并去饱和，保证前景表单始终可读，
-       不管随机取到的是哪张封面。 */
-    filter: blur(48px) saturate(0.7) brightness(0.35);
-    transform: scale(1.15);
-  }
-
-  /* 无论有没有封面，都盖一层从中心向外的暗角，
-     让表单区域的对比度可预测。 */
-  .login__backdrop::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background:
+    /*
+     * 双层遮罩，两个作用叠加：
+     *
+     * 1. 椭圆遮罩把画面四周完全淡出，让视频融进页面底色，
+     *    不是一块边界清晰的矩形贴图。
+     * 2. 源视频有一处水印会沿画面四周游走（右侧 → 左侧 → 右下角），
+     *    它始终贴边、不进中心，所以外圈只要彻底透明就看不见。
+     *    半径刻意收得比"好看"所需更紧一点，留出余量。
+     *
+     * mask-composite: intersect 让两层同时生效，取最严格的那个。
+     */
+    mask-image:
       radial-gradient(
-        circle at 50% 45%,
-        rgba(232, 184, 92, 0.08),
-        transparent 45%
+        ellipse 40% 52% at 50% 44%,
+        #000 0%,
+        #000 34%,
+        transparent 100%
       ),
       linear-gradient(
-        180deg,
-        color-mix(in srgb, var(--surface-canvas) 82%, transparent),
-        var(--surface-canvas)
+        to right,
+        transparent 0%,
+        #000 18%,
+        #000 82%,
+        transparent 100%
+      );
+    mask-composite: intersect;
+    -webkit-mask-composite: source-in;
+  }
+
+  .video-backdrop__poster {
+    opacity: 1;
+    transition: opacity calc(700ms * var(--motion-scale)) var(--ease-out);
+  }
+
+  /* 视频真正开始播放后海报才淡出，中间不会闪一帧黑。 */
+  .video-backdrop__poster[data-hidden="true"] {
+    opacity: 0;
+  }
+
+  .video-backdrop__video {
+    opacity: 0;
+    transition: opacity calc(700ms * var(--motion-scale)) var(--ease-out);
+  }
+
+  .video-backdrop__video[data-ready="true"] {
+    opacity: 1;
+  }
+
+  /* 压暗遮罩：左侧更重（那边有大段文字），右侧稍轻（让岛屿露出来）。 */
+  .login__scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background:
+      linear-gradient(
+        100deg,
+        color-mix(in srgb, var(--surface-canvas) 94%, transparent) 0%,
+        color-mix(in srgb, var(--surface-canvas) 74%, transparent) 42%,
+        color-mix(in srgb, var(--surface-canvas) 52%, transparent) 100%
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in srgb, var(--surface-canvas) 60%, transparent) 0%,
+        transparent 30%,
+        transparent 70%,
+        color-mix(in srgb, var(--surface-canvas) 78%, transparent) 100%
       );
   }
 
-  /* --- 表单面板 --- */
-
-  .login__panel {
-    position: relative;
+  .login .sound-field {
     z-index: 1;
+    opacity: 0.45;
+  }
+
+  /* =============================================================
+   * 栅格
+   * ============================================================= */
+
+  .login__grid {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(340px, 420px);
+    align-items: center;
+    gap: clamp(var(--space-8), 5vw, var(--space-16));
+    width: 100%;
+    max-width: 1180px;
+    margin-inline: auto;
+  }
+
+  /* =============================================================
+   * 左栏
+   * ============================================================= */
+
+  .login__intro {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: var(--space-6);
-    width: min(100%, 360px);
+    align-items: flex-start;
+    gap: var(--space-5);
+    min-width: 0;
   }
 
   .login__brand {
     display: flex;
-    flex-direction: column;
     align-items: center;
     gap: var(--space-3);
   }
 
   .login__mark {
-    width: 56px;
-    height: 56px;
+    width: 40px;
+    height: 40px;
+    flex: none;
   }
 
-  .login__name {
-    font-size: var(--text-lg);
-    font-weight: var(--weight-semibold);
-    letter-spacing: 0.02em;
+  .login__wordmark {
+    font-size: var(--text-md);
+    font-weight: var(--weight-bold);
+    letter-spacing: 0.01em;
     color: var(--text-primary);
+  }
+
+  .login__wordmark b {
+    margin-inline: var(--space-2);
+    font-weight: var(--weight-normal);
+    color: var(--border-strong);
+  }
+
+  .login__headline {
+    font-size: clamp(var(--text-2xl), 4.6vw, 52px);
+    font-weight: var(--weight-bold);
+    line-height: 1.18;
+    letter-spacing: var(--tracking-tight);
+    color: var(--text-primary);
+  }
+
+  /* "岛屿"两个字用品牌金强调，是整页唯一的彩色文字。 */
+  .login__headline span {
+    color: var(--accent-text);
+  }
+
+  .login__lead {
+    max-width: 34ch;
+    font-size: var(--text-md);
+    line-height: var(--leading-normal);
+    color: var(--text-secondary);
+  }
+
+  /* --- 三条卖点 --- */
+
+  .login__highlights {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .login__highlights li {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .login__highlight-icon {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-subtle);
+    background: color-mix(in srgb, var(--surface-2) 70%, transparent);
+    color: var(--accent-text);
+    backdrop-filter: blur(8px);
+  }
+
+  .login__highlight-icon svg {
+    width: 16px;
+    height: 16px;
+    stroke-width: 1.8;
+  }
+
+  .login__highlights strong {
+    display: block;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+  }
+
+  .login__highlights small {
+    display: block;
+    margin-block-start: 2px;
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+  }
+
+  /* =============================================================
+   * 右栏：登录卡片
+   * ============================================================= */
+
+  .login__card-wrap {
+    min-width: 0;
+  }
+
+  .login__card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    padding: clamp(var(--space-5), 2.5vw, var(--space-8));
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    /* 半透明加背景模糊，让卡片"浮"在视频上而不是盖住它。 */
+    background: color-mix(in srgb, var(--surface-1) 82%, transparent);
+    backdrop-filter: blur(20px) saturate(120%);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .login__card-head h2 {
+    font-size: var(--text-xl);
+    font-weight: var(--weight-bold);
+    line-height: var(--leading-tight);
+    color: var(--text-primary);
+  }
+
+  .login__card-head p {
+    margin-block-start: var(--space-1);
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
   }
 
   .login__form {
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
-    width: 100%;
   }
 
-  .login__help {
-    padding: var(--space-2);
+  .login__card-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding-block-start: var(--space-4);
+    border-block-start: 1px solid var(--border-subtle);
+    font-size: var(--text-xs);
     color: var(--text-tertiary);
+  }
+
+  .login__card-foot button {
+    padding: 0;
+    color: var(--accent-text);
     background: none;
     border: 0;
-    border-radius: var(--radius-sm);
-    font-size: var(--text-sm);
+    font-size: inherit;
     cursor: pointer;
   }
 
-  .login__help:hover {
-    color: var(--text-secondary);
+  .login__card-foot button:hover {
     text-decoration: underline;
     text-underline-offset: 3px;
+  }
+
+  /* =============================================================
+   * 窄屏：单列
+   *
+   * 表单排在最前面 —— 手机上打开登录页的人是来登录的，
+   * 不该先滚过三条卖点。用 order 调整视觉顺序，
+   * DOM 顺序保持"先介绍后表单"，读屏和 Tab 顺序仍然合理。
+   * ============================================================= */
+
+  @media (max-width: 900px) {
+    .login {
+      align-items: start;
+      padding-block: var(--space-8);
+    }
+
+    .login__grid {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--space-8);
+      max-width: 460px;
+    }
+
+    .login__card-wrap {
+      order: -1;
+    }
+
+    .login__headline {
+      font-size: clamp(var(--text-xl), 7vw, var(--text-3xl));
+    }
+
+    .login__lead {
+      max-width: none;
+    }
+
+    .login .video-backdrop img,
+    .login .video-backdrop video {
+      mask-image: radial-gradient(
+        ellipse 120% 60% at 50% 22%,
+        #000 30%,
+        transparent 76%
+      );
+    }
   }
 }

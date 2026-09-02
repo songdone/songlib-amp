@@ -36,6 +36,7 @@
 @import "./reset.css";
 @import "./base.css";
 @import "./primitives.css";
+@import "./motion.css";
 @import "./utilities.css";
 
 /* --- 组件库（@layer components） --- */

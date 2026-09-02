@@ -1,0 +1,768 @@
+/**
+ * 动效系统。
+ *
+ * 目标是"精致但不表演"：动效用来解释界面发生了什么
+ * （新内容从哪来、什么被按下了、什么正在进行），不是为了好看而动。
+ *
+ * 三条约束：
+ *
+ * 1. 只动 transform 和 opacity。这两个属性走合成器，不触发重排重绘，
+ *    在 NAS 上跑的低功耗设备也能保持流畅。
+ *    不要动 width/height/top/left/filter。
+ * 2. 时长跟距离走：位移越小越快。小状态切换 120ms，
+ *    元素入场 420ms，整页转场 320ms。超过 500ms 就会让人觉得卡。
+ * 3. 全部走 --motion-scale。用户在"外观"里把动效强度调到 0 时，
+ *    以及系统开启"减弱动态效果"时，动效必须整体消失而不是变慢。
+ *    reset.css 里有全局兜底。
+ */
+
+@layer base {
+  :root {
+    /* 由"外观"设置注入，0 = 关闭，1 = 默认。 */
+    --motion-scale: 1;
+
+    /* 入场位移距离。列表项用小的，整块内容用大的。 */
+    --rise-sm: 8px;
+    --rise-md: 16px;
+    --rise-lg: 28px;
+
+    /* 弹性收尾，用于"东西落到位"的感觉，不要用在循环动画上。 */
+    --ease-settle: cubic-bezier(0.16, 1, 0.3, 1);
+    /* 标准进出。 */
+    --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+    --ease-in-out: cubic-bezier(0.45, 0.05, 0.55, 0.95);
+  }
+}
+
+@layer components {
+  /* =============================================================
+   * 入场：淡入 + 上浮
+   *
+   * 用法：给元素加 .rise，进入视口时由 useReveal 打上 data-revealed。
+   * 静态内容（首屏就在的）可以直接加 .rise--now，不等观察器。
+   * ============================================================= */
+
+  .rise {
+    opacity: 0;
+    transform: translate3d(0, calc(var(--rise-md) * var(--motion-scale)), 0);
+    transition:
+      opacity calc(420ms * var(--motion-scale)) var(--ease-out),
+      transform calc(420ms * var(--motion-scale)) var(--ease-settle);
+  }
+
+  .rise[data-revealed="true"],
+  .rise--now {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
+  .rise--sm {
+    transform: translate3d(0, calc(var(--rise-sm) * var(--motion-scale)), 0);
+  }
+
+  .rise--lg {
+    transform: translate3d(0, calc(var(--rise-lg) * var(--motion-scale)), 0);
+  }
+
+  /**
+   * 列表错峰。父元素加 .stagger，子元素依次延迟。
+   * 上限 8 个 —— 再多的话最后一个要等太久，不如整体一起出。
+   */
+  .stagger > * {
+    animation: rise-in calc(460ms * var(--motion-scale)) var(--ease-settle) both;
+  }
+
+  .stagger > *:nth-child(1) { animation-delay: calc(0ms * var(--motion-scale)); }
+  .stagger > *:nth-child(2) { animation-delay: calc(45ms * var(--motion-scale)); }
+  .stagger > *:nth-child(3) { animation-delay: calc(90ms * var(--motion-scale)); }
+  .stagger > *:nth-child(4) { animation-delay: calc(135ms * var(--motion-scale)); }
+  .stagger > *:nth-child(5) { animation-delay: calc(180ms * var(--motion-scale)); }
+  .stagger > *:nth-child(6) { animation-delay: calc(225ms * var(--motion-scale)); }
+  .stagger > *:nth-child(7) { animation-delay: calc(270ms * var(--motion-scale)); }
+  .stagger > *:nth-child(n + 8) { animation-delay: calc(300ms * var(--motion-scale)); }
+
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: translate3d(0, calc(var(--rise-sm) * var(--motion-scale)), 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  /* =============================================================
+   * 路由转场
+   *
+   * 只做淡入 + 极小上浮。整页滑动在音乐应用里很晕，
+   * 因为用户经常在导航之间来回跳。
+   * ============================================================= */
+
+  .route-enter {
+    animation: route-in calc(320ms * var(--motion-scale)) var(--ease-out) both;
+  }
+
+  @keyframes route-in {
+    from {
+      opacity: 0;
+      transform: translate3d(0, calc(10px * var(--motion-scale)), 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  /* =============================================================
+   * 按压反馈
+   *
+   * 所有可点元素按下时轻微内缩。这是触感的替代品，
+   * 在触屏上尤其重要 —— 没有它，点了没反应会让人重复点。
+   * ============================================================= */
+
+  .ui-btn,
+  .ui-stat--interactive,
+  .ui-list-row--interactive,
+  .ui-media-card__body,
+  .sidebar nav button {
+    transition:
+      background-color var(--duration-fast) var(--ease-out),
+      border-color var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out),
+      transform calc(120ms * var(--motion-scale)) var(--ease-out);
+  }
+
+  .ui-btn:active:not(:disabled),
+  .ui-stat--interactive:active,
+  .ui-list-row--interactive:active,
+  .ui-media-card__body:active {
+    transform: scale(calc(1 - 0.02 * var(--motion-scale)));
+  }
+
+  /* =============================================================
+   * 封面悬停
+   *
+   * 图片轻微推近，操作层同时浮现。缩放放在 img 上而不是容器上，
+   * 容器保持 overflow:hidden，圆角不会被撑破。
+   * ============================================================= */
+
+  .ui-cover > img {
+    transition: transform calc(480ms * var(--motion-scale)) var(--ease-settle);
+  }
+
+  .ui-media-card:hover .ui-cover > img,
+  .ui-media-card:focus-within .ui-cover > img {
+    transform: scale(calc(1 + 0.045 * var(--motion-scale)));
+  }
+
+  /* 卡片整体上浮一点点，配合封面推近形成层次。 */
+  .ui-media-card {
+    transition: transform calc(280ms * var(--motion-scale)) var(--ease-settle);
+  }
+
+  .ui-media-card:hover {
+    transform: translate3d(0, calc(-3px * var(--motion-scale)), 0);
+  }
+
+  /* =============================================================
+   * 品牌光晕：从标记向外扩散的同心环
+   *
+   * 用在登录页和空状态。三个环错开相位，形成缓慢的呼吸感。
+   * 纯 transform + opacity，不用 filter。
+   * ============================================================= */
+
+  .halo {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+  }
+
+  .halo__ring {
+    position: absolute;
+    width: 100%;
+    aspect-ratio: 1;
+    border: 1px solid var(--accent-border);
+    border-radius: var(--radius-pill);
+    opacity: 0;
+    animation: halo-out calc(5600ms / max(var(--motion-scale), 0.001))
+      var(--ease-out) infinite;
+  }
+
+  .halo__ring:nth-child(2) {
+    animation-delay: calc(-1866ms / max(var(--motion-scale), 0.001));
+  }
+  .halo__ring:nth-child(3) {
+    animation-delay: calc(-3733ms / max(var(--motion-scale), 0.001));
+  }
+
+  @keyframes halo-out {
+    0% {
+      opacity: 0;
+      transform: scale(0.6);
+    }
+    /* 峰值放在前段，让环在离开中心不远处就最亮，
+       越往外越淡，模拟声波扩散。 */
+    18% {
+      opacity: 0.5;
+    }
+    100% {
+      opacity: 0;
+      transform: scale(2.6);
+    }
+  }
+
+  /* 动效关掉时，环停在一个静止的装饰位置而不是消失，
+     否则登录页中间会突然空一块。 */
+  @media (prefers-reduced-motion: reduce) {
+    .halo__ring {
+      animation: none;
+      opacity: 0.18;
+      transform: scale(1.6);
+    }
+  }
+
+  /* =============================================================
+   * 播放中指示：三根跳动的竖条
+   *
+   * 替代"正在播放"四个字。列表里一眼就能看出哪首在放。
+   * ============================================================= */
+
+  .playing-bars {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 12px;
+  }
+
+  .playing-bars span {
+    width: 2px;
+    border-radius: 1px;
+    background: currentcolor;
+    animation: bar-bounce calc(900ms / max(var(--motion-scale), 0.001))
+      var(--ease-in-out) infinite;
+  }
+
+  /* 三根条用不同高度和相位，避免看起来像整齐的进度条。 */
+  .playing-bars span:nth-child(1) {
+    height: 40%;
+    animation-delay: -200ms;
+  }
+  .playing-bars span:nth-child(2) {
+    height: 100%;
+    animation-delay: -600ms;
+  }
+  .playing-bars span:nth-child(3) {
+    height: 65%;
+    animation-delay: -400ms;
+  }
+
+  @keyframes bar-bounce {
+    0%,
+    100% {
+      transform: scaleY(0.35);
+    }
+    50% {
+      transform: scaleY(1);
+    }
+  }
+
+  .playing-bars span {
+    transform-origin: bottom;
+  }
+
+  /* 暂停时定格，不要继续跳。 */
+  .playing-bars[data-paused="true"] span {
+    animation-play-state: paused;
+  }
+
+  /* =============================================================
+   * 聚光背景
+   *
+   * 参考深色产品页常用的中心柔光：一层极淡的径向渐变跟随内容，
+   * 给近黑的画布一点纵深，同时不干扰任何前景文字。
+   * ============================================================= */
+
+  .spotlight {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .spotlight::before {
+    content: "";
+    position: absolute;
+    inset: -20% -10% auto;
+    height: 60%;
+    z-index: -1;
+    background: radial-gradient(
+      ellipse 60% 100% at 50% 0%,
+      var(--accent-soft),
+      transparent 70%
+    );
+    pointer-events: none;
+  }
+
+  /* =============================================================
+   * 渐变文字
+   *
+   * 只用在页面级的大标题上。小字用渐变会糊。
+   * ============================================================= */
+
+  .text-gradient {
+    background: linear-gradient(
+      180deg,
+      var(--text-primary) 0%,
+      color-mix(in srgb, var(--text-primary) 62%, transparent) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+
+@layer components {
+  /* =============================================================
+   * 文字流光
+   *
+   * 一道比底色亮的窄带匀速扫过文字。做法是把渐变裁进字形
+   * （background-clip: text）再平移 background-position。
+   *
+   * 关键参数：
+   *   - 亮带要窄（约 18% 宽），宽了就变成整体闪烁而不是"扫过"；
+   *   - 必须 linear，用 ease 会在两端停顿，看起来像卡了；
+   *   - 周期给到 4.5s 以上。这是环境动效，不是提示动效，
+   *     快了会一直抢注意力。
+   *
+   * 只用在短文本上（徽章、状态标签）。整段正文用流光会读不下去。
+   * ============================================================= */
+
+  .text-shine {
+    background: linear-gradient(
+      100deg,
+      var(--text-secondary) 0%,
+      var(--text-secondary) 38%,
+      var(--accent-text) 47%,
+      var(--text-primary) 50%,
+      var(--accent-text) 53%,
+      var(--text-secondary) 62%,
+      var(--text-secondary) 100%
+    );
+    /* 底图放大到三倍宽，才有足够行程让亮带走完再回来。 */
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: text-shine calc(4800ms / max(var(--motion-scale), 0.001)) linear
+      infinite;
+  }
+
+  @keyframes text-shine {
+    from {
+      background-position: 150% 50%;
+    }
+    to {
+      background-position: -50% 50%;
+    }
+  }
+
+  /* 动效关掉时保留可读的纯色，不能留下 transparent 的字。 */
+  @media (prefers-reduced-motion: reduce) {
+    .text-shine {
+      background: none;
+      color: var(--text-secondary);
+      animation: none;
+    }
+  }
+
+  /* =============================================================
+   * 呼吸状态点
+   *
+   * 点本身不变，外面套一圈向外扩散淡出的光晕。
+   * 直接缩放点本身会让它看起来在抖。
+   * ============================================================= */
+
+  .pulse-dot {
+    position: relative;
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: var(--radius-pill);
+    background: currentcolor;
+    flex: none;
+  }
+
+  .pulse-dot::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: currentcolor;
+    animation: dot-pulse calc(2400ms / max(var(--motion-scale), 0.001))
+      var(--ease-out) infinite;
+  }
+
+  @keyframes dot-pulse {
+    0% {
+      opacity: 0.6;
+      transform: scale(1);
+    }
+    70%,
+    100% {
+      opacity: 0;
+      transform: scale(3);
+    }
+  }
+
+  /* =============================================================
+   * 缓慢浮动
+   *
+   * 用在品牌标记这类静态视觉上，给页面一点"活着"的感觉。
+   * 幅度必须小（6px 以内），周期必须长（7s 左右），
+   * 否则会变成明显的上下晃动。
+   * ============================================================= */
+
+  .float {
+    animation: float-y calc(7200ms / max(var(--motion-scale), 0.001))
+      var(--ease-in-out) infinite;
+  }
+
+  @keyframes float-y {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0);
+    }
+    50% {
+      transform: translate3d(0, calc(-6px * var(--motion-scale)), 0);
+    }
+  }
+
+  /* =============================================================
+   * 首屏编排入场
+   *
+   * 登录页和空状态这类"一屏就是全部"的界面，用固定延迟编排，
+   * 不用 IntersectionObserver —— 内容本来就在视口里。
+   *
+   * 延迟按视觉阅读顺序给，不按 DOM 顺序。
+   * ============================================================= */
+
+  .enter {
+    animation: rise-in calc(760ms * var(--motion-scale)) var(--ease-settle) both;
+  }
+
+  .enter-1 { animation-delay: calc(60ms * var(--motion-scale)); }
+  .enter-2 { animation-delay: calc(140ms * var(--motion-scale)); }
+  .enter-3 { animation-delay: calc(220ms * var(--motion-scale)); }
+  .enter-4 { animation-delay: calc(300ms * var(--motion-scale)); }
+  .enter-5 { animation-delay: calc(390ms * var(--motion-scale)); }
+
+  /* =============================================================
+   * 徽章：带状态点和流光的小胶囊
+   * ============================================================= */
+
+  .ui-badge-live {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: 26px;
+    padding-inline: var(--space-3);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-pill);
+    background: var(--surface-2);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    white-space: nowrap;
+  }
+
+  .ui-badge-live .pulse-dot {
+    color: var(--accent-text);
+  }
+}
+
+@layer components {
+  /* =============================================================
+   * 环境光晕
+   *
+   * 近黑画布如果完全均匀，会显得廉价 —— 像没做完的底色。
+   * 铺两三团极淡的品牌色径向渐变，给画面纵深，
+   * 同时不能干扰任何前景文字（所以透明度都在 0.1 以下）。
+   *
+   * 用 position:fixed 让它不随内容滚动，页面滚动时光源保持不动，
+   * 内容像是在光下移动。
+   * ============================================================= */
+
+  .ambient {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .ambient::before,
+  .ambient::after {
+    content: "";
+    position: absolute;
+    border-radius: var(--radius-pill);
+  }
+
+  /* 右上角的暖金主光。 */
+  .ambient::before {
+    inset-block-start: -30vh;
+    inset-inline-end: -20vw;
+    width: 70vw;
+    height: 70vh;
+    background: radial-gradient(
+      circle,
+      color-mix(in srgb, var(--accent-solid) 9%, transparent),
+      transparent 66%
+    );
+  }
+
+  /* 左下角一团更冷的补光，避免整屏偏黄。 */
+  .ambient::after {
+    inset-block-end: -35vh;
+    inset-inline-start: -25vw;
+    width: 65vw;
+    height: 65vh;
+    background: radial-gradient(
+      circle,
+      color-mix(in srgb, var(--palette-blue-500) 7%, transparent),
+      transparent 68%
+    );
+  }
+
+  /* 浅色主题下光晕要更淡，否则白底上会显脏。 */
+  :root[data-theme="light"] .ambient::before {
+    background: radial-gradient(
+      circle,
+      color-mix(in srgb, var(--accent-solid) 14%, transparent),
+      transparent 66%
+    );
+  }
+
+  :root[data-theme="light"] .ambient::after {
+    background: radial-gradient(
+      circle,
+      color-mix(in srgb, var(--palette-blue-500) 8%, transparent),
+      transparent 68%
+    );
+  }
+
+  /* =============================================================
+   * 发光描边
+   *
+   * 给主视觉（首页焦点封面）外面加一圈跟随内容色的柔光。
+   * 用 ::after 的 box-shadow 而不是 filter: drop-shadow ——
+   * filter 会让整个子树进入新的合成层，封面滚动时容易掉帧。
+   * ============================================================= */
+
+  .glow-ring {
+    position: relative;
+  }
+
+  .glow-ring::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    z-index: -1;
+    border-radius: inherit;
+    background: linear-gradient(
+      140deg,
+      var(--accent-solid),
+      transparent 45%,
+      transparent 62%,
+      color-mix(in srgb, var(--accent-solid) 55%, transparent)
+    );
+    opacity: 0.55;
+    /* 光晕向外溢出一点，形成弥散感。 */
+    box-shadow: 0 0 42px -6px color-mix(in srgb, var(--accent-solid) 42%, transparent);
+    transition: opacity calc(320ms * var(--motion-scale)) var(--ease-out);
+  }
+
+  .glow-ring:hover::after {
+    opacity: 0.85;
+  }
+
+  /* =============================================================
+   * 封面滚动墙
+   *
+   * 一排封面匀速横向平移，用在登录页背景和空曲库状态。
+   * 内容渲染两遍首尾相接，位移到 -50% 时无缝回到起点。
+   *
+   * 速度要慢（40s 以上跑完一轮）。这是背景，不是轮播。
+   * ============================================================= */
+
+  .marquee {
+    display: flex;
+    gap: var(--space-3);
+    width: max-content;
+    animation: marquee-x calc(52s / max(var(--motion-scale), 0.001)) linear
+      infinite;
+  }
+
+  /* 反向那一排，让上下两排朝相反方向走，视觉更活。 */
+  .marquee--reverse {
+    animation-direction: reverse;
+  }
+
+  @keyframes marquee-x {
+    from {
+      transform: translate3d(0, 0, 0);
+    }
+    to {
+      transform: translate3d(-50%, 0, 0);
+    }
+  }
+
+  /* 两侧渐隐，避免封面在容器边缘被硬切。 */
+  .marquee-mask {
+    overflow: hidden;
+    mask-image: linear-gradient(
+      90deg,
+      transparent,
+      #000 12%,
+      #000 88%,
+      transparent
+    );
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .marquee {
+      animation: none;
+    }
+  }
+}
+
+@layer components {
+  /* =============================================================
+   * 声波地平线
+   *
+   * 一排贴底的竖条，高度由 SoundField 组件按下标算好，
+   * 这里只负责画和动。整体压得很暗（opacity 与渐变遮罩双重压制），
+   * 因为它是氛围，不是内容 —— 前景表单必须始终更清晰。
+   * ============================================================= */
+
+  .sound-field {
+    position: absolute;
+    inset-inline: 0;
+    inset-block-end: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: clamp(2px, 0.5vw, 6px);
+    height: min(46vh, 420px);
+    padding-inline: var(--space-4);
+    pointer-events: none;
+    /* 上淡下实，让竖条从画面里"长"出来而不是硬贴一排。 */
+    mask-image: linear-gradient(to top, #000 8%, transparent 92%);
+  }
+
+  .sound-field > span {
+    flex: 1 1 0;
+    min-width: 2px;
+    max-width: 14px;
+    height: var(--bar-height);
+    border-radius: var(--radius-pill) var(--radius-pill) 0 0;
+    background: linear-gradient(
+      to top,
+      color-mix(in srgb, var(--accent-solid) 62%, transparent),
+      color-mix(in srgb, var(--accent-solid) 6%, transparent)
+    );
+    transform-origin: bottom;
+  }
+
+  .sound-field--animate > span {
+    animation: sound-bar calc(3200ms / max(var(--motion-scale), 0.001))
+      var(--ease-in-out) infinite;
+    animation-delay: var(--bar-delay);
+  }
+
+  /* 起伏幅度刻意很小（0.72~1）。
+     幅度大了就变成音乐可视化组件，会抢走登录表单的注意力。 */
+  @keyframes sound-bar {
+    0%,
+    100% {
+      transform: scaleY(0.72);
+    }
+    50% {
+      transform: scaleY(1);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sound-field--animate > span {
+      animation: none;
+    }
+  }
+}
+
+@layer components {
+  /* =============================================================
+   * 静帧缓慢推移
+   *
+   * 静态背景图加一个极慢的缩放 + 平移，让画面"有呼吸"，
+   * 而不需要真的播一段视频。
+   *
+   * 幅度必须极小（缩放 1.0→1.06，平移 1% 以内），周期极长（28s）。
+   * 大了就会被看出是在动，反而廉价 —— 目标是让人说不出哪里在动，
+   * 但盯久了不觉得是张死图。
+   * ============================================================= */
+
+  .drift {
+    animation: drift-slow calc(28s / max(var(--motion-scale), 0.001))
+      var(--ease-in-out) infinite alternate;
+    will-change: transform;
+  }
+
+  @keyframes drift-slow {
+    from {
+      transform: scale(1.02) translate3d(-0.6%, 0.3%, 0);
+    }
+    to {
+      transform: scale(1.07) translate3d(0.6%, -0.4%, 0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .drift {
+      animation: none;
+      transform: scale(1.04);
+    }
+  }
+
+  /* =============================================================
+   * 光柱脉动
+   *
+   * 叠在背景图上的一道竖向暖光，缓慢明暗，
+   * 呼应岛屿上方那束光。纯 opacity 动画。
+   * ============================================================= */
+
+  .light-beam {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 50%;
+    width: min(38vw, 460px);
+    translate: -50% 0;
+    pointer-events: none;
+    background: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--accent-solid) 16%, transparent) 0%,
+      transparent 62%
+    );
+    mask-image: linear-gradient(to bottom, #000, transparent 70%);
+    animation: beam-breathe calc(6400ms / max(var(--motion-scale), 0.001))
+      var(--ease-in-out) infinite;
+  }
+
+  @keyframes beam-breathe {
+    0%,
+    100% {
+      opacity: 0.5;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+}

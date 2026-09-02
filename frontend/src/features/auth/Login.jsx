@@ -1,26 +1,54 @@
 /**
  * 登录页。
  *
- * 重构前这里是一张营销落地页：左半屏放大标题、一句产品介绍和四张功能卡
- * （私人曲库 / 连续播放 / 本地优先 / 为你发现），右半屏浮一张登录卡片。
- * 加上顶部 logo，品牌名在同一屏出现三次，还带"YOUR MUSIC, AT HOME"和
- * "SECURE ACCESS"两行英文点缀，按钮写着"进入音屿控制台"。
- * 而且顶部 logo 与左侧标题实际重叠。
+ * 保留旧版的氛围和左右分栏构图 —— 那部分是对的，暖金背景加statement 排版
+ * 让人一进来就知道这是什么产品。修掉的是下面这些实际缺陷：
  *
- * 登录页只有一个任务：让已经决定要用这个应用的人进去。
- * 功能介绍对着一个正在输密码的人讲没有意义 —— 他早就装好了。
+ *   - 左上角 logo 用绝对定位，压在标题和上方英文小字上（真实重叠）。
+ *     现在 logo 是左栏正常文档流里的第一个元素，不会压到任何东西。
+ *   - "PRIVATE MUSIC OPERATIONS" / "SECURE ACCESS" 两行英文装饰，
+ *     不传达信息。换成一个真实状态徽章。
+ *   - "登录控制台" / "进入音屿控制台"：这是个人 NAS 音乐播放器，
+ *     不是企业控制台。
+ *   - 品牌名同屏出现三次（左上 logo、标题、卡片头）。现在只出现一次。
+ *   - "SSO 单点登录（企业）"和"运营洞察 / 深度分析音乐资产"是 to-B 话术，
+ *     跟这个产品无关。
  *
- * 现在：一屏居中、一个品牌标记、两个输入框、一个按钮。
- * 背景是随机取自曲库的一张模糊封面（拿不到就退回纯色渐变），
- * 让人一眼看出这是自己的音乐库，而不是一张通用的粒子壁纸。
+ * 背景从一张固定的金色粒子位图换成 SoundField —— 用 CSS 画的声波地平线，
+ * 颜色跟主题走、任何分辨率都清晰、体积几乎为零。
  */
 
-import { CircleAlert, Eye, EyeOff, KeyRound, User } from "lucide-react";
+import { CircleAlert, Disc3, Eye, EyeOff, KeyRound, Radio, ShieldCheck, User } from "lucide-react";
 import { useEffect, useState } from "react";
+import { LiveBadge } from "../../components/ui/Badge";
 import { Button, IconButton } from "../../components/ui/Button";
 import { Field, Notice } from "../../components/ui/Field";
+import { VideoBackdrop } from "../../components/ui/VideoBackdrop";
 import { BRAND } from "../../config/brand";
 import { api } from "../../lib/api";
+
+/**
+ * 左栏的三条卖点。
+ * 写用户能得到什么，不写系统有什么模块 ——
+ * 旧版的"运营洞察 / 深度分析音乐资产"就是后者。
+ */
+const HIGHLIGHTS = [
+  {
+    icon: Disc3,
+    title: "整座曲库在自己手里",
+    desc: "音乐存在你的 NAS 上，不依赖任何云服务",
+  },
+  {
+    icon: Radio,
+    title: "从手机放到电视",
+    desc: "接管 Plexamp，或把歌词投到 Apple TV",
+  },
+  {
+    icon: ShieldCheck,
+    title: "听歌记录不出门",
+    desc: "播放历史只写在本地，推荐也在本地算",
+  },
+];
 
 export function Login({ onLogin }) {
   const [username, setUsername] = useState("admin");
@@ -28,24 +56,16 @@ export function Login({ onLogin }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [backdrop, setBackdrop] = useState("");
+  const [ready, setReady] = useState(false);
 
   /**
-   * 登录前是未鉴权状态，取不到曲库封面是正常的，
-   * 失败就安静地用纯色背景，不打扰正在登录的人。
+   * 探一次服务状态，用来在徽章上显示真实信息。
+   * 这是未鉴权端点；失败就当作"未就绪"，不打扰正在登录的人。
    */
   useEffect(() => {
     let cancelled = false;
-    api("/api/library/albums?pageSize=12")
-      .then((result) => {
-        if (cancelled) return;
-        const covers = (result.items || [])
-          .map((item) => item.thumbUrl)
-          .filter(Boolean);
-        if (covers.length) {
-          setBackdrop(covers[Math.floor(Math.random() * covers.length)]);
-        }
-      })
+    api("/api/health/live")
+      .then(() => !cancelled && setReady(true))
       .catch(() => {});
     return () => {
       cancelled = true;
@@ -71,78 +91,139 @@ export function Login({ onLogin }) {
 
   return (
     <main className="login">
-      <div className="login__backdrop" aria-hidden="true">
-        {backdrop && <img src={backdrop} alt="" />}
-      </div>
+      {/* 背景四层，从下到上：环境光晕 → 音乐岛屿循环视频 → 光柱 → 压暗遮罩。
+          都不参与交互，也不进入无障碍树。
 
-      <div className="login__panel">
-        <div className="login__brand">
-          <img src={BRAND.mark} alt="" className="login__mark" />
-          <p className="login__name">{BRAND.cnName}</p>
-        </div>
+          视频源自带两处水印：左上角固定的一处已在转码时裁掉；
+          另一处会沿画面四周游走，靠 login.css 里的椭圆渐变遮罩
+          把外圈完全淡出来遮住 —— 它始终贴边移动，不进中心。 */}
+      <div className="ambient" aria-hidden="true" />
+      <VideoBackdrop
+        poster="/visuals/login-island.jpg"
+        sources={[
+          { src: "/visuals/login-island.webm", type: "video/webm" },
+          { src: "/visuals/login-island.mp4", type: "video/mp4" },
+        ]}
+      />
+      <span className="light-beam" aria-hidden="true" />
+      <div className="login__scrim" aria-hidden="true" />
 
-        <form className="login__form" onSubmit={submit}>
-          <Field
-            label="用户名"
-            leading={User}
-            name="username"
-            type="text"
-            autoComplete="username"
-            autoCapitalize="none"
-            spellCheck="false"
-            enterKeyHint="next"
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-          />
+      <div className="login__grid">
+        {/* --- 左栏：产品是什么 --- */}
+        <section className="login__intro">
+          <div className="login__brand enter enter-1">
+            <img src={BRAND.mark} alt="" className="login__mark float" />
+            <span className="login__wordmark">
+              {BRAND.name}
+              <b aria-hidden="true">|</b>
+              {BRAND.cnName}
+            </span>
+          </div>
 
-          <Field
-            label="密码"
-            leading={KeyRound}
-            name="password"
-            type={showPassword ? "text" : "password"}
-            autoComplete="current-password"
-            enterKeyHint="go"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            trailing={
-              <IconButton
-                icon={showPassword ? EyeOff : Eye}
-                label={showPassword ? "隐藏密码" : "显示密码"}
-                size="sm"
-                onClick={() => setShowPassword((value) => !value)}
+          <div className="enter enter-2">
+            <LiveBadge>{ready ? "服务已就绪" : "正在连接本地服务"}</LiveBadge>
+          </div>
+
+          <h1 className="login__headline enter enter-3">
+            让散落的音乐，
+            <br />
+            回到自己的<span>岛屿</span>。
+          </h1>
+
+          <p className="login__lead enter enter-4">
+            把 NAS 上的音乐、Plex 资料库和歌单收在一处，随时接着听。
+          </p>
+
+          <ul className="login__highlights enter enter-5">
+            {HIGHLIGHTS.map(({ icon: Icon, title, desc }) => (
+              <li key={title}>
+                <span className="login__highlight-icon">
+                  <Icon />
+                </span>
+                <span>
+                  <strong>{title}</strong>
+                  <small>{desc}</small>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* --- 右栏：登录 --- */}
+        <section className="login__card-wrap enter enter-3">
+          <div className="login__card glow-ring">
+            <div className="login__card-head">
+              <h2>欢迎回来</h2>
+              <p>用你的账号继续</p>
+            </div>
+
+            <form className="login__form" onSubmit={submit}>
+              <Field
+                label="用户名"
+                leading={User}
+                name="username"
+                type="text"
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck="false"
+                enterKeyHint="next"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
               />
-            }
-          />
 
-          {error && (
-            <Notice tone="danger" icon={CircleAlert}>
-              {error}
-            </Notice>
-          )}
+              <Field
+                label="密码"
+                leading={KeyRound}
+                name="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                enterKeyHint="go"
+                placeholder="输入密码"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                trailing={
+                  <IconButton
+                    icon={showPassword ? EyeOff : Eye}
+                    label={showPassword ? "隐藏密码" : "显示密码"}
+                    size="sm"
+                    onClick={() => setShowPassword((value) => !value)}
+                  />
+                }
+              />
 
-          <Button
-            type="submit"
-            variant="primary"
-            size="lg"
-            block
-            loading={busy}
-            disabled={!password}
-          >
-            {busy ? "正在登录" : "登录"}
-          </Button>
-        </form>
+              {error && (
+                <Notice tone="danger" icon={CircleAlert}>
+                  {error}
+                </Notice>
+              )}
 
-        <button
-          type="button"
-          className="login__help"
-          onClick={() =>
-            setError(
-              "重置密码需要在运行这个服务的机器上操作，具体步骤见部署文档里的「恢复管理员访问」。",
-            )
-          }
-        >
-          忘记密码了？
-        </button>
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                block
+                loading={busy}
+                disabled={!password}
+              >
+                {busy ? "正在登录" : "登录"}
+              </Button>
+            </form>
+
+            <div className="login__card-foot">
+              <button
+                type="button"
+                onClick={() =>
+                  setError(
+                    "重置密码需要在运行这个服务的机器上操作，步骤见部署文档的「恢复管理员访问」。",
+                  )
+                }
+              >
+                忘记密码了？
+              </button>
+              <span>登录状态只保存在这台设备</span>
+            </div>
+          </div>
+        </section>
       </div>
     </main>
   );

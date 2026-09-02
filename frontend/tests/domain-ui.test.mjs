@@ -354,33 +354,62 @@ test("mobile navigation has exactly one semantic active destination", () => {
   assert.doesNotMatch(shellCss, /mobile-nav button:nth-child\(3\)/);
 });
 
-test("登录页在任何视口下都只有登录这一件事", () => {
+test("登录页保留氛围与分栏，但当初那些缺陷不能回来", () => {
   const login = readSource("features/auth/Login.jsx");
-  const styles = readSource("features/auth/login.css");
+  // 注释里会引用旧文案说明改掉了什么，断言前先剥掉，否则会误命中。
+  const stripComments = (text) =>
+    text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  const styles = stripComments(readSource("features/auth/login.css"));
+  const loginCode = stripComments(login);
 
-  // 重构前的登录页是一张营销落地页：左半屏放大标题加四张功能卡，
-  // 右半屏浮一张登录卡。窄屏上表单会被挤出首屏，于是又加了一整段
-  // @media 用 !important 把它压回来。布局本身不成立时，补丁只会越叠越多。
-  //
-  // 现在是单列居中，天然不存在"表单被挤出首屏"的问题。
-  // 这里锁住这个结构，防止功能介绍再长回登录页。
-  assert.match(styles, /\.login\s*\{[\s\S]*?place-items:\s*center/);
-  assert.match(styles, /\.login__panel\s*\{[\s\S]*?width:\s*min\(100%,\s*360px\)/);
-  assert.doesNotMatch(styles, /grid-template-columns/);
+  // 左右分栏是刻意保留的 —— 它让人一进来就知道这是什么产品。
+  assert.match(styles, /\.login__grid\s*\{[\s\S]*?grid-template-columns/);
+  // 但窄屏必须有单列回退。旧版没有，只能靠一段 !important 把表单拽回首屏。
+  assert.match(styles, /@media \(max-width: 900px\)[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.doesNotMatch(styles, /!important/);
 
-  // 登录页不该再出现功能宣传、英文点缀和"控制台"口吻。
-  // 先剥掉注释 —— 注释里会引用这些旧文案来说明当初改掉了什么。
-  const loginCode = login
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/^\s*\/\/.*$/gm, "");
-  assert.doesNotMatch(loginCode, /LoginFeatureCard|login-motion/);
-  assert.doesNotMatch(loginCode, /YOUR MUSIC|SECURE ACCESS/);
+  // 旧版左上角 logo 用绝对定位，压在标题和上方小字上。
+  // 现在 logo 在左栏文档流里，样式表里不该再出现给它的绝对定位。
+  assert.doesNotMatch(styles, /\.login__brand\s*\{[^}]*position:\s*absolute/);
+
+  // 英文装饰、"控制台"口吻、企业 SSO 都不该回来。
+  assert.doesNotMatch(loginCode, /YOUR MUSIC|SECURE ACCESS|PRIVATE MUSIC/);
   assert.doesNotMatch(loginCode, /控制台/);
+  assert.doesNotMatch(loginCode, /SSO|单点登录/);
+
+  // 品牌名整页只出现一次（旧版出现三次）。
+  assert.equal((loginCode.match(/BRAND\.cnName/g) || []).length, 1);
 
   // 启动兜底屏仍然要在。
   const indexHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
   assert.match(indexHtml, /#root:empty::before/);
   assert.match(indexHtml, /正在连接本地音乐库/);
+});
+
+test("登录页背景视频不能把当初的 iPad 启动问题带回来", () => {
+  const backdrop = readSource("components/ui/VideoBackdrop.jsx");
+  const login = readSource("features/auth/Login.jsx");
+  const styles = readSource("features/auth/login.css");
+
+  // 1.0.4 移除背景视频的原因是原文件 11.7 MB、码率 9.7 Mbps，
+  // 在低性能 iPad 上和前端初始化抢资源。视频可以回来，
+  // 但下面这四道闸必须在，否则等于把那个问题重新引入。
+  assert.match(backdrop, /prefers-reduced-motion/); // 尊重减弱动效
+  assert.match(backdrop, /saveData/); // 尊重省流量
+  assert.match(backdrop, /requestIdleCallback/); // 空闲才加载，不阻塞首屏
+  assert.match(backdrop, /visibilitychange/); // 切到后台就暂停解码
+  assert.match(backdrop, /preload="none"/);
+
+  // 海报图是必需的兜底：任何一道闸没过，背景仍然成立。
+  assert.match(login, /poster="\/visuals\/login-island\.jpg"/);
+
+  // 不得再引用未压缩的原始素材。
+  assert.doesNotMatch(readAllSources(), /songlib-login-background\.mp4/);
+
+  // 源视频有一处水印沿画面四周游走，靠遮罩把外圈淡出来遮住。
+  // 遮罩没了水印就会露出来，所以锁住它。
+  assert.match(styles, /mask-image:[\s\S]*?radial-gradient/);
+  assert.match(styles, /mask-composite/);
 });
 
 test("touch startup and the global shell avoid continuous media work", () => {

@@ -235,7 +235,36 @@ http.createServer((req,res)=>{
     })
     if(url.pathname==='/api/local/organize/apply')return json(res,{id:21,kind:'local_organize',title:'确认执行本地曲库整理',status:'queued',progress:0,created_at:new Date().toISOString()})
     if(/^\/api\/local\/operations\/[^/]+\/rollback$/.test(url.pathname))return json(res,{ok:true})
-    if(url.pathname==='/api/local/operations')return json(res,[{id:'op1',action:'tag_write',target_id:'file-1',rollbackable:1,created_at:new Date(Date.now()-3600000).toISOString()}])
+    if(url.pathname==='/api/local/operations'){
+      const ago=m=>new Date(Date.now()-m*60000).toISOString()
+      const move=(i,from,to,rb=true)=>({id:`mv${i}`,target:to,rollbackable:rb,status:rb?'success':'rolled_back',error:'',
+        changes:[{kind:'move',oldValue:from,newValue:to}]})
+      return json(res,{total:41,groups:[
+        {id:'t1',action:'tag_write',actionLabel:'写入标签',at:ago(18),count:3,failed:0,rolledBack:0,
+         rollbackableIds:['t1','t2','t3'],more:0,items:[
+          {id:'t1',target:'/music/S.H.E/范特西/02 - 晴天.flac',rollbackable:true,status:'success',error:'',
+           changes:[{kind:'field',field:'artist',oldValue:'',newValue:'S.H.E'},{kind:'field',field:'albumArtist',oldValue:'',newValue:'S.H.E'}]},
+          {id:'t2',target:'/music/G.E.M.邓紫棋/七里香/03 - 勇气.flac',rollbackable:true,status:'success',error:'',
+           changes:[{kind:'field',field:'album',oldValue:'',newValue:'七里香'}]},
+          {id:'t3',target:'/music/张学友/勇气/08 - 勇气.flac',rollbackable:true,status:'success',error:'',
+           changes:[{kind:'field',field:'artist',oldValue:'未知艺术家',newValue:'张学友'},{kind:'field',field:'album',oldValue:'',newValue:'勇气'},{kind:'field',field:'albumArtist',oldValue:'',newValue:'张学友'}]}
+         ]},
+        {id:'o1',action:'organize_move',actionLabel:'整理目录',at:ago(96),count:37,failed:1,rolledBack:0,
+         rollbackableIds:Array.from({length:36},(_,i)=>`mv${i}`),more:25,
+         items:Array.from({length:12},(_,i)=>move(i,`/music/未整理/曲目${i+1}.flac`,`/music/五月天/后青春的诗/${String(i+1).padStart(2,'0')} - 曲目${i+1}.flac`,i!==4))},
+        {id:'g1',action:'download_inbox_ingest',actionLabel:'下载目录入库',at:ago(60*26),count:2,failed:0,rolledBack:2,
+         rollbackableIds:[],more:0,items:[
+          move(90,'/downloads/新歌.flac','/music/某个歌手/单曲/新歌.flac',false),
+          move(91,'/downloads/另一首.mp3','/music/某个歌手/单曲/另一首.mp3',false)
+         ]}
+      ]})
+    }
+    if(url.pathname==='/api/local/operations/rollback')return withJson(req,res,payload=>{
+      const ids=payload.ids||[]
+      // 造一个部分失败：第 5 个退不回去
+      const failed=ids.length>5?[{id:ids[4],error:'原位置已有文件，无法安全回滚'}]:[]
+      json(res,{restored:ids.length-failed.length,failed})
+    })
     if(url.pathname==='/api/catalog/search')return json(res,tracks.slice(0,8).map((t,i)=>({platform:'tx',id:String(i),title:t.title,artist:t.grandparentTitle,album:t.parentTitle,duration:240+i*3,cover:'',qualities:['128k','320k','flac'],musicInfo:{}})))
     if(url.pathname==='/api/scrape/preview'&&req.method==='POST'){
       // 真实后端返回的计划结构（见 backend/app/scraper.py build_diff_preview）：

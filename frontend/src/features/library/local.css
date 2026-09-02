@@ -224,6 +224,233 @@
   }
 
   /* =============================================================
+   * 改动历史时间线
+   *
+   * 竖线用 .timeline__runs 的左边框画，不用绝对定位的伪元素 ——
+   * 边框会自动跟着内容高度走，加一条记录不用改任何数值。
+   * ============================================================= */
+
+  .timeline,
+  .timeline__runs,
+  .timeline__items {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .timeline {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+  }
+
+  .timeline__date {
+    margin-block-end: var(--space-3);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+
+  .timeline__runs {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    /* 竖线。padding 给圆点留位置，圆点自己再往左挪一半盖住线。 */
+    border-inline-start: 1px solid var(--border-subtle);
+    padding-inline-start: var(--space-6);
+  }
+
+  .timeline__run {
+    position: relative;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--surface-1);
+  }
+
+  /* 已经整批撤销掉的整条压暗，但不隐藏 —— 撤销本身也是历史。 */
+  .timeline__run.is-undone {
+    opacity: 0.55;
+  }
+
+  .timeline__dot {
+    position: absolute;
+    /* 往左挪出卡片，正好压在竖线上。 */
+    inset-inline-start: calc(-1 * var(--space-6) - 13px);
+    inset-block-start: var(--space-3);
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border-default);
+    background: var(--surface-2);
+    color: var(--accent-text);
+  }
+
+  .timeline__dot svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .timeline__head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+  }
+
+  .timeline__title {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-3);
+    min-width: 0;
+  }
+
+  .timeline__title strong {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+  }
+
+  .timeline__title span,
+  .timeline__title time {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .timeline__badges {
+    display: flex;
+    gap: var(--space-1);
+  }
+
+  /* 按钮组推到最右 —— 每条记录的两个按钮要对齐成一竖列。 */
+  .timeline__head > .ui-btn-group {
+    margin-inline-start: auto;
+  }
+
+  .timeline__toggle svg {
+    transition: transform var(--duration-fast) var(--ease-out);
+  }
+
+  .timeline__toggle.is-open svg {
+    transform: rotate(90deg);
+  }
+
+  /* --- 展开后的逐文件明细 --- */
+
+  .timeline__items {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-block-start: var(--space-3);
+    padding-block-start: var(--space-3);
+    border-block-start: 1px solid var(--border-subtle);
+  }
+
+  .timeline__items > li {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    font-size: var(--text-xs);
+  }
+
+  .timeline__changes {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .timeline__move {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 12px minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .timeline__move svg {
+    width: 12px;
+    height: 12px;
+    color: var(--text-tertiary);
+  }
+
+  /* 字段名列定宽，四个字段的原值起点才对齐。 */
+  .timeline__field {
+    display: grid;
+    grid-template-columns: 4.5em auto minmax(0, 1fr);
+    align-items: baseline;
+    gap: var(--space-2);
+    min-width: 0;
+    font-size: var(--text-2xs);
+  }
+
+  .timeline__field small {
+    color: var(--text-tertiary);
+  }
+
+  .timeline__field s,
+  .timeline__field i {
+    max-width: 18ch;
+    color: var(--text-tertiary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* 原值为空时用斜体的"（空）"，不划删除线。 */
+  .timeline__field i {
+    opacity: 0.7;
+  }
+
+  .timeline__field b {
+    min-width: 0;
+    font-weight: var(--weight-medium);
+    color: var(--accent-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .timeline__nochange,
+  .timeline__more {
+    font-size: var(--text-2xs);
+    color: var(--text-tertiary);
+  }
+
+  .timeline__error {
+    font-size: var(--text-2xs);
+    color: var(--danger-text);
+  }
+
+  @media (max-width: 700px) {
+    .timeline__runs {
+      padding-inline-start: var(--space-5);
+    }
+
+    .timeline__dot {
+      inset-inline-start: calc(-1 * var(--space-5) - 13px);
+    }
+
+    .timeline__move,
+    .timeline__field {
+      grid-template-columns: minmax(0, 1fr);
+      row-gap: 2px;
+    }
+
+    /* 窄屏箭头没有意义（上下排列本身就表示方向），藏掉。 */
+    .timeline__move svg {
+      display: none;
+    }
+  }
+
+  /* =============================================================
    * 体检
    * ============================================================= */
 

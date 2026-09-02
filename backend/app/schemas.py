@@ -183,6 +183,11 @@ class TagFillPreviewBody(BaseModel):
     fileIds: list[str] = []
 
 
+class RollbackBatchBody(BaseModel):
+    # 一次整理可能有几百条。上限给到 2000，和入库那边保持一致。
+    ids: list[str] = Field(min_length=1, max_length=2_000)
+
+
 class OrganizePreviewBody(BaseModel):
     fileIds: list[str]
 

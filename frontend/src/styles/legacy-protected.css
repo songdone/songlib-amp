@@ -1,0 +1,488 @@
+/**
+ * 重构前 styles.css 里带 !important 的声明。
+ *
+ * styles.css 当年是第一个被导入的样式表，这些 !important 的作用是**保护**
+ * 基础规则不被后面四个样式表覆盖，而不是压过它们。把它们平铺进 legacy.base
+ * 会让优先级反转 —— 典型症状是 .artist-backdrop img 的 brightness(.55) 失效，
+ * 浅色 fallback 背景图不再被压暗，内容区出现一层灰罩。
+ *
+ * 这一层排在所有 legacy.* 子层之后（见 index.css 的 @layer 声明），
+ * 用层级顺序精确复现原来的优先级，因此这里不需要也不允许出现 !important。
+ *
+ * 这个文件由 scripts/extract-protected-rules.mjs 从 git 历史生成，不要手改。
+ * 迁移某个组件到设计 token 时，把它对应的规则从这里删掉。
+ */
+
+@layer legacy.protected {
+  .mobile-only {
+    display:none;
+  }
+
+  .file-picker {
+    min-height:112px;
+    margin-top:16px;
+    display:flex;
+  }
+
+  .switch-line {
+    display:flex;
+  }
+
+  .library-row {
+    margin:0;
+    display:grid;
+  }
+
+  .remember-line {
+    display:flex;
+    margin:0;
+    color:rgba(255,255,255,.68);
+  }
+
+  .player-artist-line {
+    display:flex;
+    color:rgba(255,255,255,.76);
+    font-size:calc(18px + var(--font-delta, 0px));
+    margin:0 0 18px;
+  }
+
+  .route-home .hero-panel {
+    background:rgba(14,14,16,.38);
+  }
+
+  .route-home .stat-card,.route-home .dashboard-quick,.route-home .coverage-panel,.route-home .recent-panel,.route-home .dashboard-activity>.panel {
+    background:rgba(15,15,18,.42);
+  }
+
+  .airplay-cast-video {
+    position:fixed;
+    width:192px;
+    height:108px;
+  }
+
+  .artist-backdrop img,.route-home .app-backdrop img {
+    filter:saturate(1.08) brightness(.55) contrast(1.04);
+    transform:scale(1.012);
+  }
+
+  .route-home .app-backdrop .backdrop-image.current {
+    transform:scale(1.035);
+  }
+
+  .artist-backdrop .backdrop-vignette,.route-home .backdrop-vignette {
+    background:linear-gradient(90deg,rgba(0,0,0,.82),rgba(0,0,0,.48) 36%,rgba(0,0,0,.42) 63%,rgba(0,0,0,.78)),linear-gradient(180deg,rgba(0,0,0,.44),rgba(0,0,0,.08) 42%,rgba(0,0,0,.68)),radial-gradient(circle at 67% 18%,rgba(240,190,91,.12),transparent 32%);
+    box-shadow:inset 0 0 170px rgba(0,0,0,.68);
+  }
+
+  .artist-backdrop .backdrop-aurora,.route-home .backdrop-aurora {
+    opacity:.18;
+    background-image:radial-gradient(circle at 18% 24%,rgba(255,255,255,.05) 0 1px,transparent 1px),radial-gradient(circle at 78% 48%,rgba(246,199,107,.08),transparent 32%);
+    background-size:3px 3px,auto;
+  }
+
+  .login-page {
+    grid-template-columns:minmax(440px,620px) minmax(360px,430px);
+    align-items:center;
+    padding:42px clamp(42px,6vw,92px) 38px;
+  }
+
+  .login-showcase {
+    max-width:610px;
+    margin-top:0;
+  }
+
+  .login-showcase .brand {
+    margin-bottom:42px;
+  }
+
+  .login-copy h1 {
+    font-size:clamp(38px,3.6vw,52px);
+    line-height:1.16;
+    margin:18px 0 16px;
+  }
+
+  .login-copy p {
+    font-size:calc(13px + var(--font-delta, 0px));
+    line-height:1.85;
+    max-width:500px;
+  }
+
+  .login-feature-grid {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    max-width:470px;
+    margin-top:28px;
+  }
+
+  .login-feature {
+    min-height:76px;
+    padding:12px;
+  }
+
+  .login-feature svg {
+    width:20px;
+  }
+
+  .login-card {
+    width:min(430px,100%);
+    padding:28px 30px 24px;
+    margin-top:0;
+    border-radius:24px;
+  }
+
+  .login-card-brand {
+    margin-bottom:16px;
+  }
+
+  .login-card-brand img {
+    width:48px;
+    height:48px;
+  }
+
+  .login-card form h3 {
+    font-size:calc(13px + var(--font-delta, 0px));
+  }
+
+  .input-shell {
+    height:46px;
+    border-radius:12px;
+  }
+
+  .login-submit {
+    height:48px;
+  }
+
+  .login-bg img {
+    filter:brightness(.82) saturate(1.16) contrast(1.04);
+    transform:scale(1.01);
+  }
+
+  .login-bg:after {
+    background:radial-gradient(ellipse at 27% 78%,rgba(0,0,0,.02) 0 18%,rgba(0,0,0,.16) 38%,rgba(0,0,0,.46) 68%,rgba(0,0,0,.66) 100%),linear-gradient(90deg,rgba(0,0,0,.36),rgba(0,0,0,.2) 42%,rgba(0,0,0,.58)),linear-gradient(180deg,rgba(0,0,0,.24),rgba(0,0,0,.08) 48%,rgba(0,0,0,.34));
+    box-shadow:inset 0 0 130px rgba(0,0,0,.62);
+  }
+
+  .login-island-glow {
+    left:27%;
+    bottom:15%;
+    width:440px;
+    height:180px;
+    background:rgba(238,186,82,.34);
+    filter:blur(48px);
+  }
+
+  .login-wave {
+    left:27%;
+    bottom:17%;
+    border-color:rgba(245,198,96,.22);
+  }
+
+  .wave-two {
+    width:760px;
+    height:760px;
+  }
+
+  .login-particles {
+    opacity:.58;
+  }
+
+  .route-home .hero-panel {
+    background:linear-gradient(135deg,rgba(255,255,255,.105),rgba(255,255,255,.04));
+    border-color:rgba(255,255,255,.12);
+    backdrop-filter:blur(16px) saturate(125%);
+    box-shadow:0 28px 90px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.1);
+  }
+
+  .route-home .hero-panel:before {
+    background:linear-gradient(90deg,rgba(10,10,12,.55),rgba(12,12,14,.34) 55%,rgba(12,12,14,.18));
+  }
+
+  .hero-bg-image {
+    display:none;
+  }
+
+  .route-home .stat-card,.route-home .dashboard-quick,.route-home .coverage-panel,.route-home .recent-panel,.route-home .dashboard-activity>.panel,.local-hero,.source-strip,.search-results,.pending-ingest,.discover-panel,.setting-card,.settings-workbench {
+    background:linear-gradient(135deg,rgba(255,255,255,.07),rgba(255,255,255,.027));
+    border-color:rgba(255,255,255,.1);
+    box-shadow:0 20px 64px rgba(0,0,0,.22),inset 0 1px rgba(255,255,255,.06);
+    backdrop-filter:blur(16px) saturate(124%);
+  }
+
+  .route-home .dashboard-quick button,.dashboard-quick button,.chart-grid button,.discover-grid button,.category-group button,.category-summary button {
+    box-shadow:none;
+  }
+
+  .smart-player-empty {
+    display:grid;
+    padding:46px;
+  }
+
+  .smart-player-empty .player-empty-copy {
+    text-align:left;
+  }
+
+  .lyrics-overlay-lines p {
+    font-size:clamp(18px,2.5vw,34px);
+    margin:14px 0;
+  }
+
+  .lyrics-overlay-lines p.active {
+    font-size:clamp(26px,3.35vw,50px);
+  }
+
+  .lyrics-overlay-controls {
+    width:min(760px,calc(100vw - 360px));
+  }
+
+  .download-controls {
+    display:grid;
+    grid-template-columns:minmax(180px,1fr) minmax(210px,1fr) repeat(4,minmax(104px,.7fr));
+    gap:9px;
+    align-items:stretch;
+    padding:14px;
+  }
+
+  .sidebar-like.active,.mini-like.active,.player-controls-extra .secondary.active {
+    color:#ffd276;
+    border-color:rgba(229,180,89,.45);
+    background:rgba(229,180,89,.14);
+  }
+
+  .player-main-controls button.active {
+    color:#151009;
+    background:linear-gradient(135deg,#ffe19b,#d59b39);
+    border-color:transparent;
+  }
+
+  .login-motion-page {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:100svh;
+    padding:0;
+    background:#050505;
+    color:#d4d4d8;
+    overflow:hidden;
+  }
+
+  .login-motion-remember {
+    margin:0;
+    display:flex;
+    align-items:center;
+    color:#a1a1aa;
+    font-size:calc(11px + var(--font-delta, 0px));
+  }
+
+  .login-base-map {
+    background-image:url("/visuals/songlib-login-bg-base.jpg");
+  }
+
+  .login-flow-lines {
+    opacity:.42;
+  }
+
+  .login-motion-logo h1 {
+    text-transform:none;
+    letter-spacing:.045em;
+  }
+
+  .empty-mini-player {
+    grid-template-columns:48px minmax(180px,1fr) auto;
+  }
+
+  .sidebar-player,.empty-mini-player {
+    display:none;
+  }
+
+  .match-badge {
+    display:inline-block;
+  }
+
+  .scrape-summary {
+    display:flex;
+    gap:8px;
+    padding:0 0 10px;
+  }
+
+  .scrape-diff-head,.scrape-diff-row {
+    min-width:900px;
+    display:grid;
+    grid-template-columns:1.15fr 1fr 1.25fr .85fr .8fr;
+    gap:12px;
+    align-items:center;
+  }
+
+  .scrape-diff-head {
+    padding:8px 12px;
+  }
+
+  .scrape-diff-row {
+    padding:12px;
+  }
+
+  .scrape-diff-row code {
+    white-space:normal;
+  }
+
+  .pending-stage {
+    color:#efbd56;
+    border-color:rgba(229,180,89,.28);
+  }
+
+  .account-create {
+    grid-template-columns:repeat(4,minmax(0,1fr));
+  }
+
+  .account-row {
+    grid-template-columns:30px minmax(0,1fr) repeat(4,82px) 38px;
+  }
+
+  @media(max-width:900px) {
+    .mobile-only {
+      display:flex;
+    }
+
+    .mobile-nav {
+      display:grid;
+      grid-template-columns:repeat(5,1fr);
+    }
+
+    .airplay-cast-video {
+      width:160px;
+      height:90px;
+    }
+
+    .login-page {
+      padding:16px;
+    }
+
+    .login-showcase {
+      display:none;
+    }
+
+    .login-card {
+      width:min(100%,390px);
+      padding:24px 20px;
+    }
+
+    .artist-backdrop img,.route-home .app-backdrop img {
+      filter:saturate(1.02) brightness(.46) contrast(1.04);
+      transform:scale(1.02);
+    }
+
+    .route-home .hero-panel {
+      backdrop-filter:blur(10px) saturate(115%);
+    }
+
+    .category-summary,.category-groups,.player-seed-grid,.profile-form {
+      grid-template-columns:1fr;
+    }
+
+    .download-controls {
+      grid-template-columns:1fr;
+    }
+
+    .smart-player-empty {
+      padding:22px;
+    }
+
+    .smart-player-empty .player-empty-copy {
+      text-align:center;
+    }
+
+    .lyrics-overlay-lines p.active {
+      font-size:calc(34px + var(--font-delta, 0px));
+    }
+
+    .lyrics-overlay-lines p {
+      font-size:calc(22px + var(--font-delta, 0px));
+    }
+
+    .lyrics-overlay-controls {
+      width:calc(100vw - 32px);
+    }
+
+    .login-motion-page {
+      display:block;
+      min-height:100svh;
+      overflow:auto;
+    }
+
+    .has-mini-player .main>.page {
+      padding-bottom:166px;
+    }
+
+    .route-player .main>.page {
+      padding-bottom:88px;
+    }
+
+    .mini-player {
+      bottom:78px;
+    }
+
+    .account-create {
+      grid-template-columns:1fr;
+    }
+
+    .account-scope,.account-permissions {
+      grid-column:1;
+    }
+
+    .account-row {
+      grid-template-columns:28px 1fr;
+    }
+
+    .scrape-diff-head,.scrape-diff-row {
+      min-width:760px;
+    }
+  }
+
+  @media(prefers-reduced-motion:reduce) {
+    *,*:before,*:after {
+      animation:none;
+      transition:none;
+      scroll-behavior:auto;
+    }
+
+    .app-backdrop img,.login-bg img {
+      transform:none;
+    }
+  }
+
+  @media(max-width:1180px) {
+    .download-controls {
+      grid-template-columns:1fr 1fr;
+    }
+
+    .smart-player-empty {
+      grid-template-columns:1fr;
+    }
+
+    .login-motion-page {
+      display:block;
+      min-height:100svh;
+      overflow-x:hidden;
+      overflow-y:auto;
+    }
+
+    .empty-mini-player {
+      grid-template-columns:42px 1fr;
+    }
+  }
+
+  @media(prefers-reduced-motion:reduce),(max-width:900px) {
+    .login-motion-bg * {
+      animation:none;
+      transition:none;
+    }
+  }
+
+  @media(hover:none) and (pointer:coarse) {
+    .login-motion-card-group,.login-motion-card {
+      transform:none;
+    }
+
+    .login-motion-card-group:hover .login-motion-card {
+      transform:none;
+    }
+  }
+}

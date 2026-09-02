@@ -19,6 +19,7 @@ import { ChipGroup } from "../../components/ui/Plan";
 import { PageLoader } from "../../components/PageLoader";
 import { TrackTable } from "../../components/TrackTable";
 import { api } from "../../lib/api";
+import { remember } from "../../lib/offlineIndex";
 import { fmt } from "../../lib/format";
 import { LibraryDetailPage } from "./LibraryDetailPage";
 
@@ -29,6 +30,10 @@ const TABS = [
 ];
 
 const TAB_NAME = { artists: "歌手", albums: "专辑", tracks: "单曲" };
+
+/* 路由的 tab 名是复数（artists/albums/tracks），
+   离线索引里用单数的 kind。映射放在这里，不在两边各写一遍。 */
+const OFFLINE_KINDS = { artists: "artist", albums: "album", tracks: "track" };
 
 export function MediaLibrary({
   initialTab = "artists",
@@ -68,6 +73,10 @@ export function MediaLibrary({
       if (requestId !== libraryRequestRef.current) return;
       setData(first);
       setLoading(false);
+      /* 顺手存进离线索引。浏览曲库是索引变全的主要来源 ——
+         用户翻过一遍歌手和专辑，断连时就能查到大部分内容。
+         remember 自己吞掉失败，存不下不影响在线使用。 */
+      remember(OFFLINE_KINDS[tab], first.items || []);
       if (tab === "tracks" || first.items.length >= first.total) {
         return;
       }
@@ -86,6 +95,7 @@ export function MediaLibrary({
         if (requestId !== libraryRequestRef.current) return;
         const items = batch.flatMap((result) => result.items || []);
         setData((value) => ({ ...first, items: [...value.items, ...items] }));
+        remember(OFFLINE_KINDS[tab], items);
       }
     } finally {
       if (requestId === libraryRequestRef.current) {

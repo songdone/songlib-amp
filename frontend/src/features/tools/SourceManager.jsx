@@ -237,13 +237,10 @@ export function SourceManager({ sources, refreshSources, notify }) {
           </button>
         </form>
         <section className="panel source-guide">
-          <span className="eyebrow">
-            <TestTube2 />
-            SOURCE CHECK
-          </span>
-          <h3>识别通过，立即可用。</h3>
+          <h3>导入之后要做什么</h3>
           <p>
-            导入时完成结构与安全校验，通过后默认启用；搜索和音频解析测试用于确认具体能力，不会阻止你启用音乐源。
+            导入时会检查脚本结构和安全性，通过就直接启用，可以马上去搜歌。
+            旁边的搜索和解析测试是用来确认这个源具体支持哪些能力的，测不过也不影响使用。
           </p>
           <ol>
             <li>
@@ -469,7 +466,6 @@ export function SourceManager({ sources, refreshSources, notify }) {
           <section className="modal panel log-modal">
             <div className="modal-head">
               <div>
-                <span className="eyebrow">SOURCE LOG</span>
                 <h3>{logs.source.displayName}</h3>
               </div>
               <button className="icon-button" onClick={() => setLogs(null)}>
@@ -507,7 +503,6 @@ export function SourceManager({ sources, refreshSources, notify }) {
           <section className="modal panel inspect-modal">
             <div className="modal-head">
               <div>
-                <span className="eyebrow">SOURCE FORMAT</span>
                 <h3>{inspection.source.displayName}</h3>
               </div>
               <button

@@ -47,10 +47,6 @@ export function ManagementHub({ navigate, stats, jobs, permissions = [] }) {
   return (
     <div className="page manage-page refined-manage-page">
       <section className="page-intro">
-        <span className="eyebrow">
-          <Gauge />
-          MUSIC TOOLS
-        </span>
         <h1>音乐工具</h1>
         <p>下载、标签写入、Plex 资料补全和任务状态都在首屏直接进入。</p>
       </section>

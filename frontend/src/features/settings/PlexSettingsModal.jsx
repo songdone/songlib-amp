@@ -109,10 +109,6 @@ export function PlexSettingsModal({ initial, onClose, onSaved }) {
       <section className="modal panel plex-modal">
         <div className="modal-head">
           <div>
-            <span className="eyebrow">
-              <Server />
-              PLEX MEDIA SERVER
-            </span>
             <h3>配置 Plex 媒体服务器</h3>
           </div>
           <button className="icon-button" onClick={onClose}>

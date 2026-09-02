@@ -90,10 +90,6 @@ export function GlobalSearchPage({ play, navigate, isAdmin }) {
   return (
     <div className="page global-search-page">
       <section className="page-intro">
-        <span className="eyebrow">
-          <Search />
-          GLOBAL SEARCH
-        </span>
         <h1>全局搜索</h1>
         <p>同一首歌只显示一次，本地文件与 Plex 作为可切换资源附在歌曲下。</p>
       </section>

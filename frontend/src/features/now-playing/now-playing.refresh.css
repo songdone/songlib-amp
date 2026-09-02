@@ -40,19 +40,28 @@
    * 现在页面标题收成一行小标签，视觉重量全部留给曲名。
    * 旁边那行英文 eyebrow "NOW PLAYING" 一并去掉 —— 它和 h1 说的是同一件事。
    */
+  /*
+   * 这一页的文字色一律用 --now-*，不能用 --text-*。
+   *
+   * --text-primary 在浅色主题下是近黑（#14161c），而这个页面的底
+   * 是钉死的深色 —— 迁到语义 token 的时候没想到这一层，
+   * 结果浅色主题下空状态那句"先选一个播放来源"是黑字压在黑底上，
+   * 对比度 1.07。--now-* 是从原始色板取的，不跟主题变，
+   * 正好匹配这个"始终深色"的表面。
+   */
   .now-page-title {
     margin: 0;
     font-size: var(--text-2xs);
     font-weight: var(--weight-bold);
     letter-spacing: var(--tracking-caps);
     text-transform: uppercase;
-    color: var(--text-tertiary);
+    color: var(--now-tertiary);
   }
 
   .now-page-head p {
     margin-block-start: var(--space-1);
     font-size: var(--text-sm);
-    color: var(--text-secondary);
+    color: var(--now-secondary);
   }
 
   /*
@@ -78,12 +87,12 @@
     font-size: var(--text-lg);
     font-weight: var(--weight-semibold);
     letter-spacing: normal;
-    color: var(--text-primary);
+    color: var(--now-primary);
   }
 
   .now-track-copy[data-empty="true"] p {
     font-size: var(--text-sm);
-    color: var(--text-secondary);
+    color: var(--now-secondary);
   }
 
   /*

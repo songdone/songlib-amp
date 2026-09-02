@@ -47,6 +47,7 @@
 @import "../features/shell/sidebar.css";
 @import "../features/dashboard/dashboard.css";
 @import "../features/auth/login.css";
+@import "../features/now-playing/now-playing.refresh.css";
 
 /* --- 历史层，待清空 --- */
 @import "../styles.css";

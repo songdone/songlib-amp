@@ -63,21 +63,8 @@
     margin-bottom: 28px;
   }
 
-  .now-eyebrow {
-    display: block;
-    margin-bottom: 5px;
-    color: var(--now-accent);
-    font-size: calc(9px + var(--font-delta, 0px));
-    font-weight: 760;
-    letter-spacing: 0.14em;
-  }
-
-  .now-page-head h1 {
-    margin: 0;
-    font-size: clamp(26px, 3vw, 38px);
-    line-height: 1;
-    letter-spacing: -0.045em;
-  }
+  /* .now-eyebrow / .now-page-head h1 / .now-track-copy h2 的字号与层级
+     已迁至 now-playing.refresh.css（@layer components），此处删除。 */
 
   .now-page-head p {
     margin: 8px 0 0;
@@ -284,9 +271,6 @@
     overflow: hidden;
     margin: 0;
     color: var(--now-primary);
-    font-size: clamp(28px, 3.2vw, 46px);
-    line-height: 1.08;
-    letter-spacing: -0.052em;
     text-overflow: ellipsis;
     white-space: nowrap;
   }

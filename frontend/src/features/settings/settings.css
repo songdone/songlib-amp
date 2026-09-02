@@ -230,7 +230,19 @@
     overflow-wrap: anywhere;
   }
 
-  .settings-page label {
+  /*
+   * 设置页里"没有自己类名"的 label 走这套默认竖排。
+   *
+   * `:not([class])` 不是装饰，是必需的。原来写的是 `.settings-page label`，
+   * 特异性 0,1,1，比 `.plex-library`（0,1,0）高 —— 而 Plex 配置弹窗
+   * 虽然渲染在 top layer，DOM 上仍然是 .settings-page 的后代，
+   * 于是那条竖排规则赢了，音乐库那几行的 display:grid 被压成
+   * flex column：勾选框、库名、类型、"已同步"四样东西各占一行居中，
+   * 一行高 117px。
+   *
+   * 约定：label 一旦有自己的类名，布局就由它自己负责，这里不插手。
+   */
+  .settings-page label:not([class]) {
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
@@ -240,7 +252,7 @@
     color: var(--text-secondary);
   }
 
-  .settings-page label > small {
+  .settings-page label:not([class]) > small {
     font-weight: var(--weight-normal);
     color: var(--text-tertiary);
   }

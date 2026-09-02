@@ -13,7 +13,7 @@
  *   程序里的计数直接摆出来；写成"整理这 3 首"。
  */
 
-import { ChevronRight, CircleAlert, Download, FolderTree, Library, RefreshCw } from "lucide-react";
+import { ChevronRight, CircleAlert, Copy, Download, FolderTree, Library, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Badge } from "../../components/ui/Badge";
 import { Button, ButtonGroup } from "../../components/ui/Button";
@@ -24,12 +24,46 @@ import { Modal } from "../../components/ui/Modal";
 import { PageLoader } from "../../components/PageLoader";
 import { api } from "../../lib/api";
 
-/** 一条的状态：能不能入库，不能的话为什么。 */
+/**
+ * 一条的状态：能不能入库，不能的话为什么。
+ *
+ * "曲库里已经有" 是可勾选的（pickable），不是禁止 —— 用户完全可能
+ * 就是想要两个版本（一个无损一个车载 MP3）。但默认不勾，
+ * 而且如果新的那份还更差，说法要更明确一点。
+ */
 const stateOf = (item) => {
+  // 目标位置上那份就是同一首歌 —— 这不是"冲突"，是"已经入过库了"。
+  // 说成冲突会让人以为要去解决什么，其实什么都不用做。
+  if (alreadyInLibrary(item))
+    return { label: "已经在曲库里了", tone: "neutral", pickable: false };
   if (item.conflict) return { label: "目标位置有冲突", tone: "danger", pickable: false };
+  if (item.worseThanExisting)
+    return { label: "已有更好的版本", tone: "warning", pickable: true };
+  if (item.existing?.length)
+    return { label: "曲库里已经有", tone: "warning", pickable: true };
   if (item.needsReview) return { label: "信息要核对", tone: "warning", pickable: true };
   return { label: "可以入库", tone: "success", pickable: true };
 };
+
+/** 目标路径上已经躺着同一首歌。 */
+const alreadyInLibrary = (item) =>
+  Boolean(item.conflict) &&
+  (item.existing || []).some((entry) => entry.path === item.targetPath);
+
+const formatSize = (bytes) =>
+  bytes >= 1024 * 1024
+    ? `${(bytes / 1024 / 1024).toFixed(1)} MB`
+    : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+
+/** 一份音频的规格，用来和曲库里那份并排比较。 */
+const specOf = (item) =>
+  [
+    (item.ext || item.format || "").replace(".", "").toUpperCase(),
+    item.bitrate ? `${item.bitrate}kbps` : "",
+    item.size ? formatSize(item.size) : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
 export function DownloadInboxPanel({ notify, navigate }) {
   const [data, setData] = useState({ items: [], errors: [], summary: {} });
@@ -44,10 +78,14 @@ export function DownloadInboxPanel({ notify, navigate }) {
     try {
       const result = await api("/api/local/download-inbox");
       setData(result);
-      // 默认只勾没问题的那些 —— 有冲突或要核对的应该由人主动决定。
+      // 默认只勾"确实是新歌、信息也齐"的那些。
+      // 曲库里已经有的一律不勾 —— 要不要再存一份必须由人决定。
       setSelected(
         (result.items || [])
-          .filter((item) => !item.conflict && !item.needsReview)
+          .filter(
+            (item) =>
+              !item.conflict && !item.needsReview && !item.existing?.length,
+          )
           .map((item) => item.sourcePath),
       );
     } catch (err) {
@@ -150,6 +188,47 @@ export function DownloadInboxPanel({ notify, navigate }) {
                   <PathText path={item.targetPath} />
                 </div>
                 <Badge tone={state.tone}>{state.label}</Badge>
+
+                {/*
+                  曲库里已有的同一首，跟这一份并排列出来。
+                  这是"要不要再存一份"唯一需要的信息：两边的格式、
+                  码率和体积摆在一起，用户一眼就能决定。
+                  跨整行显示，不挤在路径那一列里。
+                */}
+                {item.existing?.length > 0 && (
+                  <div className="inbox-dupe">
+                    <p className="inbox-dupe__lead">
+                      <Copy aria-hidden="true" />
+                      <span>
+                        {alreadyInLibrary(item)
+                          ? "这首歌已经在曲库里了，位置也一样。下载目录里这份可以直接删掉。"
+                          : `曲库里已经有${
+                              item.existing.length > 1
+                                ? ` ${item.existing.length} 份`
+                                : "一份"
+                            }${
+                              item.worseThanExisting
+                                ? "，而且比这个好。入库之后就是两份。"
+                                : "。入库之后就是两份。"
+                            }`}
+                      </span>
+                    </p>
+                    <ul>
+                      <li className="inbox-dupe__incoming">
+                        <Badge tone="accent">这一份</Badge>
+                        <PathText path={item.sourcePath} />
+                        <span>{specOf(item) || "规格未知"}</span>
+                      </li>
+                      {item.existing.map((existing) => (
+                        <li key={existing.id}>
+                          <Badge tone="neutral">曲库里的</Badge>
+                          <PathText path={existing.path} />
+                          <span>{specOf(existing) || "规格未知"}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             );
           })}

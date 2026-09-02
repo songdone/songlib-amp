@@ -96,6 +96,26 @@ http.createServer((req,res)=>{
     if(url.pathname==='/api/library/albums'){const q=(url.searchParams.get('search')||'').trim();const items=q?albums.filter(a=>a.title.includes(q)||(a.parentTitle||'').includes(q)):albums;return json(res,{items,total:items.length,page:1,pageSize:200})}
     if(url.pathname==='/api/library/tracks'){const q=(url.searchParams.get('search')||'').trim();const items=q?tracks.filter(t=>t.title.includes(q)||t.grandparentTitle.includes(q)||t.parentTitle.includes(q)):tracks;return json(res,{items,total:items.length,page:1,pageSize:200})}
     if(url.pathname==='/api/local/files')return json(res,{items:localFiles,total:localFiles.length,stats:{total:1439,missing_cover:14,missing_lyrics:12,missing_artist:2,missing_album:3,bad_path:9,plex_unmatched:6}})
+    if(url.pathname==='/api/local/download-inbox')return json(res,{
+      downloadRoot:'/downloads',musicRoot:'/music',errors:[],
+      summary:{total:4,ready:1,review:1,conflicts:1,duplicates:2},
+      items:[
+        {sourcePath:'/downloads/Beyond - 海阔天空.mp3',targetPath:'/music/Beyond/乐与怒/03 - 海阔天空.mp3',
+         title:'海阔天空',artist:'Beyond',album:'乐与怒',duration:313,bitrate:320,size:12_600_000,
+         format:'MP3',conflict:false,metadataSource:'tags',needsReview:false,worseThanExisting:true,
+         existing:[{id:'e1',path:'/music/Beyond/乐与怒/03 - 海阔天空.flac',album:'乐与怒',ext:'.flac',bitrate:982,size:44_100_000,duration:313}]},
+        {sourcePath:'/downloads/新歌 - 某个歌手.flac',targetPath:'/music/某个歌手/单曲/新歌.flac',
+         title:'新歌',artist:'某个歌手',album:'单曲',duration:240,bitrate:960,size:29_000_000,
+         format:'FLAC',conflict:false,metadataSource:'tags',needsReview:false,worseThanExisting:false,existing:[]},
+        {sourcePath:'/downloads/track07.m4a',targetPath:'/music/Unknown Artist/Unknown Album/track07.m4a',
+         title:'track07',artist:'Unknown Artist',album:'Unknown Album',duration:198,bitrate:256,size:6_400_000,
+         format:'M4A',conflict:false,metadataSource:'path',needsReview:true,worseThanExisting:false,existing:[]},
+        {sourcePath:'/downloads/晴天.flac',targetPath:'/music/周杰伦/叶惠美/03 - 晴天.flac',
+         title:'晴天',artist:'周杰伦',album:'叶惠美',duration:269,bitrate:960,size:38_400_000,
+         format:'FLAC',conflict:true,metadataSource:'tags',needsReview:false,worseThanExisting:false,
+         existing:[{id:'e2',path:'/music/周杰伦/叶惠美/03 - 晴天.flac',album:'叶惠美',ext:'.flac',bitrate:960,size:38_400_000,duration:269}]}
+      ]
+    })
     if(url.pathname==='/api/local/health')return json(res,{
       total:1439,checkedAt:new Date(Date.now()-45000).toISOString(),score:96,clean:false,
       allChecks:[

@@ -557,6 +557,137 @@ class LocalLibraryService:
             "matched": matched, "success": len(records), "failed": 0, "skipped": 0,
         }
 
+    def health(self, duplicate_limit: int = 40):
+        """Whole-library checkup: one scan, every issue grouped by what fixes it.
+
+        This exists because the fixing tools already existed but were only
+        reachable if you already knew you had the problem. The checkup turns
+        "37 files have no cover" into a link that opens the cover tool with
+        that filter already applied.
+
+        Every item carries `page` and `filter` so the UI does not have to keep
+        its own copy of the mapping from issue to tool.
+        """
+        stats = self.stats()
+        total = stats.get("total", 0)
+
+        checks = [
+            {"id": "cover", "label": "缺封面", "count": stats.get("missing_cover", 0),
+             "hint": "「封面与歌词」能一次补齐", "page": "scrape", "filter": "cover", "severity": "info"},
+            {"id": "lyrics", "label": "缺歌词", "count": stats.get("missing_lyrics", 0),
+             "hint": "「封面与歌词」能一次补齐", "page": "scrape", "filter": "lyrics", "severity": "info"},
+            {"id": "artist", "label": "没有歌手", "count": stats.get("missing_artist", 0),
+             "hint": "「文件与标签 → 补标签」可以从路径推断", "page": "local", "filter": "artist", "severity": "warning"},
+            {"id": "album", "label": "没有专辑", "count": stats.get("missing_album", 0),
+             "hint": "「文件与标签 → 补标签」可以从路径推断", "page": "local", "filter": "album", "severity": "warning"},
+            {"id": "path", "label": "目录不规范", "count": stats.get("bad_path", 0),
+             "hint": "「文件与标签 → 整理目录」按命名规则归位", "page": "local", "filter": "path", "severity": "info"},
+            {"id": "plex", "label": "Plex 没对上", "count": stats.get("plex_unmatched", 0),
+             "hint": "同步一次 Plex 对照通常就好了", "page": "local", "filter": "plex", "severity": "info"},
+        ]
+
+        duplicates = self._duplicate_groups(duplicate_limit)
+        missing_files = self._missing_on_disk()
+
+        if duplicates["total"]:
+            checks.append({
+                "id": "duplicate", "label": "疑似重复", "count": duplicates["total"],
+                "hint": "同一首歌存了多份，留码率最高的那个就行",
+                "page": "local", "filter": "", "severity": "warning",
+            })
+        if missing_files["total"]:
+            checks.append({
+                "id": "orphan", "label": "文件已经不在了", "count": missing_files["total"],
+                "hint": "曲库里还有记录，但磁盘上找不到 —— 重新扫一次会清掉",
+                "page": "local", "filter": "", "severity": "danger",
+            })
+
+        flagged = sum(check["count"] for check in checks)
+        # 得分只用来给一个"大概多干净"的印象，不做任何决策，
+        # 所以刻意用最朴素的算法，不加权重。
+        score = 100 if not total else max(0, round(100 - min(100, flagged * 100 / max(total, 1))))
+
+        return {
+            "total": total,
+            "checkedAt": now(),
+            "score": score,
+            "clean": flagged == 0,
+            "checks": [check for check in checks if check["count"]],
+            "allChecks": checks,
+            "duplicates": duplicates["groups"],
+            "duplicateTotal": duplicates["total"],
+            "missingOnDisk": missing_files["items"],
+            "missingOnDiskTotal": missing_files["total"],
+        }
+
+    def _duplicate_groups(self, limit: int):
+        """Same song stored more than once.
+
+        Two passes, strongest signal first:
+
+        1. identical content hash — byte-for-byte the same file in two places.
+        2. same normalized title+artist AND duration within 2 seconds.
+           Duration is the guard that keeps covers, live versions and remixes
+           out of the group; without it "晴天" by two different artists,
+           or a 30s intro clip, would be reported as duplicates.
+
+        Files whose duration is unknown (0) are skipped in pass 2 — with no
+        duration there is nothing separating a real duplicate from a
+        same-titled different recording, and a wrong "delete this" suggestion
+        is worse than no suggestion.
+        """
+        items = rows("""SELECT id,path,filename,title,artist,album,duration,bitrate,size,ext,hash
+                        FROM files""")
+        groups: dict[tuple, list] = {}
+
+        for item in items:
+            key = None
+            if item.get("hash"):
+                key = ("hash", item["hash"])
+            else:
+                title = _norm(item.get("title") or Path(item["path"]).stem)
+                artist = _norm(item.get("artist") or "")
+                duration = int(item.get("duration") or 0)
+                if title and duration:
+                    # 时长按 3 秒一档分桶，同一首歌的不同转码差几百毫秒。
+                    key = ("meta", title, artist, duration // 3)
+            if key:
+                groups.setdefault(key, []).append(item)
+
+        found = []
+        for key, members in groups.items():
+            if len(members) < 2:
+                continue
+            # 码率高的排前面 —— 用户几乎总是留最好的那个。
+            members.sort(key=lambda item: (int(item.get("bitrate") or 0), int(item.get("size") or 0)), reverse=True)
+            found.append({
+                "key": "|".join(str(part) for part in key),
+                "reason": "文件完全相同" if key[0] == "hash" else "曲名、歌手和时长都对得上",
+                "title": members[0].get("title") or Path(members[0]["path"]).stem,
+                "artist": members[0].get("artist") or "",
+                "items": [{
+                    "id": item["id"],
+                    "path": item["path"],
+                    "ext": item.get("ext") or "",
+                    "bitrate": int(item.get("bitrate") or 0),
+                    "size": int(item.get("size") or 0),
+                    "duration": int(item.get("duration") or 0),
+                    # 建议保留的那个，由前端渲染成"留这个"，不自动执行。
+                    "keep": index == 0,
+                } for index, item in enumerate(members)],
+            })
+
+        found.sort(key=lambda group: len(group["items"]), reverse=True)
+        return {"groups": found[:limit], "total": len(found)}
+
+    def _missing_on_disk(self, limit: int = 60):
+        """Rows whose file is gone. A stale index makes every count wrong."""
+        gone = []
+        for item in rows("SELECT id,path,filename,artist,album FROM files"):
+            if not Path(item["path"]).exists():
+                gone.append(item)
+        return {"items": gone[:limit], "total": len(gone)}
+
     def _tag_candidates(self, file_ids: list[str] | None, limit: int = 1000):
         selected = {str(value) for value in (file_ids or []) if value}
         if selected:

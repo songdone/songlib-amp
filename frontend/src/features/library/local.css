@@ -222,4 +222,179 @@
     font-size: var(--text-xs);
     color: var(--text-tertiary);
   }
+
+  /* =============================================================
+   * 体检
+   * ============================================================= */
+
+  .checkup-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .checkup-item {
+    display: grid;
+    /* 数字列定宽，右边的按钮才会在每一行都对齐成一竖列。
+       用 auto 的话 "9" 和 "1,439" 会把按钮推到不同位置。 */
+    grid-template-columns: 4.5rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--surface-1);
+    /* 左侧一道色条表示严重程度，比整行染色安静得多。 */
+    border-inline-start: 3px solid var(--border-strong);
+  }
+
+  .checkup-item.tone-warning {
+    border-inline-start-color: var(--warning-solid, var(--accent-solid));
+  }
+
+  .checkup-item.tone-danger {
+    border-inline-start-color: var(--danger-solid);
+  }
+
+  .checkup-item__count {
+    font-size: var(--text-xl);
+    font-weight: var(--weight-bold);
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+    text-align: end;
+  }
+
+  .checkup-item__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .checkup-item__text strong {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+  }
+
+  .checkup-item__text small {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+  }
+
+  /* --- 重复 --- */
+
+  .dupe-list,
+  .orphan-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .dupe-group {
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--surface-1);
+    overflow: hidden;
+  }
+
+  .dupe-group > header {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--surface-2);
+  }
+
+  .dupe-group > header strong {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+  }
+
+  .dupe-group > header small {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+  }
+
+  .dupe-group > ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .dupe-group > ul > li {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+  }
+
+  .dupe-group > ul > li + li {
+    border-block-start: 1px solid var(--border-subtle);
+  }
+
+  .dupe-group > ul > li.is-keep {
+    background: var(--success-soft, var(--surface-2));
+  }
+
+  /* 路径的截断和方向由 components/ui/PathText 统一负责，
+     这里只管它在这一格里占多宽。自己再写一遍 direction: rtl
+     就会把首尾的斜杠搬到另一端 —— 那个 bug 已经踩过一次。 */
+  .dupe-group .ui-path,
+  .orphan-list .ui-path {
+    min-width: 0;
+  }
+
+  .dupe-group > ul > li > span {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* --- 记录还在但文件没了 --- */
+
+  .orphan-list > li {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--surface-1);
+    min-width: 0;
+  }
+
+  .orphan-list small {
+    font-size: var(--text-2xs);
+    color: var(--text-tertiary);
+  }
+
+  @media (max-width: 700px) {
+    .checkup-item {
+      grid-template-columns: 3.5rem minmax(0, 1fr);
+      row-gap: var(--space-2);
+    }
+
+    /* 窄屏按钮换到第二行，跟文字左对齐。 */
+    .checkup-item > .ui-btn,
+    .checkup-item > .ui-badge {
+      grid-column: 2;
+      justify-self: start;
+    }
+
+    .dupe-group > ul > li {
+      grid-template-columns: minmax(0, 1fr);
+      row-gap: 2px;
+    }
+  }
 }

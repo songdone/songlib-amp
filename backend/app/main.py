@@ -1016,6 +1016,12 @@ def sync_local_plex():
     return manager.create("plex_sync", "同步 Plex 条目与本地文件", {})
 
 
+@app.get("/api/local/health", dependencies=[Depends(auth.current_user)])
+def local_library_health():
+    """Whole-library checkup. Every issue comes with the page that fixes it."""
+    return local_library.health()
+
+
 @app.post("/api/local/tags/preview", dependencies=[Depends(auth.current_user)])
 def tag_fill_preview(body: TagFillPreviewBody):
     return local_library.missing_tag_preview(body.fileIds)

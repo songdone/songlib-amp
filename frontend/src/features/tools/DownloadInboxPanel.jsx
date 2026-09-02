@@ -18,6 +18,7 @@ import { useEffect, useState } from "react";
 import { Badge } from "../../components/ui/Badge";
 import { Button, ButtonGroup } from "../../components/ui/Button";
 import { Notice } from "../../components/ui/Field";
+import { PathText } from "../../components/ui/PathText";
 import { EmptyState, Section, SectionHeader } from "../../components/ui/Layout";
 import { Modal } from "../../components/ui/Modal";
 import { PageLoader } from "../../components/PageLoader";
@@ -144,9 +145,9 @@ export function DownloadInboxPanel({ notify, navigate }) {
                   </small>
                 </div>
                 <div className="inbox-table__paths">
-                  <code>{item.sourcePath}</code>
+                  <PathText path={item.sourcePath} />
                   <ChevronRight aria-hidden="true" />
-                  <code>{item.targetPath}</code>
+                  <PathText path={item.targetPath} />
                 </div>
                 <Badge tone={state.tone}>{state.label}</Badge>
               </div>

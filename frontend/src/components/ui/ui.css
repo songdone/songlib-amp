@@ -830,8 +830,28 @@
   .ui-field__trailing {
     flex: none;
     display: flex;
-    align-items: center;
+    align-items: stretch;
     padding-inline-end: var(--space-1);
+  }
+
+  /*
+   * 输入框右侧的行内操作（"显示/隐藏"这类）。
+   *
+   * quiet 变体本身是 height:auto、padding:0 —— 那是给正文里的
+   * 文字链接用的。直接放进 52px 高的输入框里，按钮只有 11px 高，
+   * 点击目标小得离谱，视觉上也像是浮在框外面的一段文字。
+   * 这里让它撑满输入框的高度并补上左右内边距。
+   */
+  .ui-field__trailing > .ui-btn {
+    height: auto;
+    align-self: stretch;
+    padding-inline: var(--space-3);
+    border-radius: var(--radius-sm);
+  }
+
+  .ui-field__trailing > .ui-btn:hover:not(:disabled) {
+    background: var(--surface-2);
+    text-decoration: none;
   }
 
   .ui-field__hint {

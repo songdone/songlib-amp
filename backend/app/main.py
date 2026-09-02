@@ -37,6 +37,7 @@ from .local_library import local_library, organizer
 from .lyrics import find_lyrics
 from .media_lyrics import read_local_lyrics
 from .plex import dashboard_stats, local_artist_background_file, local_media_path, plex
+from .playback_positions import forget as forget_position, get as get_position, recent as recent_positions, save as save_position
 from .plex_companion import plex_companion
 from .scraper import build_diff_preview
 from .security import SecurityMiddleware, client_key, issue_csrf, rate_limiter
@@ -59,7 +60,7 @@ from .schemas import ( LoginBody, SetupBody, PlaylistBody, PlaylistPatchBody, M3
     UserPasswordBody, SourceBody, SourceImportUrlBody, SourceImportCodeBody, SourceSearchBody,
     SourceResolveBody, JobBody, DownloadBody, BatchDownloadDecisionBody, SourcePreviewBody,
     SettingsPatchBody, PlexSettingsBody, PlexTestBody, PlexRemoteCommandBody, FnosSettingsBody,
-    TagUpdateBody, TagFillPreviewBody, RollbackBatchBody, OrganizePreviewBody, OrganizeApplyBody, DownloadInboxApplyBody,
+    TagUpdateBody, TagFillPreviewBody, RollbackBatchBody, PlaybackPositionBody, OrganizePreviewBody, OrganizeApplyBody, DownloadInboxApplyBody,
     ScrapePreviewBody, ScrapeApplyBody, DiscoveryDownloadBody, AirPlayCastUpdateBody,
     AirPlayCastClockBody,
 )
@@ -1014,6 +1015,35 @@ def scan_local_files():
 @app.post("/api/local/sync-plex", dependencies=[Depends(auth.current_user)])
 def sync_local_plex():
     return manager.create("plex_sync", "同步 Plex 条目与本地文件", {})
+
+
+@app.put("/api/playback/position", dependencies=[Depends(auth.current_user)])
+def put_playback_position(body: PlaybackPositionBody, user=Depends(auth.current_user)):
+    """Remember where this user is in this track.
+
+    Client sends this on a timer and on pause/unload; it is deliberately
+    idempotent so a duplicate from a flaky connection costs nothing.
+    """
+    try:
+        return save_position(user["id"], body.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/api/playback/position", dependencies=[Depends(auth.current_user)])
+def read_playback_position(trackKey: str, user=Depends(auth.current_user)):
+    return get_position(user["id"], trackKey) or {}
+
+
+@app.delete("/api/playback/position", dependencies=[Depends(auth.current_user)])
+def clear_playback_position(trackKey: str, user=Depends(auth.current_user)):
+    return forget_position(user["id"], trackKey)
+
+
+@app.get("/api/playback/resume", dependencies=[Depends(auth.current_user)])
+def list_resume_points(limit: int = Query(12, ge=1, le=60), user=Depends(auth.current_user)):
+    """Tracks this user left part-way through, newest first."""
+    return {"items": recent_positions(user["id"], limit)}
 
 
 @app.get("/api/local/health", dependencies=[Depends(auth.current_user)])

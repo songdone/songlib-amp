@@ -183,6 +183,19 @@ class TagFillPreviewBody(BaseModel):
     fileIds: list[str] = []
 
 
+class PlaybackPositionBody(BaseModel):
+    trackKey: str
+    position: float = 0
+    duration: float = 0
+    title: str = ""
+    artist: str = ""
+    album: str = ""
+    coverUrl: str = ""
+    device: str = ""
+    # 整条曲目快照。原文件之后被删掉时，"继续听"这条记录还能显示得出来。
+    track: dict = {}
+
+
 class RollbackBatchBody(BaseModel):
     # 一次整理可能有几百条。上限给到 2000，和入库那边保持一致。
     ids: list[str] = Field(min_length=1, max_length=2_000)

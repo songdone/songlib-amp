@@ -20,3 +20,88 @@
     }
   }
 }
+
+@layer components {
+  /* =============================================================
+   * "接着上次的位置听？"
+   *
+   * 浮在迷你播放器上方。它是提议不是拦截，所以做成一条可以
+   * 直接无视的提示条，用户什么都不点歌照样从头放。
+   * ============================================================= */
+
+  .resume-prompt {
+    position: fixed;
+    inset-inline-start: 50%;
+    /* 迷你播放器高度 + 一点间距。它藏在迷你条上方，不盖住播放控件。 */
+    inset-block-end: 104px;
+    z-index: 65;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    max-width: calc(100vw - var(--space-6));
+    padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-pill);
+    background: var(--surface-1);
+    box-shadow: var(--shadow-lg);
+    translate: -50% 0;
+    animation: resume-prompt-in calc(var(--duration-slow) * var(--motion-scale))
+      var(--ease-settle) both;
+  }
+
+  /*
+   * 入场动画用 transform，居中用 translate —— 这是两个独立的 CSS 属性，
+   * 可以各写各的、互不覆盖。
+   *
+   * 否则就得在窄屏媒体查询里再定义一遍 @keyframes（因为居中的
+   * -50% 在窄屏不适用），而"媒体查询里的 @keyframes"是一个能用
+   * 但很少有人一眼看懂的写法，下一个改这里的人多半会踩坑。
+   */
+  @keyframes resume-prompt-in {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+  }
+
+  /* 自动消失前先淡出，不是"啪"地一下没了。 */
+  .resume-prompt.is-leaving {
+    opacity: 0;
+    transform: translateY(8px);
+    transition:
+      opacity 400ms var(--ease-out),
+      transform 400ms var(--ease-out);
+  }
+
+  .resume-prompt__text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+  }
+
+  .resume-prompt__text strong {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .resume-prompt__text small {
+    font-size: var(--text-2xs);
+    color: var(--text-tertiary);
+    white-space: nowrap;
+  }
+
+  @media (max-width: 560px) {
+    .resume-prompt {
+      inset-inline: var(--space-3);
+      inset-block-end: 92px;
+      max-width: none;
+      /* 窄屏左右都贴边，不需要居中位移。入场动画不受影响 ——
+         它用的是 transform，和这里的 translate 是两个属性。 */
+      translate: none;
+    }
+  }
+}

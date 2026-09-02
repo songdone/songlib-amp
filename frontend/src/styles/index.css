@@ -54,6 +54,7 @@
 @import "../features/library/library.css";
 @import "../features/search/search.css";
 @import "../features/playlists/playlists.css";
+@import "../features/tools/sources.css";
 @import "../features/discover/discover.css";
 @import "../features/tools/tasks.css";
 @import "../features/me/me.css";

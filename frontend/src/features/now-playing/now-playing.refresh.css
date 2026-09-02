@@ -7,6 +7,31 @@
 
 @layer components {
   /*
+   * 这一页的底必须自己是深的，浅色主题也一样。
+   *
+   * 真实存在过的 bug：--now-* 里所有文字色都钉在浅色调上
+   * （--palette-neutral-50 = #f6f6f8），底色却是透上来的 ——
+   * .now-playing-page::before 那层深色渐变只有 0.3 不透明度，
+   * 剩下 70% 是画布色。深色主题下画布也是深的，看不出问题；
+   * 切到浅色主题，画布变成 #f6f6f8，而曲名的文字色**也是** #f6f6f8，
+   * 整页文字、按钮、右侧面板全部消失。
+   *
+   * 两处配合才成立：
+   *   .main 那一格由 AuthenticatedShell 挂 .player-main-shell 豁免
+   *   （sidebar.css 的浅色画布规则里写着 `:not(.player-main-shell)`；
+   *   那个类名之前只存在于选择器和注释里，从来没有元素挂上）。
+   *   外层 .visual-shell 由这条规则兜住 —— main 豁免之后是透明的，
+   *   透过去还是 shell 的白。
+   *
+   * **必须写在 @layer components 里。**放 legacy.nowplaying 会输给
+   * sidebar.css 里那条同样在 components 层的浅色画布规则 —— 试过一次，
+   * 文字变可读了但底还是白的。
+   */
+  :root[data-theme="light"] .visual-shell.route-player {
+    background: var(--palette-neutral-950);
+  }
+
+  /*
    * 标题层级。
    *
    * 重构前："正在播放"是 h1（最大 38px），当前曲名是 h2（最大 46px）。

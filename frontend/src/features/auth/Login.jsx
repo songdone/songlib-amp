@@ -221,7 +221,7 @@ export function Login({ onLogin }) {
                 type="button"
                 onClick={() =>
                   setError(
-                    "重置密码需要在运行这个服务的机器上操作，步骤见部署文档的「恢复管理员访问」。",
+                    "密码只能在跑这个服务的机器上重置，步骤见部署文档的「恢复管理员访问」。",
                   )
                 }
               >

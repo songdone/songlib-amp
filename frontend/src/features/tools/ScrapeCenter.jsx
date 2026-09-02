@@ -209,8 +209,8 @@ export function ScrapeCenter({ navigate }) {
   return (
     <Page className="scrape">
       <p className="scrape__lead">
-        找出缺封面、缺歌词、缺歌手照片和简介的条目，把它们补上。
-        每一条都会先给你看现在是什么、要换成什么，你确认了才写入。
+        把缺的封面、歌词、歌手照片和简介补回来。
+        写入之前会先列清单，一条都不会偷偷改。
       </p>
 
       {/* --- 第一步：补什么，改到哪里 --- */}
@@ -249,7 +249,7 @@ export function ScrapeCenter({ navigate }) {
       <Section>
         <SectionHeader
           title="改哪些"
-          note="范围越小，下一步的清单越能真的看完"
+          note="先缩小范围，清单短一点才看得完"
         />
         <div className="scrape__scope">
           <ChipGroup
@@ -413,7 +413,7 @@ export function ScrapeCenter({ navigate }) {
 
       {queued > 0 && (
         <Notice tone="success" icon={ShieldCheck}>
-          {queued} 项已排进后台队列。写入过程中可以继续用其他页面。
+          {queued} 项已排进队列。
           <Button variant="quiet" onClick={() => navigate?.("tasks")}>
             去看执行进度
           </Button>

@@ -107,7 +107,7 @@ export function PlaylistsPage({
     }
   };
   const remove = async () => {
-    if (!selected || !window.confirm(`删除歌单“${selected.name}”？歌曲文件不会被删除。`)) return;
+    if (!selected || !window.confirm(`删掉歌单「${selected.name}」？歌本身还在曲库里，不会被删。`)) return;
     setBusy(true);
     try {
       await api(`/api/playlists/${selected.id}`, { method: "DELETE" });
@@ -155,7 +155,7 @@ export function PlaylistsPage({
   };
   const playServicePlaylist = async (serviceId, item) => {
     if (serviceId !== "plex") {
-      setError("飞牛音乐歌单播放需要服务返回可播放曲目；当前连接可用于歌单同步。");
+      setError("飞牛音乐这边只支持同步歌单，还不能直接从这里播");
       return;
     }
     const busyKey = `${serviceId}:${item.id}`;
@@ -264,7 +264,7 @@ export function PlaylistsPage({
         <div>
           <span className="eyebrow"><ListMusic />我的歌单</span>
           <h1>把喜欢的歌带回来</h1>
-          <p>创建歌单，导入文件，或从常用音乐平台迁移。</p>
+          <p>从零建一张，导入 M3U，或者把平台上的歌单整张搬过来。</p>
         </div>
         <div className="playlist-actions">
           <button className="secondary" onClick={() => fileRef.current?.click()} disabled={busy}>
@@ -283,7 +283,7 @@ export function PlaylistsPage({
           <span><Link2 /></span>
           <div>
             <strong>从分享链接迁移</strong>
-            <small>支持 QQ 音乐、网易云音乐公开歌单</small>
+            <small>QQ 音乐、网易云的公开歌单都能读</small>
           </div>
         </div>
         <form onSubmit={previewMigration}>
@@ -298,7 +298,7 @@ export function PlaylistsPage({
             读取歌单
           </button>
         </form>
-        <p className="migration-privacy">只读取公开歌单信息，不需要第三方账号密码。</p>
+        <p className="migration-privacy">只读歌单里有哪些歌，不需要你的平台账号密码。</p>
       </section>
       {migration && (
         <section className="migration-preview panel">
@@ -347,7 +347,7 @@ export function PlaylistsPage({
                   disabled={!migration.downloadSources?.length}
                   onChange={(event) => setDownloadMissing(event.target.checked)}
                 />
-                <span><strong>补全缺失歌曲</strong><small>只采用标题、主要艺人和时长全部通过校验的版本</small></span>
+                <span><strong>补全缺失歌曲</strong><small>只认标题、主唱和时长都对得上的版本，避免下错</small></span>
               </label>
               {downloadMissing && (
                 <div>
@@ -374,7 +374,7 @@ export function PlaylistsPage({
             {migration.summary.total > 12 && <p>另有 {migration.summary.total - 12} 首，将按原顺序处理</p>}
           </div>
           <footer>
-            <span>执行前只显示预览；迁移结果和未匹配项会保留记录。</span>
+            <span>先看清单，确认了才动。哪几首没对上也会列出来。</span>
             <button className="primary" disabled={migrationBusy === "execute" || !migrationTargets.length || (downloadMissing && !migrationSource)} onClick={executeMigration}>
               {migrationBusy === "execute" ? <LoaderCircle className="spin" /> : <ArrowDownToLine />}
               开始迁移
@@ -388,7 +388,7 @@ export function PlaylistsPage({
           <div>
             <span>已连接的音乐服务</span>
             <h2>服务歌单</h2>
-            <p>Plex 与飞牛音乐中的歌单会在这里汇总显示。</p>
+            <p>Plex 和飞牛音乐里已有的歌单，都在这儿。</p>
           </div>
           <button
             className="secondary small"
@@ -426,7 +426,7 @@ export function PlaylistsPage({
                 ) : !service.configured ? (
                   <div className="service-playlist-message">
                     <Link2 />
-                    <span>在设置中完成连接后，歌单会自动出现在这里。</span>
+                    <span>去设置里连上，歌单会自己出现。</span>
                   </div>
                 ) : service.items?.length ? (
                   <div className="service-playlist-list">
@@ -472,7 +472,7 @@ export function PlaylistsPage({
                 ) : (
                   <div className="service-playlist-message">
                     <ListMusic />
-                    <span>服务已连接，暂时没有歌单。</span>
+                    <span>连上了，但那边还没有歌单。</span>
                   </div>
                 )}
               </article>
@@ -499,7 +499,7 @@ export function PlaylistsPage({
         </aside>
         <section className="panel playlist-detail">
           {!selected ? (
-            <Empty icon={ListMusic} title="选择一个歌单" text="歌单内容、匹配状态和顺序会显示在这里。" />
+            <Empty icon={ListMusic} title="选择一个歌单" text="左边挑一张，里面的歌会列在这儿。" />
           ) : (
             <>
               <header>
@@ -540,7 +540,7 @@ export function PlaylistsPage({
                       <button className="icon-button" onClick={() => move(index, 1)} disabled={busy || index === selected.items.length - 1} aria-label="下移"><ChevronDown /></button>
                     </div>
                   </article>
-                )) : <Empty icon={Music2} title="空歌单" text="可以先导入 M3U，或从播放器把歌曲加入歌单。" />}
+                )) : <Empty icon={Music2} title="空歌单" text="导入一个 M3U，或者放歌的时候顺手加进来。" />}
               </div>
             </>
           )}

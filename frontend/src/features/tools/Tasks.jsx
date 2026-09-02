@@ -69,7 +69,7 @@ export function Tasks({ jobs, refresh, navigate }) {
           说明改成告诉用户下面这几个数字是干什么的。 */}
       <SectionHead
         title="后台在跑什么"
-        note="点上面的方块可以按类别筛选"
+        note="点上面的数字只看那一类"
         action={
           <button className="secondary small" onClick={refresh}>
             <RefreshCw />
@@ -179,7 +179,7 @@ export function Tasks({ jobs, refresh, navigate }) {
           <Empty
             icon={Activity}
             title="这一类暂时没有任务"
-            text="任务会按运行、确认、失败和历史自动归类。"
+            text="在跑的、等你确认的、失败的，分开放"
           />
         )}
       </section>

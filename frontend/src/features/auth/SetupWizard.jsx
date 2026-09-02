@@ -55,7 +55,7 @@ export function SetupWizard({ onComplete }) {
         <Brand />
         <span className="eyebrow"><ShieldCheck />首次设置</span>
         <h1>创建这座音乐岛的主人账号</h1>
-        <p>账号、画像和播放记录只保存在这台设备。完成后可继续连接音乐目录或 Plex。</p>
+        <p>账号和听歌记录都只存在这台机器上。建好之后再连音乐目录或 Plex。</p>
         <form onSubmit={submit}>
           <label>
             <span>用户名</span>
@@ -79,7 +79,7 @@ export function SetupWizard({ onComplete }) {
             创建账号并进入
           </button>
         </form>
-        <footer><ShieldCheck />不会创建默认弱密码，也不会把密码写入页面或日志。</footer>
+        <footer><ShieldCheck />不会给你安排默认密码，这串字符也不会出现在日志里。</footer>
       </section>
     </main>
   );

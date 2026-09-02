@@ -363,9 +363,8 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
   return (
     <Page className="local">
       <p className="local__lead">
-        改写在音频文件里的标签，或者按命名规则整理目录。
-        每次改动都会先给你看清单，也都留有原值，事后能恢复。
-        封面、歌词这些要从外部取回来的内容在「封面与歌词」。
+        改写在音频文件里的标签，或者按命名规则整理目录。动手之前都会先列清单。
+        要补封面和歌词去「封面与歌词」—— 那些是从外面取回来的，不在这一页。
       </p>
 
       <StatGrid>
@@ -420,7 +419,7 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
 
       {queued && (
         <Notice tone="success" icon={ShieldCheck}>
-          {queued}。执行过程中可以继续用其他页面。
+          {queued}。
           <Button variant="quiet" onClick={() => navigate("tasks")}>
             去看执行进度
           </Button>
@@ -434,8 +433,8 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
             title="浏览与筛选"
             note={
               selected.length
-                ? `已勾选 ${selected.length} 个，可以去「补标签」或「整理目录」`
-                : "勾选文件后，另外两个工作区就能对它们操作"
+                ? `已勾选 ${selected.length} 个`
+                : "勾上几个，就能去补标签或整理目录"
             }
             actions={
               selected.length ? (
@@ -684,7 +683,7 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
                 <EmptyState
                   icon={ShieldCheck}
                   title="这些文件不需要补"
-                  text="标题、歌手、专辑、专辑歌手四个字段都已经有值了。要改已有的值请用「浏览与筛选」里的标签编辑器。"
+                  text="标题、歌手、专辑、专辑歌手都已经有值了。想改已有的值，用「浏览与筛选」里那个标签编辑器。"
                 />
               )}
 
@@ -727,7 +726,7 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
             <EmptyState
               icon={Tags}
               title="还没有生成清单"
-              text="选好范围，点「看看会补什么」。生成清单只是读取，不会动任何文件。"
+              text="选好范围，点「看看会补什么」。这一步只是读，不改文件。"
             />
           )}
         </Section>
@@ -828,7 +827,7 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
                 <EmptyState
                   icon={ShieldCheck}
                   title="这批文件都在正确位置"
-                  text="按当前命名规则算下来没有需要移动的。规则可以在「设置 → 命名与目录」里改。"
+                  text="按现在的命名规则算下来，这批都已经在该在的位置。"
                 />
               )}
 
@@ -864,7 +863,7 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
             <EmptyState
               icon={FolderTree}
               title="还没有算过路径"
-              text="命名规则在「设置 → 命名与目录」里改。算路径只是计算，不会移动文件。"
+              text="命名规则在「设置 → 文件命名」里改。算一遍不会移动任何文件。"
             />
           )}
         </Section>

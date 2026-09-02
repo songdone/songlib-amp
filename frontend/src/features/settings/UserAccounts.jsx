@@ -80,7 +80,7 @@ export function UserAccounts() {
   };
   const rename = async (item) => {
     const username = prompt(
-      "新的用户名（admin 内置账号不可改名）",
+      "新的用户名",
       item.username,
     );
     if (!username) return;
@@ -101,12 +101,12 @@ export function UserAccounts() {
   };
   const editAccess = async (item) => {
     const permissions = prompt(
-      "操作权限（逗号分隔：listen, manage_library, manage_sources, view_logs, manage_users）",
+      "操作权限",
       (item.permissions || []).join(", "),
     );
     if (permissions === null) return;
     const scopes = prompt(
-      "可访问目录（相对 /music，逗号分隔；* 表示全部）",
+      "可访问目录",
       (item.libraryScopes || []).join(", "),
     );
     if (scopes === null) return;
@@ -140,7 +140,7 @@ export function UserAccounts() {
       return setMessage("新密码至少 10 位，建议包含大小写、数字和符号。");
     if (
       !confirm(
-        `确认重置 ${resetting.username} 的密码？该账号需要使用新密码重新登录。`,
+        `重置 ${resetting.username} 的密码？他要用新密码重新登录一次。`,
       )
     )
       return;
@@ -162,7 +162,7 @@ export function UserAccounts() {
   const remove = async (item) => {
     if (
       !confirm(
-        `删除账号 ${item.username}？\n\n此操作会移除登录能力，但不会删除音乐文件。`,
+        `删掉账号 ${item.username}？\n\n他就登不进来了。音乐文件不受影响。`,
       )
     )
       return;
@@ -180,7 +180,7 @@ export function UserAccounts() {
     <section className="panel account-panel">
       <SectionHead
         title="账户与多用户"
-        note="普通用户只看到播放、收藏、发现和个人页；管理员才显示管理中心。"
+        note="普通用户只能听歌，看不到整理曲库那几页。"
         action={
           <button className="secondary small" onClick={load}>
             <RefreshCw />
@@ -310,9 +310,9 @@ export function UserAccounts() {
                   .filter(Boolean),
               }))
             }
-            placeholder="例如：周杰伦, 五月天；* 表示全部"
+            placeholder="例如「周杰伦, 五月天」；填 * 就是全部"
           />
-          <small>按 /music 下的相对目录限制本地文件访问。</small>
+          <small>填 /music 下面的目录名，这个账号只能听到这些目录里的歌。</small>
         </label>
         <div className="account-permissions">
           {[
@@ -359,8 +359,8 @@ export function UserAccounts() {
         </button>
       </form>
       <p className="setting-copy">
-        忘记主人账号密码时，请由设备管理员按照部署文档中的“恢复管理员访问”
-        流程操作；恢复会使现有会话失效。
+        主人账号的密码忘了，只能在跑这个服务的机器上重置 ——
+        步骤见部署文档的「恢复管理员访问」。重置之后所有人都要重新登录。
       </p>
       {resetting && (
         <div className="modal-wrap">

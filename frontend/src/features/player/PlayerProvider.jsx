@@ -393,7 +393,7 @@ export function PlayerProvider({ children }) {
       const immediate = immediatePlaybackTrack(input, state.quality);
       if (immediate) {
         if (!isPlayableDuration(immediate))
-          throw new Error("这首歌的时长异常，已阻止播放并避免污染队列。");
+          throw new Error("这个文件的时长不对，先跳过了 —— 通常是文件损坏或者还没下完。");
         const nextQueue = sanitizeQueue(
           Array.isArray(queue) ? queue : state.queue,
           immediate,
@@ -430,7 +430,7 @@ export function PlayerProvider({ children }) {
             setState((s) => ({
               ...s,
               isPlaying: false,
-              error: err.message || "浏览器阻止了自动播放，请再点一次播放。",
+              error: err.message || "浏览器不让自动播放，再点一次。",
             })),
           );
         }
@@ -456,7 +456,7 @@ export function PlayerProvider({ children }) {
       const track = await toPlaybackTrack(input, state.quality);
       if (!track?.audioUrl)
         throw new Error(
-          "没有拿到可播放地址。若你通过 HTTPS 访问，请确认已使用音屿同源代理播放流。",
+          "没拿到播放地址。如果你是用 HTTPS 访问的，检查一下播放流是不是走了音屿自己的代理。",
         );
       if (!isPlayableDuration(track))
         throw new Error("这首歌的时长异常，已阻止播放并避免污染队列。");
@@ -521,7 +521,7 @@ export function PlayerProvider({ children }) {
         : resume()
       : setState((s) => ({
           ...s,
-          error: "还没有播放内容。可以先随机播放、打开音乐库或查看今日推荐。",
+          error: "还没开始放。可以随机来一首，或者去音乐库挑。",
         }));
   const seek = (time) => {
     if (audioRef.current) {
@@ -804,14 +804,14 @@ export function PlayerProvider({ children }) {
           const error = e.currentTarget.error;
           const messages = {
             1: "播放已中止",
-            2: "音频连接中断，请稍后重试",
+            2: "连接断了，过会儿再试",
             3: "音频格式无法解码",
-            4: "当前音频地址或格式不可播放",
+            4: "这个格式浏览器放不了",
           };
           setState((s) => ({
             ...s,
             isPlaying: false,
-            error: messages[error?.code] || "音频暂时无法播放，请稍后重试",
+            error: messages[error?.code] || "这首暂时放不出来，过会儿再试",
           }));
         }}
         onPlay={() => setState((s) => ({ ...s, isPlaying: true, error: "" }))}

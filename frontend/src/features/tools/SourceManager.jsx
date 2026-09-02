@@ -371,6 +371,7 @@ export function SourceManager({ sources, refreshSources, notify }) {
                     <button
                       className="icon-button"
                       title="查看日志"
+                      aria-label="查看日志"
                       onClick={() => showLogs(source)}
                     >
                       <ScrollText />
@@ -468,7 +469,7 @@ export function SourceManager({ sources, refreshSources, notify }) {
               <div>
                 <h3>{logs.source.displayName}</h3>
               </div>
-              <button className="icon-button" onClick={() => setLogs(null)}>
+              <button className="icon-button" onClick={() => setLogs(null)} aria-label="关闭日志" title="关闭">
                 <X />
               </button>
             </div>
@@ -508,6 +509,8 @@ export function SourceManager({ sources, refreshSources, notify }) {
               <button
                 className="icon-button"
                 onClick={() => setInspection(null)}
+                aria-label="关闭格式检查"
+                title="关闭"
               >
                 <X />
               </button>

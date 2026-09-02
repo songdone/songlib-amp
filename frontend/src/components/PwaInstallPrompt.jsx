@@ -73,7 +73,7 @@ export function PwaInstallPrompt() {
   };
   return (
     <aside className="pwa-prompt panel">
-      <button className="icon-button" onClick={dismiss}>
+      <button className="icon-button" onClick={dismiss} aria-label="关闭安装提示" title="稍后再说">
         <X />
       </button>
       <div className="pwa-icon">

@@ -111,7 +111,7 @@ export function PlexSettingsModal({ initial, onClose, onSaved }) {
           <div>
             <h3>配置 Plex 媒体服务器</h3>
           </div>
-          <button className="icon-button" onClick={onClose}>
+          <button className="icon-button" onClick={onClose} aria-label="关闭" title="关闭">
             <X />
           </button>
         </div>

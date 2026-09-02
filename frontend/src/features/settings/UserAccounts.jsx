@@ -380,6 +380,8 @@ export function UserAccounts() {
                 type="button"
                 className="icon-button"
                 onClick={() => setResetting(null)}
+                aria-label="关闭"
+                title="关闭"
               >
                 <X />
               </button>

@@ -1,0 +1,126 @@
+/**
+ * 首页布局。
+ *
+ * 通用结构（页头、区块、列表行、空状态）都来自 components/ui，
+ * 这里只写首页特有的两处：焦点专辑和双栏。
+ */
+
+@layer components {
+  /* =============================================================
+   * 焦点专辑
+   *
+   * 封面是视觉主体，不再画拟物唱盘。
+   * 封面宽度用 clamp 跟随视口，窄屏自动堆叠。
+   * ============================================================= */
+
+  .home-hero {
+    display: grid;
+    grid-template-columns: clamp(160px, 22vw, 240px) minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(var(--space-5), 3vw, var(--space-10));
+    padding: clamp(var(--space-5), 2.5vw, var(--space-8));
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+  }
+
+  .home-hero__art {
+    /* 封面自带阴影，让它从卡片表面浮起来一点。 */
+    box-shadow: var(--shadow-lg);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .home-hero__art .ui-cover {
+    border-radius: var(--radius-lg);
+  }
+
+  .home-hero__copy {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .home-hero__label {
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--accent-text);
+  }
+
+  .home-hero__title {
+    /* 跟随容器宽度，长专辑名不会撑破布局。
+       上限刻意低于旧版的 60px —— 那个尺寸会盖过页面标题。 */
+    font-size: clamp(var(--text-xl), 3.4vw, var(--text-3xl));
+    font-weight: var(--weight-bold);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+    color: var(--text-primary);
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
+  .home-hero__meta {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+  }
+
+  .home-hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-block-start: var(--space-4);
+  }
+
+  @media (max-width: 720px) {
+    .home-hero {
+      grid-template-columns: minmax(0, 1fr);
+      justify-items: start;
+    }
+
+    .home-hero__art {
+      width: min(56vw, 220px);
+    }
+  }
+
+  /* =============================================================
+   * 双栏
+   * ============================================================= */
+
+  .home-columns {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--space-10) var(--space-8);
+  }
+
+  /* =============================================================
+   * 列表行里的小图标块
+   * ============================================================= */
+
+  .home-playlist-icon,
+  .home-attention-icon {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    background: var(--surface-3);
+    color: var(--text-secondary);
+  }
+
+  .home-playlist-icon svg,
+  .home-attention-icon svg {
+    width: 18px;
+    height: 18px;
+    stroke-width: 1.8;
+  }
+
+  .home-attention-icon {
+    color: var(--warning-text);
+    background: var(--warning-soft);
+  }
+}

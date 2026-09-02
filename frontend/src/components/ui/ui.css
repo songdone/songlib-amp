@@ -430,3 +430,318 @@
     }
   }
 }
+
+@layer components {
+  /* =============================================================
+   * 媒体卡片
+   *
+   * 卡片没有边框和背景 —— 封面本身就是卡片。
+   * 加了容器反而会在网格里制造一堆方框，把封面挤小。
+   * ============================================================= */
+
+  .ui-media-grid {
+    display: grid;
+    grid-template-columns: repeat(
+      auto-fill,
+      minmax(var(--media-card-min, 150px), 1fr)
+    );
+    gap: var(--space-5) var(--space-4);
+  }
+
+  .ui-media-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-width: 0;
+  }
+
+  .ui-media-card__art {
+    position: relative;
+  }
+
+  /* 播放按钮固定在封面右下角，不随封面比例移动。 */
+  .ui-media-card__play {
+    position: absolute;
+    inset-block-end: var(--space-3);
+    inset-inline-end: var(--space-3);
+    box-shadow: var(--shadow-md);
+    /* 未悬停时略微缩小，浮现时回到原尺寸，给一点物理感。 */
+    transform: scale(0.9);
+    transition: transform var(--duration-base) var(--ease-out);
+  }
+
+  .ui-cover:hover .ui-media-card__play,
+  .ui-cover:focus-within .ui-media-card__play {
+    transform: scale(1);
+  }
+
+  .ui-media-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    padding: 0;
+    text-align: start;
+    background: none;
+    border: 0;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+
+  .ui-media-card__title {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-snug);
+    color: var(--text-primary);
+    /* 两行截断：中文歌手名和专辑名经常超过一行，
+       截成一行会丢掉区分度（"周杰伦的…"和"周杰伦与…"）。 */
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
+  .ui-media-card__body:hover .ui-media-card__title {
+    color: var(--accent-text);
+  }
+
+  .ui-media-card__subtitle {
+    font-size: var(--text-xs);
+    line-height: var(--leading-snug);
+    color: var(--text-tertiary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@layer components {
+  /* =============================================================
+   * 页面骨架
+   * ============================================================= */
+
+  .ui-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-10);
+    width: 100%;
+    max-width: var(--page-max);
+    margin-inline: auto;
+    padding: var(--space-8) var(--page-gutter) var(--space-16);
+  }
+
+  .ui-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+  }
+
+  /* --- 页头 --- */
+
+  .ui-page-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-6);
+    flex-wrap: wrap;
+  }
+
+  .ui-page-header__text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .ui-page-header__eyebrow {
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--accent-text);
+  }
+
+  .ui-page-header__title {
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-bold);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+    color: var(--text-primary);
+  }
+
+  .ui-page-header__lead {
+    max-width: 60ch;
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    color: var(--text-secondary);
+  }
+
+  .ui-page-header__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  /* --- 区块标题 --- */
+
+  .ui-section-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-4);
+  }
+
+  .ui-section-header__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .ui-section-header__title {
+    font-size: var(--text-lg);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-snug);
+    color: var(--text-primary);
+  }
+
+  .ui-section-header__note {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+  }
+
+  /* --- 列表行 --- */
+
+  .ui-list-group {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+  }
+
+  .ui-list-group > .ui-list-row + .ui-list-row {
+    border-block-start: 1px solid var(--border-subtle);
+  }
+
+  .ui-list-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    padding: var(--space-3) var(--space-4);
+    text-align: start;
+    background: transparent;
+    border: 0;
+  }
+
+  .ui-list-row__leading {
+    display: grid;
+    place-items: center;
+    flex: none;
+  }
+
+  .ui-list-row__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .ui-list-row__title {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ui-list-row__subtitle {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ui-list-row__trailing {
+    flex: none;
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ui-list-row__chevron {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    color: var(--text-tertiary);
+    stroke-width: 1.8;
+  }
+
+  .ui-list-row--interactive {
+    cursor: pointer;
+    transition: background-color var(--duration-fast) var(--ease-out);
+  }
+
+  .ui-list-row--interactive:hover {
+    background: var(--surface-hover);
+  }
+
+  .ui-list-row--selected {
+    background: var(--accent-soft);
+  }
+
+  /* --- 空状态 --- */
+
+  .ui-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-12) var(--space-6);
+    text-align: center;
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+  }
+
+  .ui-empty__icon {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-pill);
+    background: var(--surface-3);
+    color: var(--text-tertiary);
+  }
+
+  .ui-empty__icon svg {
+    width: 20px;
+    height: 20px;
+    stroke-width: 1.6;
+  }
+
+  /* 空状态标题固定为区块级，永远不与页面标题争大小。
+     重构前"正在播放"页的空状态标题是 44px，压过 40px 的页面标题。 */
+  .ui-empty__title {
+    font-size: var(--text-md);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+  }
+
+  .ui-empty__text {
+    max-width: 46ch;
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    color: var(--text-secondary);
+  }
+
+  .ui-empty__action {
+    margin-block-start: var(--space-2);
+  }
+}

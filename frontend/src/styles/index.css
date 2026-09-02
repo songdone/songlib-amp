@@ -43,6 +43,7 @@
 
 /* --- 已迁移到 token 的业务组件（@layer components） --- */
 @import "../features/shell/sidebar.css";
+@import "../features/dashboard/dashboard.css";
 
 /* --- 历史层，待清空 --- */
 @import "../styles.css";

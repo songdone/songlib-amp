@@ -1,8 +1,36 @@
-import { Airplay, ChevronRight, CircleAlert, Disc3, ListMusic, Music2, Play, Plus, Sparkles } from "lucide-react";
+/**
+ * 首页。
+ *
+ * 重构要点：
+ *
+ * 1. hero 原本是一套纯 CSS 画的拟物黑胶唱盘（唱片、纹路、唱臂、转轴），
+ *    占掉四成宽度和 470px 高度，"继续播放"被压到首屏外。
+ *    现在让真实专辑封面本身作为视觉主体 —— 成熟音乐应用都是这么做的，
+ *    封面是内容，画一个假唱盘是装饰。
+ *
+ * 2. "播放设备与电视 / 控制播放、查看歌词、投到电视"原先是常驻一整行。
+ *    那是一句功能清单，不是状态。现在只在真的有设备在放歌时出现，
+ *    没有会话就不占地方 —— 侧栏本来就有"正在播放"入口。
+ *
+ * 3. 文案改成对用户说话：不写"随时从自己的 NAS 继续播放"这类介绍语，
+ *    也不把数据库统计当卖点摆在标题旁边。
+ */
+
+import { CircleAlert, ListMusic, Music2, Play, Plus, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Empty } from "../../components/Empty";
+import { Button } from "../../components/ui/Button";
+import { Cover } from "../../components/ui/Cover";
+import { MediaCard, MediaGrid } from "../../components/ui/MediaCard";
+import {
+  EmptyState,
+  ListGroup,
+  ListRow,
+  Page,
+  PageHeader,
+  Section,
+  SectionHeader,
+} from "../../components/ui/Layout";
 import { PageLoader } from "../../components/PageLoader";
-import { SectionHead } from "../../components/SectionHead";
 import { api } from "../../lib/api";
 import { recommendationPlaybackInput } from "../../lib/contracts";
 import { fmt, timeAgo } from "../../lib/format";
@@ -10,12 +38,19 @@ import { coverUrlFor } from "../../lib/media";
 import { usePlexSessions } from "../now-playing/usePlexSessions";
 import { usePlayerCore } from "../player/PlayerProvider";
 
+/** 按当地时间打招呼。夜里两点还在听歌的人不该被说"早上好"。 */
+const greetingFor = (hour) => {
+  if (hour < 5) return "夜深了";
+  if (hour < 11) return "早上好";
+  if (hour < 14) return "中午好";
+  if (hour < 18) return "下午好";
+  return "晚上好";
+};
+
 export function Dashboard({
   stats,
-  jobs,
   loading,
   navigate,
-  runJob,
   isAdmin = true,
   plexConfigured = false,
 }) {
@@ -33,6 +68,7 @@ export function Dashboard({
     recommendations: [],
   });
   const [contentLoading, setContentLoading] = useState(true);
+
   useEffect(() => {
     Promise.all([
       api("/api/library/artists?pageSize=12").catch(() => ({ items: [] })),
@@ -52,11 +88,12 @@ export function Dashboard({
       )
       .finally(() => setContentLoading(false));
   }, []);
+
   if (loading) return <PageLoader />;
-  const hour = new Date().getHours();
-  const greeting = hour < 6 ? "夜深了" : hour < 12 ? "早上好" : hour < 18 ? "下午好" : "晚上好";
+
   const history = (player.history || []).slice(0, 6);
   const continueItems = history.length ? history : home.tracks.slice(0, 6);
+
   const playItems = (items, index = 0) => {
     const playable = items
       .map((item) => ({
@@ -66,223 +103,281 @@ export function Dashboard({
       .filter((item) => item.ratingKey || item.audioUrl || item.path || item.file);
     if (playable[index]) player.play(playable[index], playable.slice(index + 1));
   };
+
   const openAlbum = async (album) => {
     const result = await api(
       `/api/library/albums/${encodeURIComponent(album.ratingKey)}`,
     );
     playItems(result.tracks || []);
   };
+
   const heroAlbum = home.albums[0];
-  const heroArtist =
-    home.artists.find(
-      (artist) =>
-        artist.ratingKey === heroAlbum?.parentRatingKey ||
-        artist.title === heroAlbum?.parentTitle,
-    ) || home.artists[0];
-  const heroCover = heroArtist?.thumbUrl || heroAlbum?.thumbUrl || "";
-  const activeRemoteSessions = remote.sessions.filter((session) => session.playing);
+  const heroCover = heroAlbum?.thumbUrl || "";
+  const canPlayHero = Boolean(heroAlbum) || home.tracks.length > 0;
+  const activeSessions = remote.sessions.filter((session) => session.playing);
+  const needsAttention =
+    isAdmin && ((stats?.failedTasks || 0) > 0 || (stats?.waitingIngest || 0) > 0);
+
   const openRemoteSession = (session) => {
     localStorage.setItem("songlib-playback-source", `plex:${session.id}`);
     if (player.isPlaying) player.pause();
     navigate("player");
   };
+
   return (
-    <div className="page dashboard-page home-v2">
-      {/* 搜索入口只保留顶栏那一个。这里原本还有一个 home-search-shortcut，
-          和顶栏搜索框同屏出现，是两次改版叠加留下的重复入口。 */}
-      <header className="home-heading">
-        <div>
-          <span>{greeting}</span>
-          <h1>听点喜欢的</h1>
-        </div>
-      </header>
+    <Page className="home">
+      <PageHeader eyebrow={greetingFor(new Date().getHours())} title="听点喜欢的" />
 
-      <section className="home-focus">
-        <div className="home-focus-copy">
-          <span className="home-focus-label">最近加入</span>
-          <h2>{heroAlbum?.title || "你的私人音乐库"}</h2>
-          <p>
-            {heroAlbum?.parentTitle || "随时从自己的 NAS 继续播放"}
-            <span>
-              {fmt(stats?.tracks || home.tracks.length)} 首歌曲 ·{" "}
-              {fmt(stats?.albums || home.albums.length)} 张专辑
-            </span>
-          </p>
-          <div className="home-focus-actions">
-            <button
-              className="primary home-play-button"
-              disabled={!heroAlbum && !home.tracks.length}
-              onClick={() => (heroAlbum ? openAlbum(heroAlbum) : playItems(home.tracks))}
-            >
-              <Play fill="currentColor" />
-              播放
-            </button>
-            <button className="secondary" onClick={() => navigate("library")}>
-              查看音乐库
-            </button>
+      {/* --- 焦点专辑：封面即视觉 --- */}
+      {heroAlbum ? (
+        <Section className="home-hero">
+          <div className="home-hero__art">
+            <Cover src={heroCover} title={heroAlbum.title} shape="square" />
           </div>
-        </div>
-        <div className="home-focus-visual" aria-hidden="true">
-          <span className="home-focus-shadow" />
-          <span className="home-focus-disc">
-            <i className="home-focus-grooves" />
-            <span className="home-focus-cover">
-              {heroCover ? <img src={heroCover} alt="" /> : <Disc3 />}
-            </span>
-            <b className="home-focus-spindle" />
-          </span>
-          <span className="home-focus-tonearm">
-            <i />
-            <b />
-          </span>
-        </div>
-      </section>
+          <div className="home-hero__copy">
+            <p className="home-hero__label">最近加入</p>
+            <h2 className="home-hero__title">{heroAlbum.title || "未命名专辑"}</h2>
+            <p className="home-hero__meta">
+              {[heroAlbum.parentTitle, heroAlbum.year].filter(Boolean).join(" · ")}
+            </p>
+            <div className="home-hero__actions">
+              <Button
+                variant="primary"
+                size="lg"
+                icon={Play}
+                disabled={!canPlayHero}
+                onClick={() =>
+                  heroAlbum ? openAlbum(heroAlbum) : playItems(home.tracks)
+                }
+              >
+                播放这张专辑
+              </Button>
+              <Button size="lg" onClick={() => navigate("library")}>
+                去音乐库
+              </Button>
+            </div>
+          </div>
+        </Section>
+      ) : (
+        !contentLoading && (
+          <EmptyState
+            icon={Music2}
+            title="音乐库还是空的"
+            text="连上 Plex 或指定 NAS 上的音乐目录，扫描完成后这里就会有内容。"
+            action={
+              <Button variant="primary" onClick={() => navigate("settings")}>
+                去连接音乐库
+              </Button>
+            }
+          />
+        )
+      )}
 
-      <section className="home-device-center" aria-label="播放设备与电视投屏">
-        <button className="home-device-primary" onClick={() => navigate("player")}>
-          <span className="home-device-icon"><Airplay /></span>
-          <span>
-            <small>播放设备与电视</small>
-            <strong>控制播放、查看歌词、投到电视</strong>
-          </span>
-          <ChevronRight />
-        </button>
-        {activeRemoteSessions.slice(0, 3).map((session) => (
-          <button
-            className="home-remote-session"
-            key={session.id}
-            onClick={() => openRemoteSession(session)}
-          >
-            <span className="home-live-dot" />
-            <span>
-              <small>{session.deviceName || "Plexamp"} 正在播放</small>
-              <strong>{session.title || "未命名歌曲"}</strong>
-              <em>{session.artist || "未知歌手"}</em>
-            </span>
-            <span>{session.controllable ? "可控制" : "仅跟随"}</span>
-            <ChevronRight />
-          </button>
-        ))}
-      </section>
+      {/* --- 只在真的有设备在放歌时才出现 --- */}
+      {activeSessions.length > 0 && (
+        <Section>
+          <SectionHeader
+            title="其他设备正在放"
+            note="点进去可以跟随进度，或直接接管控制"
+          />
+          <ListGroup>
+            {activeSessions.slice(0, 3).map((session) => (
+              <ListRow
+                key={session.id}
+                leading={
+                  <Cover
+                    src={session.coverUrl}
+                    title={session.title}
+                    size="40px"
+                    shape="square"
+                  />
+                }
+                title={session.title || "未知歌曲"}
+                subtitle={`${session.artist || "未知歌手"} · ${session.deviceName || "Plexamp"}`}
+                trailing={session.controllable ? "可控制" : "仅跟随"}
+                onClick={() => openRemoteSession(session)}
+              />
+            ))}
+          </ListGroup>
+        </Section>
+      )}
 
-      <SectionHead
-        title="继续播放"
-        action={
-          <button className="text-button" onClick={() => navigate("me")}>
-            播放记录
-            <ChevronRight />
-          </button>
-        }
-      />
-      <section className="home-listening-grid">
+      {/* --- 继续播放 --- */}
+      <Section>
+        <SectionHeader
+          title="继续播放"
+          moreLabel="全部记录"
+          onMore={() => navigate("me")}
+        />
         {continueItems.length ? (
-          continueItems.map((item, index) => (
-            <button
-              className="continue-card"
-              key={`${item.id || item.ratingKey || item.title}-${index}`}
-              onClick={() => playItems(continueItems, index)}
-            >
-              <span className="continue-art">
-                {coverUrlFor(item) ? <img src={coverUrlFor(item)} alt="" /> : <Music2 />}
-                <i><Play fill="currentColor" /></i>
-              </span>
-              <span className="continue-copy">
-                <strong>{item.title || "未命名歌曲"}</strong>
-                <small>{item.artist || item.grandparentTitle || "未知艺人"}</small>
-              </span>
-              <span className="continue-time">{item.playedAt ? timeAgo(item.playedAt) : "播放"}</span>
-            </button>
-          ))
+          <ListGroup>
+            {continueItems.map((item, index) => (
+              <ListRow
+                key={`${item.id || item.ratingKey || item.title}-${index}`}
+                leading={
+                  <Cover
+                    src={coverUrlFor(item)}
+                    title={item.title}
+                    size="40px"
+                    shape="square"
+                  />
+                }
+                title={item.title || "未命名歌曲"}
+                subtitle={item.artist || item.grandparentTitle || "未知歌手"}
+                trailing={item.playedAt ? timeAgo(item.playedAt) : null}
+                chevron={false}
+                onClick={() => playItems(continueItems, index)}
+              />
+            ))}
+          </ListGroup>
         ) : contentLoading ? (
           <PageLoader />
         ) : (
-          <Empty icon={Music2} title="还没有播放记录" text="从音乐库挑一首开始吧。" />
+          <EmptyState
+            icon={Music2}
+            title="还没有播放记录"
+            text="放几首歌之后，这里会留下你听过什么。"
+            action={
+              <Button variant="primary" onClick={() => navigate("library")}>
+                去挑一首
+              </Button>
+            }
+          />
         )}
-      </section>
+      </Section>
 
-      <SectionHead
-        title="最近加入"
-        action={<button className="text-button" onClick={() => navigate("library")}>查看全部<ChevronRight /></button>}
-      />
-      <section className="home-album-grid">
-        {home.albums.slice(0, 8).map((item) => (
-          <button className="home-album-card" key={item.ratingKey} onClick={() => openAlbum(item)}>
-            <span>
-              {item.thumbUrl ? <img src={item.thumbUrl} alt="" /> : <Disc3 />}
-              <i><Play fill="currentColor" /></i>
-            </span>
-            <strong>{item.title || "未命名专辑"}</strong>
-            <small>{item.parentTitle || item.year || "未知艺人"}</small>
-          </button>
-        ))}
-      </section>
+      {/* --- 最近加入 --- */}
+      {home.albums.length > 1 && (
+        <Section>
+          <SectionHeader title="最近加入" onMore={() => navigate("library")} />
+          <MediaGrid min={148}>
+            {home.albums.slice(1, 9).map((item) => (
+              <MediaCard
+                key={item.ratingKey}
+                kind="album"
+                title={item.title}
+                subtitle={item.parentTitle || item.year}
+                coverUrl={item.thumbUrl}
+                onOpen={() => openAlbum(item)}
+                onPlay={() => openAlbum(item)}
+                playLabel={`播放专辑 ${item.title}`}
+              />
+            ))}
+          </MediaGrid>
+        </Section>
+      )}
 
-      <div className="home-two-column">
-        <section>
-          <SectionHead
+      {/* --- 歌单与推荐并排 --- */}
+      <div className="home-columns">
+        <Section>
+          <SectionHeader
             title="你的歌单"
-            action={<button className="text-button" onClick={() => navigate("playlists")}>全部歌单<ChevronRight /></button>}
+            moreLabel="全部歌单"
+            onMore={() => navigate("playlists")}
           />
-          <div className="home-playlist-stack">
-            {home.playlists.slice(0, 4).map((item, index) => (
-              <button key={item.id} onClick={() => navigate("playlists")}>
-                <span className={`playlist-tile tone-${index % 4}`}><ListMusic /></span>
-                <span><strong>{item.name}</strong><small>{item.itemCount || 0} 首歌曲</small></span>
-                <ChevronRight />
-              </button>
-            ))}
-            {!home.playlists.length && !contentLoading && (
-              <button onClick={() => navigate("playlists")}>
-                <span className="playlist-tile"><Plus /></span>
-                <span><strong>创建第一张歌单</strong><small>也可导入 M3U 或平台分享链接</small></span>
-                <ChevronRight />
-              </button>
-            )}
-          </div>
-        </section>
-        <section>
-          <SectionHead
-            title="为你发现"
-            action={<button className="text-button" onClick={() => navigate("discover")}>更多推荐<ChevronRight /></button>}
+          {home.playlists.length ? (
+            <ListGroup>
+              {home.playlists.slice(0, 4).map((item) => (
+                <ListRow
+                  key={item.id}
+                  leading={
+                    <span className="home-playlist-icon">
+                      <ListMusic />
+                    </span>
+                  }
+                  title={item.name}
+                  subtitle={`${fmt(item.itemCount || 0)} 首`}
+                  onClick={() => navigate("playlists")}
+                />
+              ))}
+            </ListGroup>
+          ) : (
+            !contentLoading && (
+              <EmptyState
+                icon={ListMusic}
+                title="还没有歌单"
+                text="可以从零建一张，也可以导入 M3U 或平台分享链接。"
+                action={
+                  <Button
+                    variant="primary"
+                    icon={Plus}
+                    onClick={() => navigate("playlists")}
+                  >
+                    建一张歌单
+                  </Button>
+                }
+              />
+            )
+          )}
+        </Section>
+
+        <Section>
+          <SectionHeader
+            title="猜你想听"
+            note="根据你听过、收藏和跳过的歌得出"
+            moreLabel="更多"
+            onMore={() => navigate("discover")}
           />
-          <div className="home-discovery-list">
-            {home.recommendations.slice(0, 4).map((item, index) => (
-              <button
-                key={item.id || `${item.title}-${index}`}
-                onClick={() => {
-                  const target = recommendationPlaybackInput(item);
-                  if (target) player.play(target);
-                  else navigate("discover");
-                }}
-              >
-                <span className="discovery-number">{String(index + 1).padStart(2, "0")}</span>
-                <span><strong>{item.title}</strong><small>{item.artist || "未知艺人"}</small></span>
-                <span className="discovery-reason">{(item.reasons || [item.inLibrary ? "曲库精选" : "新发现"])[0]}</span>
-              </button>
-            ))}
-            {!home.recommendations.length && !contentLoading && (
-              <button onClick={() => navigate("discover")}>
-                <span className="discovery-number"><Sparkles /></span>
-                <span><strong>开始形成你的推荐</strong><small>播放、收藏或跳过几首歌曲</small></span>
-                <ChevronRight />
-              </button>
-            )}
-          </div>
-        </section>
+          {home.recommendations.length ? (
+            <ListGroup>
+              {home.recommendations.slice(0, 4).map((item, index) => (
+                <ListRow
+                  key={item.id || `${item.title}-${index}`}
+                  leading={
+                    <Cover
+                      src={coverUrlFor(item)}
+                      title={item.title}
+                      size="40px"
+                      shape="square"
+                    />
+                  }
+                  title={item.title}
+                  subtitle={item.artist || "未知歌手"}
+                  trailing={
+                    (item.reasons || [item.inLibrary ? "库里有" : "新发现"])[0]
+                  }
+                  chevron={false}
+                  onClick={() => {
+                    const target = recommendationPlaybackInput(item);
+                    if (target) player.play(target);
+                    else navigate("discover");
+                  }}
+                />
+              ))}
+            </ListGroup>
+          ) : (
+            !contentLoading && (
+              <EmptyState
+                icon={Sparkles}
+                title="推荐还在攒素材"
+                text="多听几首、收藏或跳过几次，这里就会开始给结果。"
+              />
+            )
+          )}
+        </Section>
       </div>
 
-      {isAdmin && (stats.failedTasks > 0 || stats.waitingIngest > 0) && (
-        <button className="home-admin-notice" onClick={() => navigate("manage")}>
-          <CircleAlert />
-          <span>
-            <strong>有内容需要确认</strong>
-            <small>
-              {stats.waitingIngest || 0} 个待入库，{stats.failedTasks || 0} 个任务失败
-            </small>
-          </span>
-          <ChevronRight />
-        </button>
+      {/* --- 需要处理的事，放在最后，不打断听歌 --- */}
+      {needsAttention && (
+        <ListGroup>
+          <ListRow
+            leading={
+              <span className="home-attention-icon">
+                <CircleAlert />
+              </span>
+            }
+            title="有几件事等你处理"
+            subtitle={[
+              (stats.waitingIngest || 0) > 0 &&
+                `${stats.waitingIngest} 首下载完等确认入库`,
+              (stats.failedTasks || 0) > 0 && `${stats.failedTasks} 个任务需要重试`,
+            ]
+              .filter(Boolean)
+              .join("，")}
+            onClick={() => navigate("manage")}
+          />
+        </ListGroup>
       )}
-    </div>
+    </Page>
   );
 }

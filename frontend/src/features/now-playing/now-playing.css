@@ -5,19 +5,36 @@
 @layer legacy.nowplaying {
   /* Unified Now Playing workspace. This file is loaded last and intentionally
    * isolates the production refactor from the legacy player styles. */
+  /*
+   * 沉浸式播放页是**故意始终深色**的，不跟随浅色主题 ——
+   * 浅色主题的画布规则里明确把 .player-main-shell 排除在外，
+   * 这一点和 Apple Music、Plexamp 的全屏播放页一致：
+   * 满屏封面配浅色底会把封面本身衬得发灰。
+   *
+   * 所以这里不映射到语义 token（--surface-* / --text-* 会跟着主题变），
+   * 而是直接引用原始色板。区别在于：品牌色改一次，这一页跟着走；
+   * 而原来这十三个值是手打的十六进制，改品牌色得在这里再找一遍。
+   *
+   * 这一整套 --now-* 的存在本身是过渡产物：整页迁到设计系统之后，
+   * 应该由一个 `data-surface="immersive"` 之类的作用域来提供深色 token，
+   * 而不是每个页面自带一套私有变量。
+   */
   .route-player {
-    --now-surface: rgba(25, 26, 32, 0.72);
-    --now-surface-strong: rgba(31, 32, 39, 0.92);
+    --now-surface: color-mix(in srgb, var(--palette-neutral-850) 72%, transparent);
+    --now-surface-strong: color-mix(in srgb, var(--palette-neutral-800) 92%, transparent);
     --now-soft: rgba(255, 255, 255, 0.055);
     --now-line: rgba(255, 255, 255, 0.11);
     --now-line-strong: rgba(255, 255, 255, 0.18);
-    --now-primary: #f5f5f7;
-    --now-secondary: rgba(245, 245, 247, 0.68);
-    --now-tertiary: rgba(245, 245, 247, 0.42);
-    --now-accent: #f0bd58;
-    --now-positive: #6bd69b;
-    --now-warning: #f2c468;
-    --now-danger: #ff776f;
+    --now-primary: var(--palette-neutral-50);
+    --now-secondary: color-mix(in srgb, var(--palette-neutral-50) 68%, transparent);
+    --now-tertiary: color-mix(in srgb, var(--palette-neutral-50) 42%, transparent);
+    --now-accent: var(--palette-gold-300);
+    --now-positive: var(--palette-green-300);
+    --now-warning: var(--palette-amber-300);
+    --now-danger: var(--palette-red-300);
+    /* 保持这一页自己的曲线。设计系统里的 --ease-settle 是
+       cubic-bezier(0.16, 1, 0.3, 1) —— 两条曲线很像但不相同，
+       换过去会改掉整页几十处过渡的手感。等这一页整体重写时一起统一。 */
     --now-ease: cubic-bezier(0.22, 1, 0.36, 1);
   }
 

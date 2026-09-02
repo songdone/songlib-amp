@@ -507,3 +507,115 @@ test("ambient deck keeps every unique artist image and prioritizes larger librar
       .every((item) => Number(item.trackCount) >= 13),
   );
 });
+
+/**
+ * 只有图标、没有文字的按钮必须有无障碍名。
+ *
+ * 这一条反复回归过：设计系统的 IconButton 会强制要求 label，
+ * 但还没迁完的页面里有一批手写 <button>，很容易只给一个 title。
+ * title 在触屏上根本不显示，读屏器对它的支持也不一致。
+ *
+ * 判据：一个 <button ...> 的开标签之后，直到闭标签之前，
+ * 如果只有自闭合的图标元素和空白（没有任何文字、没有 {expression}），
+ * 那它必须带 aria-label 或 aria-labelledby。
+ *
+ * 用括号深度扫描而不是正则匹配整个按钮 —— JSX 属性里有 `=>`、
+ * 嵌套的 {}、字符串里的 >，正则会在这些地方断掉（之前栽过）。
+ */
+const iconOnlyButtonsMissingLabel = (rawSource) => {
+  /*
+   * 先把注释里的内容抹掉再扫。
+   * 注释里出现 `<button />` 这样的例子会被当成真代码 —— 刚踩过：
+   * 给侧栏遮罩加 aria-label 的同时写了句解释，里面正好举了这个例子。
+   * 用等长空格替换而不是删掉，报错里的位置才不会错位。
+   */
+  const source = rawSource
+    .replace(/\/\*[\s\S]*?\*\//g, (match) => " ".repeat(match.length))
+    .replace(/(^|[^:])\/\/[^\n]*/g, (match) => " ".repeat(match.length));
+
+  const offenders = [];
+  let index = 0;
+  while (true) {
+    const start = source.indexOf("<button", index);
+    if (start === -1) break;
+    index = start + 7;
+
+    // 找开标签的结尾：跳过属性值里的引号和 {} 表达式
+    let depth = 0;
+    let quote = "";
+    let tagEnd = -1;
+    for (let i = index; i < source.length; i += 1) {
+      const char = source[i];
+      if (quote) {
+        if (char === quote) quote = "";
+        continue;
+      }
+      if (char === '"' || char === "'" || char === "`") {
+        quote = char;
+        continue;
+      }
+      if (char === "{") depth += 1;
+      else if (char === "}") depth -= 1;
+      else if (char === ">" && depth === 0) {
+        tagEnd = i;
+        break;
+      }
+    }
+    if (tagEnd === -1) break;
+
+    const openTag = source.slice(start, tagEnd + 1);
+    // 自闭合的 <button ... /> 没有内容，一定是靠属性给名字的
+    const selfClosing = openTag.trimEnd().endsWith("/>");
+    const close = selfClosing ? tagEnd : source.indexOf("</button>", tagEnd);
+    const inner = selfClosing ? "" : source.slice(tagEnd + 1, close);
+
+    /*
+     * 判断"里面只有图标"要小心两种情况：
+     *
+     *   <button>{isPlaying ? <Pause /> : <Play />}</button>
+     *     表达式里也只有图标 —— 算图标按钮。
+     *   <button>{item.title}</button>
+     *     表达式是数据文字 —— 不算，它有可读的名字。
+     *
+     * 区别在于表达式里有没有 JSX 元素。所以先去掉自闭合元素和注释，
+     * 再去掉"内部还含有 < 的表达式"（即图标之间的三元），
+     * 剩下什么都没有、且原本至少有一个元素，才算图标按钮。
+     */
+    const hasElement = /<[A-Za-z]/.test(inner);
+    const textish = inner
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
+      // 先剥"内部含元素的表达式"，再剥自闭合元素 —— 顺序反了的话
+      // <Pause /> 会被先拿掉，三元里就看不到 < 了，整条判断失效。
+      .replace(/\{[^{}]*<[^{}]*\}/g, "")
+      .replace(/<[A-Za-z][^>]*\/>/g, "")
+      .trim();
+
+    const named = /aria-label|aria-labelledby/.test(openTag);
+    // 自闭合的 <button ... /> 根本没有内容，名字只能来自属性。
+    if ((selfClosing || hasElement) && !textish && !named) {
+      offenders.push(openTag.replace(/\s+/g, " ").slice(0, 90));
+    }
+    index = close === -1 ? tagEnd : close;
+  }
+  return offenders;
+};
+
+test("只有图标的按钮必须有无障碍名，不能只靠 title", () => {
+  const root = new URL("../src/", import.meta.url);
+  const walk = (dir) =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const child = new URL(`${entry.name}${entry.isDirectory() ? "/" : ""}`, dir);
+      if (entry.isDirectory()) return walk(child);
+      if (!/\.jsx$/.test(entry.name)) return [];
+      return iconOnlyButtonsMissingLabel(readFileSync(child, "utf8")).map(
+        (tag) => `${entry.name}: ${tag}`,
+      );
+    });
+
+  const offenders = walk(root);
+  assert.deepEqual(
+    offenders,
+    [],
+    `这些按钮只有图标却没有 aria-label：\n${offenders.join("\n")}`,
+  );
+});

@@ -380,6 +380,151 @@
   }
 
   /* =============================================================
+   * 首装向导
+   *
+   * 和登录页共用背景三层，只有卡片不同。
+   *
+   * 重写原因：旧的 .setup-card 在 commercial.css 里，只写了
+   * border-color 没写 border 宽度 —— 边框实际来自 .panel。
+   * .panel 摘掉之后卡片就没边框了。它还有一条
+   * `.setup-card form > .primary { grid-column: 1/-1 }`，
+   * 按钮迁到 .ui-btn 之后这条规则失配，提交按钮会挤在左半列。
+   * 另外那套青绿描边（rgba(75,210,178,.2)）是上一代配色，
+   * 和现在的暖金主色不是一套。
+   * ============================================================= */
+
+  .setup-card {
+    position: relative;
+    z-index: 2;
+    justify-self: center;
+    width: min(560px, 100%);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    padding: clamp(var(--space-5), 3vw, var(--space-8));
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    background: var(--surface-overlay);
+    backdrop-filter: blur(20px) saturate(1.3);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .setup-card > .brand {
+    margin-block-end: var(--space-3);
+  }
+
+  .setup-card .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--accent-text);
+  }
+
+  .setup-card .eyebrow svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .setup-card h1 {
+    font-size: clamp(var(--text-2xl), 4.5vw, var(--text-4xl));
+    font-weight: var(--weight-bold);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+    color: var(--text-primary);
+  }
+
+  .setup-card > p {
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    color: var(--text-tertiary);
+  }
+
+  /* 两列：用户名/显示名一行，两个密码一行，按钮独占整行。 */
+  .setup-card form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+    margin-block-start: var(--space-2);
+  }
+
+  .setup-card form label {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+  }
+
+  .setup-card input {
+    width: 100%;
+    height: var(--control-height-md);
+    padding-inline: var(--space-3);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+  }
+
+  .setup-card input:focus-visible {
+    outline: none;
+    border-color: var(--accent-border);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+
+  /* 跨满两列：错误提示和提交按钮。旧规则挂在 .primary 上，
+     换成 .ui-btn 之后失配 —— 这里两个类名都覆盖，
+     免得下一次改按钮组件又断一次。 */
+  .setup-card form > .form-error,
+  .setup-card form > .ui-btn {
+    grid-column: 1 / -1;
+  }
+
+  .setup-card .form-error {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border: 1px solid var(--danger-solid);
+    border-radius: var(--radius-md);
+    background: var(--danger-soft);
+    font-size: var(--text-xs);
+    color: var(--danger-text);
+  }
+
+  .setup-card .form-error svg {
+    flex: none;
+    width: 15px;
+    height: 15px;
+  }
+
+  .setup-card footer {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-block-start: var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+  }
+
+  .setup-card footer svg {
+    flex: none;
+    width: 14px;
+    height: 14px;
+  }
+
+  @media (max-width: 560px) {
+    .setup-card form {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  /* =============================================================
    * 窄屏：单列
    *
    * 表单排在最前面 —— 手机上打开登录页的人是来登录的，

@@ -1,7 +1,9 @@
-import { Activity, ArrowDownToLine, Check, Download, FolderTree, Image, KeyRound, Library, ListMusic, LoaderCircle, Music2, Palette, Play, Plus, Radio, RefreshCw, RotateCcw, ScrollText, Server, Settings, ShieldCheck, Tags, TestTube2, UserRound, WandSparkles } from "lucide-react";
+import { Activity, ArrowDownToLine, Check, Download, FolderTree, Image, KeyRound, Library, ListMusic, Music2, Palette, Play, Plus, Radio, RefreshCw, RotateCcw, ScrollText, Server, Settings, ShieldCheck, Tags, TestTube2, UserRound, WandSparkles } from "lucide-react";
 import React, { useEffect, useState } from "react";
+import { Button, ButtonGroup, buttonClass } from "../../components/ui/Button";
 import { Notice } from "../../components/ui/Field";
 import { EmptyState, Page } from "../../components/ui/Layout";
+import { Modal } from "../../components/ui/Modal";
 import { PageLoader } from "../../components/PageLoader";
 import { SettingBlock } from "../../components/SettingBlock";
 import { BRAND } from "../../config/brand";
@@ -60,7 +62,11 @@ export function SettingsPage({
     token: "",
   });
   const [backups, setBackups] = useState([]),
-    [backupBusy, setBackupBusy] = useState("");
+    [backupBusy, setBackupBusy] = useState(""),
+    // 要恢复的那份备份。全站最后一个原生 confirm() 就在这里 ——
+    // 它是破坏性最大的操作（设置回滚 + 强制登出），却只有一行系统弹窗，
+    // 既说不清会丢什么，也不能取消到一半。
+    [restoring, setRestoring] = useState(null);
   const defaultPlayerPrefs = {
     defaultSource: "local_first",
     remoteBitrate: "320k",
@@ -188,12 +194,7 @@ export function SettingsPage({
     }
   };
   const restoreBackup = async (item) => {
-    if (
-      !confirm(
-        `恢复到 ${item.name}？\n\n账号和各项设置会回到那个时间点，这之后改的会丢。音乐文件不动。`,
-      )
-    )
-      return;
+    setRestoring(null);
     setBackupBusy(item.name);
     try {
       const result = await api(
@@ -386,23 +387,22 @@ export function SettingsPage({
                   </dd>
                 </div>
               </dl>
-              <div className="setting-actions">
-                <button
-                  className="primary small"
+              <ButtonGroup wrap>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  icon={Settings}
                   onClick={() => setPlexOpen(true)}
                 >
-                  <Settings />
                   配置 Plex
-                </button>
-                <button className="secondary small" onClick={testSavedPlex}>
-                  <TestTube2 />
+                </Button>
+                <Button size="sm" icon={TestTube2} onClick={testSavedPlex}>
                   测试连接
-                </button>
-                <button className="secondary small" onClick={syncPlex}>
-                  <RefreshCw />
+                </Button>
+                <Button size="sm" icon={RefreshCw} onClick={syncPlex}>
                   立即同步
-                </button>
-              </div>
+                </Button>
+              </ButtonGroup>
             </SettingBlock>
             <SettingBlock
               icon={Library}
@@ -546,24 +546,26 @@ export function SettingsPage({
                 账号密码只用于向飞牛音乐换取服务会话，密码不会保存。派生令牌保存在
                 NAS 的受保护数据目录中，也不会回显到页面。
               </p>
-              <div className="setting-actions">
-                <button className="primary small" onClick={saveFnosMusic}>
-                  <Check />
+              <ButtonGroup wrap>
+                <Button size="sm" variant="primary" icon={Check} onClick={saveFnosMusic}>
                   保存并连接
-                </button>
-                <button
-                  className="secondary small"
+                </Button>
+                <Button
+                  size="sm"
+                  icon={TestTube2}
                   onClick={testFnosMusic}
                   disabled={!settings.fnosMusic?.configured}
                 >
-                  <TestTube2 />
                   测试连接
-                </button>
-                <button className="secondary small" onClick={() => navigate?.("playlists")}>
-                  <ListMusic />
+                </Button>
+                <Button
+                  size="sm"
+                  icon={ListMusic}
+                  onClick={() => navigate?.("playlists")}
+                >
                   打开歌单
-                </button>
-              </div>
+                </Button>
+              </ButtonGroup>
             </SettingBlock>
             <SettingBlock
               icon={Activity}
@@ -664,13 +666,14 @@ export function SettingsPage({
                   <dd>{settings.musicRoot}</dd>
                 </div>
               </dl>
-              <button
-                className="primary small"
+              <Button
+                size="sm"
+                variant="primary"
+                icon={Check}
                 onClick={() => navigate?.("download")}
               >
-                <Check />
                 打开待入库
-              </button>
+              </Button>
             </SettingBlock>
             <SettingBlock
               icon={RotateCcw}
@@ -721,7 +724,9 @@ export function SettingsPage({
                 </label>
               ))}
             </div>
-            <button className="secondary small" onClick={save}><Check />保存刮削规则</button>
+            <Button size="sm" icon={Check} onClick={save}>
+              保存刮削规则
+            </Button>
           </SettingBlock>
         )}
         {tab === "naming" && (
@@ -753,10 +758,9 @@ export function SettingsPage({
                 </label>
               ))}
             </div>
-            <button className="secondary small" onClick={save}>
-              <Check />
+            <Button size="sm" icon={Check} onClick={save}>
               保存命名模板
-            </button>
+            </Button>
           </SettingBlock>
         )}
         {tab === "exclude" && (
@@ -782,10 +786,9 @@ export function SettingsPage({
                 }
               />
             </label>
-            <button className="secondary small" onClick={save}>
-              <Check />
+            <Button size="sm" icon={Check} onClick={save}>
               保存排除规则
-            </button>
+            </Button>
           </SettingBlock>
         )}
         {tab === "appearance" && (
@@ -856,22 +859,23 @@ export function SettingsPage({
                   <span className="appearance-preview-chip">正在生效</span>
                 </div>
               </div>
-              <div className="setting-actions">
-                <button
-                  className="secondary small"
+              <ButtonGroup wrap>
+                <Button
+                  size="sm"
+                  icon={RotateCcw}
                   onClick={() => onAppearanceChange?.(DEFAULT_APPEARANCE)}
                 >
-                  <RotateCcw />
                   恢复推荐值
-                </button>
-                <button
-                  className="primary small"
+                </Button>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  icon={Check}
                   onClick={() => setMessage("外观偏好已保存在当前设备")}
                 >
-                  <Check />
                   完成
-                </button>
-              </div>
+                </Button>
+              </ButtonGroup>
             </SettingBlock>
           </div>
         )}
@@ -929,19 +933,14 @@ export function SettingsPage({
                 </label>
               ))}
             </div>
-            <div className="setting-actions">
-              <button className="primary small" onClick={savePlayerPrefs}>
-                <Check />
+            <ButtonGroup wrap>
+              <Button size="sm" variant="primary" icon={Check} onClick={savePlayerPrefs}>
                 保存播放器偏好
-              </button>
-              <button
-                className="secondary small"
-                onClick={() => navigate?.("player")}
-              >
-                <Play />
+              </Button>
+              <Button size="sm" icon={Play} onClick={() => navigate?.("player")}>
                 打开播放器验证
-              </button>
-            </div>
+              </Button>
+            </ButtonGroup>
           </SettingBlock>
         )}
         {tab === "user" && (
@@ -964,9 +963,13 @@ export function SettingsPage({
                     {profile?.displayName || settings.user?.username || "admin"}
                   </strong>
                   <span>@{settings.user?.username || "admin"}</span>
-                  <label className="secondary small avatar-upload">
-                    <Image />
-                    更换头像
+                  {/* 是 <label> 而不是 <button>：点它要触发里面那个
+                      隐藏的 file input。借按钮外观，语义保持 label。 */}
+                  <label
+                    className={buttonClass({ size: "sm", extra: "avatar-upload" })}
+                  >
+                    <Image className="ui-btn__icon" aria-hidden="true" />
+                    <span className="ui-btn__label">更换头像</span>
                     <input
                       type="file"
                       accept="image/png,image/jpeg,image/webp"
@@ -1033,13 +1036,9 @@ export function SettingsPage({
                     <option value="large">大号</option>
                   </select>
                 </label>
-                <button
-                  className="secondary small"
-                  onClick={() => saveProfile(profile)}
-                >
-                  <Check />
+                <Button size="sm" icon={Check} onClick={() => saveProfile(profile)}>
                   保存偏好
-                </button>
+                </Button>
               </div>
             </SettingBlock>
             <section className="setting-card">
@@ -1070,10 +1069,10 @@ export function SettingsPage({
                   />
                 </label>
                 {message && <p className="form-message">{message}</p>}
-                <button className="secondary">
-                  <ShieldCheck />
+                {/* 这个在 <form onSubmit> 里，必须是 submit 才能回车提交。 */}
+                <Button type="submit" icon={ShieldCheck}>
                   更新密码
-                </button>
+                </Button>
               </form>
             </section>
           </div>
@@ -1086,18 +1085,16 @@ export function SettingsPage({
               note="备份的是账号和各项设置，音乐文件不会被复制一份"
             >
               <div className="backup-toolbar">
-                <button
-                  className="primary small"
+                <Button
+                  size="sm"
+                  variant="primary"
+                  icon={Plus}
+                  loading={backupBusy === "create"}
                   disabled={!!backupBusy}
                   onClick={createBackup}
                 >
-                  {backupBusy === "create" ? (
-                    <LoaderCircle className="spin" />
-                  ) : (
-                    <Plus />
-                  )}
                   创建备份
-                </button>
+                </Button>
                 <span>备份保存在 NAS 的 /data/backups</span>
               </div>
               <div className="backup-list">
@@ -1112,25 +1109,24 @@ export function SettingsPage({
                           {(item.size / 1024 / 1024).toFixed(1)} MB
                         </span>
                       </div>
+                      {/* 是 <a download> 而不是按钮：走浏览器自己的下载，
+                          不需要 JS 接管。借按钮外观。 */}
                       <a
-                        className="secondary small"
+                        className={buttonClass({ size: "sm" })}
                         href={`/api/backups/${encodeURIComponent(item.name)}/download`}
                       >
-                        <Download />
-                        导出
+                        <Download className="ui-btn__icon" aria-hidden="true" />
+                        <span className="ui-btn__label">导出</span>
                       </a>
-                      <button
-                        className="secondary small"
+                      <Button
+                        size="sm"
+                        icon={RotateCcw}
+                        loading={backupBusy === item.name}
                         disabled={!!backupBusy}
-                        onClick={() => restoreBackup(item)}
+                        onClick={() => setRestoring(item)}
                       >
-                        {backupBusy === item.name ? (
-                          <LoaderCircle className="spin" />
-                        ) : (
-                          <RotateCcw />
-                        )}
                         恢复
-                      </button>
+                      </Button>
                     </div>
                   ))
                 ) : (
@@ -1148,18 +1144,14 @@ export function SettingsPage({
               note="出问题的时候先来这里看"
             >
               <div className="log-toolbar">
-                <button
-                  className="secondary small"
-                  disabled={logsLoading}
+                <Button
+                  size="sm"
+                  icon={RefreshCw}
+                  loading={logsLoading}
                   onClick={loadLogs}
                 >
-                  {logsLoading ? (
-                    <LoaderCircle className="spin" />
-                  ) : (
-                    <RefreshCw />
-                  )}
                   刷新日志
-                </button>
+                </Button>
                 <span>
                   {logs?.updatedAt
                     ? `更新于 ${new Date(logs.updatedAt).toLocaleString("zh-CN")}`
@@ -1217,6 +1209,59 @@ export function SettingsPage({
         )}
         {isAdmin && tab === "user" && <UserAccounts />}
       </section>
+      <Modal
+        open={!!restoring}
+        onClose={() => setRestoring(null)}
+        title="恢复这份备份？"
+        size="sm"
+        actions={
+          <ButtonGroup align="end">
+            <Button onClick={() => setRestoring(null)}>先不恢复</Button>
+            <Button
+              variant="danger"
+              icon={RotateCcw}
+              onClick={() => restoreBackup(restoring)}
+            >
+              确认恢复
+            </Button>
+          </ButtonGroup>
+        }
+      >
+        {restoring && (
+          <>
+            <p className="restore-target">
+              <ShieldCheck aria-hidden="true" />
+              <span>
+                <strong>{restoring.name}</strong>
+                <small>
+                  {new Date(restoring.createdAt).toLocaleString("zh-CN")}
+                </small>
+              </span>
+            </p>
+            {/* 用"会 / 不会"两栏说清代价。原来的 confirm 把这些
+                挤在一行文字里，用户点确定时其实没读完。 */}
+            <dl className="restore-impact">
+              <div>
+                <dt>会回到备份时的状态</dt>
+                <dd>账号与权限、Plex 与音源配置、命名与刮削规则、外观偏好</dd>
+              </div>
+              <div>
+                <dt>不会动</dt>
+                <dd>音乐文件本身，一个字节都不改</dd>
+              </div>
+              <div className="restore-impact__warn">
+                <dt>会丢</dt>
+                <dd>
+                  {new Date(restoring.createdAt).toLocaleString("zh-CN")}{" "}
+                  之后改的设置，找不回来
+                </dd>
+              </div>
+            </dl>
+            <p className="restore-note">恢复完会退出登录，用新的密码重新进。</p>
+          </>
+        )}
+      </Modal>
+
       {isAdmin && plexOpen && (
         <PlexSettingsModal
           initial={plex}

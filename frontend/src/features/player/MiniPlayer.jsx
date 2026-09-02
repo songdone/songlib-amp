@@ -1,4 +1,5 @@
 import { ChevronRight, Heart, ListMusic, Pause, Play, Volume2, X } from "lucide-react";
+import { IconButton } from "../../components/ui/Button";
 import { formatTime, pct } from "../../lib/format";
 import { coverUrlFor } from "../../lib/media";
 import { sourceLabel, usePlayer } from "./PlayerProvider";
@@ -82,22 +83,21 @@ export function MiniPlayer({ openPlayer, navigate }) {
           onChange={(e) => player.setVolume(e.target.value)}
         />
       </label>
-      <button
-        className="icon-button"
+      {/* 这两个在窄屏要藏起来（迷你条上放不下）。
+          旧规则是 commercial.css 的 `.mini-player > .icon-button{display:none}`，
+          类名一换就失配，所以同一条规则在 player.css 里按新类名重写了一份。 */}
+      <IconButton
+        icon={ListMusic}
+        size="sm"
+        label="打开正在播放"
         onClick={openPlayer}
-        aria-label="打开正在播放"
-        title="打开正在播放"
-      >
-        <ListMusic />
-      </button>
-      <button
-        className="icon-button"
+      />
+      <IconButton
+        icon={X}
+        size="sm"
+        label="停止播放并清空队列"
         onClick={player.clear}
-        aria-label="停止播放并清空队列"
-        title="停止播放并清空队列"
-      >
-        <X />
-      </button>
+      />
     </div>
   );
 }

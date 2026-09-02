@@ -32,6 +32,7 @@ import {
   X,
 } from "lucide-react";
 
+import { Button, IconButton } from "../../components/ui/Button";
 import { api } from "../../lib/api";
 import { displayLyricsFor, parseLrc } from "../../lib/lyrics";
 import {
@@ -443,9 +444,13 @@ export default function NowPlayingPage({
             <span><small>播放来源</small><strong>{usingRemote ? selectedSession.deviceName : "此浏览器"}</strong></span>
             <ChevronRight />
           </button>
-          <button className="icon-button" onClick={() => remote.refresh()} aria-label="刷新 Plex 播放设备">
-            <RefreshCw className={remote.loading ? "spin" : ""} />
-          </button>
+          <IconButton
+            icon={RefreshCw}
+            size="sm"
+            label="刷新 Plex 播放设备"
+            loading={remote.loading}
+            onClick={() => remote.refresh()}
+          />
         </div>
       </header>
 
@@ -534,8 +539,12 @@ export default function NowPlayingPage({
             </div>
           ) : (
             <div className="now-empty-actions">
-              <button className="primary" onClick={() => setTab("devices")}><MonitorSpeaker />选择播放来源</button>
-              <button className="secondary" onClick={() => navigate("library")}><Library />打开音乐库</button>
+              <Button variant="primary" icon={MonitorSpeaker} onClick={() => setTab("devices")}>
+                选择播放来源
+              </Button>
+              <Button icon={Library} onClick={() => navigate("library")}>
+                打开音乐库
+              </Button>
             </div>
           )}
         </article>
@@ -651,7 +660,7 @@ export default function NowPlayingPage({
                   ))}
                 </div>
               ) : (
-                <div className="now-centered"><ListMusic /><strong>待播队列为空</strong><p>去音乐库挑几首，或者切到正在放歌的 Plexamp。</p><button className="secondary" onClick={() => navigate("library")}><Library />打开音乐库</button></div>
+                <div className="now-centered"><ListMusic /><strong>待播队列为空</strong><p>去音乐库挑几首，或者切到正在放歌的 Plexamp。</p><Button icon={Library} onClick={() => navigate("library")}>打开音乐库</Button></div>
               )}
             </div>
           )}

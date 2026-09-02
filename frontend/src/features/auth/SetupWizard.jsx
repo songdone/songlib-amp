@@ -1,6 +1,7 @@
-import { ChevronRight, CircleAlert, LoaderCircle, ShieldCheck } from "lucide-react";
+import { ChevronRight, CircleAlert, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { Brand } from "../../components/Brand";
+import { Button } from "../../components/ui/Button";
 import { VideoBackdrop } from "../../components/ui/VideoBackdrop";
 import { api } from "../../lib/api";
 
@@ -51,7 +52,9 @@ export function SetupWizard({ onComplete }) {
         ]}
       />
       <div className="login__scrim" aria-hidden="true" />
-      <section className="setup-card panel">
+      {/* 不再挂 .panel —— 那是一段硬编码深色渐变。首装卡片的
+          玻璃质感由 login.css 里的 .setup-card 自己给。 */}
+      <section className="setup-card">
         <Brand />
         <span className="eyebrow"><ShieldCheck />首次设置</span>
         <h1>创建这座音乐岛的主人账号</h1>
@@ -74,10 +77,16 @@ export function SetupWizard({ onComplete }) {
             <input type="password" value={form.confirmPassword} onChange={(event) => update("confirmPassword", event.target.value)} />
           </label>
           {error && <div className="form-error"><CircleAlert />{error}</div>}
-          <button className="primary" disabled={busy || form.password.length < 12}>
-            {busy ? <LoaderCircle className="spin" /> : <ChevronRight />}
+          <Button
+            type="submit"
+            variant="primary"
+            block
+            icon={ChevronRight}
+            loading={busy}
+            disabled={form.password.length < 12}
+          >
             创建账号并进入
-          </button>
+          </Button>
         </form>
         <footer><ShieldCheck />不会给你安排默认密码，这串字符也不会出现在日志里。</footer>
       </section>

@@ -1,0 +1,22 @@
+/**
+ * 迷你播放器的补丁层。
+ *
+ * 整个迷你条的布局仍在 commercial.css 里（未重做），这里只补
+ * 类名迁移之后失配的规则。等迷你条整体重写时这个文件并进去。
+ */
+
+@layer components {
+  /*
+   * 窄屏隐藏"打开正在播放"和"清空队列"。
+   *
+   * 旧规则是 commercial.css 第 388 行：
+   *   @media(max-width:900px){ .mini-player > .icon-button { display:none } }
+   * 那两个按钮迁到 IconButton（.ui-btn.ui-btn--icon）之后选择器失配，
+   * 手机上迷你条右侧会多出两个挤不下的按钮。断点跟旧规则保持一致。
+   */
+  @media (max-width: 900px) {
+    .mini-player > .ui-btn--icon {
+      display: none;
+    }
+  }
+}

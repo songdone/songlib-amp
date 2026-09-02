@@ -1,5 +1,21 @@
+/**
+ * "装到桌面" 提示条。
+ *
+ * 重构掉的：
+ * - `className="pwa-prompt panel"`。旧的 .panel 是一段硬编码深色渐变
+ *   （linear-gradient(145deg, #1f2125, #191b1e)），浅色主题下这张卡
+ *   会是整屏唯一一块黑的。现在用 --surface-* token。
+ * - .primary / .secondary / .icon-button 三个旧类名。
+ * - 关闭按钮 aria-label 说"关闭安装提示"、title 说"稍后再说"，
+ *   两个名字不一致，读屏和悬停提示对不上。
+ *
+ * 保留的：install() 里的 `event.prompt()`。那是 BeforeInstallPrompt
+ * 的浏览器 API，不是原生对话框，不在"清掉 confirm/prompt"的范围里。
+ */
+
 import { BookOpenText, Download, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Button, ButtonGroup, IconButton } from "./ui/Button";
 import { pwaInstallGuidance, pwaSecureOrigin } from "../lib/pwa";
 
 export function PwaInstallPrompt() {
@@ -72,31 +88,43 @@ export function PwaInstallPrompt() {
     setVisible(false);
   };
   return (
-    <aside className="pwa-prompt panel">
-      <button className="icon-button" onClick={dismiss} aria-label="关闭安装提示" title="稍后再说">
-        <X />
-      </button>
-      <div className="pwa-icon">
+    <aside className="pwa-prompt">
+      <IconButton
+        icon={X}
+        size="sm"
+        label="不用了，别再提示"
+        className="pwa-prompt__close"
+        onClick={dismiss}
+      />
+      <div className="pwa-prompt__icon">
         <img src="/icons/icon-192.png" alt="" />
       </div>
-      <div>
-        <strong>安装音屿轻应用</strong>
+      <div className="pwa-prompt__body">
+        <strong>装到桌面</strong>
         <p>{guidance.summary}</p>
         {helpOpen && (
-          <div className="pwa-install-help" role="status">
+          <div className="pwa-prompt__help" role="status">
             {guidance.detail}
           </div>
         )}
-        {status && <div className="pwa-install-status" role="status">{status}</div>}
-        <div>
-          <button className="primary small" onClick={install}>
-            {event ? <Download /> : <BookOpenText />}
+        {status && (
+          <div className="pwa-prompt__status" role="status">
+            {status}
+          </div>
+        )}
+        <ButtonGroup>
+          <Button
+            size="sm"
+            variant="primary"
+            icon={event ? Download : BookOpenText}
+            onClick={install}
+          >
             {guidance.actionLabel}
-          </button>
-          <button className="secondary small" onClick={dismiss}>
-            稍后再说
-          </button>
-        </div>
+          </Button>
+          <Button size="sm" variant="quiet" onClick={dismiss}>
+            不用了
+          </Button>
+        </ButtonGroup>
       </div>
     </aside>
   );

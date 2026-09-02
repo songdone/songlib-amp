@@ -1236,3 +1236,88 @@
     }
   }
 }
+
+@layer components {
+  /* =============================================================
+   * 范围滑块
+   *
+   * 不依赖 accent-color + 浏览器默认轨道色：默认轨道跟随 color-scheme，
+   * 而 color-scheme 在这个项目里被多处覆盖过，结果浅色主题下轨道仍是深色。
+   * 显式画轨道和滑块，取值全部来自 token，行为可预期。
+   * ============================================================= */
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 20px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  /* --- 轨道 --- */
+
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: var(--radius-pill);
+    background: var(--surface-3);
+  }
+
+  input[type="range"]::-moz-range-track {
+    height: 4px;
+    border-radius: var(--radius-pill);
+    background: var(--surface-3);
+  }
+
+  /* Firefox 能直接画已填充段；WebKit 不能，靠 accent-color 兜。 */
+  input[type="range"]::-moz-range-progress {
+    height: 4px;
+    border-radius: var(--radius-pill);
+    background: var(--accent-solid);
+  }
+
+  input[type="range"] {
+    accent-color: var(--accent-solid);
+  }
+
+  /* --- 滑块 --- */
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    /* 轨道 4px、滑块 14px，需要上移 5px 才能垂直居中。 */
+    margin-block-start: -5px;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: var(--accent-solid);
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--duration-fast) var(--ease-out);
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: var(--accent-solid);
+    box-shadow: var(--shadow-sm);
+  }
+
+  input[type="range"]:hover::-webkit-slider-thumb {
+    transform: scale(1.15);
+  }
+
+  input[type="range"]:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 3px var(--accent-soft-hover);
+  }
+
+  input[type="range"]:disabled {
+    cursor: not-allowed;
+  }
+
+  input[type="range"]:disabled::-webkit-slider-thumb {
+    background: var(--text-disabled);
+  }
+}

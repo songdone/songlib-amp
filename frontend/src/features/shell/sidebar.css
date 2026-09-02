@@ -147,3 +147,41 @@
     stroke-width: 1.8;
   }
 }
+
+@layer components {
+  /* =============================================================
+   * 浅色主题的外壳表面
+   *
+   * 旧规则把浅色主题的主内容区做成半透明：
+   *   .visual-shell[data-theme="light"] .main {
+   *     background: linear-gradient(rgba(245,245,247,.46), rgba(245,245,247,.62))
+   *   }
+   * 而它背后是 .visual-shell 的 #080a0e 近黑底和歌手背景图。
+   * 46~62% 的白叠在近黑上，结果就是一整片灰 —— 这是浅色主题"看起来发脏"
+   * 的直接原因，也是为什么当时要靠一堆组件级重写去补救。
+   *
+   * 这里改成用不透明的语义 token。表面就是表面，不该让底下的东西透上来；
+   * 需要"透"的是浮层（侧栏、顶栏、对话框），它们走 .glass。
+   * ============================================================= */
+
+  :root[data-theme="light"] .visual-shell,
+  :root[data-theme="light"] .visual-shell .main:not(.player-main-shell) {
+    background: var(--surface-canvas);
+  }
+
+  /* 浅色主题下不显示歌手背景图。
+     它是为深色设计的（暗调、高对比），铺在浅色界面下面只会把表面染灰。 */
+  :root[data-theme="light"] .artist-backdrop,
+  :root[data-theme="light"] .app-backdrop {
+    display: none;
+  }
+
+  /* 面板、卡片这类实体表面在浅色下也要不透明。 */
+  :root[data-theme="light"] .panel,
+  :root[data-theme="light"] .setting-card,
+  :root[data-theme="light"] .local-hero,
+  :root[data-theme="light"] .track-table {
+    background: var(--surface-1);
+    border-color: var(--border-subtle);
+  }
+}

@@ -136,7 +136,6 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
     <div className="page local-page">
       <section className="local-hero panel">
         <div>
-          <h1>文件与标签</h1>
           <p>改歌名、歌手、专辑这些写在音频文件里的信息，也可以按规则整理目录。每次改动都留有原值，随时能撤回。</p>
         </div>
         <div>

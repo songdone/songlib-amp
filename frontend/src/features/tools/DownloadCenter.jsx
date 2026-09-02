@@ -212,7 +212,6 @@ export function DownloadCenter({
       <div className="page download-page">
         <section className="download-hero">
           <div>
-            <h1>下载入库</h1>
             <p>搜歌、下载，确认无误后再放进正式曲库。</p>
           </div>
         </section>
@@ -234,7 +233,6 @@ export function DownloadCenter({
     <div className="page download-page">
       <section className="download-hero">
         <div>
-          <h1>下载入库</h1>
           <p>
             {target === "device"
               ? "下载到这台设备：文件直接存进浏览器的下载目录，不进曲库。适合临时听一下。"

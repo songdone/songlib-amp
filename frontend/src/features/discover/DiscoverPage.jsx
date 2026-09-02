@@ -97,7 +97,6 @@ function DiscoverPage({ play, navigate, isAdmin = true }) {
   return (
     <div className="page discover-page">
       <section className="page-intro">
-        <h1>发现</h1>
         <p>翻翻别人的歌单。库里已经有的歌可以直接点开播放，没有的会标出来。</p>
       </section>
       {error && (

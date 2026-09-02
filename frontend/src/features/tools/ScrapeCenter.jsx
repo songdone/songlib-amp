@@ -117,7 +117,6 @@ export function ScrapeCenter({ jobs, navigate, settings }) {
   return (
     <div className="page scrape-page">
       <section className="page-intro">
-        <h1>封面与歌词</h1>
         <p>找出缺封面、缺歌词、缺歌手照片和简介的条目，把它们补上。每一处都会先给你看现在是什么、要换成什么，你确认了才写入。</p>
       </section>
       <div className="scrape-tabs">

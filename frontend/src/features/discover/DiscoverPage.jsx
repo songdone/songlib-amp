@@ -97,14 +97,8 @@ function DiscoverPage({ play, navigate, isAdmin = true }) {
   return (
     <div className="page discover-page">
       <section className="page-intro">
-        <span className="eyebrow">
-          <Sparkles />
-          MUSIC DISCOVERY
-        </span>
-        <h1>
-          从歌单发现，<span>在自己的曲库里播放。</span>
-        </h1>
-        <p>浏览热门歌单，已经收藏在曲库里的歌曲可以直接播放。</p>
+        <h1>发现</h1>
+        <p>翻翻别人的歌单。库里已经有的歌可以直接点开播放，没有的会标出来。</p>
       </section>
       {error && (
         <div className="inline-error">

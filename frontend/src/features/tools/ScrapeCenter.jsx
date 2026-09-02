@@ -117,12 +117,8 @@ export function ScrapeCenter({ jobs, navigate, settings }) {
   return (
     <div className="page scrape-page">
       <section className="page-intro">
-        <span className="eyebrow">
-          <Zap size={14} />
-          SCRAPE CENTER
-        </span>
-        <h1>补齐封面、歌词、背景与中文简介。</h1>
-        <p>先核对旧值、候选结果、来源与冲突，再决定是否应用。</p>
+        <h1>封面与歌词</h1>
+        <p>找出缺封面、缺歌词、缺歌手照片和简介的条目，把它们补上。每一处都会先给你看现在是什么、要换成什么，你确认了才写入。</p>
       </section>
       <div className="scrape-tabs">
         {scrapeTabs.map((item) => (

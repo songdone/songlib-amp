@@ -212,23 +212,19 @@ export function DownloadCenter({
       <div className="page download-page">
         <section className="download-hero">
           <div>
-            <span className="eyebrow">
-              <ArrowDownToLine />
-              MUSIC DOWNLOAD
-            </span>
-            <h1>搜索音乐，保存到你的 NAS。</h1>
-            <p>导入并识别音乐接口后即可搜索与下载。</p>
+            <h1>下载入库</h1>
+            <p>搜歌、下载，确认无误后再放进正式曲库。</p>
           </div>
         </section>
         <section className="panel download-empty">
           <Empty
             icon={Wifi}
-            title="暂无可用音乐源"
-            text="导入音乐源并识别到接口后会自动启用，无需先做搜索或解析测试。"
+            title="还没有可用的音乐源"
+            text="导入一个你有权使用的音乐源，识别到接口后就能在这里搜歌了。"
           />
           <button className="primary" onClick={() => navigate("sources")}>
             <Wifi />
-            去音乐源管理
+            去添加音乐源
           </button>
         </section>
         <DownloadInboxPanel notify={notify} navigate={navigate} />
@@ -238,18 +234,11 @@ export function DownloadCenter({
     <div className="page download-page">
       <section className="download-hero">
         <div>
-          <span className="eyebrow">
-            <ArrowDownToLine />
-            MUSIC DOWNLOAD
-          </span>
-          <h1>
-            搜索音乐，
-            {target === "device" ? "下载到当前设备。" : "保存到你的 NAS。"}
-          </h1>
+          <h1>下载入库</h1>
           <p>
             {target === "device"
-              ? "当前设备模式会直接触发浏览器下载，适合电脑或手机临时保存。"
-              : "下载文件先进入临时区，确认元数据与目录结构后再批量入库。"}
+              ? "下载到这台设备：文件直接存进浏览器的下载目录，不进曲库。适合临时听一下。"
+              : "下载到 NAS：文件先落在暂存区，你核对过歌曲信息和存放位置，再放进正式曲库。"}
           </p>
         </div>
         <div className="hero-actions">

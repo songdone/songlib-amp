@@ -136,12 +136,8 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
     <div className="page local-page">
       <section className="local-hero panel">
         <div>
-          <span className="eyebrow">
-            <FolderTree />
-            NAS MUSIC LIBRARY
-          </span>
-          <h1>让每一首歌都有清晰的位置。</h1>
-          <p>浏览曲库，校对标签和目录，需要时可安全撤销。</p>
+          <h1>文件与标签</h1>
+          <p>改歌名、歌手、专辑这些写在音频文件里的信息，也可以按规则整理目录。每次改动都留有原值，随时能撤回。</p>
         </div>
         <div>
           <button className="secondary" onClick={() => runJob("plex_sync")}>

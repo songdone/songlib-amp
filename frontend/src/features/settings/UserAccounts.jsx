@@ -374,7 +374,6 @@ export function UserAccounts() {
           >
             <div className="modal-head">
               <div>
-                <span className="eyebrow">RESET PASSWORD</span>
                 <h3>重置 {resetting.username} 的密码</h3>
               </div>
               <button

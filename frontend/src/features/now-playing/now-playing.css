@@ -1098,9 +1098,7 @@
       align-items: center;
       margin-bottom: 18px;
     }
-
-    .now-eyebrow,
-    .now-page-head p {
+.now-page-head p{
       display: none;
     }
 

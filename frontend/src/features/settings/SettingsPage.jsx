@@ -1,6 +1,7 @@
 import { Activity, ArrowDownToLine, Check, Download, FolderTree, Image, KeyRound, Library, ListMusic, LoaderCircle, Music2, Palette, Play, Plus, Radio, RefreshCw, RotateCcw, ScrollText, Server, Settings, ShieldCheck, Tags, TestTube2, UserRound, WandSparkles } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import { Empty } from "../../components/Empty";
+import { Notice } from "../../components/ui/Field";
+import { EmptyState, Page } from "../../components/ui/Layout";
 import { PageLoader } from "../../components/PageLoader";
 import { SettingBlock } from "../../components/SettingBlock";
 import { BRAND } from "../../config/brand";
@@ -307,8 +308,8 @@ export function SettingsPage({
       .replaceAll("{title}", "晴天")
       .replaceAll("{ext}", "flac");
   return (
-    <div className="page settings-page">
-      <div className="settings-tabs">
+    <Page className="settings-page">
+      <nav className="settings-tabs" aria-label="设置分类">
         {tabs.map((item, index) => {
           const Icon = item.icon;
           const showGroup = index === 0 || tabs[index - 1].group !== item.group;
@@ -325,13 +326,12 @@ export function SettingsPage({
             </React.Fragment>
           );
         })}
-      </div>
-      <section className="panel settings-workbench">
+      </nav>
+      <section className="settings-workbench">
         {message && (
-          <div className="inline-info">
-            <ShieldCheck />
+          <Notice tone="success" icon={ShieldCheck}>
             {message}
-          </div>
+          </Notice>
         )}
         {tab === "plex" && (
           <div className="settings-grid">
@@ -422,7 +422,7 @@ export function SettingsPage({
                   ))}
                 </div>
               ) : (
-                <Empty
+                <EmptyState
                   icon={Library}
                   title="未读取到音乐库"
                   text="先点上面的「配置 Plex」连上，音乐库列表会自动列出来。"
@@ -1134,7 +1134,7 @@ export function SettingsPage({
                     </div>
                   ))
                 ) : (
-                  <Empty
+                  <EmptyState
                     icon={ShieldCheck}
                     title="还没有备份"
                     text="做一份备份，之后换机器或者出问题都能直接恢复回来。"
@@ -1229,6 +1229,6 @@ export function SettingsPage({
           }}
         />
       )}
-    </div>
+    </Page>
   );
 }

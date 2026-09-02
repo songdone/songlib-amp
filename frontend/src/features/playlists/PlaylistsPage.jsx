@@ -1,8 +1,88 @@
-import { ArrowDownToLine, Check, ChevronDown, CircleAlert, Download, FileUp, Link2, ListMusic, LoaderCircle, Music2, Play, Plus, Radio, RefreshCw, Search, Server, Trash2, X } from "lucide-react";
+/**
+ * 歌单。
+ *
+ * 三件事：自己攒的歌单、从平台整张搬过来、和 Plex / 飞牛音乐里已有的歌单。
+ *
+ * 重构掉的：
+ * - 页面自己的 <h1>（顶栏已经有一个）。
+ * - window.confirm 删歌单。
+ * - 迁移目标那三个方块、服务歌单那两列、歌单列表、曲目行，
+ *   四处各写一套面板样式；现在统一用 ListRow / ChipGroup / Section。
+ * - "上移/下移"两个按钮原来共用 ChevronDown + rotate-180 类。
+ *   现在直接用 ChevronUp —— 靠 CSS 转图标，禁用态和焦点环都会跟着转。
+ */
+
+import {
+  ArrowDownToLine,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  CircleAlert,
+  Download,
+  FileUp,
+  Link2,
+  ListMusic,
+  Music2,
+  Play,
+  Plus,
+  Radio,
+  RefreshCw,
+  Search,
+  Server,
+  Trash2,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Empty } from "../../components/Empty";
+import { Badge } from "../../components/ui/Badge";
+import { Button, ButtonGroup, IconButton } from "../../components/ui/Button";
+import { Cover } from "../../components/ui/Cover";
+import { Field, Notice } from "../../components/ui/Field";
+import {
+  EmptyState,
+  ListGroup,
+  ListRow,
+  Page,
+  PageHeader,
+  Section,
+  SectionHeader,
+} from "../../components/ui/Layout";
+import { Modal } from "../../components/ui/Modal";
 import { api } from "../../lib/api";
 import { playlistPlaybackInput, playlistTrackPayload, servicePlaylistPlaybackItems } from "../../lib/contracts";
+
+/** 迁移目标。available 由后端按连接状态给。 */
+const MIGRATION_TARGETS = [
+  { id: "songlib", label: "音屿歌单", icon: Music2 },
+  { id: "plex", label: "Plex", icon: Server },
+  { id: "fnos", label: "飞牛音乐", icon: Radio },
+];
+
+/**
+ * 整句写在表里，不用 `还没连上 ${label}` 拼。
+ * 拼出来在中文标签前会多一个空格（"还没连上 飞牛音乐"），
+ * 而拉丁名前那个空格又是对的 —— 拼接没法同时照顾两种。
+ */
+const SERVICES = [
+  {
+    id: "plex",
+    label: "Plex",
+    icon: Server,
+    notConnected: "还没连上 Plex",
+    connectedEmpty: "Plex 已经连上了，但里面还没有歌单。",
+  },
+  {
+    id: "fnos",
+    label: "飞牛音乐",
+    icon: Radio,
+    notConnected: "还没连上飞牛音乐",
+    connectedEmpty: "飞牛音乐已经连上了，但里面还没有歌单。",
+  },
+];
+
+const QUALITIES = [
+  { id: "flac", label: "优先无损" },
+  { id: "320k", label: "高品质 320K" },
+  { id: "128k", label: "标准 128K" },
+];
 
 export function PlaylistsPage({
   play,
@@ -28,6 +108,7 @@ export function PlaylistsPage({
   const [downloadMissing, setDownloadMissing] = useState(false);
   const [migrationSource, setMigrationSource] = useState("");
   const [migrationQuality, setMigrationQuality] = useState("320k");
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const fileRef = useRef(null);
   const loadServices = async () => {
     setServiceBusy(true);
@@ -107,7 +188,8 @@ export function PlaylistsPage({
     }
   };
   const remove = async () => {
-    if (!selected || !window.confirm(`删掉歌单「${selected.name}」？歌本身还在曲库里，不会被删。`)) return;
+    setConfirmRemove(false);
+    if (!selected) return;
     setBusy(true);
     try {
       await api(`/api/playlists/${selected.id}`, { method: "DELETE" });
@@ -258,294 +340,500 @@ export function PlaylistsPage({
       setMigrationBusy("");
     }
   };
+  const migrationDisabled =
+    migrationBusy === "execute" ||
+    !migrationTargets.length ||
+    (downloadMissing && !migrationSource);
+
   return (
-    <div className="page playlists-page">
-      <section className="page-intro playlist-intro">
-        <div>
-          <span className="eyebrow"><ListMusic />我的歌单</span>
-          <h1>把喜欢的歌带回来</h1>
-          <p>从零建一张，导入 M3U，或者把平台上的歌单整张搬过来。</p>
-        </div>
-        <div className="playlist-actions">
-          <button className="secondary" onClick={() => fileRef.current?.click()} disabled={busy}>
-            <FileUp />导入 M3U
-          </button>
-          <input ref={fileRef} hidden type="file" accept=".m3u,.m3u8,audio/x-mpegurl" onChange={importFile} />
-          {selected && (
-            <a className="secondary button-link" href={`/api/playlists/${selected.id}/export.m3u`}>
-              <Download />导出
-            </a>
-          )}
-        </div>
-      </section>
-      <section className="playlist-migration panel">
-        <div className="migration-heading">
-          <span><Link2 /></span>
-          <div>
-            <strong>从分享链接迁移</strong>
-            <small>QQ 音乐、网易云的公开歌单都能读</small>
-          </div>
-        </div>
-        <form onSubmit={previewMigration}>
-          <input
+    <Page className="playlists">
+      <PageHeader
+        title="把喜欢的歌带回来"
+        lead="从零建一张，导入 M3U，或者把平台上的歌单整张搬过来。"
+        actions={
+          <ButtonGroup>
+            <Button
+              icon={FileUp}
+              disabled={busy}
+              onClick={() => fileRef.current?.click()}
+            >
+              导入 M3U
+            </Button>
+            {selected && (
+              <Button
+                icon={Download}
+                onClick={() => {
+                  // 导出走浏览器下载，不用 <a download> —— 接口返回的是
+                  // attachment 响应头，直接跳转就会存成文件。
+                  window.location.href = `/api/playlists/${selected.id}/export.m3u`;
+                }}
+              >
+                导出这张
+              </Button>
+            )}
+          </ButtonGroup>
+        }
+      />
+      <input
+        ref={fileRef}
+        hidden
+        type="file"
+        accept=".m3u,.m3u8,audio/x-mpegurl"
+        onChange={importFile}
+      />
+
+      {error && (
+        <Notice tone="danger" icon={CircleAlert}>
+          {error}
+        </Notice>
+      )}
+
+      {/* --- 从分享链接迁移 --- */}
+      <Section>
+        <SectionHeader
+          title="从平台搬一张过来"
+          note="QQ 音乐、网易云的公开歌单都能读，不需要你的账号密码"
+        />
+        <form className="playlists__migrate" onSubmit={previewMigration}>
+          <Field
+            label="歌单分享链接"
+            hideLabel
+            leading={Link2}
             type="url"
+            placeholder="粘贴歌单分享链接"
             value={shareUrl}
             onChange={(event) => setShareUrl(event.target.value)}
-            placeholder="粘贴歌单分享链接"
           />
-          <button className="primary" disabled={!shareUrl.trim() || migrationBusy === "preview"}>
-            {migrationBusy === "preview" ? <LoaderCircle className="spin" /> : <Search />}
-            读取歌单
-          </button>
-        </form>
-        <p className="migration-privacy">只读歌单里有哪些歌，不需要你的平台账号密码。</p>
-      </section>
-      {migration && (
-        <section className="migration-preview panel">
-          <header>
-            <div className="migration-cover">
-              {migration.coverUrl ? <img src={migration.coverUrl} alt="" /> : <ListMusic />}
-            </div>
-            <div>
-              <span>{migration.platformLabel}</span>
-              <h2>{migration.name}</h2>
-              <p>
-                {migration.summary.total} 首 · {migration.summary.matched} 首已匹配 ·{" "}
-                {migration.summary.missing} 首待补全
-              </p>
-            </div>
-            <button className="icon-button" onClick={() => setMigration(null)} aria-label="关闭迁移预览"><X /></button>
-          </header>
-          <div className="migration-targets">
-            {[
-              ["songlib", "音屿歌单", Music2],
-              ["plex", "Plex", Server],
-              ["fnos", "飞牛音乐", Radio],
-            ].map(([id, label, Icon]) => {
-              const available = migration.targets?.[id]?.available !== false;
-              const selectedTarget = migrationTargets.includes(id);
-              return (
-                <button
-                  key={id}
-                  className={selectedTarget ? "active" : ""}
-                  disabled={!available}
-                  onClick={() => toggleMigrationTarget(id)}
-                >
-                  <Icon />
-                  <span><strong>{label}</strong><small>{available ? (selectedTarget ? "已选择" : "可迁移") : "需要先配置连接"}</small></span>
-                  <i>{selectedTarget ? <Check /> : <Plus />}</i>
-                </button>
-              );
-            })}
-          </div>
-          {migration.summary.missing > 0 && (
-            <div className="migration-download-option">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={downloadMissing}
-                  disabled={!migration.downloadSources?.length}
-                  onChange={(event) => setDownloadMissing(event.target.checked)}
-                />
-                <span><strong>补全缺失歌曲</strong><small>只认标题、主唱和时长都对得上的版本，避免下错</small></span>
-              </label>
-              {downloadMissing && (
-                <div>
-                  <select value={migrationSource} onChange={(event) => setMigrationSource(event.target.value)}>
-                    {(migration.downloadSources || []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-                  </select>
-                  <select value={migrationQuality} onChange={(event) => setMigrationQuality(event.target.value)}>
-                    <option value="flac">优先无损</option>
-                    <option value="320k">高品质 320K</option>
-                    <option value="128k">标准 128K</option>
-                  </select>
-                </div>
-              )}
-            </div>
-          )}
-          <div className="migration-track-preview">
-            {(migration.tracks || []).slice(0, 12).map((item, index) => (
-              <div key={`${item.externalRef}-${index}`} className={item.matchStatus === "matched" ? "matched" : "missing"}>
-                <span>{String(index + 1).padStart(2, "0")}</span>
-                <div><strong>{item.title}</strong><small>{item.artist || "未知艺人"} · {item.album || "未知专辑"}</small></div>
-                <em>{item.matchStatus === "matched" ? "已匹配" : "待补全"}</em>
-              </div>
-            ))}
-            {migration.summary.total > 12 && <p>另有 {migration.summary.total - 12} 首，将按原顺序处理</p>}
-          </div>
-          <footer>
-            <span>先看清单，确认了才动。哪几首没对上也会列出来。</span>
-            <button className="primary" disabled={migrationBusy === "execute" || !migrationTargets.length || (downloadMissing && !migrationSource)} onClick={executeMigration}>
-              {migrationBusy === "execute" ? <LoaderCircle className="spin" /> : <ArrowDownToLine />}
-              开始迁移
-            </button>
-          </footer>
-        </section>
-      )}
-      {error && <div className="form-error"><CircleAlert />{error}</div>}
-      <section className="connected-playlists panel">
-        <header>
-          <div>
-            <span>已连接的音乐服务</span>
-            <h2>服务歌单</h2>
-            <p>Plex 和飞牛音乐里已有的歌单，都在这儿。</p>
-          </div>
-          <button
-            className="secondary small"
-            onClick={loadServices}
-            disabled={serviceBusy}
+          <Button
+            type="submit"
+            variant="primary"
+            icon={Search}
+            loading={migrationBusy === "preview"}
+            disabled={!shareUrl.trim()}
           >
-            <RefreshCw className={serviceBusy ? "spin" : ""} />
-            刷新
-          </button>
-        </header>
-        <div className="service-playlist-grid">
-          {[
-            ["plex", "Plex", Server],
-            ["fnos", "飞牛音乐", Radio],
-          ].map(([id, label, Icon]) => {
-            const service = servicePlaylists[id] || {};
-            return (
-              <article className="service-playlist-column" key={id}>
-                <header>
-                  <span><Icon /></span>
-                  <div>
-                    <strong>{label}</strong>
+            读一读
+          </Button>
+        </form>
+
+        {migration && (
+          <div className="playlists__preview">
+            <div className="playlists__preview-head">
+              <Cover
+                src={migration.coverUrl}
+                title={migration.name}
+                size="64px"
+                shape="rounded"
+              />
+              <div>
+                <p className="playlists__preview-platform">
+                  {migration.platformLabel}
+                </p>
+                <h3>{migration.name}</h3>
+                <p className="playlists__preview-meta">
+                  {migration.summary.total} 首 · {migration.summary.matched}{" "}
+                  首库里已经有 · {migration.summary.missing} 首要补
+                </p>
+              </div>
+              <IconButton
+                icon={Trash2}
+                label="放弃这次迁移"
+                onClick={() => setMigration(null)}
+              />
+            </div>
+
+            {/* 多选，所以不用 ChipGroup（它是单选）。 */}
+            <div
+              className="ui-chips ui-chips--cards"
+              role="group"
+              aria-label="搬到哪里"
+            >
+              {MIGRATION_TARGETS.map(({ id, label, icon: Icon }) => {
+                const available = migration.targets?.[id]?.available !== false;
+                const on = migrationTargets.includes(id);
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-pressed={on}
+                    disabled={!available}
+                    className={`ui-chip${on ? " ui-chip--on" : ""}`}
+                    onClick={() => toggleMigrationTarget(id)}
+                  >
+                    <strong>
+                      <Icon aria-hidden="true" />
+                      {label}
+                      {on && <Check aria-hidden="true" />}
+                    </strong>
+                    <small>{available ? "可以搬" : "得先去设置里连上"}</small>
+                  </button>
+                );
+              })}
+            </div>
+
+            {migration.summary.missing > 0 && (
+              <div className="playlists__fill">
+                <label className="playlists__check">
+                  <input
+                    type="checkbox"
+                    checked={downloadMissing}
+                    disabled={!migration.downloadSources?.length}
+                    onChange={(event) => setDownloadMissing(event.target.checked)}
+                  />
+                  <span>
+                    <strong>缺的那 {migration.summary.missing} 首也一起下</strong>
                     <small>
-                      {service.configured
-                        ? `${service.items?.length || 0} 个歌单`
-                        : "尚未连接"}
+                      {migration.downloadSources?.length
+                        ? "只认标题、主唱和时长都对得上的版本，避免下错"
+                        : "需要先在「音乐源」里启用一个音源"}
                     </small>
-                  </div>
-                </header>
-                {service.error ? (
-                  <div className="service-playlist-message error">
-                    <CircleAlert />
-                    <span>{service.error}</span>
-                  </div>
-                ) : !service.configured ? (
-                  <div className="service-playlist-message">
-                    <Link2 />
-                    <span>去设置里连上，歌单会自己出现。</span>
-                  </div>
-                ) : service.items?.length ? (
-                  <div className="service-playlist-list">
-                    {service.items.map((item, index) => (
-                      <button
-                        type="button"
-                        key={`${id}-${item.id}`}
-                        className={id !== "plex" ? "sync-only" : ""}
-                        disabled={
-                          id !== "plex" ||
-                          servicePlaying === `${id}:${item.id}`
-                        }
-                        onClick={() => playServicePlaylist(id, item)}
-                        aria-label={
-                          id === "plex"
-                            ? `播放歌单 ${item.name}`
-                            : `查看飞牛音乐歌单 ${item.name} 的播放能力`
-                        }
-                      >
-                        <span className={`playlist-tile tone-${index % 4}`}>
-                          {item.coverUrl ? (
-                            <img src={item.coverUrl} alt="" />
-                          ) : (
-                            <ListMusic />
-                          )}
-                        </span>
-                        <div>
-                          <strong>{item.name}</strong>
-                          <small>{item.itemCount || 0} 首歌曲</small>
-                        </div>
-                        <em>
-                          {servicePlaying === `${id}:${item.id}` ? (
-                            <LoaderCircle className="spin" />
-                          ) : id === "plex" ? (
-                            <Play fill="currentColor" />
-                          ) : (
-                            label
-                          )}
-                        </em>
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="service-playlist-message">
-                    <ListMusic />
-                    <span>连上了，但那边还没有歌单。</span>
+                  </span>
+                </label>
+                {downloadMissing && (
+                  <div className="playlists__fill-options">
+                    <select
+                      className="ui-select"
+                      aria-label="用哪个音源"
+                      value={migrationSource}
+                      onChange={(event) => setMigrationSource(event.target.value)}
+                    >
+                      {(migration.downloadSources || []).map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      className="ui-select"
+                      aria-label="音质"
+                      value={migrationQuality}
+                      onChange={(event) => setMigrationQuality(event.target.value)}
+                    >
+                      {QUALITIES.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 )}
-              </article>
+              </div>
+            )}
+
+            <ListGroup>
+              {(migration.tracks || []).slice(0, 12).map((item, index) => (
+                <ListRow
+                  key={`${item.externalRef}-${index}`}
+                  leading={
+                    <span className="playlists__num">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                  }
+                  title={item.title}
+                  subtitle={[item.artist || "未知歌手", item.album]
+                    .filter(Boolean)
+                    .join(" · ")}
+                  trailing={
+                    item.matchStatus === "matched" ? (
+                      <Badge tone="success">库里有</Badge>
+                    ) : (
+                      <Badge tone="warning">要补</Badge>
+                    )
+                  }
+                />
+              ))}
+            </ListGroup>
+            {migration.summary.total > 12 && (
+              <p className="playlists__more">
+                另有 {migration.summary.total - 12} 首，会按原顺序一起处理。
+              </p>
+            )}
+
+            <div className="ui-plan-confirm">
+              <div className="ui-plan-confirm__text">
+                <strong>
+                  {migrationTargets.length
+                    ? `搬到 ${migrationTargets.length} 个地方`
+                    : "还没选要搬到哪里"}
+                </strong>
+                <span>没对上的那几首会单独列出来，不会悄悄丢掉</span>
+              </div>
+              <Button
+                variant="primary"
+                icon={ArrowDownToLine}
+                loading={migrationBusy === "execute"}
+                disabled={migrationDisabled}
+                onClick={executeMigration}
+              >
+                开始搬
+              </Button>
+            </div>
+          </div>
+        )}
+      </Section>
+
+      {/* --- 服务歌单 --- */}
+      <Section reveal>
+        <SectionHeader
+          title="Plex 和飞牛音乐里的歌单"
+          actions={
+            <Button
+              size="sm"
+              icon={RefreshCw}
+              loading={serviceBusy}
+              onClick={loadServices}
+            >
+              刷新
+            </Button>
+          }
+        />
+        <div className="playlists__services">
+          {SERVICES.map(({ id, label, icon: Icon, notConnected, connectedEmpty }) => {
+            const service = servicePlaylists[id] || {};
+            return (
+              <div className="playlists__service" key={id}>
+                <div className="playlists__service-head">
+                  <span className="playlists__service-icon">
+                    <Icon />
+                  </span>
+                  <strong>{label}</strong>
+                  {service.configured ? (
+                    <Badge>{service.items?.length || 0} 个</Badge>
+                  ) : (
+                    <Badge tone="warning">没连</Badge>
+                  )}
+                </div>
+
+                {service.error ? (
+                  <Notice tone="danger" icon={CircleAlert}>
+                    {service.error}
+                  </Notice>
+                ) : !service.configured ? (
+                  <EmptyState
+                    icon={Link2}
+                    title={notConnected}
+                    text="去设置里连上，歌单会自己出现。"
+                  />
+                ) : service.items?.length ? (
+                  <ListGroup>
+                    {service.items.map((item) => {
+                      const playing = servicePlaying === `${id}:${item.id}`;
+                      return (
+                        <ListRow
+                          key={`${id}-${item.id}`}
+                          leading={
+                            <Cover
+                              src={item.coverUrl}
+                              title={item.name}
+                              size="40px"
+                              shape="rounded"
+                            />
+                          }
+                          title={item.name}
+                          subtitle={`${item.itemCount || 0} 首`}
+                          chevron={false}
+                          trailing={
+                            id === "plex" ? (
+                              <IconButton
+                                icon={Play}
+                                size="sm"
+                                loading={playing}
+                                label={`播放歌单 ${item.name}`}
+                                onClick={() => playServicePlaylist(id, item)}
+                              />
+                            ) : (
+                              <Badge>只能同步</Badge>
+                            )
+                          }
+                        />
+                      );
+                    })}
+                  </ListGroup>
+                ) : (
+                  <EmptyState
+                    icon={ListMusic}
+                    title="那边还没有歌单"
+                    text={connectedEmpty}
+                  />
+                )}
+              </div>
             );
           })}
         </div>
-      </section>
-      <div className="playlist-workspace">
-        <aside className="panel playlist-list">
-          <form onSubmit={create}>
-            <input value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="新歌单名称" />
-            <button className="primary icon-button" disabled={busy || !newName.trim()} aria-label="创建歌单"><Plus /></button>
+      </Section>
+
+      {/* --- 我的歌单 + 详情 --- */}
+      <div className="playlists__workspace">
+        <Section>
+          <SectionHeader title="我的歌单" />
+          <form className="playlists__create" onSubmit={create}>
+            <Field
+              label="新歌单名称"
+              hideLabel
+              placeholder="新歌单名称"
+              value={newName}
+              onChange={(event) => setNewName(event.target.value)}
+            />
+            <IconButton
+              type="submit"
+              icon={Plus}
+              variant="primary"
+              label="建这张歌单"
+              disabled={busy || !newName.trim()}
+            />
           </form>
-          {items.length ? items.map((item) => (
-            <button
-              key={item.id}
-              className={selected?.id === item.id ? "active" : ""}
-              onClick={() => load(item.id).catch((err) => setError(err.message))}
-            >
-              <span><ListMusic /><strong>{item.name}</strong></span>
-              <small>{item.itemCount} 首</small>
-            </button>
-          )) : <Empty icon={ListMusic} title="还没有歌单" text="创建一个空歌单，或导入 M3U/M3U8 文件。" />}
-        </aside>
-        <section className="panel playlist-detail">
+          {items.length ? (
+            <ListGroup>
+              {items.map((item) => (
+                <ListRow
+                  key={item.id}
+                  leading={
+                    <span className="playlists__icon">
+                      <ListMusic />
+                    </span>
+                  }
+                  title={item.name}
+                  subtitle={`${item.itemCount} 首`}
+                  selected={selected?.id === item.id}
+                  onClick={() =>
+                    load(item.id).catch((err) => setError(err.message))
+                  }
+                />
+              ))}
+            </ListGroup>
+          ) : (
+            <EmptyState
+              icon={ListMusic}
+              title="还没有歌单"
+              text="上面填个名字建一张，或者导入 M3U。"
+            />
+          )}
+        </Section>
+
+        <Section>
           {!selected ? (
-            <Empty icon={ListMusic} title="选择一个歌单" text="左边挑一张，里面的歌会列在这儿。" />
+            <EmptyState
+              icon={ListMusic}
+              title="左边挑一张"
+              text="里面的歌会列在这儿，可以调顺序、同步到 Plex 或飞牛音乐。"
+            />
           ) : (
             <>
-              <header>
-                <div>
-                  <span>本地歌单</span>
-                  <h2>{selected.name}</h2>
-                  <p>{selected.description || `${selected.itemCount} 首歌曲`}</p>
-                </div>
-                <div>
-                  <button className="secondary" onClick={() => syncSelected("plex")} disabled={busy || !selected.items.length}>
-                    <Server />同步 Plex
-                  </button>
-                  <button className="secondary" onClick={() => syncSelected("fnos")} disabled={busy || !selected.items.length}>
-                    <Radio />同步飞牛音乐
-                  </button>
-                  <button className="primary" onClick={playAll} disabled={!selected.items.some(playable)}>
-                    <Play />播放全部
-                  </button>
-                  <button className="icon-button danger" onClick={remove} aria-label="删除歌单"><Trash2 /></button>
-                </div>
-              </header>
-              <div className="playlist-tracks">
-                {selected.items.length ? selected.items.map((item, index) => (
-                  <article key={item.id} className={!playable(item) ? "unmatched" : ""}>
-                    <button
-                      className="track-play"
-                      disabled={!playable(item)}
-                      onClick={() => playable(item) && playSelectedFrom(index)}
-                      aria-label={playable(item) ? `播放 ${item.title}` : `${item.title} 尚未匹配`}
+              <SectionHeader
+                title={selected.name}
+                note={selected.description || `${selected.itemCount} 首`}
+                actions={
+                  <ButtonGroup>
+                    <Button
+                      size="sm"
+                      icon={Server}
+                      disabled={busy || !selected.items.length}
+                      onClick={() => syncSelected("plex")}
                     >
-                      {item.file_id ? <Play /> : <CircleAlert />}
-                    </button>
-                    <span className="track-position">{index + 1}</span>
-                    <div><strong>{item.title || "未命名歌曲"}</strong><small>{item.artist || "未知艺人"} · {item.album || "未知专辑"}</small></div>
-                    <em>{playable(item) ? "可播放" : "待匹配"}</em>
-                    <div className="track-order">
-                      <button className="icon-button" onClick={() => move(index, -1)} disabled={busy || index === 0} aria-label="上移"><ChevronDown className="rotate-180" /></button>
-                      <button className="icon-button" onClick={() => move(index, 1)} disabled={busy || index === selected.items.length - 1} aria-label="下移"><ChevronDown /></button>
-                    </div>
-                  </article>
-                )) : <Empty icon={Music2} title="空歌单" text="导入一个 M3U，或者放歌的时候顺手加进来。" />}
-              </div>
+                      同步 Plex
+                    </Button>
+                    <Button
+                      size="sm"
+                      icon={Radio}
+                      disabled={busy || !selected.items.length}
+                      onClick={() => syncSelected("fnos")}
+                    >
+                      同步飞牛
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      icon={Play}
+                      disabled={!selected.items.some(playable)}
+                      onClick={playAll}
+                    >
+                      全部播放
+                    </Button>
+                    <IconButton
+                      icon={Trash2}
+                      variant="danger"
+                      size="sm"
+                      label={`删除歌单 ${selected.name}`}
+                      onClick={() => setConfirmRemove(true)}
+                    />
+                  </ButtonGroup>
+                }
+              />
+              {selected.items.length ? (
+                <ListGroup>
+                  {selected.items.map((item, index) => (
+                    <ListRow
+                      key={item.id}
+                      leading={
+                        <span className="playlists__num">{index + 1}</span>
+                      }
+                      title={item.title || "未命名歌曲"}
+                      subtitle={[item.artist || "未知歌手", item.album]
+                        .filter(Boolean)
+                        .join(" · ")}
+                      chevron={false}
+                      trailing={
+                        <span className="playlists__row-actions">
+                          {!playable(item) && (
+                            <Badge tone="warning">没对上曲库</Badge>
+                          )}
+                          <IconButton
+                            icon={Play}
+                            size="sm"
+                            disabled={!playable(item)}
+                            label={
+                              playable(item)
+                                ? `从 ${item.title} 开始播`
+                                : `${item.title} 还没对上曲库里的文件`
+                            }
+                            onClick={() => playSelectedFrom(index)}
+                          />
+                          <IconButton
+                            icon={ChevronUp}
+                            size="sm"
+                            label={`把 ${item.title} 往上挪`}
+                            disabled={busy || index === 0}
+                            onClick={() => move(index, -1)}
+                          />
+                          <IconButton
+                            icon={ChevronDown}
+                            size="sm"
+                            label={`把 ${item.title} 往下挪`}
+                            disabled={busy || index === selected.items.length - 1}
+                            onClick={() => move(index, 1)}
+                          />
+                        </span>
+                      }
+                    />
+                  ))}
+                </ListGroup>
+              ) : (
+                <EmptyState
+                  icon={Music2}
+                  title="这张还是空的"
+                  text="导入一个 M3U，或者放歌的时候顺手加进来。"
+                />
+              )}
             </>
           )}
-        </section>
+        </Section>
       </div>
-    </div>
+
+      <Modal
+        open={confirmRemove}
+        onClose={() => setConfirmRemove(false)}
+        title={`删掉歌单「${selected?.name}」？`}
+        size="sm"
+        actions={
+          <ButtonGroup align="end">
+            <Button onClick={() => setConfirmRemove(false)}>留着</Button>
+            <Button variant="danger" icon={Trash2} onClick={remove}>
+              删掉
+            </Button>
+          </ButtonGroup>
+        }
+      >
+        <p>歌本身还在曲库里，只是这张单子没了。已经同步到 Plex 的那份不受影响。</p>
+      </Modal>
+    </Page>
   );
 }

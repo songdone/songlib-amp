@@ -58,7 +58,7 @@ from .schemas import ( LoginBody, SetupBody, PlaylistBody, PlaylistPatchBody, M3
     UserPasswordBody, SourceBody, SourceImportUrlBody, SourceImportCodeBody, SourceSearchBody,
     SourceResolveBody, JobBody, DownloadBody, BatchDownloadDecisionBody, SourcePreviewBody,
     SettingsPatchBody, PlexSettingsBody, PlexTestBody, PlexRemoteCommandBody, FnosSettingsBody,
-    TagUpdateBody, OrganizePreviewBody, OrganizeApplyBody, DownloadInboxApplyBody,
+    TagUpdateBody, TagFillPreviewBody, OrganizePreviewBody, OrganizeApplyBody, DownloadInboxApplyBody,
     ScrapePreviewBody, ScrapeApplyBody, DiscoveryDownloadBody, AirPlayCastUpdateBody,
     AirPlayCastClockBody,
 )
@@ -1089,6 +1089,11 @@ def scan_local_files():
 @app.post("/api/local/sync-plex", dependencies=[Depends(auth.current_user)])
 def sync_local_plex():
     return manager.create("plex_sync", "同步 Plex 条目与本地文件", {})
+
+
+@app.post("/api/local/tags/preview", dependencies=[Depends(auth.current_user)])
+def tag_fill_preview(body: TagFillPreviewBody):
+    return local_library.missing_tag_preview(body.fileIds)
 
 
 @app.post("/api/local/organize/preview", dependencies=[Depends(auth.current_user)])

@@ -32,6 +32,7 @@ export function Modal({
   description,
   size = "md",
   dismissible = true,
+  actions,
   children,
 }) {
   const ref = useRef(null);
@@ -77,6 +78,9 @@ export function Modal({
           <IconButton icon={X} label="关闭" onClick={onClose} />
         </header>
         <div className="ui-modal__body">{children}</div>
+        {/* 确认类弹窗的按钮固定在底部，和正文分开 ——
+            混在正文里的话，正文长一点按钮就被挤出视野了。 */}
+        {actions && <footer className="ui-modal__foot">{actions}</footer>}
       </div>
     </dialog>
   );

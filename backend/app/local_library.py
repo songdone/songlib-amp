@@ -557,6 +557,46 @@ class LocalLibraryService:
             "matched": matched, "success": len(records), "failed": 0, "skipped": 0,
         }
 
+    def _tag_candidates(self, file_ids: list[str] | None, limit: int = 1000):
+        selected = {str(value) for value in (file_ids or []) if value}
+        if selected:
+            return [self.get(file_id) for file_id in selected]
+        return self.list("", "", limit, 0)["items"]
+
+    def missing_tag_preview(self, file_ids: list[str] | None = None, limit: int = 300):
+        """Report what fill_missing_tags would write, without touching any file.
+
+        The UI needs to show "current value -> proposed value" before writing.
+        Recomputing the inference in the browser would drift from
+        infer_path_metadata, so the preview and the job share this one path.
+        """
+        items = []
+        for item in self._tag_candidates(file_ids, limit):
+            path = Path(item["path"])
+            audio = MutagenFile(path, easy=True)
+            tags = getattr(audio, "tags", {}) if audio else {}
+            inferred = infer_path_metadata(path)
+            fields = []
+            for tag, value in (("title", inferred["title"]), ("artist", inferred["artist"]),
+                               ("album", inferred["album"]), ("albumArtist", inferred["album_artist"])):
+                lookup = "albumartist" if tag == "albumArtist" else tag
+                current = _first(tags, lookup)
+                if value and not current:
+                    fields.append({"field": tag, "oldValue": current or "", "newValue": value})
+            items.append({
+                "fileId": item["id"],
+                "path": item["path"],
+                "fields": fields,
+                # 没有可补的字段也返回，前端才能说明"这些已经是全的"，
+                # 而不是让用户猜为什么清单比曲库短。
+                "skipReason": "" if fields else "四个字段都已经有值",
+            })
+        return {
+            "items": items,
+            "total": len(items),
+            "changeable": sum(1 for item in items if item["fields"]),
+        }
+
     def fill_missing_tags(self, payload: dict, progress):
         selected = {str(item.get("entityId")) for item in (payload.get("items") or []) if item.get("entityId")}
         candidates = [self.get(file_id) for file_id in selected] if selected else self.list("", "", 1000, 0)["items"]

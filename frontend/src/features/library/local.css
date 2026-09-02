@@ -1,0 +1,225 @@
+/**
+ * 文件与标签。
+ *
+ * 清单、胶囊、确认条这些通用版式来自 components/ui（Plan.jsx），
+ * 这里只写这一页独有的：开头那句话、页级动作、文件表格、分页、改动历史。
+ *
+ * 文件表格用 grid 而不是 <table>：列宽要跟着视口收缩，
+ * 而且窄屏时需要把"已有"和操作按钮折到第二行 —— table 做不到。
+ */
+
+@layer components {
+  .local__lead {
+    max-width: 64ch;
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    color: var(--text-secondary);
+  }
+
+  .local__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  /* 范围选择和它的动作按钮在一行，按钮跟着内容走不铺满。 */
+  .local__scope {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+  }
+
+  .local__scope-hint {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+  }
+
+  /* =============================================================
+   * 文件表格
+   * ============================================================= */
+
+  .local-files {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  /*
+   * 后两列必须是固定宽度，不能用 auto。
+   * 用 auto 的话每行的宽度取决于这一行有几个"已有"徽章、
+   * 于是"歌手 / 专辑"这一列的起始位置每行都不一样，整列纵向对不齐。
+   */
+  .local-files__head,
+  .local-files__row {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 2.2fr) minmax(0, 1.4fr) 170px 64px;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .local-files__head {
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    background: var(--surface-2);
+  }
+
+  .local-files__row + .local-files__row {
+    border-block-start: 1px solid var(--border-subtle);
+  }
+
+  .local-files__row:hover {
+    background: var(--surface-2);
+  }
+
+  .local-files__title,
+  .local-files__meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .local-files__title strong,
+  .local-files__meta span {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .local-files__title small,
+  .local-files__meta small {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* 路径用等宽字体：斜杠和相似字符在比例字体里容易看错。 */
+  .local-files__title small {
+    font-family: var(--font-mono);
+  }
+
+  .local-files__flags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    justify-content: flex-end;
+  }
+
+  /* 占位文案（"未填歌手"）压到三级色，不能和真实歌手名一个分量 ——
+     否则一眼扫下去分不清哪些是真数据。 */
+  .local-files__meta span[data-empty="true"],
+  .local-files__meta small[data-empty="true"] {
+    color: var(--text-tertiary);
+    font-weight: var(--weight-normal);
+    font-style: italic;
+  }
+
+  /* 操作按钮平时半透明，指针进这一行才实体化 ——
+     一屏五十行、每行两个亮按钮会让列表读不下去。 */
+  .local-files__row-actions {
+    display: flex;
+    gap: var(--space-1);
+    opacity: 0.45;
+    transition: opacity var(--duration-fast) var(--ease-out);
+  }
+
+  .local-files__row:hover .local-files__row-actions,
+  .local-files__row:focus-within .local-files__row-actions {
+    opacity: 1;
+  }
+
+  /* 触屏没有 hover，常态就得是可见的。 */
+  @media (hover: none) {
+    .local-files__row-actions {
+      opacity: 1;
+    }
+  }
+
+  @media (max-width: 860px) {
+    .local-files__head {
+      display: none;
+    }
+
+    .local-files__row {
+      grid-template-columns: 20px minmax(0, 1fr) 64px;
+      row-gap: var(--space-2);
+    }
+
+    /* 歌手/专辑折到第二行，跟标题左对齐。 */
+    .local-files__meta {
+      grid-column: 2 / -1;
+    }
+
+    .local-files__flags {
+      grid-column: 2;
+      justify-content: flex-start;
+    }
+  }
+
+  /* =============================================================
+   * 分页
+   * ============================================================= */
+
+  .local-pager {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* =============================================================
+   * 改动历史
+   * ============================================================= */
+
+  .local-history {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .local-history__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .local-history__row + .local-history__row {
+    border-block-start: 1px solid var(--border-subtle);
+  }
+
+  .local-history__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .local-history__text strong {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-primary);
+  }
+
+  .local-history__text small,
+  .local-history__note {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+  }
+}

@@ -1032,6 +1032,14 @@
     min-height: 0;
     overflow: auto;
   }
+
+  .ui-modal__foot {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-5);
+    border-block-start: 1px solid var(--border-subtle);
+  }
 }
 
 @layer components {
@@ -1346,5 +1354,285 @@
     overflow: hidden;
     /* 压暗，让这一层退到内容后面去。 */
     opacity: 0.66;
+  }
+}
+
+@layer components {
+  /* =============================================================
+   * 批量操作骨架（见 Plan.jsx）
+   *
+   * 这一组样式服务于同一件事：让人在按下"执行"之前看清会改什么。
+   * 所以版式上保证新旧值在同一行、同一视线高度对比，
+   * 冲突和跳过用标签标出来 —— 不靠颜色单独表意。
+   * ============================================================= */
+
+  /* --- 单选胶囊 --- */
+
+  .ui-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .ui-chips--cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    width: 100%;
+  }
+
+  .ui-chip {
+    display: flex;
+    align-items: center;
+    height: var(--control-height-sm);
+    padding-inline: var(--space-4);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--text-secondary);
+    transition:
+      background-color var(--duration-fast) var(--ease-out),
+      border-color var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out);
+  }
+
+  .ui-chip strong {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+  }
+
+  .ui-chip:hover {
+    color: var(--text-primary);
+    border-color: var(--border-strong);
+  }
+
+  .ui-chip--on {
+    color: var(--accent-on-solid);
+    background: var(--accent-solid);
+    border-color: transparent;
+  }
+
+  /* 带说明的那种是方块卡片，不是胶囊 —— 两行文字塞进胶囊会挤。 */
+  .ui-chips--cards .ui-chip {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    height: auto;
+    padding: var(--space-3);
+    text-align: start;
+    background: var(--surface-inset);
+    border-color: var(--border-subtle);
+    border-radius: var(--radius-md);
+  }
+
+  .ui-chips--cards .ui-chip strong {
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+  }
+
+  .ui-chips--cards .ui-chip small {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+  }
+
+  .ui-chips--cards .ui-chip--on {
+    border-color: var(--accent-border);
+    background: var(--accent-soft);
+    color: var(--text-primary);
+  }
+
+  /* --- 变更清单 --- */
+
+  .ui-plan-list {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .ui-plan-row {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .ui-plan-row + .ui-plan-row {
+    border-block-start: 1px solid var(--border-subtle);
+  }
+
+  /* 勾掉或跳过的条目整体压暗，但仍然可读 ——
+     用户需要知道自己排除了什么。 */
+  .ui-plan-row--off {
+    opacity: 0.5;
+  }
+
+  .ui-plan-row__nocheck {
+    width: 20px;
+  }
+
+  .ui-plan-row__main {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .ui-plan-row__head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .ui-plan-row__head strong {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+  }
+
+  .ui-plan-row__note {
+    font-size: var(--text-xs);
+    color: var(--warning-text);
+  }
+
+  .ui-plan-row__meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    flex: none;
+    font-size: var(--text-2xs);
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 新旧对比。旧值划掉、新值高亮，和标签编辑器保持同一套语言。 */
+  .ui-plan-diff {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+    font-size: var(--text-xs);
+  }
+
+  .ui-plan-diff svg {
+    flex: none;
+    width: 12px;
+    height: 12px;
+    color: var(--text-tertiary);
+  }
+
+  .ui-plan-diff__old {
+    flex: none;
+    max-width: 22ch;
+    color: var(--text-tertiary);
+    text-decoration: line-through;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ui-plan-diff__new {
+    min-width: 0;
+    color: var(--accent-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ui-plan-diff .ui-cover {
+    flex: none;
+  }
+
+  /* --- 确认条 --- */
+
+  .ui-plan-confirm {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+  }
+
+  .ui-plan-confirm__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+  }
+
+  .ui-plan-confirm__text strong {
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+  }
+
+  @media (max-width: 720px) {
+    .ui-plan-row {
+      grid-template-columns: 20px minmax(0, 1fr);
+    }
+
+    /* 窄屏把次要信息移到第二行左对齐，不再挤在右边。 */
+    .ui-plan-row__meta {
+      grid-column: 2;
+      flex-direction: row;
+      align-items: center;
+      gap: var(--space-3);
+    }
+  }
+}
+
+@layer primitives {
+  /* =============================================================
+   * 下拉选择
+   *
+   * 原生 <select> 的收起态在各平台差异很大，但展开的选项列表是系统
+   * 渲染的、改不动。所以这里只统一收起态的外观，不做自定义列表 ——
+   * 自定义列表要自己实现键盘操作、屏幕阅读器语义和移动端滚轮，
+   * 收益远小于成本。
+   * ============================================================= */
+
+  .ui-select {
+    height: var(--control-height-sm);
+    padding-inline: var(--space-3);
+    /* 留出右侧箭头的位置 */
+    padding-inline-end: var(--space-8);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    background-color: var(--surface-2);
+    background-image: linear-gradient(
+        45deg,
+        transparent 50%,
+        var(--text-tertiary) 50%
+      ),
+      linear-gradient(135deg, var(--text-tertiary) 50%, transparent 50%);
+    background-position:
+      calc(100% - 16px) calc(50% + 2px),
+      calc(100% - 11px) calc(50% + 2px);
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+    appearance: none;
+  }
+
+  .ui-select:hover {
+    border-color: var(--border-strong);
+  }
+
+  .ui-select:focus-visible {
+    outline: 2px solid var(--accent-border);
+    outline-offset: 1px;
   }
 }

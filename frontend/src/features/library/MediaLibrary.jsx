@@ -1,6 +1,6 @@
 import { LoaderCircle, Plus, Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { MediaCard } from "../../components/MediaCard";
+import { MediaCard, MediaGrid } from "../../components/ui/MediaCard";
 import { PageLoader } from "../../components/PageLoader";
 import { TrackTable } from "../../components/TrackTable";
 import { api } from "../../lib/api";
@@ -223,19 +223,28 @@ export function MediaLibrary({
       ) : tab === "tracks" ? (
         <TrackTable items={data.items} play={play} />
       ) : (
-        <div className="media-grid">
+        <MediaGrid min={168}>
           {data.items.map((item) => (
             <MediaCard
-              item={item}
-              type={tab}
               key={item.ratingKey}
-              showTracks={showTracks}
-              playFirst={playFirst}
-              openDetail={openDetail}
-              previewBackdrop={previewBackdrop}
+              kind={tab === "artists" ? "artist" : "album"}
+              title={item.title}
+              subtitle={
+                tab === "artists"
+                  ? (item.tags?.genre || []).slice(0, 2).join(" · ") || "音乐人"
+                  : [item.parentTitle, item.year].filter(Boolean).join(" · ")
+              }
+              coverUrl={item.thumbUrl}
+              onOpen={() => openDetail(tab, item)}
+              onPlay={() => playFirst(item)}
+              playLabel={
+                tab === "artists"
+                  ? `播放 ${item.title} 的曲目`
+                  : `播放专辑 ${item.title}`
+              }
             />
           ))}
-        </div>
+        </MediaGrid>
       )}
       {!loading && data.items.length < data.total && (
         <div className="library-load-more">

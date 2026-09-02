@@ -258,7 +258,17 @@ export function AuthenticatedShell({ setAuthenticated }) {
           isAdmin={canOpenManagement}
         />
       )}
-      <main className="main">
+      {/*
+        player-main-shell 让浅色主题的画布规则跳过这一格。
+        沉浸式播放页是故意始终深色的（见 features/now-playing/now-playing.css）。
+
+        这个类名之前只存在于两处**注释和选择器**里 ——
+        sidebar.css 写了 `.main:not(.player-main-shell)` 把它排除在外，
+        now-playing.css 的开头也说明了这件事，但从来没有元素挂上它。
+        结果是：浅色主题下 main 变成 #f6f6f8，而这一页的文字色钉在
+        #f6f6f8，整页文字、按钮、右侧面板全部消失。
+      */}
+      <main className={active === "player" ? "main player-main-shell" : "main"}>
         {/*
           深浅切换直接放在顶栏 —— 原先只能进设置里翻三层才能换。
           themePreference 传的是用户偏好（可能是 system），

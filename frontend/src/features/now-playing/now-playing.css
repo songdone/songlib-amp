@@ -1211,7 +1211,20 @@
       height: 58px;
     }
 
+    /*
+     * 手机上只藏音量滑块，不藏整行。
+     *
+     * 原来是 `.now-control-meta { display: none }` —— 想藏的是音量
+     * （手机有实体音量键，屏幕上再放一条滑块是多余的），但顺手把
+     * "喜欢"和"做分享图"一起藏了。分享恰恰是在手机上最常做的事，
+     * 结果整个功能在手机上根本点不到。
+     */
     .now-control-meta {
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .now-control-meta > label {
       display: none;
     }
 

@@ -161,7 +161,7 @@ export function Login({ onLogin }) {
           <div className="login__card glass glass--thick glow-ring">
             <div className="login__card-head">
               <h2>欢迎回来</h2>
-              <p>用你的账号继续</p>
+              <p>登录后继续</p>
             </div>
 
             <form className="login__form" onSubmit={submit}>

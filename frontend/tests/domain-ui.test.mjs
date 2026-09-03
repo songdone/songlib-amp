@@ -460,12 +460,24 @@ test("touch startup and the global shell avoid continuous media work", () => {
 
 test("startup cannot remain on the static connecting screen forever", () => {
   const index = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  /*
+   * 文件名带版本号（startup-v110.js），每次发版都会改 —— 以前这里写死
+   * 的是 v105，改名之后测试就红了，而红的原因跟它想守的东西无关。
+   * 改成从 index.html 里把名字读出来：既守住"引用和文件必须对得上"，
+   * 又不会因为改名而失效。
+   */
+  const referenced = index.match(/\/(startup-v\d+\.js)/);
+  assert.ok(referenced, "index.html 必须引用 startup-vNNN.js");
   const startup = readFileSync(
-    new URL("../public/startup-v105.js", import.meta.url),
+    new URL(`../public/${referenced[1]}`, import.meta.url),
     "utf8",
   );
   const entry = readSource("main.jsx");
-  assert.match(index, /startup-v105\.js/);
+  assert.match(
+    readFileSync(new URL("../public/sw.js", import.meta.url), "utf8"),
+    new RegExp(referenced[1].replace(".", "\\.")),
+    "service worker 的预缓存清单也要跟着改名",
+  );
   assert.match(startup, /window\.setTimeout\(recoverOnce, 12000\)/);
   assert.match(startup, /清理本应用缓存并重新连接/);
   assert.match(startup, /registration\.unregister\(\)/);

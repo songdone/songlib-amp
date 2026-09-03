@@ -62,3 +62,36 @@ jobs:
       - uses: actions/checkout@v4
       - run: SONGLIB_ENV_FILE=.env.example docker compose --env-file .env.example config --quiet
       - run: docker build --tag songlib-amp:ci .
+      # 真容器起一遍。
+      #
+      # 在这一步之前，所有测试都跑在自己写的 mock 上。mock 永远不会告诉你
+      # 镜像里少了一个字体、迁移在空库上跑不过、或者 ffmpeg 没装进去。
+      # 这一段补的就是这个：起真镜像、等它 ready、把该断言的逐条断过去。
+      #
+      # 每条都写成单行 python3 -c，不用 heredoc —— 带引号的 heredoc 终止符
+      # 必须顶格，而顶格就跳出了 YAML 的块标量。
+      - name: 真镜像启动自检
+        run: |
+          set -eu
+          work=$(mktemp -d)
+          mkdir -p "$work/data" "$work/downloads" "$work/music"
+          docker run -d --name songlib-smoke -p 18080:8080 \
+            -e APP_ENV=production -e WORKER_MODE=embedded \
+            -e APP_PASSWORD=ci-smoke-password-123456 \
+            -e SESSION_SECRET=ci-smoke-session-secret-0123456789 \
+            -v "$work/data:/data" -v "$work/downloads:/downloads" -v "$work/music:/music" \
+            songlib-amp:ci
+          body=""
+          for i in $(seq 1 60); do
+            body=$(curl -sf http://127.0.0.1:18080/api/health/ready 2>/dev/null || true)
+            case "$body" in *'"status":"ready"'*) break;; *) body="";; esac
+            sleep 2
+          done
+          if [ -z "$body" ]; then docker logs songlib-smoke; docker rm -f songlib-smoke; exit 1; fi
+          # plex 没配是正常的，CI 里本来就没有 Plex；其余每一项都必须过
+          printf '%s' "$body" | python3 -c 'import json,sys; h=json.load(sys.stdin); bad=[k for k,v in h["checks"].items() if k != "plex" and not v.get("ok")]; assert not bad, f"健康检查未通过：{bad}"; print("版本", h["version"], "健康检查全过")'
+          # 迁移在空库上跑过了，续播表应该在
+          docker exec songlib-smoke python3 -c 'import sqlite3; names = {r[0] for r in sqlite3.connect("/data/manager.db").execute("SELECT name FROM sqlite_master WHERE type=?", ("table",))}; assert "playback_positions" in names, "迁移没跑，缺 playback_positions"; print("迁移已应用")'
+          # 投屏那条守卫：镜像里必须有画得出汉字的字体，否则投屏会拒绝启动
+          docker exec -e PYTHONPATH=/app songlib-smoke python3 -c 'from app.airplay_cast import cjk_font_missing; assert not cjk_font_missing(), "镜像里没有能渲染中文的字体"; print("中文字体检查通过")'
+          docker rm -f songlib-smoke

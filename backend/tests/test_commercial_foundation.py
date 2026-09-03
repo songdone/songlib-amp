@@ -1044,7 +1044,7 @@ class PlexStreamFallbackTests(unittest.TestCase):
                 client.get("/api/player/plex/90056/stream?bitrate=320k").read()
         self.assertEqual(len(timeouts), 1)
         self.assertIsNotNone(timeouts[0])
-        self.assertEqual(timeouts[0].read, 6.0)
+        self.assertEqual(timeouts[0].read, 4.0)
 
     def test_seeking_a_transcode_restarts_it_at_a_time_offset(self):
         """转码流没有字节范围，Plex 只能从某个时间点重新起转。

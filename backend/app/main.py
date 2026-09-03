@@ -1166,9 +1166,16 @@ def plex_playback_info(rating_key: str, bitrate: str = "original"):
         raise HTTPException(status_code=502, detail=f"无法播放该 Plex 曲目，请检查 Plex Token、服务器地址或媒体文件权限。{exc}") from exc
 
 
-# 转码首字节预算。实测正常 1.7–3.7 秒，见过 13.2 秒；反代等不到响应体
-# 会先掐（用户拿到 502、没有声音），所以超过这个数就退回原始音质。
-TRANSCODE_FIRST_BYTE_SECONDS = 6.0
+# 转码首字节预算。
+#
+# 定这个数的过程值得记一笔：先按"正常 1.7–3.7 秒"取了 6 秒，但那批数据是
+# **我自己每 4 秒轰一次打出来的**，不算数。按真实听歌的节奏（15 秒换一次）
+# 重测，转码首字节只要 0.88 秒、原始音质 0.7–1.1 秒。
+#
+# 所以 4 秒对健康路径有 4.5 倍余量，同时把最坏情况的"响应头延迟"
+# 从 6+N 压到 4+N —— 反代等的是**响应头**，超时就把连接掐掉，
+# 用户拿到 502、一点声音都没有（比降级到原始音质糟得多）。
+TRANSCODE_FIRST_BYTE_SECONDS = 4.0
 
 
 def _header_safe(value: str, limit: int = 300) -> str:

@@ -118,10 +118,36 @@ class SecurityMiddleware(BaseHTTPMiddleware):
 
     @staticmethod
     def _origin_allowed(request: Request, origin: str) -> bool:
+        """同源请求要放过，跨源请求要拦住。
+
+        这里踩过一次线上事故。原来预期来源是
+
+            f"{request.url.scheme}://{host}"
+
+        应用跑在 HTTPS 反代后面时，uvicorn 看到的是反代过来的内网 HTTP，
+        scheme 是 http；而浏览器发的 Origin 是 https://<域名>。两者对不上，
+        于是**自己的静态资源被自己拦成 403**，整站白屏。
+
+        为什么以前没炸：Vite 会给 module script 加 crossorigin，这些请求
+        才带 Origin；而 Service Worker 把资源缓存住了，根本不走网络。
+        等到发版换了资源指纹和缓存版本，浏览器必须回源，才一次性暴露。
+
+        --proxy-headers 解决不了：它只信 --forwarded-allow-ips 里的地址，
+        而反代通常不在 127.0.0.1。把那个改成 * 是更大的授权，不划算。
+
+        所以这里只放宽一件事：host 仍然必须完全相同，scheme 额外接受
+        https。方向是安全的 —— 攻击者无法伪造 Origin，host 又必须一致，
+        放宽的只是"反代在外面把 http 升成了 https"这一种情形。
+        反过来（对外 https、Origin 写 http）不在放宽范围里。
+        """
         if origin in settings.trusted_origins:
             return True
-        expected = f"{request.url.scheme}://{request.headers.get('host', '')}".rstrip("/")
-        return hmac.compare_digest(origin, expected)
+        host = request.headers.get("host", "")
+        # 用 any + compare_digest 而不是 in，保持原来的定时安全比较风格。
+        return any(
+            hmac.compare_digest(origin, f"{scheme}://{host}".rstrip("/"))
+            for scheme in {request.url.scheme, "https"}
+        )
 
     @staticmethod
     def _cors_headers(response, origin: str) -> None:

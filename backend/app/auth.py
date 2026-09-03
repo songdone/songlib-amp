@@ -17,6 +17,19 @@ from .security import CSRF_COOKIE, issue_csrf
 COOKIE_NAME = "songlib_session"
 MAX_AGE = 60 * 60 * 24 * 14
 
+# 密码最短长度。
+#
+# 原来有两个数：初始化向导要 12 位，后台建用户和改密码要 10 位 ——
+# 头一次设密码反而比之后改密码更严，没有道理。统一成 10。
+#
+# 不再往下降，是因为这个服务会挂在公网域名上。10 位不要求大小写数字
+# 符号混搭，一句拼音或者一句英文就够，已经不算难记；再短就只剩暴力
+# 破解的成本问题了。
+#
+# 想跳过向导可以在 compose 里设 APP_PASSWORD，那时候密码由你自己定，
+# 这条限制不参与。
+MIN_PASSWORD_LENGTH = 10
+
 
 def _secret() -> str:
     configured = settings.session_secret.strip()
@@ -109,8 +122,10 @@ def ensure_bootstrap_password():
 
 def complete_setup(username: str, password: str, display_name: str = ""):
     username = _normalize_username(username)
-    if len(password or "") < 12:
-        raise HTTPException(status_code=400, detail="密码至少需要 12 个字符")
+    if len(password or "") < MIN_PASSWORD_LENGTH:
+        raise HTTPException(
+            status_code=400, detail=f"密码至少需要 {MIN_PASSWORD_LENGTH} 个字符"
+        )
     stamp = now()
     with transaction() as conn:
         if conn.execute("SELECT 1 FROM users LIMIT 1").fetchone():
@@ -229,8 +244,10 @@ def _route_allowed_for_user(user: dict, request: Request) -> bool:
 
 
 def change_password(user: dict, old_password: str, new_password: str):
-    if len(new_password) < 10:
-        raise HTTPException(status_code=400, detail="新密码至少需要 10 个字符")
+    if len(new_password) < MIN_PASSWORD_LENGTH:
+        raise HTTPException(
+            status_code=400, detail=f"新密码至少需要 {MIN_PASSWORD_LENGTH} 个字符"
+        )
     item = row("SELECT * FROM users WHERE id=?", (user["id"],))
     if not item:
         raise HTTPException(status_code=404, detail="账号不存在")
@@ -247,8 +264,10 @@ def list_users():
 
 def create_user(username: str, password: str, display_name: str = "", role: str = "admin", permissions: list[str] | None = None, library_scopes: list[str] | None = None):
     username = _normalize_username(username)
-    if len(password or "") < 10:
-        raise HTTPException(status_code=400, detail="密码至少需要 10 个字符")
+    if len(password or "") < MIN_PASSWORD_LENGTH:
+        raise HTTPException(
+            status_code=400, detail=f"密码至少需要 {MIN_PASSWORD_LENGTH} 个字符"
+        )
     role = role if role in ("admin", "owner", "library_admin", "listener") else "listener"
     stamp = now()
     user_id = secrets.token_hex(8)
@@ -311,8 +330,10 @@ def update_user(user_id: str, *, username: str | None = None, display_name: str 
 
 
 def reset_password(user_id: str, new_password: str):
-    if len(new_password or "") < 10:
-        raise HTTPException(status_code=400, detail="新密码至少需要 10 个字符")
+    if len(new_password or "") < MIN_PASSWORD_LENGTH:
+        raise HTTPException(
+            status_code=400, detail=f"新密码至少需要 {MIN_PASSWORD_LENGTH} 个字符"
+        )
     user = row("SELECT * FROM users WHERE id=?", (user_id,))
     if not user:
         raise HTTPException(status_code=404, detail="账号不存在")

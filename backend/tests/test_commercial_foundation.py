@@ -12,6 +12,7 @@ os.environ.setdefault("MUSIC_ROOT", tempfile.mkdtemp(prefix="songlib-commercial-
 os.environ.setdefault("PLEX_CONFIG", tempfile.mkdtemp(prefix="songlib-commercial-plex-"))
 os.environ.setdefault("WORKER_MODE", "web")
 
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from mutagen import File as MutagenFile
 
@@ -740,3 +741,93 @@ class CommercialFoundationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PasswordLengthRuleTests(unittest.TestCase):
+    """密码最短长度只能有一个数。
+
+    原来有两个：初始化向导 12 位、后台建用户和改密码 10 位 —— 第一次
+    设密码反而比之后改密码更严。这条用例把"只有一个数"钉住。
+    """
+
+    def test_setup_and_user_creation_share_one_minimum(self):
+        from app import auth
+
+        self.assertEqual(auth.MIN_PASSWORD_LENGTH, 10)
+        short = "a" * (auth.MIN_PASSWORD_LENGTH - 1)
+        just_enough = "a" * auth.MIN_PASSWORD_LENGTH
+
+        # 向导和建用户必须在同一个长度上拒绝、在同一个长度上放行。
+        for label, call in (
+            ("初始化向导", lambda pw: auth.complete_setup("someone", pw)),
+            ("后台建用户", lambda pw: auth.create_user("someone-else", pw)),
+        ):
+            with self.subTest(label):
+                with self.assertRaises(HTTPException) as caught:
+                    call(short)
+                self.assertEqual(caught.exception.status_code, 400)
+                self.assertIn(str(auth.MIN_PASSWORD_LENGTH), caught.exception.detail)
+
+        # 刚够长度的那一个必须能过。complete_setup 只在没有任何用户时可用，
+        # 这个套件里已经有 admin 了，所以这里验的是 create_user。
+        created = auth.create_user("length-boundary-user", just_enough)
+        self.assertEqual(created["username"], "length-boundary-user")
+
+
+class ReverseProxyOriginTests(unittest.TestCase):
+    """HTTPS 反代后面的同源请求不能被自己拦掉。
+
+    线上真炸过一次：应用在反代后面，uvicorn 看到的 scheme 是内网 http，
+    浏览器发的 Origin 是 https://<域名>，预期来源算成 http://<域名>，
+    于是自己的静态资源被自己 403，整站白屏。
+    """
+
+    @staticmethod
+    def _request(scheme: str, host: str):
+        from starlette.requests import Request
+
+        return Request(
+            {
+                "type": "http",
+                "method": "GET",
+                "scheme": scheme,
+                "path": "/assets/index.js",
+                "query_string": b"",
+                "headers": [(b"host", host.encode())],
+            }
+        )
+
+    def test_https_origin_passes_when_proxy_terminated_tls(self):
+        from app.security import SecurityMiddleware
+
+        allowed = SecurityMiddleware._origin_allowed(
+            self._request("http", "sla.playsong.cn"), "https://sla.playsong.cn"
+        )
+        self.assertTrue(allowed, "反代把 TLS 卸载掉之后，同域的 https 来源必须放过")
+
+    def test_same_scheme_origin_still_passes(self):
+        from app.security import SecurityMiddleware
+
+        self.assertTrue(
+            SecurityMiddleware._origin_allowed(
+                self._request("http", "192.168.31.28:32783"),
+                "http://192.168.31.28:32783",
+            )
+        )
+
+    def test_a_different_host_is_still_rejected(self):
+        """放宽的只有 scheme，host 仍然必须完全一致。"""
+        from app.security import SecurityMiddleware
+
+        for hostile in (
+            "https://evil.example.com",
+            "https://sla.playsong.cn.evil.example.com",
+            "https://sla.playsong.cn:8443",
+        ):
+            with self.subTest(hostile):
+                self.assertFalse(
+                    SecurityMiddleware._origin_allowed(
+                        self._request("http", "sla.playsong.cn"), hostile
+                    ),
+                    f"{hostile} 不该被当成同源",
+                )

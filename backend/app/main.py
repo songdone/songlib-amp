@@ -1166,6 +1166,11 @@ def plex_playback_info(rating_key: str, bitrate: str = "original"):
         raise HTTPException(status_code=502, detail=f"无法播放该 Plex 曲目，请检查 Plex Token、服务器地址或媒体文件权限。{exc}") from exc
 
 
+# 转码首字节预算。实测正常 1.7–3.7 秒，见过 13.2 秒；反代等不到响应体
+# 会先掐（用户拿到 502、没有声音），所以超过这个数就退回原始音质。
+TRANSCODE_FIRST_BYTE_SECONDS = 6.0
+
+
 def _header_safe(value: str, limit: int = 300) -> str:
     """把任意文本压成一个能当响应头值的单行 ASCII 串。
 
@@ -1229,15 +1234,32 @@ def plex_stream(rating_key: str, request: Request, bitrate: str = "original"):
     for candidate_url, mode in candidates:
         if not candidate_url:
             continue
+        # 转码要给首字节定个预算；原始音质是直读文件，不设限。
+        #
+        # 为什么必须有：转码起步慢的时候（实测正常 1.7–3.7s，见过 13.2s），
+        # **反代等不到响应体就先掐了，用户拿到 502、一点声音都没有** ——
+        # 而应用这边日志还记着 200。这比"降级到原始音质"糟得多。
+        # 预算按实测取 6 秒：覆盖正常区间，超了就退回原始音质（<1s 就出声）。
+        timeout = (
+            httpx.Timeout(connect=5.0, read=TRANSCODE_FIRST_BYTE_SECONDS, write=10.0, pool=5.0)
+            if mode == "transcode"
+            else None
+        )
         # Range 只对原始音质有意义（那是真文件）。转码流已经用 offset 表达过
         # 起点了，再把 Range 转发上去，Plex 会当没看见并从头给 ——
         # 浏览器却以为拿到的是 seek 之后的数据，进度条就会错位。
         headers = {"Range": range_header} if (range_header and mode == "original") else {}
-        client = httpx.Client(timeout=None, follow_redirects=True)
+        client = httpx.Client(timeout=timeout, follow_redirects=True)
+        first_chunk = b""
+        chunks = None
         try:
             upstream = client.build_request("GET", candidate_url, headers=headers)
             response = client.send(upstream, stream=True)
             response.raise_for_status()
+            # 首字节必须**在这里**拿到，不能等进了 StreamingResponse 再说 ——
+            # 那时候响应头已经发出去了，再失败就没机会退回原始音质了。
+            chunks = response.iter_bytes(1024 * 128)
+            first_chunk = next(chunks, b"")
         except Exception as exc:
             # Plex 把拒绝的理由写在响应体里，httpx 的异常消息只有状态码和 URL。
             # 不读出来就只能看到一个光秃秃的 400，查不下去。
@@ -1251,6 +1273,8 @@ def plex_stream(rating_key: str, request: Request, bitrate: str = "original"):
                     detail = ""
             client.close()
             failures.append(f"{mode}: {exc}{detail}")
+            if mode == "transcode" and session:
+                plex.stop_transcode(session)
             continue
 
         passthrough = {}
@@ -1287,9 +1311,12 @@ def plex_stream(rating_key: str, request: Request, bitrate: str = "original"):
         # 新会话一律被 Plex 拒掉，用户看到的是"音质设置有时生效有时不生效"。
         close_session = session if mode == "transcode" else ""
 
-        def iterator(response=response, client=client, close_session=close_session):
+        def iterator(response=response, client=client, close_session=close_session,
+                     first_chunk=first_chunk, chunks=chunks):
             try:
-                for chunk in response.iter_bytes(1024 * 128):
+                if first_chunk:
+                    yield first_chunk
+                for chunk in chunks:
                     if chunk:
                         yield chunk
             finally:
@@ -1305,8 +1332,7 @@ def plex_stream(rating_key: str, request: Request, bitrate: str = "original"):
             headers=passthrough,
         )
 
-    if session:
-        plex.stop_transcode(session)
+    # 会话已经在上面那个失败分支里还掉了，这里不必再来一次。
     raise HTTPException(
         status_code=502,
         detail="Plex 播放流代理失败：" + "；".join(failures or ["没有可用的播放地址"]),

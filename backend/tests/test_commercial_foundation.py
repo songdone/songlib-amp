@@ -983,6 +983,69 @@ class PlexStreamFallbackTests(unittest.TestCase):
         self.assertEqual(response.status_code, 502)
         stop.assert_called_once_with("sess-1")
 
+    def test_a_transcode_that_stalls_before_the_first_byte_falls_back(self):
+        """反代等不到响应体就会掐掉连接，用户拿到 502、一点声音都没有 ——
+        而应用这边日志还记着 200（线上抓到过）。首字节必须有预算，
+        超了就退回原始音质（<1s 就出声）。
+
+        关键是**在响应头发出去之前**就把首字节拿到手：进了 StreamingResponse
+        再失败，已经没机会改主意了。
+        """
+        sent = []
+
+        def send(request, **kwargs):
+            url = str(request.url)
+            sent.append(url)
+            response = MagicMock()
+            response.raise_for_status.return_value = None
+            response.status_code = 200
+            response.headers = {"content-type": "audio/mpeg"}
+            if "transcode" in url:
+                # Plex 接了请求、给了头，然后迟迟不出第一个字节
+                response.iter_bytes.side_effect = httpx.ReadTimeout("first byte never came")
+            else:
+                response.headers = {"content-type": "audio/flac", "accept-ranges": "bytes"}
+                response.iter_bytes.return_value = iter([b"\x00" * 16])
+            return response
+
+        client_mock = MagicMock()
+        client_mock.build_request.side_effect = lambda method, url, headers=None: MagicMock(url=url)
+        client_mock.send.side_effect = send
+        with (
+            patch.object(plex, "playback", return_value=self._playback("320k")),
+            patch.object(plex, "stop_transcode") as stop,
+            patch("app.main.httpx.Client", return_value=client_mock),
+        ):
+            with TestClient(app) as client:
+                self._login(client)
+                response = client.get("/api/player/plex/90056/stream?bitrate=320k")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get("x-songlib-stream-mode"), "original")
+        self.assertEqual(response.headers.get("x-songlib-stream-fallback"), "1")
+        # 卡住的那条会话也要还回去
+        stop.assert_called_once_with("sess-1")
+
+    def test_the_transcode_attempt_carries_a_first_byte_deadline(self):
+        """原始音质是直读文件，不设限；只有转码那条要卡预算。"""
+        timeouts = []
+
+        def make_client(timeout=None, follow_redirects=False):
+            timeouts.append(timeout)
+            client, _ = self._upstream(transcode_ok=True)
+            return client
+
+        with (
+            patch.object(plex, "playback", return_value=self._playback("320k")),
+            patch.object(plex, "stop_transcode"),
+            patch("app.main.httpx.Client", side_effect=make_client),
+        ):
+            with TestClient(app) as client:
+                self._login(client)
+                client.get("/api/player/plex/90056/stream?bitrate=320k").read()
+        self.assertEqual(len(timeouts), 1)
+        self.assertIsNotNone(timeouts[0])
+        self.assertEqual(timeouts[0].read, 6.0)
+
     def test_seeking_a_transcode_restarts_it_at_a_time_offset(self):
         """转码流没有字节范围，Plex 只能从某个时间点重新起转。
 

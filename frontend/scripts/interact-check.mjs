@@ -181,19 +181,46 @@ else {
   else ok("关掉后滚动已恢复");
 }
 
-/* ---------- 4. 歌词跟随：等着看它动不动 ---------- */
-console.log("\n歌词跟随");
-const followed = await page.evaluate(async () => {
-  const box = document.querySelector(".now-lyrics-lines");
-  if (!box) return { skip: "找不到歌词列表" };
-  if (box.scrollHeight <= box.clientHeight + 8) return { skip: "歌词太少，不会滚动" };
-  const first = box.scrollTop;
-  await new Promise((r) => setTimeout(r, 6000));
-  return { first, then: box.scrollTop };
+/* ---------- 4. 歌词：面板要能内部滚，当前句要跟着走 ---------- */
+console.log("\n歌词");
+const box = await page.evaluate(() => {
+  const el = document.querySelector(".now-lyrics-lines");
+  if (!el) return null;
+  return {
+    lines: el.children.length,
+    clientHeight: el.clientHeight,
+    scrollHeight: el.scrollHeight,
+    pageHeight: document.documentElement.scrollHeight,
+    viewport: window.innerHeight,
+  };
 });
-if (followed.skip) console.log("  —", followed.skip);
-else if (followed.first === followed.then) note("放了 6 秒，歌词列表一动不动，没跟着歌走");
-else ok(`歌词跟随生效（scrollTop ${followed.first} → ${followed.then}）`);
+if (!box) note("找不到歌词列表");
+else if (box.lines < 12) note(`歌词只有 ${box.lines} 行，测不出滚动（mock 数据要够长）`);
+else {
+  // 这条守的是一个真炸过的 bug：歌词面板没有高度约束，有多少行就长多高，
+  // align-items:stretch 又把左栏一起拉高，于是滚的是整个页面而不是面板。
+  if (box.scrollHeight <= box.clientHeight + 8)
+    note(`歌词面板不可内部滚动（client ${box.clientHeight} / scroll ${box.scrollHeight}），说明它被内容撑开了`);
+  else ok(`歌词面板可内部滚动（${box.clientHeight} / ${box.scrollHeight}）`);
+  if (box.pageHeight > box.viewport + 40)
+    note(`正在播放页整页被撑到 ${box.pageHeight}（视口 ${box.viewport}），主区没有视口约束`);
+  else ok("整页没有被歌词撑开");
+
+  // 点靠后的一句触发 seek，比等一分钟快，且能确定地检验跟随
+  const lines = page.locator(".now-lyrics-lines button");
+  const total = await lines.count();
+  await lines.nth(total - 4).click();
+  await page.waitForTimeout(1600);
+  const after = await page.evaluate(() => {
+    const el = document.querySelector(".now-lyrics-lines");
+    const idx = [...el.children].findIndex((c) => c.classList.contains("active"));
+    return { idx, scrollTop: Math.round(el.scrollTop), max: el.scrollHeight - el.clientHeight };
+  });
+  if (after.idx < 12) note(`点了倒数第 4 句，当前句却是第 ${after.idx} 句，seek 没生效`);
+  else if (after.scrollTop === 0)
+    note("当前句到了列表末尾，歌词却没有跟着滚动");
+  else ok(`歌词跟随生效（当前第 ${after.idx} 句，scrollTop ${after.scrollTop}/${after.max}）`);
+}
 
 /* ---------- 5. 全站找超大字号的正文 ---------- */
 console.log("\n字号");

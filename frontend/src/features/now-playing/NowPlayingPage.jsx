@@ -36,7 +36,7 @@ import {
 import { Button, IconButton } from "../../components/ui/Button";
 import { PosterStudio } from "../share/PosterStudio";
 import { api } from "../../lib/api";
-import { displayLyricsFor, parseLrc } from "../../lib/lyrics";
+import { displayLyricsFor, isCreditLine, parseLrc } from "../../lib/lyrics";
 import {
   preferredRemoteSession,
   remoteControlMessage,
@@ -178,6 +178,7 @@ function LyricsOverlay({
           <button
             key={`${line.time}-${index}`}
             className={index === activeLine ? "active" : Math.abs(index - activeLine) < 2 ? "near" : ""}
+            data-credit={isCreditLine(line.text) ? "true" : undefined}
             onClick={() => player.canSeek && player.seek(line.time)}
           >
             {line.text}
@@ -621,6 +622,7 @@ export default function NowPlayingPage({
                     <button
                       key={`${line.time}-${index}`}
                       className={index === activeLine ? "active" : ""}
+                      data-credit={isCreditLine(line.text) ? "true" : undefined}
                       disabled={!effectivePlayer.canSeek}
                       onClick={() => effectivePlayer.seek(line.time)}
                     >

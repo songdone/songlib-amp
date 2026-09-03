@@ -339,12 +339,33 @@
     color: var(--text-tertiary);
   }
 
+  /*
+   * 这三块原来是 legacy 的 grid：
+   *   display:grid; grid-template-columns:1fr 1fr 1fr auto; align-items:end
+   * 这里把 display 换成了 flex column，却没有把旧 display 需要的属性一起
+   * 清掉 —— align-items:end 留了下来，在 column 方向上的含义变成
+   * "每个子项收缩到内容宽度、贴右边缘"。结果就是用户偏好那一列字段
+   * 全挤在卡片右侧、宽度各不相同（171 / 92 / 86 / 70px），左边空一大块。
+   *
+   * 换 display 的时候必须显式写清 align/justify，不能靠继承下来的值 ——
+   * 同一类错误这个仓库里已经出过三次（底栏 display:revert、
+   * 权限勾选框被拉成大方块，都是这个）。
+   */
   .settings-page .template-list,
   .settings-page .profile-form,
   .settings-page .exclude-form {
     display: flex;
     flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
     gap: var(--space-4);
+  }
+
+  /* 保存按钮不该跟输入框一样宽，让它退回内容宽度、靠左。 */
+  .settings-page .profile-form > .ui-btn,
+  .settings-page .template-list > .ui-btn,
+  .settings-page .exclude-form > .ui-btn {
+    align-self: flex-start;
   }
 }
 

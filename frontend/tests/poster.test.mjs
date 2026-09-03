@@ -12,6 +12,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import { isCreditLine } from "../src/lib/lyrics.js";
 
 import {
   RATIOS,
@@ -240,4 +241,28 @@ test("导出倍数直接乘到位图尺寸上", async () => {
   });
   assert.equal(canvas.width, RATIOS["1:1"].width * 2);
   assert.equal(canvas.height, RATIOS["1:1"].height * 2);
+});
+
+test("版权行不进歌词：简写「词：」「曲：」和「歌名 - 歌手」抬头都要认出来", () => {
+  const lines = [
+    { time: 0, text: "红蔷薇白玫瑰 - G.E.M. 邓紫棋" },
+    { time: 1, text: "词：TE DI/DEE.P/Johnson Rebecca Rose" },
+    { time: 2, text: "曲：TE DI/SOL" },
+    { time: 3, text: "编曲：Lupo" },
+    { time: 4, text: "改编词：G.E.M. 邓紫棋" },
+    { time: 5, text: "OP：蜂鸟音乐" },
+    { time: 6, text: "SP：百纳娱乐" },
+    { time: 7, text: "说不出说不出一句话" },
+    { time: 8, text: "面对最熟悉的你" },
+    // 歌词里带连字符不能被当成抬头行
+    { time: 9, text: "你走 - 我不留，我不留" },
+  ];
+  const kept = shareableLyricLines(lines).map((line) => line.text);
+  assert.deepEqual(kept, ["说不出说不出一句话", "面对最熟悉的你", "你走 - 我不留，我不留"]);
+});
+
+test("歌手名里的点不能让抬头行漏判", () => {
+  // 第一版把 ASCII 句点也排除了，于是 G.E.M. 那行没认出来。
+  assert.equal(isCreditLine("红蔷薇白玫瑰 - G.E.M. 邓紫棋"), true);
+  assert.equal(isCreditLine("此刻我忐忑的心"), false);
 });

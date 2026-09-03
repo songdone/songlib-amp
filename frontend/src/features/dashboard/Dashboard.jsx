@@ -25,7 +25,7 @@ import {
   Plus,
   Sparkles,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LiveBadge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { Cover, hueOf } from "../../components/ui/Cover";
@@ -145,7 +145,22 @@ export function Dashboard({
     playItems(result.tracks || []);
   };
 
-  const heroAlbum = home.albums[0];
+  /*
+   * 首屏那张大封面在最近加入的几张之间轮换。
+   *
+   * 原来是死取 albums[0]：只要曲库没有新增，首页每次打开都是同一张，
+   * 「最近加入」这块就永远不动。
+   *
+   * 轮换按天推进而不是每次刷新都换：同一天内进出首页看到的是同一张，
+   * 不会因为刷新一下整块变了脸；隔天再来才换。取前 8 张里的一张 ——
+   * 再往后就不算"最近"了。
+   */
+  const heroAlbum = useMemo(() => {
+    const pool = home.albums.slice(0, 8);
+    if (!pool.length) return undefined;
+    const day = Math.floor(Date.now() / 86_400_000);
+    return pool[day % pool.length];
+  }, [home.albums]);
   const heroCover = heroAlbum?.thumbUrl || "";
   const canPlayHero = Boolean(heroAlbum) || home.tracks.length > 0;
   const activeSessions = remote.sessions.filter((session) => session.playing);

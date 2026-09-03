@@ -226,3 +226,82 @@
     box-shadow: var(--shadow-sm);
   }
 }
+
+@layer components {
+  /*
+   * 歌词字号。
+   *
+   * 原来是 clamp(18px, 2.1vw, 30px) —— 侧栏面板宽约 760px，30px 一屏只放
+   * 得下十几行，而且**版权行和歌词同一个字号**：一首歌开头那八行
+   * 「词：」「曲：」「编曲：」「OP：」「SP：」加一行「歌名 - 歌手」
+   * 全用 30px 顶在最上面，占掉半屏，整块看起来在喊。
+   *
+   * 侧栏是"跟着看"的场景，不是"沉浸"场景，20px 就够；全屏歌词才该大。
+   * 当前句只靠颜色和字重区分，不改字号 —— 改字号会让整列在每次换行时
+   * 上下窜动，跟居中跟随打架。
+   */
+  .now-lyrics-lines button {
+    font-size: clamp(15px, 1.35vw, 20px);
+    line-height: 1.6;
+  }
+
+  .now-lyrics-lines button.active {
+    font-weight: var(--weight-bold);
+  }
+
+  /* 版权/制作信息不是歌词，降成小字。 */
+  .now-lyrics-lines button[data-credit="true"],
+  .now-overlay-lines button[data-credit="true"] {
+    font-size: var(--text-xs);
+    font-weight: var(--weight-normal);
+    line-height: 1.5;
+    color: var(--now-tertiary);
+    letter-spacing: normal;
+  }
+
+  /* 版权行就算正好是"当前句"也不该被高亮成主角。 */
+  .now-lyrics-lines button[data-credit="true"].active,
+  .now-overlay-lines button[data-credit="true"].active {
+    color: var(--now-secondary);
+    font-weight: var(--weight-medium);
+    transform: none;
+    text-shadow: none;
+  }
+}
+
+@layer components {
+  /*
+   * 给"正在播放"的主区一个视口上限。
+   *
+   * 之前这里没有任何高度约束：右侧歌词面板有多少行就长多高，
+   * align-items:stretch 又把左栏一起拉到同样高度，于是整页被撑到
+   * 1359px（视口 1000px），你滚的是**整个页面**而不是歌词面板 ——
+   * 实测歌词容器 clientHeight 969、scrollHeight 也是 969，
+   * 它压根没有内部滚动，所以歌词跟随也无从生效。
+   *
+   * 150px = 顶栏加页头到主区顶部的 108px（实测，不随视口变）
+   *       + 页面下边距 34px + 一点余量。
+   * 用 max-height 而不是 height：两栏保持等高、底边齐平这个效果留着，
+   * 只是行高不再被内容无限撑开；超出的部分由 .now-lyrics-lines
+   * 自己的 overflow-y:auto 接住。
+   */
+  .now-workspace {
+    /*
+     * 必须是定高 + minmax(0, 1fr)，不能用 max-height。
+     * grid 的 auto 行按内容撑开，容器的 max-height 只会让行溢出容器、
+     * 不会压缩行 —— 试过，歌词容器还是 969px 不可滚。
+     * 定高把行高确定下来，minmax 的下界 0 才让内层的 min-height:0
+     * 链条生效，overflow-y:auto 这才真的接得住。
+     */
+    height: calc(100dvh - 150px);
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  /* 视口很矮时（横屏手机、分屏）不如让页面自己滚。 */
+  @media (max-height: 620px) {
+    .now-workspace {
+      height: auto;
+      grid-template-rows: auto;
+    }
+  }
+}

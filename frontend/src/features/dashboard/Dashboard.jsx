@@ -45,7 +45,7 @@ import { PageLoader } from "../../components/PageLoader";
 import { api } from "../../lib/api";
 import { recommendationPlaybackInput } from "../../lib/contracts";
 import { fmt, formatTime, timeAgo } from "../../lib/format";
-import { coverUrlFor } from "../../lib/media";
+import { coverUrlFor, trackIdentity } from "../../lib/media";
 import { usePlexSessions } from "../now-playing/usePlexSessions";
 import { usePlayerCore } from "../player/PlayerProvider";
 
@@ -133,12 +133,64 @@ export function Dashboard({
   // 所以指针移动不会引起任何重渲染。
   const heroGlow = usePointerGlow();
 
-  const heroAlbum = useMemo(() => {
-    const pool = home.albums.slice(0, 8);
-    if (!pool.length) return undefined;
-    const day = Math.floor(Date.now() / 86_400_000);
-    return pool[day % pool.length];
-  }, [home.albums]);
+  // 播放记录按曲目索引一下续播点，行渲染时 O(1) 查。
+  const resumeByKey = useMemo(
+    () => new Map(resumePoints.map((point) => [point.trackKey, point])),
+    [resumePoints],
+  );
+
+  /*
+   * 首屏那张大卡改成轮播。
+   *
+   * 之前是按天取一张：同一天里反复打开首页永远是同一张封面，而右边
+   * 还空着一大块 —— 一张静止的封面加一片空白，撑不起首屏。
+   *
+   * 现在候选池仍是最近加入的 8 张，但可以左右切；自动每 7 秒换一张，
+   * 用户一动手就停（手动切过之后不再自动跑，避免"正看着它自己跳走"）。
+   */
+  const heroPool = useMemo(() => home.albums.slice(0, 8), [home.albums]);
+  const [heroIndex, setHeroIndex] = useState(0);
+  const [heroPinned, setHeroPinned] = useState(false);
+  const heroAlbum = heroPool[heroIndex % Math.max(1, heroPool.length)];
+
+  useEffect(() => {
+    if (heroPinned || heroPool.length < 2) return undefined;
+    const timer = setInterval(
+      () => setHeroIndex((value) => (value + 1) % heroPool.length),
+      7000,
+    );
+    return () => clearInterval(timer);
+  }, [heroPinned, heroPool.length]);
+
+  // 这张专辑的曲目，最多 6 首 —— 再多首屏就装不下了。
+  const heroTracks = useMemo(() => {
+    if (!heroAlbum) return [];
+    const key = heroAlbum.ratingKey || heroAlbum.id;
+    const title = (heroAlbum.title || "").trim();
+    /*
+     * 先按外键匹配，匹配不到再按专辑名。
+     *
+     * 不同来源的曲目挂的字段名不一样（Plex 是 parentRatingKey、本地库是
+     * albumId、有的只有 album 名），只认一个字段的话右侧会是空的 ——
+     * 而"右边空一块"正是这次要修的东西，不能换个形式再空一次。
+     */
+    const byKey = home.tracks.filter(
+      (track) =>
+        key && (track.parentRatingKey === key || track.albumId === key),
+    );
+    if (byKey.length) return byKey.slice(0, 6);
+    const byTitle = home.tracks.filter(
+      (track) => title && (track.album || track.parentTitle) === title,
+    );
+    if (byTitle.length) return byTitle.slice(0, 6);
+    // 实在对不上就放最近加入的几首 —— 首屏右边有内容，比留白强。
+    return home.tracks.slice(0, 6);
+  }, [heroAlbum, home.tracks]);
+
+  const stepHero = (delta) => {
+    setHeroPinned(true);
+    setHeroIndex((value) => (value + delta + heroPool.length) % heroPool.length);
+  };
 
   if (loading) return <PageLoader />;
 
@@ -272,7 +324,54 @@ export function Dashboard({
                 去音乐库
               </Button>
             </div>
+
+            {/* 轮播指示器兼切换。点圆点直接跳，跳完就不再自动轮播。 */}
+            {heroPool.length > 1 && (
+              <div className="home-hero__dots" role="tablist" aria-label="最近加入">
+                {heroPool.map((album, index) => (
+                  <button
+                    key={album.ratingKey || album.id || index}
+                    type="button"
+                    role="tab"
+                    aria-selected={index === heroIndex}
+                    aria-label={album.title || `第 ${index + 1} 张`}
+                    className={index === heroIndex ? "is-on" : ""}
+                    onClick={() => {
+                      setHeroPinned(true);
+                      setHeroIndex(index);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
+
+          {/*
+           * 右侧原来空着一大块。放这张专辑的曲目 —— 首屏最该回答的问题
+           * 是"这张里有什么"，而不是留白。点任意一首直接从那首开始放。
+           */}
+          {heroTracks.length > 0 && (
+            <ol className="home-hero__tracks">
+              {heroTracks.map((track, index) => (
+                <li key={track.ratingKey || track.id || index}>
+                  <button
+                    type="button"
+                    onClick={() => playItems(heroTracks, index)}
+                  >
+                    <span className="home-hero__tracks-no">{index + 1}</span>
+                    <span className="home-hero__tracks-name">
+                      {track.title || "未命名"}
+                    </span>
+                    {track.duration ? (
+                      <span className="home-hero__tracks-time">
+                        {formatTime(Number(track.duration) / 1000)}
+                      </span>
+                    ) : null}
+                  </button>
+                </li>
+              ))}
+            </ol>
+          )}
         </Section>
       ) : (
         !contentLoading && (
@@ -318,56 +417,6 @@ export function Dashboard({
         </Section>
       )}
 
-      {/* --- 听到一半的 ---
-           只在真有记录时出现。没有记录时多一个空状态，
-           等于告诉用户"这里本来该有东西"，而其实没有才是常态。 */}
-      {resumePoints.length > 0 && (
-        <Section reveal>
-          <SectionHeader
-            title="听到一半"
-            note="换设备继续"
-          />
-          <ListGroup>
-            {resumePoints.map((point) => (
-              <ListRow
-                key={point.trackKey}
-                leading={
-                  <Cover
-                    src={point.coverUrl}
-                    title={point.title}
-                    size="40px"
-                    shape="square"
-                  />
-                }
-                title={point.title || "未命名歌曲"}
-                subtitle={
-                  <span className="resume-row">
-                    {/* 歌手要留在副标题里。之前把设备名也塞在这一行，
-                        结果没地方放歌手了 —— 而"这是谁的歌"比
-                        "从哪台设备停下的"重要得多。设备移到行尾。 */}
-                    <span className="resume-row__artist">
-                      {point.artist || "未知歌手"}
-                    </span>
-                    <span className="resume-row__bar" aria-hidden="true">
-                      <i style={{ inlineSize: `${Math.round(point.progress * 100)}%` }} />
-                    </span>
-                    <span className="resume-row__time">
-                      {formatTime(point.position)}
-                      {point.duration ? ` / ${formatTime(point.duration)}` : ""}
-                    </span>
-                  </span>
-                }
-                trailing={point.device || null}
-                chevron={false}
-                /* 从这里点进去是明确的"继续播放"，所以直接 seek ——
-                   和播放器里那个提示条不同，那边用户没表达过意图。 */
-                onClick={() => resumeFrom(point)}
-              />
-            ))}
-          </ListGroup>
-        </Section>
-      )}
-
       {/* --- 继续播放 --- */}
       <Section reveal>
         <SectionHeader
@@ -389,10 +438,41 @@ export function Dashboard({
                   />
                 }
                 title={item.title || "未命名歌曲"}
-                subtitle={item.artist || item.grandparentTitle || "未知歌手"}
-                trailing={item.playedAt ? timeAgo(item.playedAt) : null}
+                subtitle={(() => {
+                  /*
+                   * 原来"听到一半"和"继续播放"是两块独立的区，内容高度
+                   * 重叠 —— 同一首歌在两处各出现一次，一处带进度、一处
+                   * 不带。合成一块：这里就是播放记录，听了一半的那几首
+                   * 在同一行里多一条进度条。
+                   */
+                  const point = resumeByKey.get(trackIdentity(item));
+                  if (!point) return item.artist || item.grandparentTitle || "未知歌手";
+                  return (
+                    <span className="resume-row">
+                      <span className="resume-row__artist">
+                        {item.artist || item.grandparentTitle || "未知歌手"}
+                      </span>
+                      <span className="resume-row__bar" aria-hidden="true">
+                        <i style={{ inlineSize: `${Math.round(point.progress * 100)}%` }} />
+                      </span>
+                      <span className="resume-row__time">
+                        {formatTime(point.position)}
+                        {point.duration ? ` / ${formatTime(point.duration)}` : ""}
+                      </span>
+                    </span>
+                  );
+                })()}
+                trailing={
+                  resumeByKey.get(trackIdentity(item))?.device ||
+                  (item.playedAt ? timeAgo(item.playedAt) : null)
+                }
                 chevron={false}
-                onClick={() => playItems(continueItems, index)}
+                /* 听了一半的直接续播，其余的从头放。 */
+                onClick={() => {
+                  const point = resumeByKey.get(trackIdentity(item));
+                  if (point) resumeFrom(point);
+                  else playItems(continueItems, index);
+                }}
               />
             ))}
           </ListGroup>

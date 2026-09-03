@@ -250,3 +250,90 @@
     background: var(--accent-solid);
   }
 }
+
+@layer components {
+  /*
+   * 首屏大卡改成左右两栏：左边封面加信息，右边这张专辑的曲目。
+   * 之前右侧是空的 —— 一张静止封面加一片空白撑不起首屏。
+   */
+  .home-hero__tracks {
+    grid-column: 3;
+    align-self: center;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    min-width: 0;
+  }
+
+  .home-hero__tracks button {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1.6em minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    text-align: start;
+    transition: background-color 0.16s var(--ease-out), color 0.16s var(--ease-out);
+  }
+
+  .home-hero__tracks button:hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+  }
+
+  .home-hero__tracks-no {
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .home-hero__tracks-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .home-hero__tracks-time {
+    color: var(--text-tertiary);
+    font-size: var(--text-xs);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 轮播指示器。做成细长条而不是圆点：8 个圆点在深色底上像脏点。 */
+  .home-hero__dots {
+    display: flex;
+    gap: 6px;
+    margin-block-start: var(--space-4);
+  }
+
+  .home-hero__dots button {
+    width: 22px;
+    height: 3px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: var(--border-default);
+    transition: background-color 0.24s var(--ease-out), width 0.24s var(--ease-out);
+  }
+
+  .home-hero__dots button.is-on {
+    width: 34px;
+    background: var(--accent-solid);
+  }
+
+  /* 窄屏放不下第三栏，曲目列表换到下面整行。 */
+  @media (max-width: 900px) {
+    .home-hero__tracks {
+      grid-column: 1 / -1;
+      margin-block-start: var(--space-4);
+    }
+  }
+}

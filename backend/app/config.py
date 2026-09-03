@@ -38,7 +38,7 @@ def _float_env(name: str, default: float, minimum: float, maximum: float) -> flo
 @dataclass(frozen=True)
 class Settings:
     app_name: str = os.getenv("APP_NAME", "SongLib Amp｜音屿")
-    app_version: str = os.getenv("APP_VERSION", "1.1.7")
+    app_version: str = os.getenv("APP_VERSION", "1.1.8")
     environment: str = os.getenv("APP_ENV", "production").strip().lower()
     data_dir: Path = Path(os.getenv("DATA_DIR", "/data"))
     music_root: Path = Path(os.getenv("MUSIC_ROOT", "/music"))

@@ -1224,8 +1224,18 @@ def plex_stream(rating_key: str, request: Request, bitrate: str = "original"):
             response = client.send(upstream, stream=True)
             response.raise_for_status()
         except Exception as exc:
+            # Plex 把拒绝的理由写在响应体里，httpx 的异常消息只有状态码和 URL。
+            # 不读出来就只能看到一个光秃秃的 400，查不下去。
+            detail = ""
+            upstream_response = getattr(exc, "response", None)
+            if upstream_response is not None:
+                try:
+                    upstream_response.read()
+                    detail = f" body={upstream_response.text[:200]!r}"
+                except Exception:
+                    detail = ""
             client.close()
-            failures.append(f"{mode}: {exc}")
+            failures.append(f"{mode}: {exc}{detail}")
             continue
 
         passthrough = {}
@@ -1240,7 +1250,10 @@ def plex_stream(rating_key: str, request: Request, bitrate: str = "original"):
             # 退回是静默的（对播放器来说声音照出），但原因不能跟着一起消失 ——
             # 不然线上只能看到"某些码率悄悄降级"，查不出为什么。
             # 响应头必须是 latin-1，中文和换行先剔掉。
-            note = "；".join(failures)[:180]
+            # URL 那一长串没有信息量（参数是我们自己拼的），砍掉给正文腾位置
+            note = "；".join(
+                re.sub(r"for url '[^']*'", "", item) for item in failures
+            )[:300]
             passthrough["X-SongLib-Stream-Note"] = note.encode("ascii", "replace").decode("ascii")
 
         status_code = response.status_code

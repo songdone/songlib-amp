@@ -339,16 +339,15 @@ class PlexClient:
         """
         if not session:
             return
-        try:
-            # universal transcoder 的 stop 在 /video/ 命名空间下，音频也走这个。
-            self.request(
-                "GET",
-                "/video/:/transcode/universal/stop",
-                params={"session": session},
-                timeout=5,
-            )
-        except Exception:
-            pass
+        # 两个命名空间都试。文档普遍写的是 /video/:/…/stop，但我们是从
+        # /music/:/…/start.mp3 起转的 —— 如果 stop 的路径不对，会话照旧泄漏，
+        # 表现就是"同一个码率忽好忽坏、两轮结果正好相反"（实测见过）。
+        # 多打一个请求的代价远小于漏掉一个转码名额。
+        for path in ("/music/:/transcode/universal/stop", "/video/:/transcode/universal/stop"):
+            try:
+                self.request("GET", path, params={"session": session}, timeout=5)
+            except Exception:
+                continue
 
     def transcode_url(self, rating_key: str, bitrate: str, *, session: str = "", offset_seconds: float = 0.0) -> str:
         """Plex 通用转码地址。

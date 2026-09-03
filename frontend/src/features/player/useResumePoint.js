@@ -32,7 +32,7 @@ export function deviceLabel() {
   return "浏览器";
 }
 
-const payloadFor = (track, position, duration) => ({
+const payloadFor = (track, position, duration, device) => ({
   trackKey: trackIdentity(track),
   position: Math.round(position),
   duration: Math.round(duration || track?.duration || 0),
@@ -40,7 +40,7 @@ const payloadFor = (track, position, duration) => ({
   artist: track?.artist || track?.grandparentTitle || "",
   album: track?.album || track?.parentTitle || "",
   coverUrl: track?.albumCoverUrl || track?.coverUrl || track?.thumbUrl || "",
-  device: deviceLabel(),
+  device: device || deviceLabel(),
   // 快照。原文件之后被删掉时，"继续听"这条记录还显示得出来。
   track: {
     id: track?.id,
@@ -60,11 +60,17 @@ const payloadFor = (track, position, duration) => ({
  * 刻意不接收 currentTime 本身，因为那个值每秒变四次，
  * 传进来会让这个 hook 每秒重建四次定时器。
  */
-export function useResumeReporter({ track, isPlaying, readPosition }) {
+export function useResumeReporter({ track, isPlaying, readPosition, device }) {
   const readRef = useRef(readPosition);
   readRef.current = readPosition;
   const trackRef = useRef(track);
   trackRef.current = track;
+  /*
+   * 跟随 Plexamp 时，位置是别的设备在放出来的，"从哪儿听到这儿"
+   * 应该说那台设备的名字，而不是当前这个浏览器。
+   */
+  const deviceRef = useRef(device);
+  deviceRef.current = device;
 
   useEffect(() => {
     if (!track || !isPlaying) return undefined;
@@ -76,7 +82,9 @@ export function useResumeReporter({ track, isPlaying, readPosition }) {
       if (!position) return;
       api("/api/playback/position", {
         method: "PUT",
-        body: JSON.stringify(payloadFor(current, position, duration)),
+        body: JSON.stringify(
+          payloadFor(current, position, duration, deviceRef.current),
+        ),
       }).catch(() => {
         // 续播位置丢一次没关系，不值得打扰用户。
       });
@@ -97,7 +105,9 @@ export function useResumeReporter({ track, isPlaying, readPosition }) {
       if (!current) return;
       const { position, duration } = readRef.current() || {};
       if (!position) return;
-      const body = JSON.stringify(payloadFor(current, position, duration));
+      const body = JSON.stringify(
+        payloadFor(current, position, duration, deviceRef.current),
+      );
       // sendBeacon 只能 POST，所以后端那个 PUT 这里走不了。
       // 退回 fetch + keepalive：它同样保证在页面卸载后继续发，
       // 而且能带上方法和 CSRF 头。

@@ -18,6 +18,7 @@ os.environ.setdefault("MUSIC_ROOT", tempfile.mkdtemp(prefix="health-music-"))
 os.environ.setdefault("PLEX_CONFIG", tempfile.mkdtemp(prefix="health-plex-"))
 
 from app.db import init_db, transaction
+from app import local_library as local_library_module
 from app.local_library import LocalLibraryService
 
 init_db()
@@ -124,6 +125,66 @@ class DuplicateDetectionTests(unittest.TestCase):
              "duration": 314, "title": "同一首", "artist": "同一歌手"},
         ])
         self.assertEqual(self.service._duplicate_groups(40)["total"], 1)
+
+    def test_one_second_apart_across_an_old_bucket_boundary_still_groups(self):
+        """215s 和 216s 差一秒，是同一首歌。
+
+        这一对是原来 duration // 3 分桶漏掉的：215//3 是 71，216//3 是 72，
+        两个桶。上面那个 313/314 的用例正好落在同一个桶里，所以从来没
+        暴露过这件事。判据改成沿时长排序、按容差聚类之后，容差才真的
+        是 ±3 秒，不再取决于两个值落在桶的哪个位置。
+        """
+        insert([
+            {"id": "a", "path": "/m/a.flac", "filename": "a.flac", "ext": ".flac",
+             "duration": 215, "title": "同一首", "artist": "同一歌手"},
+            {"id": "b", "path": "/m/b.flac", "filename": "b.flac", "ext": ".flac",
+             "duration": 216, "title": "同一首", "artist": "同一歌手"},
+        ])
+        self.assertEqual(self.service._duplicate_groups(40)["total"], 1)
+
+    def test_tolerance_is_the_same_number_the_import_check_uses(self):
+        """容差刚好 3 秒算重复，4 秒不算 —— 而且两处用的是同一个常量。
+
+        体检说是重复、入库却不提醒（或者反过来），比统一用一个稍严
+        或稍松的阈值更糟。
+        """
+        self.assertEqual(local_library_module.DUPLICATE_DURATION_TOLERANCE, 3)
+        insert([
+            {"id": "a", "path": "/m/a.flac", "filename": "a.flac", "ext": ".flac",
+             "duration": 240, "title": "同一首", "artist": "同一歌手"},
+            {"id": "b", "path": "/m/b.flac", "filename": "b.flac", "ext": ".flac",
+             "duration": 243, "title": "同一首", "artist": "同一歌手"},
+        ])
+        self.assertEqual(self.service._duplicate_groups(40)["total"], 1, "差 3 秒应算重复")
+        insert([
+            {"id": "a", "path": "/m/a.flac", "filename": "a.flac", "ext": ".flac",
+             "duration": 240, "title": "同一首", "artist": "同一歌手"},
+            {"id": "b", "path": "/m/b.flac", "filename": "b.flac", "ext": ".flac",
+             "duration": 244, "title": "同一首", "artist": "同一歌手"},
+        ])
+        self.assertEqual(self.service._duplicate_groups(40)["total"], 0, "差 4 秒不算")
+
+    def test_a_chain_of_transcodes_does_not_swallow_a_different_recording(self):
+        """聚类是链式的，不能让一串小差值把两个真不同的录音连成一组。
+
+        238、240、242 三份互相都在容差内，是同一首歌的三个转码。
+        而 252 跟其中任何一个都差了 10 秒以上，必须单独留着 ——
+        它可能是加了尾奏的现场版。
+        """
+        insert([
+            {"id": "a", "path": "/m/a.flac", "filename": "a.flac", "ext": ".flac",
+             "duration": 238, "title": "同一首", "artist": "同一歌手"},
+            {"id": "b", "path": "/m/b.flac", "filename": "b.flac", "ext": ".flac",
+             "duration": 240, "title": "同一首", "artist": "同一歌手"},
+            {"id": "c", "path": "/m/c.flac", "filename": "c.flac", "ext": ".flac",
+             "duration": 242, "title": "同一首", "artist": "同一歌手"},
+            {"id": "live", "path": "/m/live.flac", "filename": "live.flac", "ext": ".flac",
+             "duration": 252, "title": "同一首", "artist": "同一歌手"},
+        ])
+        groups = self.service._duplicate_groups(40)
+        self.assertEqual(groups["total"], 1, "只有那三个转码算一组")
+        self.assertEqual(len(groups["groups"][0]["items"]), 3)
+        self.assertNotIn("live", [item["id"] for item in groups["groups"][0]["items"]])
 
 
 class FindSimilarTests(unittest.TestCase):

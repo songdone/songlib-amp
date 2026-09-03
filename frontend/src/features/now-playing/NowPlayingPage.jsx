@@ -48,6 +48,7 @@ import {
   useAirPlayLyricsCast,
 } from "../airplay/AirPlayLyricsCast";
 import { usePlexSessions } from "./usePlexSessions";
+import { useResumeReporter } from "../player/useResumePoint";
 
 
 const formatTime = (value) => {
@@ -327,6 +328,28 @@ export default function NowPlayingPage({
     remote.polledAt,
     clockNow,
   );
+
+  /*
+   * 跟随 Plexamp 时也记续播位置。
+   *
+   * PlayerProvider 里那个上报器挂在本地 <audio> 上，跟随远端时本地
+   * 没在播，它是关着的 —— 于是"手机上听到 3:20"这件事只有在手机上
+   * 用浏览器听才记得住，用 Plexamp 听就丢了。而 Plexamp 恰好是这个
+   * 项目最主要的播放方式。
+   *
+   * 位置读的是 remotePositionSeconds 推算出来的本地时钟，不是每次
+   * 轮询的原始值：轮询间隔好几秒，直接用原始值会让记录一跳一跳。
+   * 设备名报的是那台 Plexamp 的名字。
+   */
+  useResumeReporter({
+    track: usingRemote ? track : null,
+    isPlaying: usingRemote && Boolean(selectedSession?.playing),
+    readPosition: () => ({
+      position: remotePosition,
+      duration: Number(selectedSession?.durationMs || 0) / 1000,
+    }),
+    device: selectedSession?.deviceName || selectedSession?.product || "Plexamp",
+  });
   const effectivePlayer = useMemo(
     () =>
       usingRemote

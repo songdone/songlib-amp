@@ -83,7 +83,8 @@ export function SourceManager({ sources, refreshSources, notify }) {
     [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
-    [keyword, setKeyword] = useState(""),
+    // 给个默认值，"试搜一首"点开就能用，不必先去想搜什么。
+    [keyword, setKeyword] = useState("海阔天空"),
     [quality, setQuality] = useState("320k");
   const [removing, setRemoving] = useState(null);
   const [testing, setTesting] = useState(""),
@@ -132,7 +133,7 @@ export function SourceManager({ sources, refreshSources, notify }) {
     const probe = keyword.trim();
     if (!probe) {
       setError(
-        "填一首你真会去搜的歌，测出来的结果才有参考价值。",
+        "上面「拿哪首歌去试」里填一首歌名，再点试搜。",
       );
       return;
     }
@@ -311,6 +312,30 @@ export function SourceManager({ sources, refreshSources, notify }) {
           title="已经装上的"
           note={sources.length ? `共 ${sources.length} 个` : undefined}
         />
+
+        {/*
+          这个输入框之前**根本不存在**。
+          keyword 有 state、testSearch 里也读它，但全项目没有一处
+          调用 setKeyword —— 于是"试搜一首"点下去只会弹
+          "填一首你真会去搜的歌"，而页面上没有任何地方能填。
+          一个永远不可能成功的按钮。
+
+          放在列表上方而不是每张卡片里：搜的是同一个词，
+          每个源各来一个输入框只会让人以为它们互不相干。
+          默认给一首歌名，点开就能用。
+        */}
+        {sources.length > 0 && (
+          <Field
+            label="拿哪首歌去试"
+            hint="换成你平时真会搜的歌 —— 冷门歌更能看出这个源到底行不行"
+            leading={Search}
+            value={keyword}
+            placeholder="例如：海阔天空"
+            onChange={(event) => setKeyword(event.target.value)}
+            className="sources__probe"
+          />
+        )}
+
         {sources.length ? (
           <div className="sources__list">
             {sources.map((source) => {

@@ -43,22 +43,28 @@ export function MediaCard({
 
   return (
     <article className="ui-media-card">
-      <div className="ui-media-card__art">
-        <Cover src={coverUrl} title={name} shape={shape}>
-          {onPlay && (
-            <IconButton
-              icon={Play}
-              label={playLabel || `播放 ${name}`}
-              variant="primary"
-              size="lg"
-              className="ui-media-card__play"
-              onClick={(event) => {
-                event.stopPropagation();
-                onPlay();
-              }}
-            />
-          )}
-        </Cover>
+      {/*
+        播放按钮是 Cover 的**兄弟**，不是子元素。
+
+        放在 Cover 里面会被它的 `overflow: hidden` 裁掉：方形封面还只是
+        丢掉一点圆角外的阴影，圆形歌手封面就是把按钮沿圆弧斜切一半 ——
+        右下角本来就在圆之外。
+      */}
+      <div className="ui-media-card__art" data-shape={shape}>
+        <Cover src={coverUrl} title={name} shape={shape} />
+        {onPlay && (
+          <IconButton
+            icon={Play}
+            label={playLabel || `播放 ${name}`}
+            variant="primary"
+            size="lg"
+            className="ui-media-card__play"
+            onClick={(event) => {
+              event.stopPropagation();
+              onPlay();
+            }}
+          />
+        )}
       </div>
 
       {/* 主体按钮铺满卡片但排在封面之下，

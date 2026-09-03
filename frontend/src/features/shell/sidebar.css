@@ -203,10 +203,98 @@
     min-width: 0;
   }
 
+  /*
+   * 顶栏本体。
+   *
+   * legacy 里有**四条**规则给它写死深色背景
+   * （styles.css 的 #111214db、commercial.css 的 #090a0de0 和 #090a0dad、
+   * 还有一条深色渐变）。深色主题下看不出问题；浅色主题下整条顶栏
+   * 是页面里唯一一块黑的，里面的图标按钮用的是随主题变的
+   * --text-secondary（浅色下是深灰），于是深灰图标压在近黑底上，
+   * 几乎看不见。
+   *
+   * 这一条在 @layer components，靠层级顺序压过那四条，不需要 !important。
+   */
+  .visual-shell .topbar {
+    border-block-end: 1px solid var(--border-subtle);
+    background: var(--surface-overlay);
+    backdrop-filter: blur(20px) saturate(1.4);
+  }
+
+  .visual-shell .topbar .topbar__title {
+    color: var(--text-primary);
+  }
+
+  .visual-shell .topbar .topbar__subtitle {
+    color: var(--text-tertiary);
+  }
+
+  /*
+   * 顶栏搜索框。
+   *
+   * 之前这里只设了 flex，外观全部来自 legacy —— commercial.css 写死
+   * `background:#14161b`、styles.css 写死白字。深色主题下看不出问题，
+   * 浅色主题下它就是整条顶栏里唯一一块黑的，字也还是白的。
+   * 现在颜色一律走语义 token。
+   */
   .topbar__actions .top-search {
     /* 搜索框在这一排里是唯一可伸缩的元素。 */
     flex: 0 1 320px;
     min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: var(--control-height-md);
+    padding-inline: var(--space-3);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-pill);
+    background: var(--surface-inset);
+    color: var(--text-tertiary);
+    transition:
+      border-color var(--duration-fast) var(--ease-out),
+      background-color var(--duration-fast) var(--ease-out);
+  }
+
+  .topbar__actions .top-search:hover {
+    border-color: var(--border-strong);
+  }
+
+  /* 焦点环画在整个框上，图标和 kbd 一起被框住。 */
+  .topbar__actions .top-search:focus-within {
+    border-color: var(--accent-border);
+    background: var(--surface-1);
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 1px;
+  }
+
+  .topbar__actions .top-search > svg {
+    flex: none;
+    width: 16px;
+    height: 16px;
+  }
+
+  .topbar__actions .top-search input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    outline: 0;
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+  }
+
+  .topbar__actions .top-search input::placeholder {
+    color: var(--text-tertiary);
+  }
+
+  .topbar__actions .top-search kbd {
+    flex: none;
+    padding: 2px 6px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xs);
+    font-size: var(--text-2xs);
+    font-family: inherit;
+    color: var(--text-tertiary);
   }
 
   /* 任务按钮上的活动指示点。用 ::after 画，

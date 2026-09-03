@@ -7,47 +7,70 @@
 
 @layer components {
   /*
-   * 这一页的底必须自己是深的，浅色主题也一样。
+   * 页头右侧那一组控件。
    *
-   * 真实存在过的 bug：--now-* 里所有文字色都钉在浅色调上
-   * （--palette-neutral-50 = #f6f6f8），底色却是透上来的 ——
-   * .now-playing-page::before 那层深色渐变只有 0.3 不透明度，
-   * 剩下 70% 是画布色。深色主题下画布也是深的，看不出问题；
-   * 切到浅色主题，画布变成 #f6f6f8，而曲名的文字色**也是** #f6f6f8，
-   * 整页文字、按钮、右侧面板全部消失。
-   *
-   * 两处配合才成立：
-   *   .main 那一格由 AuthenticatedShell 挂 .player-main-shell 豁免
-   *   （sidebar.css 的浅色画布规则里写着 `:not(.player-main-shell)`；
-   *   那个类名之前只存在于选择器和注释里，从来没有元素挂上）。
-   *   外层 .visual-shell 由这条规则兜住 —— main 豁免之后是透明的，
-   *   透过去还是 shell 的白。
-   *
-   * **必须写在 @layer components 里。**放 legacy.nowplaying 会输给
-   * sidebar.css 里那条同样在 components 层的浅色画布规则 —— 试过一次，
-   * 文字变可读了但底还是白的。
+   * 之前是三个不同形状挤在一起：一个圆角矩形的"投到电视"、一个两行
+   * 高的设备胶囊、一个裸的刷新图标按钮。高度不齐、圆角不同、
+   * 边框有的有有的没有。
+   * 现在统一成 40px 高的胶囊，一排看过去是一组。
    */
-  :root[data-theme="light"] .visual-shell.route-player {
-    background: var(--palette-neutral-950);
+  .now-page-actions > .airplay-cast-button,
+  .now-page-actions > .now-device-shortcut,
+  .now-page-actions > .ui-btn {
+    min-height: 40px;
+    height: 40px;
+    border-radius: var(--radius-pill);
   }
 
   /*
-   * 标题层级。
+   * "投到电视"。
    *
-   * 重构前："正在播放"是 h1（最大 38px），当前曲名是 h2（最大 46px）。
-   * 层级是反的：h2 比 h1 大，而且屏幕上真正的主体是曲名，不是"正在播放"四个字。
-   *
-   * 现在页面标题收成一行小标签，视觉重量全部留给曲名。
-   * 旁边那行英文 eyebrow "NOW PLAYING" 一并去掉 —— 它和 h1 说的是同一件事。
+   * legacy 里写死了 rgba(214,176,92,.1) 底 + #f4cd77 字 —— 这在深色底上
+   * 是一枚淡金按钮，浅色主题下就是淡金底配淡金字，几乎读不出来。
+   * 改成走 accent token：浅色主题下 accent-text 会加深，对比度是校验过的。
    */
+  .now-page-actions > .airplay-cast-button {
+    padding-inline: var(--space-4);
+    border: 1px solid var(--accent-border);
+    background: var(--accent-soft);
+    color: var(--accent-text);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+  }
+
+  .now-page-actions > .airplay-cast-button:hover:not(:disabled) {
+    background: var(--accent-soft-hover);
+  }
+
+  /* 正在投屏时反过来：主色实心，这是一个"生效中"的状态。 */
+  .now-page-actions > .airplay-cast-button.active {
+    border-color: transparent;
+    background: var(--accent-solid);
+    color: var(--accent-on-solid);
+  }
+
+  /* 设备胶囊本来是两行（"播放来源 / 此浏览器"）。压成一行 ——
+     "播放来源"这四个字在一排设备控件里是多余的说明。 */
+  .now-page-actions > .now-device-shortcut {
+    grid-template-columns: 18px minmax(0, 1fr) 14px;
+    padding-inline: var(--space-3);
+  }
+
+  .now-page-actions > .now-device-shortcut small {
+    display: none;
+  }
+
+  .now-page-actions > .now-device-shortcut strong {
+    margin: 0;
+    font-size: var(--text-xs);
+  }
+
   /*
-   * 这一页的文字色一律用 --now-*，不能用 --text-*。
+   * 这一页的文字色统一走 --now-*。
    *
-   * --text-primary 在浅色主题下是近黑（#14161c），而这个页面的底
-   * 是钉死的深色 —— 迁到语义 token 的时候没想到这一层，
-   * 结果浅色主题下空状态那句"先选一个播放来源"是黑字压在黑底上，
-   * 对比度 1.07。--now-* 是从原始色板取的，不跟主题变，
-   * 正好匹配这个"始终深色"的表面。
+   * 现在 --now-* 本身映射到语义 token（见 now-playing.css 开头），
+   * 所以这里用哪一套都会跟着主题变。保持用 --now-* 是为了让这一页
+   * 只有一套色彩来源，改的时候不用在两套变量之间来回确认。
    */
   .now-page-title {
     margin: 0;

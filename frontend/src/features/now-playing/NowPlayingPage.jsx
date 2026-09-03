@@ -588,47 +588,61 @@ export default function NowPlayingPage({
                   <p>{lyricsError || (track ? "优先用歌曲旁边的 .lrc，没有再去线上找" : "挑一个设备，它在放什么、放到哪儿、歌词都会同步过来。")}</p>
                 </div>
               )}
-              <div className="now-cast-bar">
-                <span><Airplay /><span><strong>歌词投到电视</strong><small>{track ? (usingRemote ? `从右上角投屏，音频继续由 ${selectedSession.deviceName} 播放` : "歌词投到电视上，声音还是这个浏览器出") : "先选一首正在播放的歌"}</small></span></span>
-                <div className="now-cast-actions">
-                  {/* 这里只保留歌词时间微调。投屏按钮在页头，
-                      同一个动作不在一屏里出现两次。 */}
-                  {track && (
-                    /* 三个按钮原来只有 title。title 在触屏上根本不显示，
-                       读屏器对它的支持也不一致 —— 图标按钮必须有 aria-label。
-                       容器上那个 aria-label 也去掉了：div 不是交互元素，
-                       给它加标签只会让读屏器多念一句没有用的话。 */
-                    <div className="now-lyrics-offset" role="group" aria-label="歌词同步微调">
-                      <button
-                        type="button"
-                        aria-label="歌词延后 0.25 秒"
-                        title="歌词延后 0.25 秒"
-                        onClick={() => cast.adjustLyricsOffset(-250)}
-                      >
-                        <Minus aria-hidden="true" />
-                      </button>
-                      <button
-                        type="button"
-                        className="value"
-                        aria-label={`当前偏移 ${(cast.lyricsOffsetMs / 1000).toFixed(2)} 秒，点击归零`}
-                        title="重置歌词同步"
-                        onClick={cast.resetLyricsOffset}
-                      >
-                        {cast.lyricsOffsetMs > 0 ? "+" : ""}
-                        {(cast.lyricsOffsetMs / 1000).toFixed(2)}s
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="歌词提前 0.25 秒"
-                        title="歌词提前 0.25 秒"
-                        onClick={() => cast.adjustLyricsOffset(250)}
-                      >
-                        <Plus aria-hidden="true" />
-                      </button>
-                    </div>
-                  )}
+              {/*
+                歌词微调只在**真的正在投屏**时出现。
+
+                之前这一条是常驻的：不投屏时它也占着面板底部一整块，
+                写着"歌词投到电视上，声音还是这个浏览器出"—— 一段没人
+                需要在此刻读的说明，而右上角已经有一个"投到电视"按钮，
+                同一个动作在一屏里出现了两次。
+                现在不投屏时整条消失，歌词拿到全部高度。
+              */}
+              {cast.wireless && (
+                <div className="now-cast-bar">
+                  <span className="now-cast-bar__label">
+                    <Airplay aria-hidden="true" />
+                    <span>
+                      <strong>歌词已投到电视</strong>
+                      <small>
+                        {usingRemote
+                          ? `声音在 ${selectedSession.deviceName} 上`
+                          : "声音还在这个浏览器"}
+                      </small>
+                    </span>
+                  </span>
+                  <div className="now-lyrics-offset" role="group" aria-label="歌词同步微调">
+                    {/* 说清这三个按钮是干什么的。原来只有一个
+                        "0.00s" 摆在那儿，没人知道它调的是什么。 */}
+                    <small>字幕快慢</small>
+                    <button
+                      type="button"
+                      aria-label="歌词延后 0.25 秒"
+                      title="歌词延后 0.25 秒"
+                      onClick={() => cast.adjustLyricsOffset(-250)}
+                    >
+                      <Minus aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      className="value"
+                      aria-label={`当前偏移 ${(cast.lyricsOffsetMs / 1000).toFixed(2)} 秒，点击归零`}
+                      title="点一下归零"
+                      onClick={cast.resetLyricsOffset}
+                    >
+                      {cast.lyricsOffsetMs > 0 ? "+" : ""}
+                      {(cast.lyricsOffsetMs / 1000).toFixed(2)}s
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="歌词提前 0.25 秒"
+                      title="歌词提前 0.25 秒"
+                      onClick={() => cast.adjustLyricsOffset(250)}
+                    >
+                      <Plus aria-hidden="true" />
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
               {track && (
                 <button className="now-fullscreen-lyrics" disabled={!lines.length} onClick={() => setLyricsFull(true)}><Maximize2 />全屏歌词</button>
               )}

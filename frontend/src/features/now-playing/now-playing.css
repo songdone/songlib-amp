@@ -6,35 +6,34 @@
   /* Unified Now Playing workspace. This file is loaded last and intentionally
    * isolates the production refactor from the legacy player styles. */
   /*
-   * 沉浸式播放页是**故意始终深色**的，不跟随浅色主题 ——
-   * 浅色主题的画布规则里明确把 .player-main-shell 排除在外，
-   * 这一点和 Apple Music、Plexamp 的全屏播放页一致：
-   * 满屏封面配浅色底会把封面本身衬得发灰。
+   * 这一页的私有色板，现在全部映射到语义 token。
    *
-   * 所以这里不映射到语义 token（--surface-* / --text-* 会跟着主题变），
-   * 而是直接引用原始色板。区别在于：品牌色改一次，这一页跟着走；
-   * 而原来这十三个值是手打的十六进制，改品牌色得在这里再找一遍。
+   * 之前是直接引原始色板（--palette-*），也就是钉死深色，理由写的是
+   * "沉浸式播放页故意不跟随浅色主题"。那是我自己的判断，不是需求 ——
+   * 实际效果是浅色主题下整个应用只有这一页是黑的，切主题像是没生效。
+   * 现在跟着主题走。
    *
-   * 这一整套 --now-* 的存在本身是过渡产物：整页迁到设计系统之后，
-   * 应该由一个 `data-surface="immersive"` 之类的作用域来提供深色 token，
-   * 而不是每个页面自带一套私有变量。
+   * 保留 --now-* 这层间接，而不是把 1400 行里的引用全换成 --text-* /
+   * --surface-*：一是这一页有几十处引用，一次全改风险大于收益；
+   * 二是这层间接正好是"整页只改一处就能换皮"的地方 —— 这次就是只改
+   * 了这里的 13 行，整页跟着主题动了。
    */
   .route-player {
-    --now-surface: color-mix(in srgb, var(--palette-neutral-850) 72%, transparent);
-    --now-surface-strong: color-mix(in srgb, var(--palette-neutral-800) 92%, transparent);
-    --now-soft: rgba(255, 255, 255, 0.055);
-    --now-line: rgba(255, 255, 255, 0.11);
-    --now-line-strong: rgba(255, 255, 255, 0.18);
-    --now-primary: var(--palette-neutral-50);
-    --now-secondary: color-mix(in srgb, var(--palette-neutral-50) 68%, transparent);
-    --now-tertiary: color-mix(in srgb, var(--palette-neutral-50) 42%, transparent);
-    --now-accent: var(--palette-gold-300);
-    --now-positive: var(--palette-green-300);
-    --now-warning: var(--palette-amber-300);
-    --now-danger: var(--palette-red-300);
+    --now-surface: var(--surface-1);
+    --now-surface-strong: var(--surface-2);
+    --now-soft: var(--surface-3);
+    --now-line: var(--border-subtle);
+    --now-line-strong: var(--border-default);
+    --now-primary: var(--text-primary);
+    --now-secondary: var(--text-secondary);
+    --now-tertiary: var(--text-tertiary);
+    --now-accent: var(--accent-text);
+    --now-positive: var(--success-text);
+    --now-warning: var(--warning-text);
+    --now-danger: var(--danger-text);
     /* 保持这一页自己的曲线。设计系统里的 --ease-settle 是
        cubic-bezier(0.16, 1, 0.3, 1) —— 两条曲线很像但不相同，
-       换过去会改掉整页几十处过渡的手感。等这一页整体重写时一起统一。 */
+       换过去会改掉整页几十处过渡的手感。 */
     --now-ease: cubic-bezier(0.22, 1, 0.36, 1);
   }
 
@@ -45,8 +44,13 @@
 
   .route-player .backdrop-vignette {
     background:
-      radial-gradient(circle at 82% 10%, rgba(205, 147, 87, 0.12), transparent 32%),
-      linear-gradient(115deg, rgba(7, 8, 11, 0.96), rgba(8, 9, 12, 0.78) 58%, rgba(7, 8, 11, 0.96));
+      radial-gradient(circle at 82% 10%, var(--accent-soft), transparent 32%),
+      linear-gradient(
+        115deg,
+        color-mix(in srgb, var(--surface-canvas) 96%, transparent),
+        color-mix(in srgb, var(--surface-canvas) 78%, transparent) 58%,
+        color-mix(in srgb, var(--surface-canvas) 96%, transparent)
+      );
   }
 
   .now-playing-page {
@@ -62,7 +66,12 @@
     z-index: -1;
     inset: 0 0 0 var(--sidebar);
     background-image:
-      linear-gradient(105deg, rgba(8, 9, 12, 0.94), rgba(8, 9, 12, 0.72) 58%, rgba(8, 9, 12, 0.92)),
+      linear-gradient(
+        105deg,
+        color-mix(in srgb, var(--surface-canvas) 94%, transparent),
+        color-mix(in srgb, var(--surface-canvas) 72%, transparent) 58%,
+        color-mix(in srgb, var(--surface-canvas) 92%, transparent)
+      ),
       var(--now-bg);
     background-position: center;
     background-size: cover;
@@ -99,7 +108,7 @@
     width: auto;
     min-height: 46px;
     border-radius: 14px;
-    background: rgba(240, 189, 88, 0.12);
+    background: var(--accent-soft);
     backdrop-filter: blur(24px) saturate(140%);
   }
 
@@ -117,7 +126,7 @@
     padding: 6px 11px;
     border: 1px solid var(--now-line);
     border-radius: 14px;
-    background: rgba(24, 25, 30, 0.74);
+    background: var(--surface-2);
     color: var(--now-secondary);
     backdrop-filter: blur(24px) saturate(140%);
     text-align: left;
@@ -126,7 +135,7 @@
 
   .now-device-shortcut:hover {
     border-color: var(--now-line-strong);
-    background: rgba(31, 32, 38, 0.82);
+    background: var(--surface-3);
   }
 
   .now-device-shortcut > svg {
@@ -171,7 +180,7 @@
     padding: 12px 14px;
     border: 1px solid color-mix(in srgb, var(--now-warning) 28%, transparent);
     border-radius: 14px;
-    background: color-mix(in srgb, var(--now-warning) 8%, rgba(20, 21, 26, 0.82));
+    background: color-mix(in srgb, var(--now-warning) 8%, var(--surface-2));
   }
 
   .now-notice > svg {
@@ -208,7 +217,12 @@
     display: grid;
     grid-template-columns: minmax(300px, 0.82fr) minmax(410px, 1.18fr);
     gap: clamp(24px, 3.2vw, 48px);
-    align-items: start;
+    /*
+     * stretch 而不是 start：右侧面板跟左栏一样高，两栏底边齐平。
+     * 用 start 的话面板高度由自己的 min-height 决定，跟左栏对不上 ——
+     * 歌词少的时候右边比左边矮一截，多的时候又比左边高出去。
+     */
+    align-items: stretch;
   }
 
   .now-track-column {
@@ -229,12 +243,12 @@
     display: grid;
     place-items: center;
     overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border-subtle);
     border-radius: 25px;
-    background: linear-gradient(145deg, #32343d, #15161b);
+    background: var(--surface-3);
     box-shadow:
-      0 42px 92px rgba(0, 0, 0, 0.47),
-      inset 0 1px rgba(255, 255, 255, 0.12);
+      0 42px 92px var(--shadow-tint),
+      inset 0 1px var(--border-default);
   }
 
   .now-cover img {
@@ -258,10 +272,16 @@
     gap: 7px;
     min-height: 31px;
     padding: 0 11px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    border: 1px solid var(--border-strong);
     border-radius: 999px;
-    background: rgba(12, 13, 17, 0.7);
-    color: var(--now-secondary);
+    /*
+     * 这枚胶囊压在封面照片上。照片跟主题无关，所以底色用固定偏深的
+     * --scrim-on-media，而文字**也必须固定是浅的** —— 之前写的是
+     * --now-secondary（跟主题变），浅色主题下就是深灰字压在深底上。
+     * 这是"局部反色表面"的通用坑：底固定了，前景也得跟着固定。
+     */
+    background: var(--scrim-on-media);
+    color: var(--palette-neutral-50);
     backdrop-filter: blur(22px);
     font-size: calc(9px + var(--font-delta, 0px));
   }
@@ -275,8 +295,8 @@
   }
 
   .now-source-chip.remote i {
-    background: #6ca6ff;
-    box-shadow: 0 0 12px rgba(108, 166, 255, 0.64);
+    background: var(--info-solid);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--info-solid) 64%, transparent);
   }
 
   .now-track-copy {
@@ -314,7 +334,7 @@
     padding: 2px 7px;
     border: 1px solid color-mix(in srgb, var(--now-accent) 32%, transparent);
     border-radius: 6px;
-    color: #f5cd84;
+    color: var(--accent-text);
   }
 
   .now-controls {
@@ -336,11 +356,67 @@
     text-align: right;
   }
 
+  /*
+   * 进度条和音量条。
+   *
+   * 原来只写了 accent-color —— 那只管拇指和已填充部分，**轨道**用的是
+   * 浏览器默认色。深色主题下默认轨道偏亮还看得见，浅色主题下它几乎
+   * 和白色面板一个颜色，整条滑块看起来只剩一个圆点浮在空白里。
+   * 这里把轨道和拇指都显式画出来。
+   */
   .now-progress input,
   .now-control-meta input,
   .now-lyrics-overlay footer input {
     width: 100%;
-    accent-color: var(--now-primary);
+    height: 18px;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .now-progress input::-webkit-slider-runnable-track,
+  .now-control-meta input::-webkit-slider-runnable-track,
+  .now-lyrics-overlay footer input::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: var(--radius-pill);
+    background: var(--border-default);
+  }
+
+  .now-progress input::-moz-range-track,
+  .now-control-meta input::-moz-range-track,
+  .now-lyrics-overlay footer input::-moz-range-track {
+    height: 4px;
+    border-radius: var(--radius-pill);
+    background: var(--border-default);
+  }
+
+  .now-progress input::-webkit-slider-thumb,
+  .now-control-meta input::-webkit-slider-thumb,
+  .now-lyrics-overlay footer input::-webkit-slider-thumb {
+    appearance: none;
+    width: 13px;
+    height: 13px;
+    /* 拇指比轨道高，要自己把中心拉回轨道线上。 */
+    margin-block-start: -4.5px;
+    border-radius: var(--radius-pill);
+    background: var(--accent-solid);
+    box-shadow: 0 1px 4px var(--shadow-tint);
+  }
+
+  .now-progress input::-moz-range-thumb,
+  .now-control-meta input::-moz-range-thumb,
+  .now-lyrics-overlay footer input::-moz-range-thumb {
+    width: 13px;
+    height: 13px;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: var(--accent-solid);
+  }
+
+  .now-progress input:focus-visible,
+  .now-control-meta input:focus-visible {
+    outline: 2px solid var(--accent-border);
+    outline-offset: 3px;
   }
 
   .now-progress input:disabled {
@@ -378,12 +454,26 @@
     opacity: 0.28;
   }
 
+  /*
+   * 主播放按钮用**主色**实心，不用文字色。
+   *
+   * 原来是 background:--now-primary（文字色）、color:--surface-2。
+   * 深色主题下那是白底深字，勉强能用；浅色主题下 --now-primary 变成
+   * 近黑、--surface-2 变成近白，按钮成了黑底白字 —— 和整页的暖金
+   * 主色完全没关系，而且它是这一页唯一的主操作，不该是个灰按钮。
+   * accent-solid / accent-on-solid 这一对在两个主题下都是校验过对比度的。
+   */
   .now-main-controls button.now-play {
     width: 60px;
     height: 60px;
-    background: var(--now-primary);
-    color: #111217;
-    box-shadow: 0 13px 36px rgba(0, 0, 0, 0.32);
+    background: var(--accent-solid);
+    color: var(--accent-on-solid);
+    border-color: transparent;
+    box-shadow: 0 13px 36px var(--shadow-tint);
+  }
+
+  .now-main-controls button.now-play:hover:not(:disabled) {
+    background: var(--accent-solid-hover);
   }
 
   .now-main-controls svg {
@@ -446,7 +536,7 @@
   }
 
   .now-control-meta > button.active {
-    color: #ff8b88;
+    color: var(--danger-text);
   }
 
   .now-control-meta > button svg {
@@ -473,12 +563,19 @@
 
   .now-detail-panel {
     min-width: 0;
-    min-height: 680px;
+    /*
+     * 不写死高度。它由 .now-workspace 的 align-items:stretch 撑到
+     * 和左栏一样高，内部用 flex 列把剩余空间分给歌词区。
+     * 原来是 min-height:680px —— 歌词只有两三行时，面板里上下各空出
+     * 两百多像素，中间飘着几行字，看着像加载失败。
+     */
+    display: flex;
+    flex-direction: column;
     padding: 10px;
     border: 1px solid var(--now-line);
     border-radius: 25px;
     background: var(--now-surface);
-    box-shadow: 0 28px 85px rgba(0, 0, 0, 0.28);
+    box-shadow: 0 28px 85px var(--shadow-tint);
     backdrop-filter: blur(34px) saturate(138%);
   }
 
@@ -487,9 +584,9 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 4px;
     padding: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.035);
+    border: 1px solid var(--surface-2);
     border-radius: 15px;
-    background: rgba(0, 0, 0, 0.18);
+    background: var(--shadow-tint);
   }
 
   .now-tabs button {
@@ -514,8 +611,8 @@
   }
 
   .now-tabs button.active {
-    background: rgba(255, 255, 255, 0.1);
-    box-shadow: 0 5px 18px rgba(0, 0, 0, 0.18);
+    background: var(--border-subtle);
+    box-shadow: 0 5px 18px var(--shadow-tint);
     color: var(--now-primary);
   }
 
@@ -531,8 +628,12 @@
     font-size: calc(8px + var(--font-delta, 0px));
   }
 
+  /* 撑满面板剩余高度。原来是 min-height:580px 死值。 */
   .now-pane {
-    min-height: 580px;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
     padding: 24px 20px 18px;
     animation: now-pane-in 0.35s var(--now-ease);
   }
@@ -549,9 +650,17 @@
     flex-direction: column;
   }
 
+  /*
+   * 歌词区。
+   *
+   * 高度改成 flex 撑满而不是 min-height:440px 死值：面板现在跟左栏
+   * 一样高，歌词区应该吃掉除 tab 条和底部按钮以外的全部剩余空间。
+   * justify-content:center 让行少时居中；行多时溢出会从顶部开始滚，
+   * 这是 flex 居中溢出的默认行为，正好是想要的。
+   */
   .now-lyrics-lines {
-    min-height: 440px;
-    max-height: 520px;
+    flex: 1 1 auto;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -567,7 +676,7 @@
     padding: 0;
     border: 0;
     background: transparent;
-    color: rgba(245, 245, 247, 0.25);
+    color: var(--border-strong);
     font-size: clamp(18px, 2.1vw, 30px);
     font-weight: 660;
     letter-spacing: -0.035em;
@@ -584,7 +693,7 @@
     color: var(--now-primary);
     transform: scale(1.015);
     transform-origin: left;
-    text-shadow: 0 5px 24px rgba(0, 0, 0, 0.28);
+    text-shadow: 0 5px 24px var(--shadow-tint);
   }
 
   .now-centered {
@@ -633,9 +742,11 @@
     gap: 16px;
     margin-top: auto;
     padding: 13px 14px;
-    border: 1px solid var(--now-line);
+    border: 1px solid var(--accent-border);
     border-radius: 16px;
-    background: rgba(0, 0, 0, 0.15);
+    /* 投屏中是一个"正在生效"的状态，用主色微底标出来。
+       之前这里写的是 --shadow-tint（投影色），浅色主题下几乎透明。 */
+    background: var(--accent-soft);
   }
 
   .now-cast-bar > span {
@@ -665,7 +776,7 @@
     padding: 4px;
     border: 1px solid var(--now-line);
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.045);
+    background: var(--surface-2);
   }
 
   .now-lyrics-offset button {
@@ -680,7 +791,7 @@
   }
 
   .now-lyrics-offset button:hover {
-    background: rgba(255, 255, 255, 0.09);
+    background: var(--border-subtle);
     color: var(--now-primary);
   }
 
@@ -720,7 +831,7 @@
     border: 0;
     border-radius: 12px;
     background: var(--now-accent);
-    color: #18130a;
+    color: var(--accent-on-solid);
     font-weight: 760;
   }
 
@@ -775,7 +886,7 @@
     padding: 11px 13px;
     border: 1px solid var(--now-line);
     border-radius: 16px;
-    background: rgba(0, 0, 0, 0.12);
+    background: var(--shadow-tint);
     color: var(--now-primary);
     text-align: left;
     transition: 0.2s var(--now-ease);
@@ -798,7 +909,7 @@
     display: grid;
     place-items: center;
     border-radius: 13px;
-    background: rgba(255, 255, 255, 0.07);
+    background: var(--surface-3);
     color: var(--now-secondary);
   }
 
@@ -845,7 +956,7 @@
   }
 
   .now-device-state.idle {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--surface-3);
     color: var(--now-tertiary);
   }
 
@@ -923,7 +1034,7 @@
     grid-template-rows: auto 1fr auto;
     overflow: hidden;
     padding: max(22px, env(safe-area-inset-top)) clamp(22px, 4vw, 64px) max(22px, env(safe-area-inset-bottom));
-    background: #090a0d;
+    background: var(--scrim-on-media);
     color: var(--now-primary);
   }
 
@@ -945,7 +1056,12 @@
     content: "";
     position: absolute;
     inset: 0;
-    background: linear-gradient(100deg, rgba(8, 9, 12, 0.94), rgba(8, 9, 12, 0.58), rgba(8, 9, 12, 0.88));
+    background: linear-gradient(
+      100deg,
+      color-mix(in srgb, var(--surface-canvas) 94%, transparent),
+      color-mix(in srgb, var(--surface-canvas) 58%, transparent),
+      color-mix(in srgb, var(--surface-canvas) 88%, transparent)
+    );
   }
 
   .now-lyrics-overlay header {
@@ -964,7 +1080,7 @@
     padding: 0 13px;
     border: 1px solid var(--now-line);
     border-radius: 12px;
-    background: rgba(18, 19, 23, 0.62);
+    background: var(--surface-2);
     color: var(--now-primary);
     backdrop-filter: blur(22px);
   }
@@ -1023,7 +1139,7 @@
     padding: 0;
     border: 0;
     background: transparent;
-    color: rgba(255, 255, 255, 0.2);
+    color: var(--border-strong);
     font-size: clamp(27px, 4vw, 64px);
     font-weight: 720;
     letter-spacing: -0.045em;
@@ -1033,13 +1149,13 @@
   }
 
   .now-overlay-lines button.near {
-    color: rgba(255, 255, 255, 0.44);
+    color: var(--text-tertiary);
   }
 
   .now-overlay-lines button.active {
     color: white;
     transform: translateX(12px);
-    text-shadow: 0 12px 44px rgba(0, 0, 0, 0.4);
+    text-shadow: 0 12px 44px var(--shadow-tint);
   }
 
   .now-lyrics-overlay footer {
@@ -1067,7 +1183,7 @@
 
   .now-lyrics-overlay footer > button.play-large {
     background: var(--now-primary);
-    color: #111217;
+    color: var(--surface-2);
   }
 
   .now-lyrics-overlay footer svg {
@@ -1170,7 +1286,7 @@
 
     .now-cover {
       border-radius: 18px;
-      box-shadow: 0 20px 46px rgba(0, 0, 0, 0.38);
+      box-shadow: 0 20px 46px var(--shadow-tint);
     }
 
     .now-source-chip {
@@ -1377,8 +1493,8 @@
     }
 
     .now-detail-panel {
-      background: rgba(18, 19, 24, 0.96);
-      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.3);
+      background: var(--surface-1);
+      box-shadow: 0 18px 48px var(--shadow-tint);
     }
 
     .now-lyrics-overlay-bg img {
@@ -1398,7 +1514,7 @@
     .route-player .mobile-nav {
       -webkit-backdrop-filter: none;
       backdrop-filter: none;
-      background: rgba(15, 16, 20, 0.98);
+      background: var(--surface-1);
     }
   }
 

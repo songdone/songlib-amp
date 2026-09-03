@@ -258,10 +258,11 @@ class StreamProfileTests(unittest.TestCase):
         wan = stream_profile(True)
         self.assertGreaterEqual(wan["segment"], 3.0, "公网分片不能再是 1 秒")
         self.assertLessEqual(wan["fps"], 15, "一句歌词才变一次，30fps 是在烧上行")
-        window = wan["segment"] * wan["list_size"]
-        self.assertGreaterEqual(
-            window, 40, f"直播窗口只有 {window} 秒，客户端落后一次就再也追不回来"
-        )
+        # 公网档现在是"根本没有窗口"：list_size 0 表示播放列表列出全部
+        # 分片，配合不删分片，客户端落后多少都能追回来。这比原来那条
+        # "窗口至少 40 秒"更强 —— 40 秒只是把掉出窗口这件事推迟。
+        self.assertEqual(wan["list_size"], 0, "公网要列出全部分片")
+        self.assertTrue(wan["keep_all"], "公网不能删分片")
 
     def test_the_window_is_what_actually_reaches_ffmpeg(self):
         """光有档位不算，得真的写进 ffmpeg 参数里。"""
@@ -272,7 +273,7 @@ class StreamProfileTests(unittest.TestCase):
         )
         self.assertIn("-hls_time", cmd)
         self.assertEqual(cmd[cmd.index("-hls_time") + 1], "4")
-        self.assertEqual(cmd[cmd.index("-hls_list_size") + 1], "12")
+        self.assertEqual(cmd[cmd.index("-hls_list_size") + 1], "0")
         # 注意别断言 -framerate：那是**输入端**往管道推帧的速率
         # （airplay_render_fps，默认 4），跟输出帧率是两回事。
         # 第一版断在它上面，读到 4 以为参数没传进去，其实是断错了参数。
@@ -290,3 +291,37 @@ class StreamProfileTests(unittest.TestCase):
 
         self.assertIn("FRAME-RATE=15.000", build_master_playlist(stream_profile(True)))
         self.assertIn("FRAME-RATE=30.000", build_master_playlist(stream_profile(False)))
+
+
+class SegmentRetentionTests(unittest.TestCase):
+    """公网投屏不能删分片。
+
+    "投上去一屏歌词然后不动"的真正根因不是分片太短，是 delete_segments
+    把滑出窗口的分片删掉了：客户端外网抖动一次就落后，而它要的分片已经
+    不在磁盘上，之后再也追不回来。把窗口从 12 秒拉到 48 秒只是推迟，
+    不是修复。
+    """
+
+    def test_wan_keeps_every_segment(self):
+        from app.airplay_cast import build_ffmpeg_command, stream_profile
+
+        cmd = build_ffmpeg_command(
+            Path("/tmp/cast-retention"), use_qsv=False, profile=stream_profile(True)
+        )
+        self.assertEqual(
+            cmd[cmd.index("-hls_list_size") + 1], "0", "公网播放列表要列出全部分片"
+        )
+        self.assertNotIn(
+            "delete_segments",
+            cmd[cmd.index("-hls_flags") + 1],
+            "公网不能删分片，删了客户端落后就再也追不回来",
+        )
+
+    def test_lan_still_prunes(self):
+        """局域网保持低延迟直播窗口，没必要为了追赶能力堆磁盘。"""
+        from app.airplay_cast import build_ffmpeg_command, stream_profile
+
+        cmd = build_ffmpeg_command(
+            Path("/tmp/cast-retention"), use_qsv=False, profile=stream_profile(False)
+        )
+        self.assertIn("delete_segments", cmd[cmd.index("-hls_flags") + 1])

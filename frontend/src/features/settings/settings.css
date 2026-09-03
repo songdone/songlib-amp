@@ -31,6 +31,16 @@
   .settings-page .settings-tabs button {
     display: flex;
     align-items: center;
+    /*
+     * 必须显式写 flex-start。
+     *
+     * 不写的话会被更广的按钮规则居中，而"居中"是把【图标+文字】当成
+     * 一个整体居中 —— 文字长度不同，图标就被推到不同位置：实测同一列
+     * 里图标左边界在 62 / 68 / 72 / 74 之间游走，看起来就是一竖排歪歪
+     * 扭扭的图标。按钮宽度和左边界其实完全一致（都是 9 / 206），
+     * 歪的只有里面的内容。
+     */
+    justify-content: flex-start;
     gap: var(--space-3);
     min-height: var(--control-height-lg);
     padding-inline: var(--space-3);

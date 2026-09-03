@@ -617,7 +617,14 @@ export default function NowPlayingPage({
               {metadataLoading ? (
                 <div className="now-centered"><LoaderCircle className="spin" /><strong>正在读取歌曲与歌词</strong></div>
               ) : lines.length && playerSettings.showLyrics !== false ? (
-                <div className="now-lyrics-lines" ref={panelLinesRef}>
+                /* 手机上「全屏歌词」按钮在折叠线以下，够不着；
+                   歌词区本身也能点开全屏，是最顺手的入口。
+                   双击而不是单击：单击要留给"点某一句跳到那儿"。 */
+                <div
+                  className="now-lyrics-lines"
+                  ref={panelLinesRef}
+                  onDoubleClick={() => setLyricsFull(true)}
+                >
                   {lines.map((line, index) => (
                     <button
                       key={`${line.time}-${index}`}

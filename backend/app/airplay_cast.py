@@ -207,11 +207,23 @@ def stream_profile(wan: bool) -> dict:
     帧率压到 15 是因为这块画面一句歌词才变一次，30fps 纯粹在烧上行带宽。
     """
     if wan:
-        return {"segment": 4.0, "list_size": 12, "fps": 15}
+        # keep_all：分片一律不删、播放列表列出全部。
+        #
+        # 这才是"外网投上去一屏就不动"的真正根因 —— 不是分片太短，是
+        # delete_segments 会把滑出窗口的分片**删掉**。客户端一旦落后
+        # （外网抖动一次就够），它要的分片已经不在磁盘上，之后再也追不
+        # 回来，画面就永久停住。窗口从 12 秒拉到 48 秒只是让这件事晚点
+        # 发生，没有解决它。
+        #
+        # 保留全部之后，落后多少都能继续拉，等于让接收端可以想缓冲多少
+        # 缓冲多少。代价是磁盘：歌词画面几秒才变一次，几乎全是静止帧，
+        # 一首歌压出来只有几 MB，会话结束时整个目录会被清掉。
+        return {"segment": 4.0, "list_size": 0, "fps": 15, "keep_all": True}
     return {
         "segment": settings.airplay_segment_seconds,
         "list_size": 12,
         "fps": settings.airplay_fps,
+        "keep_all": False,
     }
 
 
@@ -322,7 +334,11 @@ def build_ffmpeg_command(output_dir: Path, *, use_qsv: bool, profile: dict | Non
         "-hls_fmp4_init_filename",
         "init.mp4",
         "-hls_flags",
-        "delete_segments+independent_segments+program_date_time+temp_file",
+        (
+            "independent_segments+program_date_time+temp_file"
+            if chosen.get("keep_all")
+            else "delete_segments+independent_segments+program_date_time+temp_file"
+        ),
         "-hls_segment_filename",
         str(output_dir / "segment_%09d.m4s"),
         str(output_dir / "media.m3u8"),

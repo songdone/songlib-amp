@@ -515,6 +515,92 @@ else if (para.before.transform !== para.after.transform)
   note("视差把元素原有的 transform 顶掉了，应该只动 translate");
 else ok(`视差生效（translate ${para.before.translate} → ${para.after.translate}，scale 保住）`);
 
+/* ---------- 10. 竖排列表里的图标要在同一条线上 ---------- */
+console.log("\n图标对齐");
+// 成因是同一类：更广的按钮规则把【图标+文字】当整体居中，文字长度不同
+// 图标就被推到不同位置。按钮本身宽度、左边界都一样，歪的只有里面的内容，
+// 所以量按钮量不出来，必须量图标。
+const iconLines = async (label, selector) => {
+  const off = await page.evaluate((sel) => {
+    const box = document.querySelector(sel);
+    if (!box) return null;
+    const out = [];
+    for (const btn of box.querySelectorAll("button, a")) {
+      const svg = btn.querySelector("svg");
+      if (!svg) continue;
+      out.push(Math.round(svg.getBoundingClientRect().left - box.getBoundingClientRect().left));
+    }
+    return out;
+  }, selector);
+  if (!off || off.length < 3) return;
+  const spread = Math.max(...off) - Math.min(...off);
+  if (spread > 2) note(`${label} 图标不在一条线上，左边界相差 ${spread}px（${[...new Set(off)].join("/")}）`);
+  else ok(`${label} 图标对齐（${off[0]}px）`);
+};
+await nav("设置").catch(() => {});
+await page.waitForTimeout(900);
+await iconLines("设置二级导航", ".settings-tabs");
+await iconLines("主侧栏", "aside nav");
+
+/* ---------- 11. 手机上必须够得到全屏歌词 ---------- */
+console.log("\n移动端");
+const mobile = await browser.newContext({
+  viewport: { width: 390, height: 844 },
+  isMobile: true,
+  hasTouch: true,
+  ...(process.env.SL_STATE ? { storageState: process.env.SL_STATE } : {}),
+});
+const mp = await mobile.newPage();
+await mp.addInitScript(() => localStorage.setItem("songlib-pwa-dismissed", "1"));
+await mp.goto(BASE, { waitUntil: "domcontentloaded" });
+await mp.waitForTimeout(2500);
+const mplay = mp.getByRole("button", { name: /播放这张专辑/ }).first();
+if (await mplay.count()) {
+  await mplay.click();
+  await mp.waitForTimeout(900);
+}
+await mp
+  .locator("nav button:visible, aside button:visible")
+  .filter({ hasText: "播放" })
+  .first()
+  .click()
+  .catch(() => {});
+await mp.waitForTimeout(1600);
+// 只量"初始是否在视口内"是错的：竖排长页面本来就要滚。
+// 要测的是能不能滚到、滚到之后有没有被迷你播放器或底栏挡住、点了有没有反应。
+const mobileFull = mp.getByRole("button", { name: /全屏歌词/ }).first();
+if (!(await mobileFull.count())) note("手机上找不到「全屏歌词」入口");
+else {
+  try {
+    await mobileFull.scrollIntoViewIfNeeded({ timeout: 6000 });
+    await mp.waitForTimeout(400);
+    const hit = await mp.evaluate(() => {
+      const el = [...document.querySelectorAll("button")].find((b) =>
+        b.textContent.includes("全屏歌词"),
+      );
+      const r = el.getBoundingClientRect();
+      const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return {
+        inView: r.top >= 0 && r.bottom <= window.innerHeight,
+        blocked: !(top === el || el.contains(top)),
+        by: top ? `${top.tagName}.${(top.className || "").slice(0, 24)}` : "null",
+      };
+    });
+    if (!hit.inView) note("「全屏歌词」滚动之后仍不在视口内");
+    else if (hit.blocked) note(`「全屏歌词」被 ${hit.by} 挡住`);
+    else {
+      await mobileFull.click({ timeout: 6000 });
+      await mp.waitForTimeout(900);
+      const opened = await mp.evaluate(() => !!document.querySelector(".now-lyrics-overlay"));
+      if (!opened) note("手机上点了「全屏歌词」没有打开");
+      else ok("手机上能滚到并打开全屏歌词");
+    }
+  } catch (err) {
+    note(`手机上够不到「全屏歌词」：${String(err.message).slice(0, 60)}`);
+  }
+}
+await mobile.close();
+
 await browser.close();
 console.log(problems.length ? `\n发现 ${problems.length} 个问题` : "\n交互检查全过");
 process.exit(problems.length ? 1 : 0);

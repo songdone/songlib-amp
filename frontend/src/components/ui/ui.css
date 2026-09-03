@@ -457,23 +457,63 @@
 
   .ui-media-card__art {
     position: relative;
+    /* 不裁剪：播放按钮是这一格的子元素，要允许它压在封面边缘上。 */
+    isolation: isolate;
   }
 
-  /* 播放按钮固定在封面右下角，不随封面比例移动。 */
+  /*
+   * 浮在封面上的播放按钮。
+   *
+   * 位置分两种，因为方形和圆形封面的"右下角"根本不是一回事：
+   *   方形 —— 距边 12px，压在封面里，是标准的 FAB 位置。
+   *   圆形 —— 12px 那个点在圆的**外面**（正方形的角在内切圆之外）。
+   *            所以改用百分比，让按钮中心正好落在圆周 45° 上：
+   *            0.5 + 0.5/√2 ≈ 85.4%。这样按钮一半压着封面、
+   *            一半探出圆外，读起来是有意的悬浮，而不是被切了一刀。
+   */
   .ui-media-card__play {
     position: absolute;
-    inset-block-end: var(--space-3);
-    inset-inline-end: var(--space-3);
-    box-shadow: var(--shadow-md);
-    /* 未悬停时略微缩小，浮现时回到原尺寸，给一点物理感。 */
-    transform: scale(0.9);
-    transition: transform var(--duration-base) var(--ease-out);
+    box-shadow: var(--shadow-lg);
+    /* 描边用卡片底色，按钮压在封面上时边界才干净。 */
+    border: 2px solid var(--surface-canvas);
   }
 
-  .ui-cover:hover .ui-media-card__play,
-  .ui-cover:focus-within .ui-media-card__play {
-    transform: scale(1);
+  .ui-media-card__art[data-shape="square"] .ui-media-card__play,
+  .ui-media-card__art[data-shape="rounded"] .ui-media-card__play {
+    inset-block-end: var(--space-3);
+    inset-inline-end: var(--space-3);
   }
+
+  .ui-media-card__art[data-shape="round"] .ui-media-card__play {
+    inset-block-start: 85.4%;
+    inset-inline-start: 85.4%;
+    translate: -50% -50%;
+  }
+
+  /*
+   * 指针设备上悬停才浮现。
+   *
+   * 一屏几十张卡片、每张都挂一个主色实心按钮，网格会变成一片按钮墙，
+   * 音乐本身反而看不见了。触屏没有 hover，那里常态可见。
+   */
+  @media (hover: hover) and (pointer: fine) {
+    .ui-media-card__play {
+      opacity: 0;
+      scale: 0.86;
+      transition:
+        opacity var(--duration-fast) var(--ease-out),
+        scale var(--duration-base) var(--ease-settle);
+    }
+
+    .ui-media-card:hover .ui-media-card__play,
+    .ui-media-card:focus-within .ui-media-card__play {
+      opacity: 1;
+      scale: 1;
+    }
+  }
+
+  /* round 的位移写在 translate 上，缩放写在 scale 上 ——
+     两个独立属性，不会互相覆盖（用 transform 写就会）。 */
 
   .ui-media-card__body {
     display: flex;

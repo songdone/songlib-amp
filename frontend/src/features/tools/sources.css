@@ -202,3 +202,10 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+@layer components {
+  /* "拿哪首歌去试"。宽度收住 —— 一个歌名不需要铺满整行。 */
+  .sources__probe {
+    max-width: 420px;
+  }
+}

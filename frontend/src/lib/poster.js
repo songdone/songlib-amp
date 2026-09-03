@@ -807,7 +807,10 @@ function paintLyricTemplate(context, frame, theme, data) {
 
   const blockHeight = (wrapped.length - 1) * lineHeight + Math.round(lyricSize * 0.8);
   const slack = Math.max(0, footBlockTop - quoteBottom - blockHeight);
-  const top = Math.round(quoteBottom + slack / 2);
+  // 上方分到的余量给个上限：纯居中时画布越高上面越空，
+  // 实测 9:16 首个内容在 36% 处。多出来的高度让它落到歌词和底部曲名
+  // 之间 —— 那里有内容收尾，读起来是留白而不是空着。
+  const top = Math.round(quoteBottom + Math.min(slack / 2, width * 0.05));
 
   // 起始的大引号，纯装饰。跟着歌词块走，不再用固定偏移。
   context.save();
@@ -1051,7 +1054,27 @@ function paintMinimalTemplate(context, frame, theme, data) {
   // 略偏上：底注占了下方，视觉重心放在偏上一点更稳。
   // 试过改成靠上锚定，结果空白全跑到下面去（9:16 下方空 67%），更糟。
   // 字少画布高的时候留白就是大的，关键是上下配平，不是消灭留白。
-  let y = Math.round((height - stackHeight) / 2 - height * 0.02);
+  /*
+   * 纵向锚点：居中，但距顶有上限。
+   *
+   * 纯居中时字块本来就矮，画布一高上面就空一大片 —— 实测 9:16 首个
+   * 内容在 39% 处、3:4 在 37% 处，下面到 96% 才收尾，等于全挤在下半部。
+   * 上限按宽度给，所以不管什么比例，顶部留白都是同一个视觉量。
+   */
+  /*
+   * 纵向锚点：上方留白约占可用高度的三分之一。
+   *
+   * 试过两个极端，都不行：
+   *   纯居中        画布一高，字块沉到中部，上面空 39%（实测 9:16）
+   *   距顶固定比例  9:16 上全挤进上方 30%，下面空 66%
+   *
+   * 现在按比例分：可用高度减去字块，剩下的三分之一放上面、三分之二
+   * 放下面。这是版面里常见的"上三分之一"重心 —— 不管画布多高多矮，
+   * 上下的比例是恒定的，不会某个比例下突然贴顶或者沉底。
+   */
+  const available = height - pad * 2 - Math.round(width * 0.06);
+  const y0 = pad + Math.max(0, Math.round((available - stackHeight) / 3));
+  let y = y0;
 
   y = paintText(context, eyebrow, pad, y, rgb(theme.accent, 0.9));
   y = paintText(context, title, pad, y + gapEyebrow, theme.ink);

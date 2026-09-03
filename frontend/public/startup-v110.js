@@ -1,5 +1,5 @@
 (function () {
-  var release = "1.1.6";
+  var release = "1.1.7";
   var recoveryKey = "songlib-startup-recovery-" + release;
   var timer = null;
 

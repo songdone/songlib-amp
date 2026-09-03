@@ -102,19 +102,34 @@ const topGap = () =>
     const filled = [];
     const rows = [];
     for (let y = 0; y < c.height; y += 2) {
-      let min = 255;
-      let max = 0;
+      /*
+       * 用**相邻像素的最大跳变**判断这一行有没有内容，不用整行的
+       * max-min。
+       *
+       * 整行 max-min 会被背景骗到：底色是 createLinearGradient(0,0,w,h)
+       * 的对角渐变，靠近顶边的一行本身就有从左到右的颜色斜坡，
+       * max-min 能到二三十，于是纯背景被判成内容 —— 阈值一降到 16
+       * 就冒出来了（极简 1:1 的"首个内容"被报在 2% 处，那里什么都没有）。
+       *
+       * 相邻差不会：平滑渐变每一步只差零点几，而文字边缘、封面边界
+       * 一步就跳几十。判据换成它，对角渐变多深都不影响。
+       */
+      let jump = 0;
       let sum = 0;
       let n = 0;
-      for (let x = 0; x < c.width; x += 4) {
+      let prevL = null;
+      for (let x = 0; x < c.width; x += 2) {
         const i = (y * c.width + x) * 4;
         const l = 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
-        if (l < min) min = l;
-        if (l > max) max = l;
+        if (prevL !== null) {
+          const delta = Math.abs(l - prevL);
+          if (delta > jump) jump = delta;
+        }
+        prevL = l;
         sum += l;
         n += 1;
       }
-      rows.push({ contrast: max - min, mean: sum / n });
+      rows.push({ contrast: jump, mean: sum / n });
     }
 
     /*
@@ -135,17 +150,36 @@ const topGap = () =>
       const ref = head + ((tail - head) * i) / Math.max(1, rows.length - 1);
       const offBackground = Math.abs(rows[i].mean - ref) > 6;
       /*
-       * 阈值 16 是量出来的，不是拍的。同一批海报实测：
-       *   真空白行        对比 0.2 – 8.9
-       *   深色实体（唱片盘身）对比 26 – 29
-       *   文字行          对比 226
-       * 原来写 42，正好把唱片盘身划到空白那边，于是报"画面正中裂开 28%"。
-       * 16 落在两簇中间，两边都留了将近一倍的余量。
+       * 阈值 7 是量出来的，不是拍的。改用相邻像素跳变之后，
+       * 同一批海报实测：
+       *   真空白行            1.0 – 3.0
+       *   深色实体（唱片盘身）11.0 – 15.7   ← 靠唱片纹路的细线
+       *   文字行              58 – 228
+       * 7 落在前两簇中间，两边都有三倍余量。
+       *
+       * 阈值走过一段弯路，记下来免得再绕：42（整行 max-min）→ 看不见
+       * 唱片，误报"正中裂开"；16 → 换成相邻跳变后仍在盘身之上，还是
+       * 看不见。每次都是先量三类行的真实数值再定，不是试出来的。
        */
-      filled.push(rows[i].contrast > 16 || offBackground);
+      filled.push(rows[i].contrast > 7 || offBackground);
     }
+    /*
+     * 底部那行小水印（SongLib Amp · 音屿）是页脚，不是内容。
+     *
+     * 把它算进来的话，正文结束到水印之间的空白会被当成"画面正中裂开" ——
+     * 而任何一个把字放在上半部、底下留白的版式都会中招，极简 9:16
+     * 被报成裂开 50%，但那正是它该有的样子。
+     *
+     * 所以"内容"的下界取最后一行**在页脚带以上**的内容；页脚带按画布
+     * 底部 8% 算（水印字号是宽度的 2.2%，加上下边距远小于这个数）。
+     */
+    const footerBand = Math.round(filled.length * 0.92);
     const firstAt = filled.indexOf(true);
-    const lastAt = filled.lastIndexOf(true);
+    let lastAt = -1;
+    for (let i = Math.min(footerBand, filled.length) - 1; i >= 0; i -= 1) {
+      if (filled[i]) { lastAt = i; break; }
+    }
+    if (lastAt < 0) lastAt = filled.lastIndexOf(true);
     if (firstAt < 0) return { blank: true, height: c.height };
     let hole = 0;
     let holeAt = 0;

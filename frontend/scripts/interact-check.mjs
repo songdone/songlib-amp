@@ -315,6 +315,60 @@ else {
   else ok(`悬停时光晕可见（opacity ${Number(c.glow).toFixed(2)}）`);
 }
 
+/* ---------- 8. 重影边框：外壳和子元素画了两层一样的框 ---------- */
+console.log("\n重影边框");
+// 为什么要通用扫描而不是逐个页面看：这类缺陷的成因都一样 —— 页面级的
+// 通用规则（.settings-page input:not(...) 那种，特异性能到 0,5,1）伸进
+// 已经有外壳的组件里，外壳一层边框、控件再被加一层，两个同色同圆角的
+// 边框叠在一起。人眼在小截图上很容易忽略，量像素才看得出。
+const dupBorders = async (label) => {
+  const found = await page.evaluate(() => {
+    const same = (a, b) => a === b && a !== "0px" && !a.startsWith("0px");
+    const out = [];
+    for (const child of document.querySelectorAll("input, select, textarea, button")) {
+      const parent = child.parentElement;
+      if (!parent) continue;
+      const cs = getComputedStyle(child);
+      const ps = getComputedStyle(parent);
+      const cb = cs.borderTopWidth + " " + cs.borderTopColor;
+      const pb = ps.borderTopWidth + " " + ps.borderTopColor;
+      if (!same(cs.borderTopWidth, ps.borderTopWidth)) continue;
+      if (cs.borderTopColor !== ps.borderTopColor) continue;
+      // 两个框几乎同尺寸才算重影：父元素明显更大时那是正常的容器
+      const cr = child.getBoundingClientRect();
+      const pr = parent.getBoundingClientRect();
+      if (pr.width - cr.width > 26 || pr.height - cr.height > 26) continue;
+      if (cr.width < 40) continue;
+      out.push(
+        `${parent.tagName}.${(parent.className || "").slice(0, 22)} > ${child.tagName} 都是 ${cb}`,
+      );
+    }
+    return [...new Set(out)].slice(0, 4);
+  });
+  if (found.length) found.forEach((item) => note(`${label} 重影边框：${item}`));
+  else ok(`${label} 无重影边框`);
+};
+for (const [label, tab] of [["设置", null], ["下载入库", null], ["文件与标签", null]]) {
+  await nav(label).catch(() => {});
+  await page.waitForTimeout(900);
+  await dupBorders(`${label}页`);
+}
+// Plex 弹窗是这类缺陷的原发地，单独开一次
+await nav("设置").catch(() => {});
+await page.waitForTimeout(700);
+const plexTab = page.locator("button").filter({ hasText: "Plex 连接" }).first();
+if (await plexTab.count()) {
+  await plexTab.click();
+  await page.waitForTimeout(600);
+  const openPlex = page.getByRole("button", { name: /连接 Plex|配置|编辑/ }).first();
+  if (await openPlex.count()) {
+    await openPlex.click();
+    await page.waitForTimeout(800);
+    await dupBorders("Plex 弹窗");
+    await page.keyboard.press("Escape");
+  }
+}
+
 await browser.close();
 console.log(problems.length ? `\n发现 ${problems.length} 个问题` : "\n交互检查全过");
 process.exit(problems.length ? 1 : 0);

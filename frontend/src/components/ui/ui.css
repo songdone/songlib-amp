@@ -820,6 +820,30 @@
     border-color: var(--border-strong);
   }
 
+  /*
+   * 外壳独占边框和底色，里面的控件必须是裸的。
+   *
+   * 不写这条时，页面级的通用规则会给 input 也来一份边框和圆角 ——
+   * 比如 settings.css 里的
+   *   `.settings-page input:not([type=checkbox]):not(...)`
+   * Plex 配置弹窗虽然渲染在 top layer，DOM 上仍是 .settings-page 的后代，
+   * 于是外壳一层、input 一层，两个 1px solid rgba(255,255,255,.12) 加
+   * 两个 10px 圆角叠在一起，看起来就是每个输入框套着一个空框。
+   *
+   * 特异性刻意做到 0,3,1（.ui-field 加 .ui-field__control 加 > 子类型），
+   * 比那条页面级规则的 0,1,1 高 —— 不能只靠 @import 顺序，
+   * 同层里顺序一变就又坏了。
+   */
+  .ui-field .ui-field__control > input,
+  .ui-field .ui-field__control > select,
+  .ui-field .ui-field__control > textarea {
+    min-width: 0;
+    border: 0;
+    border-radius: inherit;
+    background: transparent;
+    box-shadow: none;
+  }
+
   /* 焦点环画在容器上而不是 input 上，图标和按钮才会一起被框住。 */
   .ui-field__control:focus-within {
     border-color: var(--accent-border);

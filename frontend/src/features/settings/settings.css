@@ -257,9 +257,22 @@
     color: var(--text-tertiary);
   }
 
-  .settings-page input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
-  .settings-page select,
-  .settings-page textarea {
+  /*
+   * 只给**裸**控件上外观：直接写在无类名 label 里的那种。
+   *
+   * 原来是 `.settings-page input:not(...)` 一把梭。它的特异性其实是
+   * 0,5,1（一个类加四个属性型 :not()），比任何组件自己的规则都高，
+   * 于是伸进了 Plex 配置弹窗 —— 那里的输入框外面已经有 .ui-field__control
+   * 当外壳，外壳一层边框、input 再被这条加一层，两个 1px 边框加两个 10px
+   * 圆角叠在一起，每个输入框看起来都套着一个空框。
+   *
+   * 加 `> ` 之后作用域收到"无类名 label 的直接子控件"，组件化的字段
+   * （.ui-field 那套）由组件自己负责，这条不再插手 —— 跟这个文件里
+   * label 那条约定是同一个原则：有类名就自己管。
+   */
+  .settings-page label:not([class]) > input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  .settings-page label:not([class]) > select,
+  .settings-page label:not([class]) > textarea {
     width: 100%;
     min-height: var(--control-height-md);
     padding: var(--space-2) var(--space-3);

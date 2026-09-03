@@ -22,6 +22,16 @@ from .plex import has_chinese, local_media_path, plex
 AUDIO_EXTENSIONS = {".mp3", ".flac", ".m4a", ".mp4", ".aac", ".ogg", ".opus", ".wav", ".ape", ".wma"}
 IGNORED_DIRS = {"_incoming", "_downloads", ".trash", "@eaDir", "#recycle", ".snapshot"}
 TAG_NAMES = ("title", "artist", "album", "albumartist", "date", "tracknumber", "discnumber", "genre")
+
+# 判定"同一首歌的两份"时允许的时长差，单位秒。
+#
+# 3 秒的来处：同一段音频转成不同格式后，时长会因为编码器补的静音帧、
+# 首尾的 gapless 填充、以及各家读时长的取整方式而差开一两秒；三秒能
+# 覆盖住这些，又还没到能装进一段前奏或一次淡出的地步。
+#
+# 只有这一个常量。重复检查和入库前查重原先各写一份阈值，一处是
+# duration // 3 的分桶、一处是 abs(diff) > 3 的窗口，同一个问题两套答案。
+DUPLICATE_DURATION_TOLERANCE = 3
 ID3_TAGS = {
     "title": ("TIT2", TIT2),
     "artist": ("TPE1", TPE1),
@@ -626,7 +636,8 @@ class LocalLibraryService:
         Two passes, strongest signal first:
 
         1. identical content hash — byte-for-byte the same file in two places.
-        2. same normalized title+artist AND duration within 2 seconds.
+        2. same normalized title+artist AND duration within
+           DUPLICATE_DURATION_TOLERANCE seconds of another member of the group.
            Duration is the guard that keeps covers, live versions and remixes
            out of the group; without it "晴天" by two different artists,
            or a 30s intro clip, would be reported as duplicates.
@@ -649,10 +660,34 @@ class LocalLibraryService:
                 artist = _norm(item.get("artist") or "")
                 duration = int(item.get("duration") or 0)
                 if title and duration:
-                    # 时长按 3 秒一档分桶，同一首歌的不同转码差几百毫秒。
-                    key = ("meta", title, artist, duration // 3)
+                    # 先只按曲名歌手归堆，时长留到下面聚类。
+                    key = ("meta", title, artist)
             if key:
                 groups.setdefault(key, []).append(item)
+
+        # 曲名歌手相同的那些堆，再按时长切开。
+        #
+        # 原来这里是 duration // 3 分桶，有个硬边界问题：215 秒和 216 秒
+        # 只差一秒，却落在 71 和 72 两个桶里，这一对重复就查不出来了。
+        # 实际容差取决于两个值落在桶的哪个位置，在 0 到 2 秒之间飘。
+        # 改成沿时长排序、相邻差值超过容差就断开，容差才真的是 ±3 秒。
+        clustered: dict[tuple, list] = {}
+        for key, members in groups.items():
+            if key[0] == "hash" or len(members) < 2:
+                clustered[key] = members
+                continue
+            ordered = sorted(members, key=lambda row: int(row.get("duration") or 0))
+            run: list = []
+            for row in ordered:
+                if run and int(row.get("duration") or 0) - int(
+                    run[-1].get("duration") or 0
+                ) > DUPLICATE_DURATION_TOLERANCE:
+                    clustered[(*key, int(run[0].get("duration") or 0))] = run
+                    run = []
+                run.append(row)
+            if run:
+                clustered[(*key, int(run[0].get("duration") or 0))] = run
+        groups = clustered
 
         found = []
         for key, members in groups.items():
@@ -708,7 +743,11 @@ class LocalLibraryService:
             existing_duration = int(item.get("duration") or 0)
             # 两边都知道时长才比；有一边不知道就只靠曲名歌手，
             # 宁可多提醒一次，也好过入库之后才发现重了。
-            if duration and existing_duration and abs(existing_duration - duration) > 3:
+            if (
+                duration
+                and existing_duration
+                and abs(existing_duration - duration) > DUPLICATE_DURATION_TOLERANCE
+            ):
                 continue
             found.append({
                 "id": item["id"],

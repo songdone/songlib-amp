@@ -40,6 +40,20 @@ jobs:
         run: npm test
       - working-directory: frontend
         run: npm run build
+      # 冒烟：把构建产物挂在 mock 后端上，逐页打开、两个主题各走一遍，
+      # 卡住任何一处控制台报错或低对比文字。单测覆盖不到渲染这一层。
+      - working-directory: frontend
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - working-directory: frontend
+        run: |
+          node mock-server.mjs &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:4174/ >/dev/null && break
+            sleep 1
+          done
+          node scripts/smoke-pages.mjs
 
   container:
     runs-on: ubuntu-latest

@@ -14,18 +14,33 @@
  *
  * 用法：
  *   先起一个服务（node mock-server.mjs），然后
- *   PLAYWRIGHT=<playwright 入口> node scripts/smoke-pages.mjs [baseUrl]
+ *   node scripts/smoke-pages.mjs [baseUrl]
  *
- * playwright 不是本仓库的依赖（只在开发机上装），所以路径从环境变量来，
- * 不进 package.json 的 test 脚本 —— CI 里不该因为缺一个可选工具而红。
+ * playwright 不写进 package.json —— 只为一个冒烟脚本让每个开发机都装
+ * 一份浏览器不值得。解析顺序：PLAYWRIGHT 环境变量、node_modules 里的
+ * playwright（CI 用 npm i --no-save 临时装一份）、开发机上 homebrew 那份。
  */
 
-const PLAYWRIGHT =
-  process.env.PLAYWRIGHT ||
-  "/opt/homebrew/lib/node_modules/@playwright/cli/node_modules/playwright/index.js";
+const CANDIDATES = [
+  process.env.PLAYWRIGHT,
+  "playwright",
+  "/opt/homebrew/lib/node_modules/@playwright/cli/node_modules/playwright/index.js",
+].filter(Boolean);
 const BASE = process.argv[2] || "http://127.0.0.1:4174";
 
-const pw = (await import(PLAYWRIGHT)).default;
+let pw = null;
+for (const entry of CANDIDATES) {
+  try {
+    pw = (await import(entry)).default;
+    break;
+  } catch {
+    // 换下一个候选
+  }
+}
+if (!pw) {
+  console.error(`找不到 playwright，试过：\n  ${CANDIDATES.join("\n  ")}`);
+  process.exit(1);
+}
 const b = await pw.chromium.launch();
 let failures = 0;
 const routes = [
@@ -41,7 +56,7 @@ for (const theme of ["dark", "light"]) {
   p.on("pageerror", e => errs.push(`${e.message.slice(0,140)}`));
   p.on("console", m => m.type()==="error" && errs.push(m.text().slice(0,140)));
   await p.goto(BASE + "/", {waitUntil:"networkidle"});
-  await p.evaluate(t => { document.documentElement.dataset.theme = t; localStorage.setItem("songlib-appearance", JSON.stringify({mode:t})); }, theme);
+  await p.evaluate(t => { document.documentElement.dataset.theme = t; localStorage.setItem("songlib-appearance", JSON.stringify({theme:t})); }, theme);
   for (const [path, label] of routes) {
     const before = errs.length;
     await p.goto(BASE + path, {waitUntil:"networkidle"});

@@ -1166,6 +1166,21 @@ def plex_playback_info(rating_key: str, bitrate: str = "original"):
         raise HTTPException(status_code=502, detail=f"无法播放该 Plex 曲目，请检查 Plex Token、服务器地址或媒体文件权限。{exc}") from exc
 
 
+def _header_safe(value: str, limit: int = 300) -> str:
+    """把任意文本压成一个能当响应头值的单行 ASCII 串。
+
+    这里踩过一次（1.2.3 上线后线上 502）：诊断头里放的是 Plex 的错误正文，
+    那是带换行的 HTML/XML。**响应头值里出现 \r\n，ASGI 服务器会直接报错、
+    把连接掐掉**，反代于是回一个 502 —— 表现成"某些码率完全放不出声"，
+    比原来那个静默降级还糟。截断长度是不够的，控制字符必须先清掉。
+    """
+    # 先清控制字符再合并空白：\x00 之类不属于 \s，只压空白是漏的
+    # （这条是自己的测试抓出来的 —— NUL 在头值里同样非法）。
+    stripped = "".join(" " if ord(char) < 0x20 or ord(char) == 0x7F else char for char in str(value or ""))
+    collapsed = re.sub(r"\s+", " ", stripped).strip()
+    return collapsed.encode("ascii", "replace").decode("ascii")[:limit]
+
+
 def _range_start(value: str) -> int:
     """从 `bytes=START-END` 里取出起始字节。取不到就当 0。"""
     match = re.match(r"^\s*bytes\s*=\s*(\d+)\s*-", str(value or ""), re.I)
@@ -1249,12 +1264,10 @@ def plex_stream(rating_key: str, request: Request, bitrate: str = "original"):
             passthrough["X-SongLib-Stream-Fallback"] = "1"
             # 退回是静默的（对播放器来说声音照出），但原因不能跟着一起消失 ——
             # 不然线上只能看到"某些码率悄悄降级"，查不出为什么。
-            # 响应头必须是 latin-1，中文和换行先剔掉。
-            # URL 那一长串没有信息量（参数是我们自己拼的），砍掉给正文腾位置
-            note = "；".join(
-                re.sub(r"for url '[^']*'", "", item) for item in failures
-            )[:300]
-            passthrough["X-SongLib-Stream-Note"] = note.encode("ascii", "replace").decode("ascii")
+            passthrough["X-SongLib-Stream-Note"] = _header_safe(
+                # URL 那一长串没有信息量（参数是我们自己拼的），砍掉给正文腾位置
+                " | ".join(re.sub(r"for url '[^']*'", "", item) for item in failures)
+            )
 
         status_code = response.status_code
         if mode == "transcode" and total_bytes:

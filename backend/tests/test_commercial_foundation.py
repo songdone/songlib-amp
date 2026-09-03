@@ -1044,3 +1044,35 @@ class PlexStreamFallbackTests(unittest.TestCase):
         # HLS 只有 Safari 的 <audio> 认，不能再回到 m3u8。
         self.assertNotIn("start.m3u8", url)
         self.assertNotIn("protocol=hls", url)
+
+
+class HeaderSafetyTests(unittest.TestCase):
+    """响应头里放上游错误正文，必须先清成单行 ASCII。
+
+    1.2.3 上线后线上 502：诊断头里放的是 Plex 的错误正文（带换行的 HTML），
+    响应头值里出现 \\r\\n，ASGI 服务器直接报错把连接掐掉，反代回 502 ——
+    表现是"某些码率完全放不出声"，比它想诊断的那个静默降级还糟。
+    """
+
+    def test_newlines_and_control_characters_never_reach_a_header(self):
+        from app.main import _header_safe
+
+        dirty = "transcode: 400\r\n<html>\n  <body>Plex 说不行</body>\r\n</html>\x00"
+        clean = _header_safe(dirty)
+        for bad in ("\r", "\n", "\t", "\x00"):
+            self.assertNotIn(bad, clean)
+        clean.encode("latin-1")  # 编不动就会抛，等于断言它能当头值
+
+    def test_a_long_body_is_truncated_but_still_single_line(self):
+        from app.main import _header_safe
+
+        clean = _header_safe("x\n" * 500)
+        self.assertLessEqual(len(clean), 300)
+        self.assertNotIn("\n", clean)
+
+    def test_chinese_survives_as_replacement_characters_not_as_a_crash(self):
+        from app.main import _header_safe
+
+        # 7 个非 ASCII 字符 → 7 个替换符。重点是"不抛异常、能当头值"，
+        # 而不是中文本身能保住（响应头值只能是 latin-1）。
+        self.assertEqual(_header_safe("原因：转码失败"), "?" * 7)

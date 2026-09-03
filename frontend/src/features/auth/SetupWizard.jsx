@@ -70,7 +70,7 @@ export function SetupWizard({ onComplete }) {
           </label>
           <label>
             <span>管理员密码</span>
-            <input type="password" value={form.password} onChange={(event) => update("password", event.target.value)} placeholder="至少 12 个字符" />
+            <input type="password" value={form.password} onChange={(event) => update("password", event.target.value)} placeholder="至少 10 个字符" />
           </label>
           <label>
             <span>确认密码</span>
@@ -83,7 +83,7 @@ export function SetupWizard({ onComplete }) {
             block
             icon={ChevronRight}
             loading={busy}
-            disabled={form.password.length < 12}
+            disabled={form.password.length < 10}
           >
             创建账号并进入
           </Button>

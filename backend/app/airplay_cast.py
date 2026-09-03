@@ -271,28 +271,109 @@ def build_ffmpeg_command(output_dir: Path, *, use_qsv: bool) -> list[str]:
     return command
 
 
+# 能画汉字的字体候选，按优先级排。
+#
+# 原来的列表是：settings 里配的路径、一个 Noto CJK 固定路径、
+# DejaVuSans、Windows 雅黑。三个问题：
+#
+#   1. DejaVu **没有 CJK 字形**。它在很多 Linux 发行版上都存在，
+#      一旦 Noto 那条不命中就会选中它 —— 中文全是豆腐块。
+#      "文件存在"和"能画汉字"是两件事，所以下面加了 _renders_cjk 探测。
+#   2. 开发机（macOS）三条全不命中，退到 PIL 内置点阵字体，同样是豆腐块。
+#      我就是这样第一次看到那一屏方框的。
+#   3. 路径写死一个文件名。当前镜像（python:3.12-slim-bookworm +
+#      fonts-noto-cjk）装出来确实是 NotoSansCJK-Regular.ttc，这一条今天
+#      没坏；但换个基础镜像或者 Debian 升一版就可能变成
+#      NotoSansCJK-VF.otf.ttc，而那时的表现同样是"静默出方框"。
+#
+# 这类失败最难查的地方在于：构建、启动、测试全绿，布局、进度、时间轴
+# 全对，只有真正要看的那部分没了。所以现在多了 cjk_font_missing()——
+# 找不到字体就不让投屏启动，并把原因说出来。
+_CJK_FONT_CANDIDATES = (
+    # Debian / Ubuntu：新版可变字重在前，老版固定字重在后
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-VF.otf.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJKsc-Regular.otf",
+    "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+    # Alpine
+    "/usr/share/fonts/noto/NotoSansCJK-Regular.ttc",
+    # macOS（开发机）
+    "/System/Library/Fonts/PingFang.ttc",
+    "/System/Library/Fonts/Hiragino Sans GB.ttc",
+    "/Library/Fonts/Arial Unicode.ttf",
+    # Windows
+    "C:/Windows/Fonts/msyh.ttc",
+    "C:/Windows/Fonts/simhei.ttf",
+)
+
+_CJK_BOLD_CANDIDATES = (
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-VF.otf.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJKsc-Bold.otf",
+    "/System/Library/Fonts/PingFang.ttc",
+    "C:/Windows/Fonts/msyhbd.ttc",
+)
+
+# 拿它探字体到底有没有 CJK 字形。存在但画不出汉字的字体（DejaVu）
+# 必须被排除，否则等于没修。
+_CJK_PROBE = "海"
+
+
+def _renders_cjk(path: str) -> bool:
+    """这个字体文件真的能画出汉字吗？
+
+    只看文件存在是不够的：DejaVuSans.ttf 到处都有，但它一个汉字都没有。
+    这里直接渲染一个"海"字，看有没有落墨 —— 缺字形时 FreeType 会给出
+    一个空白（或 .notdef 方框）位图，getbbox() 返回 None 或极小的框。
+    """
+    try:
+        font = ImageFont.truetype(path, size=64)
+        mask = font.getmask(_CJK_PROBE, mode="L")
+        box = mask.getbbox()
+    except (OSError, TypeError, ValueError):
+        return False
+    if not box:
+        return False
+    # .notdef 通常是个空心方框，也有落墨。用"填充率"区分：
+    # 真汉字笔画多、填充率高；空心方框只有四条边。
+    width, height = box[2] - box[0], box[3] - box[1]
+    if width < 8 or height < 8:
+        return False
+    inked = sum(1 for value in mask if value > 40)
+    return inked / max(1, width * height) > 0.12
+
+
 @lru_cache(maxsize=1)
 def _font_path() -> str | None:
-    candidates = [
-        settings.airplay_font_path,
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "C:/Windows/Fonts/msyh.ttc",
-    ]
-    return next((item for item in candidates if item and Path(item).exists()), None)
+    """第一个真能画汉字的字体。找不到返回 None。"""
+    candidates = (settings.airplay_font_path, *_CJK_FONT_CANDIDATES)
+    for item in candidates:
+        if item and Path(item).exists() and _renders_cjk(item):
+            return item
+    return None
+
+
+@lru_cache(maxsize=1)
+def _bold_font_path() -> str | None:
+    for item in (settings.airplay_font_path, *_CJK_BOLD_CANDIDATES):
+        if item and Path(item).exists() and _renders_cjk(item):
+            return item
+    return _font_path()
+
+
+def cjk_font_missing() -> bool:
+    """服务器上没有任何能画汉字的字体。
+
+    投屏在这种情况下**不该启动**：它会输出一屏方框，用户看到的是
+    "功能坏了"，而真正的原因（缺字体）在界面上完全看不出来。
+    宁可开不了并说清原因。
+    """
+    return _font_path() is None
 
 
 @lru_cache(maxsize=32)
 def _font(size: int, *, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
-    regular = _font_path()
-    bold_candidates = [
-        settings.airplay_font_path,
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        "C:/Windows/Fonts/msyhbd.ttc",
-    ]
-    selected = next((item for item in bold_candidates if bold and item and Path(item).exists()), regular)
+    selected = _bold_font_path() if bold else _font_path()
     try:
         return ImageFont.truetype(selected, size=size) if selected else ImageFont.load_default(size=size)
     except (OSError, TypeError):
@@ -374,6 +455,13 @@ class AirPlayCastManager:
     def create(self, owner_id: str, public_base_url: str) -> CastSession:
         if not settings.airplay_cast_enabled:
             raise RuntimeError("服务器未启用 AirPlay 歌词投屏")
+        # 没有中文字体就不要开。开了只会投出一屏方框，
+        # 用户看到的是"功能坏了"，而真正的原因在界面上完全看不出来。
+        if cjk_font_missing():
+            raise RuntimeError(
+                "服务器上没有能显示中文的字体，投出去的歌词会是一排方框。"
+                "容器镜像里装一个 fonts-noto-cjk，或者用 AIRPLAY_FONT_PATH 指定字体文件。"
+            )
         self.cleanup_expired()
         with self._lock:
             existing_id = self._owners.get(owner_id)
@@ -792,20 +880,63 @@ class AirPlayCastManager:
         shade_draw.rectangle((0, 0, int(width * 0.36), height), fill=(0, 0, 0, 72))
         shade_draw.rectangle((int(width * 0.34), 0, width, height), fill=(4, 5, 9, 42))
         image = Image.alpha_composite(image, shade)
-        draw = ImageDraw.Draw(image, "RGBA")
         cover_size = int(min(width * 0.255, height * 0.46))
         cover_x, cover_y = int(width * 0.072), int(height * 0.175)
         radius = width // 70
-        draw.rounded_rectangle((cover_x - 22, cover_y + 18, cover_x + cover_size + 22, cover_y + cover_size + 36), radius=radius + 5, fill=(0, 0, 0, 96), outline=(255, 255, 255, 32), width=2)
-        draw.rounded_rectangle((cover_x - 7, cover_y - 7, cover_x + cover_size + 7, cover_y + cover_size + 7), radius=radius, fill=(0, 0, 0, 92), outline=(255, 255, 255, 28), width=2)
+
+        #
+        # 封面外框必须画在**独立的透明层**上再 alpha_composite。
+        #
+        # ImageDraw.Draw(im, "RGBA") 的行为是**替换**像素（连 alpha 一起写），
+        # 不是把颜色叠加到已有内容上。所以直接在 image 上
+        # draw.rounded_rectangle(fill=(0,0,0,96)) 写进去的是"黑色 + alpha 96"，
+        # 而这张图交给 ffmpeg 之前会转成 RGB、alpha 被丢掉 ——
+        # 于是"淡淡的投影"变成纯黑边框，"5% 白的占位块"变成纯白方块。
+        # 上面 glow 和 shade 两层就是这么做对的，这一块当时漏了。
+        #
+        chrome = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        chrome_draw = ImageDraw.Draw(chrome, "RGBA")
+        chrome_draw.rounded_rectangle(
+            (cover_x - 22, cover_y + 18, cover_x + cover_size + 22, cover_y + cover_size + 36),
+            radius=radius + 5, fill=(0, 0, 0, 96), outline=(255, 255, 255, 32), width=2,
+        )
+        chrome_draw.rounded_rectangle(
+            (cover_x - 7, cover_y - 7, cover_x + cover_size + 7, cover_y + cover_size + 7),
+            radius=radius, fill=(0, 0, 0, 92), outline=(255, 255, 255, 28), width=2,
+        )
+        if not session.cover:
+            # 缺封面时的占位。和网页端 Cover 组件同一个思路：
+            # 低饱和底色 + 曲名首字。
+            #
+            # 原来画的是 "♪"。镜像里的 Noto Sans CJK 确实有这个字形
+            # （在容器里验过：U+266A 有 bbox、填充率 0.25），所以那不是 bug，
+            # 只是每首歌都一样、什么信息都不给。换成首字：既有辨识度，
+            # 又和网页端的占位一致，而且一定画得出来。
+            chrome_draw.rounded_rectangle(
+                (cover_x, cover_y, cover_x + cover_size, cover_y + cover_size),
+                radius=width // 80, fill=(255, 255, 255, 20),
+            )
+        image = Image.alpha_composite(image, chrome)
+        draw = ImageDraw.Draw(image, "RGBA")
+
         if session.cover:
             cover = _fit_cover(session.cover, (cover_size, cover_size))
             mask = Image.new("L", (cover_size, cover_size), 0)
             ImageDraw.Draw(mask).rounded_rectangle((0, 0, cover_size, cover_size), radius=width // 80, fill=255)
             image.paste(cover, (cover_x, cover_y), mask)
         else:
-            draw.rounded_rectangle((cover_x, cover_y, cover_x + cover_size, cover_y + cover_size), radius=width // 80, fill=(255, 255, 255, 20))
-            draw.text((cover_x + cover_size * 0.38, cover_y + cover_size * 0.36), "♪", font=_font(cover_size // 4, bold=True), fill=(255, 204, 98, 210))
+            initial = (str(session.state.get("title") or "").strip() or "音")[0]
+            initial_font = _font(int(cover_size * 0.42), bold=True)
+            box = draw.textbbox((0, 0), initial, font=initial_font)
+            draw.text(
+                (
+                    cover_x + (cover_size - (box[2] - box[0])) / 2 - box[0],
+                    cover_y + (cover_size - (box[3] - box[1])) / 2 - box[1],
+                ),
+                initial,
+                font=initial_font,
+                fill=(255, 255, 255, 92),
+            )
         state = session.state
         label = _font(max(18, height // 50), bold=True)
         title_font = _font(max(30, height // 27), bold=True)

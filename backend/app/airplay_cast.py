@@ -218,12 +218,13 @@ def stream_profile(wan: bool) -> dict:
         # 保留全部之后，落后多少都能继续拉，等于让接收端可以想缓冲多少
         # 缓冲多少。代价是磁盘：歌词画面几秒才变一次，几乎全是静止帧，
         # 一首歌压出来只有几 MB，会话结束时整个目录会被清掉。
-        return {"segment": 4.0, "list_size": 0, "fps": 15, "keep_all": True}
+        return {"segment": 4.0, "list_size": 0, "fps": 15, "keep_all": True, "lead": 45.0}
     return {
         "segment": settings.airplay_segment_seconds,
         "list_size": 12,
         "fps": settings.airplay_fps,
         "keep_all": False,
+        "lead": 0.0,
     }
 
 
@@ -793,17 +794,36 @@ class AirPlayCastManager:
         frame_interval = 1 / settings.airplay_render_fps
         next_frame = time.monotonic()
         wrote_frames = 0
+        encoded_time = session.clock.position()
         idle = False
         try:
             while not session.stop_event.is_set() and process.poll() is None:
                 if time.time() - session.last_stream_access_at > settings.airplay_stream_idle_seconds:
                     idle = True
                     break
-                frame = self._render_frame(session)
+
+                frame = self._render_frame(session, at=encoded_time)
                 if process.stdin is None:
                     break
                 process.stdin.write(frame.tobytes())
                 wrote_frames += 1
+                encoded_time += frame_interval
+
+                """跑在播放前面，而不是卡着实时喂。
+
+                歌词画面完全由时间轴决定，后面几十秒长什么样现在就知道，
+                所以可以先编出来。编到领先 lead 秒之后再按实时节奏喂。
+
+                配合"公网不删分片"，接收端就能囤下一大段，网络抖一下也
+                不会断 —— 这是"先缓存到播放设备"能落地的前提。
+
+                局域网 lead 给 0：那边要的是低延迟，提前编只会让
+                seek 之后要丢掉的画面更多。
+                """
+                lead = float(profile.get("lead", 0))
+                ahead = encoded_time - session.clock.position()
+                if ahead < lead:
+                    continue  # 还没编够，接着全速编
                 next_frame += frame_interval
                 delay = next_frame - time.monotonic()
                 if delay > 0:
@@ -848,14 +868,21 @@ class AirPlayCastManager:
             if candidate.is_file() and (candidate.suffix in {".m3u8", ".mp4", ".m4s", ".tmp"} or ".m4s." in candidate.name):
                 candidate.unlink(missing_ok=True)
 
-    def _render_frame(self, session: CastSession) -> Image.Image:
+    def _render_frame(self, session: CastSession, at: float | None = None) -> Image.Image:
+        """画一帧。
+
+        `at` 是要画的**媒体时间**（秒）。不传就画"此刻"。
+
+        传它是为了让编码器跑在播放前面：歌词画面完全由时间轴决定，
+        给定时刻画出来的内容是确定的，所以可以提前把后面几十秒先编好。
+        """
         with session.lock:
             if session.visual_base is None:
                 session.visual_base = self._build_visual_base(session)
             image = session.visual_base.copy()
             state = dict(session.state)
             lines = list(session.lyrics)
-            media_time = session.clock.position()
+            media_time = session.clock.position() if at is None else at
             duration = float(state.get("duration") or 0)
         transport_latency_ms = int(state.get("transportLatencyMs") or 0)
         if not transport_latency_ms:

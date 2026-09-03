@@ -1,4 +1,5 @@
 import os
+import secrets
 import tempfile
 import unittest
 import wave
@@ -770,8 +771,12 @@ class PasswordLengthRuleTests(unittest.TestCase):
 
         # 刚够长度的那一个必须能过。complete_setup 只在没有任何用户时可用，
         # 这个套件里已经有 admin 了，所以这里验的是 create_user。
-        created = auth.create_user("length-boundary-user", just_enough)
-        self.assertEqual(created["username"], "length-boundary-user")
+        # 用户名必须每次不同：这个套件在共享的 DATA_DIR 上跑，写死名字的话
+        # 第二次运行会撞上上一次留下的用户而失败 —— 一条用例只有能重复跑
+        # 才算数。
+        name = f"len-boundary-{secrets.token_hex(4)}"
+        created = auth.create_user(name, just_enough)
+        self.assertEqual(created["username"], name)
 
 
 class ReverseProxyOriginTests(unittest.TestCase):

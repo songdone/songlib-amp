@@ -325,3 +325,35 @@ class SegmentRetentionTests(unittest.TestCase):
             Path("/tmp/cast-retention"), use_qsv=False, profile=stream_profile(False)
         )
         self.assertIn("delete_segments", cmd[cmd.index("-hls_flags") + 1])
+
+
+class LeadTests(unittest.TestCase):
+    """编码器要跑在播放前面。
+
+    歌词画面完全由时间轴决定，后面几十秒长什么样现在就知道，所以能先编
+    出来。配合"公网不删分片"，接收端才囤得下一大段 —— 这是"先把内容缓存
+    到播放设备上"能落地的前提。
+    """
+
+    def test_wan_encodes_ahead_lan_does_not(self):
+        from app.airplay_cast import stream_profile
+
+        self.assertGreaterEqual(
+            stream_profile(True)["lead"], 30, "公网要提前编够一段才顶得住抖动"
+        )
+        self.assertEqual(
+            stream_profile(False)["lead"], 0.0, "局域网要低延迟，提前编只会让 seek 后丢得更多"
+        )
+
+    def test_a_frame_can_be_rendered_for_a_future_time(self):
+        """能按指定媒体时间画帧，是"提前编"的前提。
+
+        原来 _render_frame 只画"此刻"（读 session.clock.position()），
+        没有这个参数就只能卡着实时喂。
+        """
+        import inspect
+        from app.airplay_cast import AirPlayCastManager
+
+        sig = inspect.signature(AirPlayCastManager._render_frame)
+        self.assertIn("at", sig.parameters, "_render_frame 要接受目标媒体时间")
+        self.assertIsNone(sig.parameters["at"].default, "不传时仍画此刻")

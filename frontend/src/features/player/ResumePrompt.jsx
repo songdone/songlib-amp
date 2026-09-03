@@ -51,7 +51,7 @@ export function ResumePrompt({ offer, onAccept, onDismiss }) {
       <IconButton
         icon={X}
         size="sm"
-        label="从头开始，不用接着上次"
+        label="从头播放"
         onClick={onDismiss}
       />
     </aside>

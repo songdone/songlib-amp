@@ -47,7 +47,7 @@ export function UserAccounts() {
   const create = async (event) => {
     event.preventDefault();
     if (strength(form.password) === "太弱")
-      return setMessage("密码至少 10 位，建议包含大小写、数字和符号。");
+      return setMessage("至少 10 位，建议含大小写、数字与符号");
     setBusy("create");
     setMessage("");
     try {
@@ -133,7 +133,7 @@ export function UserAccounts() {
     event.preventDefault();
     if (!resetting) return;
     if (strength(resetPassword) === "太弱")
-      return setMessage("新密码至少 10 位，建议包含大小写、数字和符号。");
+      return setMessage("至少 10 位，建议含大小写、数字与符号");
     setPending(null);
     setBusy(resetting.id);
     try {
@@ -166,7 +166,7 @@ export function UserAccounts() {
     <section className="account-panel">
       <SectionHeader
         title="账户与多用户"
-        note="普通用户只能听歌，看不到整理曲库那几页"
+        note="普通用户只能听歌"
         actions={
           <Button size="sm" icon={RefreshCw} onClick={load}>
             刷新
@@ -289,7 +289,7 @@ export function UserAccounts() {
                   .filter(Boolean),
               }))
             }
-            placeholder="例如「周杰伦, 五月天」；填 * 就是全部"
+            placeholder="例如「周杰伦, 五月天」；* 为全部"
           />
           <small>填 /music 下面的目录名，这个账号只能听到这些目录里的歌。</small>
         </label>
@@ -351,7 +351,7 @@ export function UserAccounts() {
         open={Boolean(resetting)}
         onClose={() => setResetting(null)}
         title={resetting ? `重置 ${resetting.username} 的密码` : ""}
-        description="他要用新密码重新登录一次"
+        description="需用新密码重新登录"
         size="sm"
         actions={
           <ButtonGroup align="end">
@@ -412,7 +412,7 @@ export function UserAccounts() {
             />
             <Field
               label="显示名称"
-              hint="不填就用用户名"
+              hint="留空则用用户名"
               value={editing.displayName}
               onChange={(event) =>
                 setEditing((v) => ({ ...v, displayName: event.target.value }))
@@ -420,7 +420,7 @@ export function UserAccounts() {
             />
             <Field
               label="操作权限"
-              hint="逗号分隔。留空就只能听歌。"
+              hint="逗号分隔，留空为仅可听歌"
               value={editing.permissions}
               onChange={(event) =>
                 setEditing((v) => ({ ...v, permissions: event.target.value }))
@@ -428,7 +428,7 @@ export function UserAccounts() {
             />
             <Field
               label="可访问目录"
-              hint="填 /music 下面的目录名，逗号分隔；填 * 就是全部"
+              hint="/music 下的目录名，逗号分隔；* 为全部"
               value={editing.libraryScopes}
               onChange={(event) =>
                 setEditing((v) => ({ ...v, libraryScopes: event.target.value }))
@@ -452,7 +452,7 @@ export function UserAccounts() {
         size="sm"
         actions={
           <ButtonGroup align="end">
-            <Button onClick={() => setPending(null)}>先不动</Button>
+            <Button onClick={() => setPending(null)}>取消</Button>
             <Button
               variant={pending?.kind === "remove" ? "danger" : "primary"}
               onClick={() => {
@@ -474,12 +474,12 @@ export function UserAccounts() {
       >
         <p>
           {pending?.kind === "remove"
-            ? "他就登不进来了。音乐文件和已有的播放记录不受影响。"
+            ? "删除后无法登录；音乐文件与播放记录保留"
             : pending?.kind === "toggle"
               ? pending.item.enabled
-                ? "停用之后他登不进来，但账号和权限都留着，随时能再启用。"
-                : "启用之后他就能用原来的密码登录了。"
-            : "他当前的登录会失效，要用新密码重新登录一次。"}
+                ? "停用期间无法登录，账号与权限保留"
+                : "恢复后可用原密码登录"
+            : "当前登录会失效，需用新密码重新登录"}
         </p>
       </Modal>
     </section>

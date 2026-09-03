@@ -1,5 +1,5 @@
 /**
- * "装到桌面" 提示条。
+ * "添加到桌面" 提示条。
  *
  * 重构掉的：
  * - `className="pwa-prompt panel"`。旧的 .panel 是一段硬编码深色渐变
@@ -75,7 +75,7 @@ export function PwaInstallPrompt() {
         localStorage.setItem("songlib-pwa-dismissed", "1");
         setVisible(false);
       } else {
-        setStatus("好，先不装。想装的时候这个入口还会出现。");
+        setStatus("已取消，入口保留在这里");
         setHelpOpen(true);
       }
     } else {
@@ -92,7 +92,7 @@ export function PwaInstallPrompt() {
       <IconButton
         icon={X}
         size="sm"
-        label="不用了，别再提示"
+        label="不再提示"
         className="pwa-prompt__close"
         onClick={dismiss}
       />

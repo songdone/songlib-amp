@@ -127,7 +127,7 @@ export function MediaLibrary({
         if (!cancelled) setDetailData(result);
       })
       .catch(() => {
-        if (!cancelled) setDetailData({ error: "这项读不出来，过会儿再试。" });
+        if (!cancelled) setDetailData({ error: "读取失败，稍后重试" });
       });
     return () => {
       cancelled = true;
@@ -257,8 +257,8 @@ export function MediaLibrary({
           title={search ? `没有找到匹配的${tabName}` : `曲库里还没有${tabName}`}
           text={
             search
-              ? "换个关键词试试。刚加进来的歌可能还没扫到。"
-              : "连上 Plex 或指定 NAS 上的音乐目录，扫描完成后这里就会有内容。"
+              ? "换个关键词；新加入的歌可能还没扫到"
+              : "连接 Plex 或指定音乐目录后开始扫描"
           }
           action={
             search ? (

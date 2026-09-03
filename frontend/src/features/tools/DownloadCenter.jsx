@@ -4,10 +4,10 @@
  * 重构掉的：
  * - 四个裸 <select> 加一个开关挤在一条"source-strip"里，谁也没有标签。
  *   用户得靠猜每个下拉框是干什么的。现在每个都有可见的标签。
- * - "下载到哪里"原来是两个按钮的自制开关，也没说清两者的区别；
+ * - "下载位置"原来是两个按钮的自制开关，也没说清两者的区别；
  *   现在是带说明的两张卡（下到这台设备 vs 下到 NAS 再入库）。
  * - 待入库每行五个状态徽章（阶段 / 标签 / 封面 / 歌词 / 冲突）。
- *   五个徽章一行，等于没有重点。现在只在"缺什么"和"有冲突"时才出徽章，
+ *   五个徽章一行，等于没有重点。现在只在"缺失项"和"有冲突"时才出徽章，
  *   齐全的那些不占地方 —— 用户要找的是有问题的那几首。
  * - confirm() 批量确认。入库会让 Plex 重扫、删除会挪回收区，
  *   代价要写在弹窗里而不是一行 confirm。
@@ -56,7 +56,7 @@ const TARGETS = [
     id: "nas",
     label: "下到 NAS",
     icon: Server,
-    note: "先落在暂存区，你核对过再放进曲库",
+    note: "先入暂存区，核对后进曲库",
   },
   {
     id: "device",
@@ -309,7 +309,7 @@ export function DownloadCenter({
         <EmptyState
           icon={Wifi}
           title="还没有可用的音乐源"
-          text="音屿不自带音源。先去「音乐源」导入一个你有权使用的，回来就能搜歌了。"
+          text="音屿不自带音源。先在「音乐源」导入一个"
           action={
             <Button variant="primary" icon={Wifi} onClick={() => navigate("sources")}>
               去添加音乐源
@@ -325,7 +325,7 @@ export function DownloadCenter({
       {/* --- 下到哪里 --- */}
       <Section>
         <SectionHeader
-          title="下到哪里"
+          title="下载位置"
           note={`${ready.length} 个音源已启用`}
           actions={
             <Button size="sm" icon={Settings} onClick={() => navigate("sources")}>
@@ -333,7 +333,7 @@ export function DownloadCenter({
             </Button>
           }
         />
-        <div className="ui-chips ui-chips--cards" role="group" aria-label="下到哪里">
+        <div className="ui-chips ui-chips--cards" role="group" aria-label="下载位置">
           {TARGETS.map(({ id, label, icon: Icon, note }) => (
             <button
               key={id}
@@ -354,10 +354,10 @@ export function DownloadCenter({
 
       {/* --- 搜什么 --- */}
       <Section>
-        <SectionHeader title="搜什么" />
+        <SectionHeader title="搜索" />
         <div className="download__options">
           <label>
-            <span>用哪个音源</span>
+            <span>音源</span>
             <select
               className="ui-select"
               value={sourceId}
@@ -371,7 +371,7 @@ export function DownloadCenter({
             </select>
           </label>
           <label>
-            <span>搜哪个平台</span>
+            <span>平台</span>
             <select
               className="ui-select"
               value={platform}
@@ -385,7 +385,7 @@ export function DownloadCenter({
             </select>
           </label>
           <label>
-            <span>结果怎么排</span>
+            <span>排序</span>
             <select
               className="ui-select"
               value={searchType}
@@ -399,7 +399,7 @@ export function DownloadCenter({
             </select>
           </label>
           <label>
-            <span>下什么音质</span>
+            <span>音质</span>
             <select
               className="ui-select"
               value={quality}
@@ -419,7 +419,7 @@ export function DownloadCenter({
             label="搜索"
             hideLabel
             leading={Search}
-            placeholder="歌名、专辑名，或者歌手"
+            placeholder="歌名、专辑或歌手"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -443,7 +443,7 @@ export function DownloadCenter({
       {/* --- 搜索结果 --- */}
       <Section>
         <SectionHeader
-          title="搜到了什么"
+          title="搜索结果"
           note={
             results.length
               ? `${results.length} 首候选 · 会${activeTarget.label}`
@@ -455,8 +455,8 @@ export function DownloadCenter({
         ) : !results.length ? (
           <EmptyState
             icon={Search}
-            title="还没搜过"
-            text="搜到的歌可以先试听，再决定下不下。"
+            title="暂无搜索结果"
+            text="结果支持试听"
           />
         ) : ["album", "artist"].includes(searchType) ? (
           <MediaGrid min={200}>
@@ -552,7 +552,7 @@ export function DownloadCenter({
       {/* --- 待入库 --- */}
       <Section reveal>
         <SectionHeader
-          title="下好了，等你确认"
+          title="待确认入库"
           note={
             pending.length
               ? `${pending.length} 首在暂存区${selectedPending.length ? `，已勾 ${selectedPending.length} 首` : ""}`
@@ -628,7 +628,7 @@ export function DownloadCenter({
           <EmptyState
             icon={Download}
             title="暂存区是空的"
-            text="下好的歌会先停在这里，核对完再一起放进曲库。"
+            text="下载完成的歌先停在这里，核对后入库"
           />
         )}
       </Section>
@@ -645,11 +645,11 @@ export function DownloadCenter({
             : `不要这 ${scopeCount} 首了？`
         }
         description={
-          selectedPending.length ? "只处理你勾上的那些" : "暂存区里的全部"
+          selectedPending.length ? "只处理已勾选的" : "暂存区里的全部"
         }
         actions={
           <ButtonGroup align="end">
-            <Button onClick={() => setDeciding("")}>先不动</Button>
+            <Button onClick={() => setDeciding("")}>取消</Button>
             <Button
               variant={deciding === "confirm" ? "primary" : "danger"}
               icon={deciding === "confirm" ? ArrowDownToLine : Trash2}
@@ -662,8 +662,8 @@ export function DownloadCenter({
       >
         <p>
           {deciding === "confirm"
-            ? "文件会从暂存区挪进音乐目录，然后让 Plex 重扫一遍。原位置记下来了，之后能退回去。"
-            : "文件会挪到下载回收区，不是直接删掉 —— 反悔了还能找回来。"}
+            ? "从暂存区移入音乐目录并触发 Plex 重扫，原位置已记录，可回滚"
+            : "移入下载回收区，不是直接删除，可找回"}
         </p>
       </Modal>
     </Page>

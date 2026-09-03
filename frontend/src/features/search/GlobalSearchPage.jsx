@@ -228,11 +228,11 @@ export function GlobalSearchPage({ play, navigate, isAdmin }) {
           ) : (
             <EmptyState
               icon={WifiOff}
-              title="本机索引里也没有"
+              title="本机索引里没有"
               text={
                 offline.count
                   ? `索引里有 ${offline.count} 条，但没有跟「${submitted}」对得上的。等 NAS 回来再搜一次。`
-                  : "还没存下任何索引。联网时搜过、翻过的内容会自动存一份，之后断连就能查。"
+                  : "暂无离线索引；浏览过的内容会自动缓存"
               }
             />
           )}
@@ -240,14 +240,14 @@ export function GlobalSearchPage({ play, navigate, isAdmin }) {
       ) : !submitted ? (
         <EmptyState
           icon={Search}
-          title="想听什么"
-          text="曲库里的歌、歌手、专辑，还有下载了没入库的，都能在这里找到。"
+          title="搜索"
+          text="搜曲库里的歌、歌手、专辑，以及待入库的下载"
         />
       ) : !total ? (
         <EmptyState
           icon={Search}
           title={`没找到跟「${submitted}」有关的内容`}
-          text="换个词试试。刚加进来的歌可能还没扫到，可以去「文件与标签」重扫一遍。"
+          text="换个关键词。新加的歌可能还没扫到"
         />
       ) : (
         <>
@@ -355,7 +355,7 @@ export function GlobalSearchPage({ play, navigate, isAdmin }) {
           {isAdmin && groups.pending.length > 0 && (
             <Section>
               <SectionHeader
-                title="下好了还没入库"
+                title="待入库"
                 note={`${groups.pending.length} 首`}
               />
               <ListGroup>

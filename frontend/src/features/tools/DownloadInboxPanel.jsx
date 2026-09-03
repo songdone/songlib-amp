@@ -1,7 +1,7 @@
 /**
  * 下载目录（手动丢进来的音频）。
  *
- * 和"下好了，等你确认"是两件事：那边是音屿自己下的，这边是用户
+ * 和"待确认入库"是两件事：那边是音屿自己下的，这边是用户
  * 用别的工具下完、直接扔进下载目录的。两边都要先看清楚再入库。
  *
  * 重构掉的：
@@ -127,12 +127,12 @@ export function DownloadInboxPanel({ notify, navigate }) {
   return (
     <Section reveal>
       <SectionHeader
-        title="手动丢进下载目录的"
-        note="改成什么名字、放到哪儿，都会先给你看一遍"
+        title="下载目录"
+        note="重命名与目标位置会先列出"
         actions={
           <ButtonGroup>
             <Button size="sm" icon={RefreshCw} loading={busy} onClick={load}>
-              重新扫一遍
+              重新扫描
             </Button>
             <Button
               size="sm"
@@ -141,7 +141,7 @@ export function DownloadInboxPanel({ notify, navigate }) {
               disabled={busy || !selected.length}
               onClick={() => setConfirming(true)}
             >
-              整理这 {selected.length} 首
+              整理 {selected.length} 首
             </Button>
           </ButtonGroup>
         }
@@ -201,15 +201,15 @@ export function DownloadInboxPanel({ notify, navigate }) {
                       <Copy aria-hidden="true" />
                       <span>
                         {alreadyInLibrary(item)
-                          ? "这首歌已经在曲库里了，位置也一样。下载目录里这份可以直接删掉。"
+                          ? "曲库里已有同一位置的这首歌，这份可直接删掉"
                           : `曲库里已经有${
                               item.existing.length > 1
                                 ? ` ${item.existing.length} 份`
                                 : "一份"
                             }${
                               item.worseThanExisting
-                                ? "，而且比这个好。入库之后就是两份。"
-                                : "。入库之后就是两份。"
+                                ? "，规格更好；入库后会有两份"
+                                : "，入库后会有两份"
                             }`}
                       </span>
                     </p>
@@ -239,7 +239,7 @@ export function DownloadInboxPanel({ notify, navigate }) {
         <EmptyState
           icon={Download}
           title="下载目录是空的"
-          text="用别的工具下的歌丢进这个目录，音屿也会先给你看一遍再入库。"
+          text="用其他工具下载的歌放进这个目录，会先列出再入库"
         />
       )}
 
@@ -250,9 +250,9 @@ export function DownloadInboxPanel({ notify, navigate }) {
         size="sm"
         actions={
           <ButtonGroup align="end">
-            <Button onClick={() => setConfirming(false)}>先不动</Button>
+            <Button onClick={() => setConfirming(false)}>取消</Button>
             <Button variant="primary" icon={FolderTree} onClick={ingest}>
-              开始整理
+              开始
             </Button>
           </ButtonGroup>
         }

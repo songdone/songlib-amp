@@ -54,7 +54,7 @@ const TASK_FILTERS = [
 const STATUS = {
   running: { label: "执行中", tone: "accent", icon: LoaderCircle },
   queued: { label: "排队中", tone: "neutral", icon: Clock3 },
-  waiting_confirm: { label: "等你确认", tone: "warning", icon: WandSparkles },
+  waiting_confirm: { label: "待确认", tone: "warning", icon: WandSparkles },
   completed: { label: "已完成", tone: "success", icon: Check },
   failed: { label: "失败", tone: "danger", icon: CircleAlert },
   cancelled: { label: "已取消", tone: "neutral", icon: X },
@@ -114,8 +114,8 @@ export function Tasks({ jobs, refresh, navigate }) {
     <Page className="tasks">
       {/* 顶栏已经写了"任务"，这里不重复页名。 */}
       <SectionHeader
-        title="后台在跑什么"
-        note="点上面的数字只看那一类"
+        title="任务"
+        note="点数字筛选"
         actions={
           <Button size="sm" icon={RefreshCw} onClick={refresh}>
             刷新
@@ -240,7 +240,7 @@ export function Tasks({ jobs, refresh, navigate }) {
             title={
               filter === "running" ? "现在没有任务在跑" : "这一类没有任务"
             }
-            text="在跑的、等你确认的、失败的，点上面的数字分开看。"
+            text="点上方的数字按状态筛选"
           />
         )}
       </Section>
@@ -397,7 +397,7 @@ export function Tasks({ jobs, refresh, navigate }) {
         description={pendingControl?.job?.title}
         actions={
           <ButtonGroup align="end">
-            <Button onClick={() => setPendingControl(null)}>先不动</Button>
+            <Button onClick={() => setPendingControl(null)}>取消</Button>
             <Button variant="primary" onClick={runControl}>
               {pendingControl?.action === "retry" ? "重新执行" : "取消任务"}
             </Button>
@@ -406,8 +406,8 @@ export function Tasks({ jobs, refresh, navigate }) {
       >
         <p>
           {pendingControl?.action === "retry"
-            ? "会从头再走一遍。上次已经写进去的部分不会重复写。"
-            : "已经处理完的那部分不会退回去，剩下的停下不做。取消后可以再重试。"}
+            ? "从头重跑，已写入的部分不会重复"
+            : "已完成的部分保留，剩余停止；之后可重试"}
         </p>
       </Modal>
     </Page>

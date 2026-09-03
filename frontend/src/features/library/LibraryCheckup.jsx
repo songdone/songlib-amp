@@ -7,7 +7,7 @@
  *
  * 三条自己给自己定的规矩：
  *
- * 1. 每一条问题都必须带"去哪儿修"。只报数不给出路等于让用户自己找。
+ * 1. 每一条问题都必须带"处理入口"。只报数不给出路等于让用户自己找。
  *    页面映射由后端一起返回（check.page / check.filter），
  *    前端不另存一份，否则两边会漂。
  * 2. 重复文件只**建议**保留哪个，绝不自动删。判重会错，
@@ -91,7 +91,7 @@ export function LibraryCheckup({ navigate, onJumpToFilter, onRescan }) {
           }
           actions={
             <Button size="sm" icon={RefreshCw} loading={loading} onClick={run}>
-              再检查一次
+              重新检查
             </Button>
           }
         />
@@ -105,8 +105,8 @@ export function LibraryCheckup({ navigate, onJumpToFilter, onRescan }) {
         {report?.clean ? (
           <EmptyState
             icon={CircleCheck}
-            title="没查出什么要处理的"
-            text="封面、歌词、标签、目录结构和 Plex 对照都是齐的。新加歌之后可以再来看一眼。"
+            title="没有待处理项"
+            text="封面、歌词、标签、目录和 Plex 对照都是齐的"
           />
         ) : (
           <ul className="checkup-list">
@@ -222,7 +222,7 @@ export function LibraryCheckup({ navigate, onJumpToFilter, onRescan }) {
               icon={Stethoscope}
               onClick={() => onRescan?.()}
             >
-              重新扫描，清掉这些记录
+              重新扫描
             </Button>
           </ButtonGroup>
         </Section>

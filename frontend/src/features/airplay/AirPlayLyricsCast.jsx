@@ -102,7 +102,7 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
       );
       if (active) {
         video.play().catch(() => {
-          setMessage("选上了 Apple TV，但视频没传过去。重新打开一次设备选择器。");
+          setMessage("已选中 Apple TV 但视频未送出，重开设备选择器");
         });
       } else {
         video.pause();
@@ -370,13 +370,13 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
     const video = videoRef.current;
     if (!nativeAirPlayAvailable(video)) {
       setMessage(
-        "这台设备发不出 AirPlay。用 iPhone、iPad，或者 macOS 上的 Safari。",
+        "本设备不支持 AirPlay，请用 iPhone、iPad 或 macOS Safari",
       );
       return;
     }
     const ready = sessionRef.current;
     if (!ready) {
-      setMessage("正在准备投屏地址，好了再点一次「投到电视」。");
+      setMessage("投屏地址准备中，稍后再点「投到电视」");
       try {
         await prepare();
       } catch {}
@@ -394,7 +394,7 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
       // source as H.264 video with a silent AAC compatibility track.
       primeAirPlayVideo(video, ready.streamUrl).catch(() => {
         if (!wirelessRef.current) {
-          setMessage("视频没能开始传。检查一下 Apple TV 能不能访问到这台 NAS。");
+          setMessage("视频未开始传输，检查 Apple TV 能否访问这台 NAS");
         }
       });
       video.webkitShowPlaybackTargetPicker();

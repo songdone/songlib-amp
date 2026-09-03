@@ -133,6 +133,7 @@ function ProgressSlider({ player, label, disabled = false }) {
       onKeyUp={commitDraft}
       onBlur={commitDraft}
       aria-label={label}
+      style={{ "--fill": `${maximum > 0 ? ((draft ?? current) / maximum) * 100 : 0}%` }}
     />
   );
 }
@@ -435,7 +436,7 @@ export default function NowPlayingPage({
               type="button"
               className="airplay-cast-button"
               disabled
-              aria-label="投到电视：先选一首歌"
+              aria-label="先播放一首歌"
               title="先选一首歌"
             >
               <Airplay aria-hidden="true" />
@@ -479,7 +480,7 @@ export default function NowPlayingPage({
               用 data-empty 区分，字号在 now-playing.refresh.css 里分开给。 */}
           <div className="now-track-copy" data-empty={track ? undefined : "true"}>
             <h2>{track?.title || "先选一个播放来源"}</h2>
-            <p>{track ? `${track.artist || "未知歌手"} · ${track.album || "未知专辑"}` : "在这个浏览器里放，或者跟着别的设备上的 Plexamp 一起听。"}</p>
+            <p>{track ? `${track.artist || "未知歌手"} · ${track.album || "未知专辑"}` : "本机播放，或跟随其他设备上的 Plexamp"}</p>
             {track && (
               <div className="now-quality">
                 <span>{usingRemote ? "PLEX" : effectivePlayer.quality === "original" ? "无损" : String(effectivePlayer.quality).toUpperCase()}</span>
@@ -523,6 +524,7 @@ export default function NowPlayingPage({
                           onPointerUp={() => remoteCommand("volume", remoteVolume)}
                           onKeyUp={() => remoteCommand("volume", remoteVolume)}
                           aria-label={`调整 ${selectedSession.deviceName} 音量`}
+                          style={{ "--fill": `${remoteVolume}%` }}
                         />
                       </label>
                     )}
@@ -533,7 +535,7 @@ export default function NowPlayingPage({
                   </>
                 ) : (
                   <>
-                    <label><Volume2 /><input type="range" min="0" max="1" step="0.01" value={localPlayer.volume} onChange={(event) => localPlayer.setVolume(event.target.value)} aria-label="音量" /></label>
+                    <label><Volume2 /><input type="range" min="0" max="1" step="0.01" value={localPlayer.volume} onChange={(event) => localPlayer.setVolume(event.target.value)} aria-label="音量" style={{ "--fill": `${Number(localPlayer.volume || 0) * 100}%` }} /></label>
                     <button className={liked ? "active" : ""} onClick={() => localPlayer.toggleFavorite(track)}><Heart />{liked ? "已喜欢" : "喜欢"}</button>
                   </>
                 )}
@@ -541,7 +543,7 @@ export default function NowPlayingPage({
                     所以放在 ternary 外面。 */}
                 <button onClick={() => setPosterOpen(true)}>
                   <ImagePlus />
-                  做分享图
+                  分享图
                 </button>
               </div>
               {controlMessage && <div className={`now-control-message ${/失败|无法|拒绝/.test(controlMessage) ? "error" : ""}`}>{controlMessage}</div>}
@@ -585,7 +587,7 @@ export default function NowPlayingPage({
               ) : (
                 <div className="now-centered">
                   <Mic2 /><strong>{lyricsError ? "歌词获取失败" : track ? "这首歌还没有可用歌词" : "选择正在播放的来源"}</strong>
-                  <p>{lyricsError || (track ? "优先用歌曲旁边的 .lrc，没有再去线上找" : "挑一个设备，它在放什么、放到哪儿、歌词都会同步过来。")}</p>
+                  <p>{lyricsError || (track ? "优先用歌曲旁边的 .lrc，没有再去线上找" : "选择设备后同步播放状态与歌词")}</p>
                 </div>
               )}
               {/*
@@ -661,7 +663,7 @@ export default function NowPlayingPage({
                 {remote.sessions.map((session) => (
                   <DeviceRow key={session.id} session={session} active={usingRemote && selectedSession?.id === session.id} onSelect={() => chooseSource(`plex:${session.id}`)} />
                 ))}
-                {idleClients.map((client) => <DeviceRow key={client.id} session={client} active={false} onSelect={() => setControlMessage("这台设备现在没在放歌。先在它上面点开一首。")}/>) }
+                {idleClients.map((client) => <DeviceRow key={client.id} session={client} active={false} onSelect={() => setControlMessage("该设备没有在播放，先在设备上开始一首")}/>) }
               </div>
               {!remote.loading && !remote.sessions.length && !idleClients.length && (
                 <div className="now-centered compact"><MonitorSpeaker /><strong>没有发现 Plex 播放器</strong><p>打开 Plexamp，并在 Plex 设置里允许远程控制。</p></div>

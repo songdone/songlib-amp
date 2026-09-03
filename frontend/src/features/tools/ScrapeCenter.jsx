@@ -54,7 +54,7 @@ import { StatGrid, StatTile } from "../../components/ui/StatTile";
 import { api } from "../../lib/api";
 
 /**
- * 两类补齐任务。区别不是"用哪个模块"，而是**改到哪里去** ——
+ * 两类补齐任务。区别不是"模块"，而是**改到哪里去** ——
  * 一个写进 Plex 的资料库，一个写成音乐目录里的文件。
  * 用户需要先明白这个区别，才知道该选哪个。
  */
@@ -65,7 +65,7 @@ const JOBS = [
     icon: UsersRound,
     title: "歌手资料与专辑封面",
     where: "写入 Plex 资料库",
-    desc: "歌手海报、背景图、中文简介，以及 Plex 里缺封面的专辑。改完会触发一次 Plex 扫描。",
+    desc: "歌手海报、背景图、中文简介，以及 Plex 缺封面的专辑；完成后触发一次 Plex 扫描",
   },
   {
     id: "assets",
@@ -73,7 +73,7 @@ const JOBS = [
     icon: ScrollText,
     title: "封面与歌词文件",
     where: "写入音乐目录",
-    desc: "在音频文件旁边补 cover.jpg、写入内嵌封面、生成同名 .lrc 歌词（UTF-8）。",
+    desc: "补 cover.jpg、写入内嵌封面、生成同名 .lrc（UTF-8）",
   },
 ];
 
@@ -215,7 +215,7 @@ export function ScrapeCenter({ navigate }) {
 
       {/* --- 第一步：补什么，改到哪里 --- */}
       <Section>
-        <SectionHeader title="补什么" note="两者写入的位置不同，先选清楚" />
+        <SectionHeader title="补全项" note="两者写入位置不同" />
         <div className="scrape__jobs">
           {JOBS.map((item) => (
             <button
@@ -249,7 +249,7 @@ export function ScrapeCenter({ navigate }) {
       <Section>
         <SectionHeader
           title="改哪些"
-          note="先缩小范围，清单短一点才看得完"
+          note="范围越小，清单越好核对"
         />
         <div className="scrape__scope">
           <ChipGroup
@@ -293,7 +293,7 @@ export function ScrapeCenter({ navigate }) {
             loading={busy === "preview"}
             onClick={generate}
           >
-            看看会改什么
+            生成清单
           </Button>
         </div>
       </Section>
@@ -308,7 +308,7 @@ export function ScrapeCenter({ navigate }) {
       {plan && (
         <Section>
           <SectionHeader
-            title="会改这些"
+            title="变更清单"
             note={`生成于 ${new Date(plan.createdAt).toLocaleString("zh-CN")} · 还没有执行`}
           />
 
@@ -374,7 +374,7 @@ export function ScrapeCenter({ navigate }) {
             <EmptyState
               icon={ImageIcon}
               title="这个筛选下没有条目"
-              text="换一个筛选看看，或者把范围放宽再生成一次。"
+              text="换个筛选，或放宽范围重新生成"
             />
           )}
 
@@ -424,7 +424,7 @@ export function ScrapeCenter({ navigate }) {
         <EmptyState
           icon={LoaderCircle}
           title="还没有生成清单"
-          text="选好上面的范围，点「看看会改什么」。生成清单不会改动任何文件。"
+          text="选好范围后生成清单"
         />
       )}
     </Page>

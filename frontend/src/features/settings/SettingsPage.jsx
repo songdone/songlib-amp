@@ -339,7 +339,7 @@ export function SettingsPage({
             <SettingBlock
               icon={Server}
               title="Plex 连接"
-              note="连上之后，Plex 里的歌就能在这里播，也能接管 Plexamp"
+              note="接入 Plex 曲库，并可遥控 Plexamp"
             >
               <dl>
                 <div>
@@ -407,7 +407,7 @@ export function SettingsPage({
             <SettingBlock
               icon={Library}
               title="Plex 音乐资料库"
-              note="只同步你勾的这几个库，其余的不动"
+              note="只同步勾选的音乐库"
             >
               {plex.libraries?.length ? (
                 <div className="plex-library-chips">
@@ -425,14 +425,14 @@ export function SettingsPage({
                 <EmptyState
                   icon={Library}
                   title="未读取到音乐库"
-                  text="先点上面的「配置 Plex」连上，音乐库列表会自动列出来。"
+                  text="连接 Plex 后自动列出"
                 />
               )}
             </SettingBlock>
             <SettingBlock
               icon={Radio}
               title="飞牛音乐"
-              note="连上之后，这里的歌单可以按原顺序同步过去"
+              note="歌单可按原顺序同步"
             >
               <dl>
                 <div>
@@ -570,7 +570,7 @@ export function SettingsPage({
             <SettingBlock
               icon={Activity}
               title="系统信息"
-              note="报问题的时候带上这几项，排查会快很多"
+              note="反馈问题时请附带"
             >
               <dl>
                 <div>
@@ -598,7 +598,7 @@ export function SettingsPage({
             <SettingBlock
               icon={FolderTree}
               title="本地路径"
-              note="音屿只会读写这几个目录，别的地方一概不碰"
+              note="读写范围仅限这几个目录"
             >
               <dl>
                 <div>
@@ -630,7 +630,7 @@ export function SettingsPage({
             <SettingBlock
               icon={Image}
               title="保存规则"
-              note="补回来的封面和歌词存在哪里"
+              note="封面与歌词的存放位置"
             >
               <dl>
                 <div>
@@ -650,7 +650,7 @@ export function SettingsPage({
             <SettingBlock
               icon={Download}
               title="下载与入库"
-              note="下载完的歌先落在临时目录，你确认了才进曲库"
+              note="先入暂存区，确认后进曲库"
             >
               <dl>
                 <div>
@@ -672,13 +672,13 @@ export function SettingsPage({
                 icon={Check}
                 onClick={() => navigate?.("download")}
               >
-                打开待入库
+                打开暂存区
               </Button>
             </SettingBlock>
             <SettingBlock
               icon={RotateCcw}
-              title="改错了怎么办"
-              note="标签写入、文件移动、下载入库都留了原值"
+              title="撤销与回滚"
+              note="标签、移动、入库都保留原值"
             >
               <p className="setting-copy">
                 每次改动都能在「文件与标签 → 改动历史」里逐条退回去。
@@ -692,7 +692,7 @@ export function SettingsPage({
           <SettingBlock
             icon={WandSparkles}
             title="刮削规则"
-            note="这里定的是默认值，「封面与歌词」页每次还能单独调"
+            note="默认值 · 每次执行可单独调整"
           >
             <div className="settings-switches">
               <label>
@@ -725,7 +725,7 @@ export function SettingsPage({
               ))}
             </div>
             <Button size="sm" icon={Check} onClick={save}>
-              保存刮削规则
+              保存
             </Button>
           </SettingBlock>
         )}
@@ -733,7 +733,7 @@ export function SettingsPage({
           <SettingBlock
             icon={Tags}
             title="命名规则"
-            note="整理目录时按这些模板算出每个文件该放哪儿"
+            note="整理目录时的目标路径模板"
           >
             <div className="template-list">
               {Object.entries(templates).map(([key, value]) => (
@@ -759,7 +759,7 @@ export function SettingsPage({
               ))}
             </div>
             <Button size="sm" icon={Check} onClick={save}>
-              保存命名模板
+              保存
             </Button>
           </SettingBlock>
         )}
@@ -767,7 +767,7 @@ export function SettingsPage({
           <SettingBlock
             icon={ShieldCheck}
             title="扫描排除规则"
-            note="列在这里的目录，扫描时会跳过"
+            note="扫描时跳过这些目录"
           >
             <label className="exclude-editor">
               每行一个目录
@@ -787,7 +787,7 @@ export function SettingsPage({
               />
             </label>
             <Button size="sm" icon={Check} onClick={save}>
-              保存排除规则
+              保存
             </Button>
           </SettingBlock>
         )}
@@ -796,7 +796,7 @@ export function SettingsPage({
             <SettingBlock
               icon={Palette}
               title="外观与主题"
-              note="拖动就能看到效果，只影响这台设备"
+              note="实时预览 · 仅本设备"
             >
               <div className="theme-choice" role="group" aria-label="界面主题">
                 {[
@@ -883,7 +883,7 @@ export function SettingsPage({
           <SettingBlock
             icon={Play}
             title="播放器设置"
-            note="换设备也跟着走"
+            note="随账号同步"
           >
             <div className="settings-switches">
               {[
@@ -935,10 +935,10 @@ export function SettingsPage({
             </div>
             <ButtonGroup wrap>
               <Button size="sm" variant="primary" icon={Check} onClick={savePlayerPrefs}>
-                保存播放器偏好
+                保存
               </Button>
               <Button size="sm" icon={Play} onClick={() => navigate?.("player")}>
-                打开播放器验证
+                打开播放器
               </Button>
             </ButtonGroup>
           </SettingBlock>
@@ -948,7 +948,7 @@ export function SettingsPage({
             <SettingBlock
               icon={UserRound}
               title="用户偏好"
-              note="这些只影响你自己的账号"
+              note="仅影响当前账号"
             >
               <div className="profile-card">
                 <div className="profile-avatar">
@@ -1037,7 +1037,7 @@ export function SettingsPage({
                   </select>
                 </label>
                 <Button size="sm" icon={Check} onClick={() => saveProfile(profile)}>
-                  保存偏好
+                  保存
                 </Button>
               </div>
             </SettingBlock>
@@ -1082,7 +1082,7 @@ export function SettingsPage({
             <SettingBlock
               icon={ShieldCheck}
               title="备份与恢复"
-              note="备份的是账号和各项设置，音乐文件不会被复制一份"
+              note="账号与设置 · 不含音乐文件"
             >
               <div className="backup-toolbar">
                 <Button
@@ -1133,7 +1133,7 @@ export function SettingsPage({
                   <EmptyState
                     icon={ShieldCheck}
                     title="还没有备份"
-                    text="做一份备份，之后换机器或者出问题都能直接恢复回来。"
+                    text="创建一份备份，换机器或出问题时可恢复"
                   />
                 )}
               </div>
@@ -1141,7 +1141,7 @@ export function SettingsPage({
             <SettingBlock
               icon={ScrollText}
               title="运行日志"
-              note="出问题的时候先来这里看"
+              note="排查问题从这里开始"
             >
               <div className="log-toolbar">
                 <Button
@@ -1216,7 +1216,7 @@ export function SettingsPage({
         size="sm"
         actions={
           <ButtonGroup align="end">
-            <Button onClick={() => setRestoring(null)}>先不恢复</Button>
+            <Button onClick={() => setRestoring(null)}>取消</Button>
             <Button
               variant="danger"
               icon={RotateCcw}

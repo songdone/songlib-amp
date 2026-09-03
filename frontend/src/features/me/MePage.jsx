@@ -97,8 +97,8 @@ export function MePage() {
   return (
     <Page className="me">
       <PageHeader
-        title="你听过的都在这儿"
-        lead="喜欢过的、放过的，和自己攒的歌单。这些记录只存在这台机器上。"
+        title="我的"
+        lead="收藏、播放记录与自建歌单，仅保存在本机"
       />
 
       <StatGrid>
@@ -109,7 +109,7 @@ export function MePage() {
 
       {/* --- 最近在听什么 --- */}
       <Section reveal>
-        <SectionHeader title="最近都在听什么" note="近 7 天，只算这台机器" />
+        <SectionHeader title="收听概览" note="近 7 天 · 本机" />
         <div className="me-insights">
           <div className="me-week">
             {days.map((item) => (
@@ -176,7 +176,7 @@ export function MePage() {
             <EmptyState
               icon={Heart}
               title="还没有收藏"
-              text="听到喜欢的点一下爱心，就收在这儿。"
+              text="点爱心收藏的歌会出现在这里"
             />
           )}
         </Section>
@@ -212,7 +212,7 @@ export function MePage() {
             <EmptyState
               icon={Play}
               title="还没有播放记录"
-              text="放过的歌会留在这里，方便接着听。"
+              text="播放过的歌会留在这里"
             />
           )}
         </Section>
@@ -222,7 +222,7 @@ export function MePage() {
       <Section reveal>
         <SectionHeader
           title="我的歌单"
-          note="存在这台设备上，不上传"
+          note="仅存本机"
           actions={
             <Button size="sm" icon={Plus} onClick={() => setCreating(true)}>
               新建
@@ -273,7 +273,7 @@ export function MePage() {
           <EmptyState
             icon={ListMusic}
             title="还没有歌单"
-            text="想反复听的歌，攒成一张歌单。"
+            text="新建一张歌单"
             action={
               <Button variant="primary" icon={Plus} onClick={() => setCreating(true)}>
                 建一张

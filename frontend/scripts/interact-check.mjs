@@ -44,10 +44,38 @@ page.on("pageerror", (e) => note(`未捕获异常：${e.message.slice(0, 120)}`)
 page.on("console", (m) => m.type() === "error" && note(`控制台报错：${m.text().slice(0, 120)}`));
 
 await page.addInitScript(() => localStorage.setItem("songlib-pwa-dismissed", "1"));
-await page.goto(BASE, { waitUntil: "networkidle" });
-await page.waitForTimeout(1200);
+/*
+ * 不能用 waitUntil:"networkidle"。
+ *
+ * 真部署上播放状态、健康检查一直在轮询，网络**永远不会空闲**，
+ * 这里会直接超时 —— 这个假设只在 mock 上成立，而"只在 mock 上成立"
+ * 正是这套检查要消灭的东西。
+ * 改成等 DOM 就绪，再等一个真实存在的界面元素。
+ */
+await page.goto(BASE, { waitUntil: "domcontentloaded" });
+/*
+ * 必须等**可见**的导航按钮，而且不能把超时吞掉。
+ *
+ * 第一版写的是 `.first().waitFor().catch(()=>{})`：first() 选中的是
+ * 侧栏里那个 .mobile-only 的"收起导航"，桌面宽度下它是隐藏的，
+ * 永远等不到；catch 又把超时咽了，于是页面还没加载完就往下跑，
+ * 报出"首页没有 .glow-follow"这种假问题 —— 比不检查更糟，
+ * 因为它看起来像真的。
+ */
+await page
+  .locator("nav button:visible, aside button:visible")
+  .first()
+  .waitFor({ timeout: 30000 });
+await page.waitForTimeout(2000);
 
-const nav = (label) => page.locator("nav button, aside button").filter({ hasText: label }).first().click();
+// 同样必须限定 :visible —— 侧栏里有一批 .mobile-only 的按钮，桌面宽度下
+// 隐藏但仍在 DOM 里，不加限定会点到它们然后一直等。
+const nav = (label) =>
+  page
+    .locator("nav button:visible, aside button:visible")
+    .filter({ hasText: label })
+    .first()
+    .click();
 
 // 起播一首，后面所有检查都需要有歌在放
 const play = page.getByRole("button", { name: /播放这张专辑/ }).first();

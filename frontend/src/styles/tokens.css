@@ -177,6 +177,14 @@
     --radius-xl: 20px;
     --radius-pill: 999px;
 
+    /* 投影的着色。给需要自己拼 box-shadow 的地方用
+       （正在播放页的封面、全屏歌词），这样浅色主题下投影会自动变淡，
+       而不是在浅底上糊一块黑。 */
+    --shadow-tint: rgba(0, 0, 0, 0.34);
+    /* 压在封面照片上的遮罩。照片跟主题无关，所以这一档两个主题都偏深 ——
+       浅色主题下也不能让白字压在亮封面上。 */
+    --scrim-on-media: rgba(10, 11, 15, 0.68);
+
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
     --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.34);
     --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.44);
@@ -255,6 +263,9 @@
 
     --focus-ring: var(--palette-gold-700);
 
+    --shadow-tint: rgba(15, 18, 26, 0.12);
+    --scrim-on-media: rgba(10, 11, 15, 0.62);
+
     --shadow-sm: 0 1px 2px rgba(15, 18, 26, 0.08);
     --shadow-md: 0 6px 16px rgba(15, 18, 26, 0.1);
     --shadow-lg: 0 18px 44px rgba(15, 18, 26, 0.14);
@@ -297,6 +308,8 @@
 
       --focus-ring: var(--palette-gold-700);
 
+      --shadow-tint: rgba(15, 18, 26, 0.12);
+      --scrim-on-media: rgba(10, 11, 15, 0.62);
       --shadow-sm: 0 1px 2px rgba(15, 18, 26, 0.08);
       --shadow-md: 0 6px 16px rgba(15, 18, 26, 0.1);
       --shadow-lg: 0 18px 44px rgba(15, 18, 26, 0.14);

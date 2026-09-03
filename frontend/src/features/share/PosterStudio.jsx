@@ -23,7 +23,7 @@ import { Notice } from "../../components/ui/Field";
 import { Modal } from "../../components/ui/Modal";
 import { ChipGroup } from "../../components/ui/Plan";
 import { BRAND } from "../../config/brand";
-import { coverUrlFor, normalizeTrackTitle } from "../../lib/media";
+import { coverUrlFor, normalizeTrackTitle, trackIdentity } from "../../lib/media";
 import {
   RATIOS,
   TEMPLATES,
@@ -86,14 +86,33 @@ export function PosterStudio({ open, onClose, track, lyrics = [] }) {
     };
   }, [open, coverUrl]);
 
+  /*
+   * 只在"这次打开"和"换了歌"的时候设默认值，之后一概不碰。
+   *
+   * 原来依赖写的是 [open, candidates]。candidates 是 lyrics 的 useMemo，
+   * 而调用方 NowPlayingPage 每次渲染都重新算 lines（那个页面每秒因为
+   * 播放时钟重渲染一次），于是 candidates 的引用每秒都变、这条 effect
+   * 每秒都跑一次 —— 用户刚选的模板和刚勾的句子会被按回默认值，
+   * 表现出来就是"选不了别的样式，一直跳回默认那 4 句"。
+   *
+   * 调用方那边的 useMemo 也补了，但默认值本来就不该依赖上游的引用稳定性：
+   * 这里用 ref 记住"已经为哪一次打开、哪一首歌初始化过"。
+   */
+  const initedFor = useRef(null);
+  const trackKey = track ? trackIdentity(track) : "";
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      initedFor.current = null;
+      return;
+    }
+    if (initedFor.current === trackKey) return;
+    initedFor.current = trackKey;
     // 默认挑中间那几句。开头往往是"作词/作曲"之后的引子，
     // 副歌通常在中段，比第一句更适合当海报。
     const start = Math.max(0, Math.floor(candidates.length / 2) - 2);
     setPicked(candidates.slice(start, start + 4).map((line) => line.time));
-    setTemplate(candidates.length ? "lyric" : "cover");
-  }, [open, candidates]);
+    setTemplate(candidates.length ? "duet" : "cover");
+  }, [open, trackKey, candidates]);
 
   const pickedText = useMemo(
     () =>

@@ -23,9 +23,11 @@ export const RATIOS = Object.freeze({
 });
 
 export const TEMPLATES = Object.freeze({
+  duet: { label: "封面歌词", note: "封面在上、歌词在下，两样都要" },
   cover: { label: "专辑", note: "大封面压在正中，信息收在下方" },
   lyric: { label: "歌词", note: "歌词是主角，封面退成背景" },
   vinyl: { label: "黑胶", note: "封面切成唱片，配唱针与纹路" },
+  polaroid: { label: "拍立得", note: "白边相纸，下方留一行手写位" },
   minimal: { label: "极简", note: "只有字和一条细线" },
 });
 
@@ -303,12 +305,16 @@ export function drawPoster(canvas, options) {
 
   const frame = { width: size.width, height: size.height, pad: Math.round(size.width * 0.085) };
 
-  paintBackground(context, frame, theme, image, template);
+  // 拍立得是浅底，自己从头画，不叠那层深色渐变。
+  if (template !== "polaroid") paintBackground(context, frame, theme, image, template);
 
-  if (template === "cover") paintCoverTemplate(context, frame, theme, { title, artist, album, image, footer });
-  else if (template === "lyric") paintLyricTemplate(context, frame, theme, { title, artist, lyrics, footer });
-  else if (template === "vinyl") paintVinylTemplate(context, frame, theme, { title, artist, album, image, footer });
-  else paintMinimalTemplate(context, frame, theme, { title, artist, album, lyrics, footer });
+  const data = { title, artist, album, lyrics, image, footer };
+  if (template === "cover") paintCoverTemplate(context, frame, theme, data);
+  else if (template === "duet") paintDuetTemplate(context, frame, theme, data);
+  else if (template === "lyric") paintLyricTemplate(context, frame, theme, data);
+  else if (template === "vinyl") paintVinylTemplate(context, frame, theme, data);
+  else if (template === "polaroid") paintPolaroidTemplate(context, frame, theme, data);
+  else paintMinimalTemplate(context, frame, theme, data);
 
   return theme;
 }
@@ -530,6 +536,193 @@ function paintCoverTemplate(context, frame, theme, data) {
  * 试到下限还是排不下（超长句），就接受折行 —— 但那时字号已经很小，
  * 折出来的第二行不会只剩一个字。
  */
+/**
+ * 封面歌词：封面在上、歌词在下。
+ *
+ * 加这个模板是因为原来四个里没有一个能同时给封面和歌词 —— 想发歌词
+ * 就只能让封面糊成背景。而分享一句歌词的时候，那张封面本身也是内容。
+ *
+ * 顺带解决 9:16 顶部大片空白：lyric 模板把歌词块在整幅画面里居中，
+ * 画布越高、上下空得越多（9:16 时上方有 800 多像素只放着一个引号）。
+ * 这里封面高度按剩余空间算，多出来的高度被封面吃掉，不会变成空白。
+ */
+function paintDuetTemplate(context, frame, theme, data) {
+  const { width, height, pad } = frame;
+  const maxWidth = width - pad * 2;
+  const lines = (data.lyrics || []).filter(Boolean).slice(0, 4);
+
+  // 底部：曲名 + 歌手。先量出来，中间才知道剩多少。
+  const title = layoutText(context, data.title, {
+    weight: 700,
+    size: Math.round(width * 0.055),
+    maxWidth,
+    maxLines: 2,
+  });
+  const artist = layoutText(context, data.artist || "未知歌手", {
+    weight: 500,
+    size: Math.round(width * 0.032),
+    maxWidth,
+  });
+  const footBottom = height - Math.round(pad * 1.5);
+  const textTop = footBottom - artist.height - Math.round(width * 0.022) - title.height;
+
+  // 歌词块：字号按句数给，量出真实高度。
+  const lyricSize = lines.length
+    ? fitLyricSize(
+        context,
+        lines,
+        maxWidth,
+        Math.round(width * (lines.length <= 2 ? 0.056 : 0.046)),
+        Math.round(width * 0.03),
+      )
+    : 0;
+  const lineHeight = Math.round(lyricSize * 1.58);
+  context.font = font(600, lyricSize || 1);
+  const wrapped = lines.length
+    ? lines.flatMap((line) =>
+        wrapText(line, maxWidth, (text) => context.measureText(text).width, 2),
+      )
+    : [];
+  const lyricHeight = wrapped.length
+    ? (wrapped.length - 1) * lineHeight + Math.round(lyricSize * 0.9)
+    : 0;
+
+  const lyricGap = wrapped.length ? Math.round(width * 0.055) : 0;
+  // 封面吃掉剩下的全部高度，最多做到正方形 —— 再高就变形了。
+  const available = textTop - pad - lyricHeight - lyricGap - Math.round(width * 0.05);
+  const coverSize = Math.max(
+    Math.round(width * 0.34),
+    Math.min(maxWidth, available),
+  );
+  const coverTop = pad;
+
+  if (data.image) {
+    context.save();
+    roundRect(context, pad, coverTop, coverSize, coverSize, Math.round(width * 0.03));
+    context.clip();
+    drawImageCover(context, data.image, pad, coverTop, coverSize, coverSize);
+    context.restore();
+  } else {
+    paintCoverFallback(context, pad, coverTop, coverSize, theme, data.title);
+  }
+
+  /*
+   * 歌词块的纵向位置。
+   *
+   * 原来是紧贴封面下方，剩下的高度全落到歌词和曲名之间 —— 9:16 上那块
+   * 空白有 400 多像素，画面下半部空着一大片。把这段空余按 42/58 分给
+   * 上下两侧，就是两段"留白"而不是一块"空地"。
+   */
+  const coverBottom = coverTop + coverSize;
+  const slack = Math.max(0, textTop - coverBottom - lyricHeight - lyricGap);
+  let y = coverBottom + lyricGap + Math.round(slack * 0.42) + lyricSize;
+  if (wrapped.length) {
+    const barTop = y - lyricSize;
+    context.fillStyle = rgb(theme.accent, 0.85);
+    context.fillRect(pad, barTop, Math.round(width * 0.006), lyricHeight);
+    const textLeft = pad + Math.round(width * 0.032);
+    context.font = font(600, lyricSize);
+    context.textAlign = "left";
+    context.fillStyle = theme.ink;
+    for (const line of wrapped) {
+      context.fillText(line, textLeft, y);
+      y += lineHeight;
+    }
+  }
+
+  paintText(context, title, pad, textTop + title.height, theme.ink);
+  paintText(
+    context,
+    artist,
+    pad,
+    footBottom,
+    rgb(theme.accent, 0.92),
+  );
+  paintFooter(context, frame, theme, data.footer);
+}
+
+/**
+ * 拍立得：白边相纸。
+ *
+ * 和其他几个都是深底不同，这个是浅底 —— 分享到浅色背景的聊天窗口里
+ * 不会像一块黑洞。所以它自己画底，不用 paintBackground 那层渐变。
+ */
+function paintPolaroidTemplate(context, frame, theme, data) {
+  const { width, height } = frame;
+  const margin = Math.round(width * 0.075);
+  const paperTop = Math.round(height * 0.5 - (width - margin * 2) * 0.62);
+  const paperWidth = width - margin * 2;
+  const border = Math.round(width * 0.042);
+  const photo = paperWidth - border * 2;
+  // 相纸高度 = 上下白边 + 照片 + 下方那截更宽的手写区
+  const caption = Math.round(width * 0.2);
+  const paperHeight = border * 2 + photo + caption;
+
+  context.fillStyle = "rgb(238 235 228)";
+  context.fillRect(0, 0, width, height);
+  // 一层极淡的主色，避免整张纸死白
+  context.fillStyle = rgb(theme.accent, 0.07);
+  context.fillRect(0, 0, width, height);
+
+  context.save();
+  context.shadowColor = "rgb(20 18 14 / 0.28)";
+  context.shadowBlur = Math.round(width * 0.05);
+  context.shadowOffsetY = Math.round(width * 0.018);
+  context.fillStyle = "rgb(253 252 249)";
+  roundRect(context, margin, paperTop, paperWidth, paperHeight, Math.round(width * 0.012));
+  context.fill();
+  context.restore();
+
+  const photoX = margin + border;
+  const photoY = paperTop + border;
+  if (data.image) {
+    context.save();
+    roundRect(context, photoX, photoY, photo, photo, Math.round(width * 0.006));
+    context.clip();
+    drawImageCover(context, data.image, photoX, photoY, photo, photo);
+    context.restore();
+  } else {
+    paintCoverFallback(context, photoX, photoY, photo, theme, data.title);
+  }
+
+  // 手写区：一句歌词（只取第一句，相纸下沿放不下更多）+ 曲名歌手
+  const ink = "rgb(38 34 28)";
+  const captionTop = photoY + photo + Math.round(width * 0.055);
+  const first = (data.lyrics || []).filter(Boolean)[0] || "";
+  let y = captionTop;
+  if (first) {
+    const line = layoutText(context, first, {
+      weight: 600,
+      size: Math.round(width * 0.038),
+      maxWidth: photo,
+      maxLines: 1,
+    });
+    paintText(context, line, photoX, y + line.height, ink);
+    y += line.height + Math.round(width * 0.028);
+  }
+  const title = layoutText(context, data.title, {
+    weight: 700,
+    size: Math.round(width * 0.034),
+    maxWidth: photo,
+    maxLines: 1,
+  });
+  paintText(context, title, photoX, y + title.height, ink);
+  const artist = layoutText(context, data.artist || "未知歌手", {
+    weight: 500,
+    size: Math.round(width * 0.026),
+    maxWidth: photo,
+    maxLines: 1,
+  });
+  paintText(context, artist, photoX, y + title.height + Math.round(width * 0.038), "rgb(38 34 28 / 0.62)");
+
+  // 底注这里要深色字，paintFooter 是给深底写的，所以自己画。
+  context.font = font(500, Math.round(width * 0.022));
+  context.textAlign = "center";
+  context.fillStyle = "rgb(38 34 28 / 0.42)";
+  context.fillText(data.footer || "", width / 2, height - Math.round(width * 0.05));
+  context.textAlign = "left";
+}
+
 function fitLyricSize(context, lines, maxWidth, upper, lower) {
   for (let size = upper; size >= lower; size -= 2) {
     context.font = font(600, size);
@@ -574,12 +767,26 @@ function paintLyricTemplate(context, frame, theme, data) {
 
   // 歌词块在"引号下方"到"底部块上方"之间垂直居中。
   const quoteSize = Math.round(width * 0.19);
-  const quoteBottom = Math.round(height * 0.2);
+  /*
+   * 顶部起点原来是 height * 0.2 —— 画布越高、上面空得越多。
+   * 9:16（1920 高）时这一下就是 384px，再加上歌词块在剩余空间里居中，
+   * 实际第一句要到 800px 左右才开始，上方一大片只放着一个引号。
+   * 改成按宽度算：不管什么比例，顶部留白都是同一个视觉比例。
+   */
+  // 引号占位也要受画布高度约束：1:1 上 pad + 0.19*宽 已经是 27% 高，
+  // 光这一下就把内容压到下半部去了。
+  const quoteBottom = pad + Math.min(quoteSize, Math.round(height * 0.15));
   const blockHeight = (wrapped.length - 1) * lineHeight + Math.round(lyricSize * 0.8);
-  const top = Math.max(
-    quoteBottom,
-    Math.round(quoteBottom + (footBlockTop - quoteBottom - blockHeight) / 2),
-  );
+  /*
+   * 歌词块在"引号下方"到"底部块上方"之间居中。
+   *
+   * 两行歌词的 9:16 本来就该是大量留白居中，那是这种画幅的正常长相；
+   * 原来的毛病不是"空"，是**头重**：起点写的是 height * 0.2，9:16 上
+   * 光这一下就 384px，居中之后上方 878px、下方 434px，差了一倍。
+   * 起点改成按宽度算并受高度上限约束之后，上下就配平了。
+   */
+  const slack = Math.max(0, footBlockTop - quoteBottom - blockHeight);
+  const top = Math.round(quoteBottom + slack / 2);
 
   // 起始的大引号，纯装饰。跟着歌词块走，不再用固定偏移。
   context.save();
@@ -804,7 +1011,9 @@ function paintMinimalTemplate(context, frame, theme, data) {
     (lyric ? gapLyric + lyric.height : 0);
 
   // 略偏上：底注占了下方，视觉重心放在偏上一点更稳。
-  let y = Math.round((height - stackHeight) / 2 - height * 0.03);
+  // 试过改成靠上锚定，结果空白全跑到下面去（9:16 下方空 67%），更糟。
+  // 字少画布高的时候留白就是大的，关键是上下配平，不是消灭留白。
+  let y = Math.round((height - stackHeight) / 2 - height * 0.02);
 
   y = paintText(context, eyebrow, pad, y, rgb(theme.accent, 0.9));
   y = paintText(context, title, pad, y + gapEyebrow, theme.ink);

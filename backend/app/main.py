@@ -1338,7 +1338,36 @@ def update_player_state(body: SettingsPatchBody, user=Depends(auth.current_user)
 
 
 def _airplay_public_base(request: Request) -> str:
-    return settings.airplay_public_base_url or str(request.base_url).rstrip("/")
+    """投屏用的 HLS 地址前缀。
+
+    这个地址是给 **Apple TV** 用的，不是给浏览器用的 —— 投屏的分工是：
+
+      1. iPhone / iPad / Mac 上的浏览器通过系统的 Bonjour 发现同一个局域网
+         里的 AirPlay 接收端。这一步是操作系统做的，跟本服务无关，所以
+         无论人在哪个网络，只要手机和 Apple TV 在同一个局域网就能发现。
+      2. 用户选中 Apple TV 之后，**Apple TV 自己去拉这条 HLS 地址**。
+         于是这个地址必须是 Apple TV 够得着的。
+
+    所以正确的取值是"浏览器刚刚用来访问本服务的那个地址" —— 浏览器能到，
+    同一个局域网里的 Apple TV 就能到。写死一个地址一定会错：写内网 IP，
+    人在外网时 Apple TV 解析不到；写公网域名，在家时也能用但绕了一圈。
+
+    forwarded 头必须认：应用在反代后面时 request.base_url 的 scheme 是内网
+    http，直接用会得到 http:// 前缀，而页面是 https —— 混合内容会被浏览器
+    拦掉，<video> 根本加载不了。
+    """
+    if settings.airplay_public_base_url:
+        # 显式覆盖。留着是为了少数"访问地址和 Apple TV 可达地址不同"的
+        # 部署（比如走了只对浏览器开放的隧道）。一般不需要设。
+        return settings.airplay_public_base_url
+
+    forwarded_proto = request.headers.get("x-forwarded-proto", "").split(",")[0].strip()
+    forwarded_host = request.headers.get("x-forwarded-host", "").split(",")[0].strip()
+    scheme = forwarded_proto or request.url.scheme
+    host = forwarded_host or request.headers.get("host") or request.url.netloc
+    if not host:
+        return str(request.base_url).rstrip("/")
+    return f"{scheme}://{host}"
 
 
 def _airplay_cover(body: AirPlayCastUpdateBody, user: dict) -> bytes | None:

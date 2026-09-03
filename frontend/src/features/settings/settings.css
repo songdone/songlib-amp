@@ -430,14 +430,51 @@
     gap: var(--space-3);
   }
 
-  .account-permissions label {
+  /*
+   * 权限胶囊。带类名是刻意的 —— 见 UserAccounts.jsx 里那段注释：
+   * 无类名的 label 会被上面那条竖排规则接管，checkbox 被拉成大方块。
+   */
+  .account-permission {
+    display: inline-flex;
     flex-direction: row;
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-2) var(--space-3);
-    background: var(--surface-inset);
+    border: 1px solid var(--border-subtle);
     border-radius: var(--radius-pill);
+    background: var(--surface-inset);
+    color: var(--text-secondary);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
     cursor: pointer;
+    transition: 0.16s ease;
+  }
+
+  .account-permission:hover {
+    border-color: var(--border-default);
+    color: var(--text-primary);
+  }
+
+  /* checkbox 保持原生尺寸，别让它跟着容器长。 */
+  .account-permission > input[type="checkbox"] {
+    flex: 0 0 auto;
+    width: 15px;
+    height: 15px;
+    margin: 0;
+    accent-color: var(--accent-solid);
+  }
+
+  /* 勾上的那几个要一眼看出来，否则五个胶囊长得一模一样。 */
+  .account-permission:has(> input:checked) {
+    border-color: var(--accent-border);
+    background: var(--accent-soft);
+    color: var(--text-primary);
+  }
+
+  /* 「播放」是所有账号的底线权限，禁用不是坏了，是不用选。 */
+  .account-permission:has(> input:disabled) {
+    cursor: default;
+    opacity: 0.72;
   }
 
   .account-editor {

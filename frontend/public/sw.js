@@ -1,8 +1,8 @@
-const CACHE_NAME = 'songlib-amp-static-v25'
+const CACHE_NAME = 'songlib-amp-static-v26'
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
-  '/startup-v105.js',
+  '/startup-v110.js',
   '/icons/songlib-amp-app-icon.svg',
   '/icons/icon-192.png',
   '/icons/icon-512.png',

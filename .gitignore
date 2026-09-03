@@ -15,3 +15,7 @@ frontend/src/_login_backup_v065/
 screenshots/
 *.fpk
 packaging/fnos/release/
+
+# 交接文档只在本地。它会写到运行环境、地址、排查线索 ——
+# 这个仓库是公开的，那些东西不该进去。
+HANDOFF.md

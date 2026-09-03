@@ -656,6 +656,13 @@ function paintDuetTemplate(context, frame, theme, data) {
 function paintPolaroidTemplate(context, frame, theme, data) {
   const { width, height } = frame;
   const margin = Math.round(width * 0.075);
+  /*
+   * 相纸按画布高度居中。
+   *
+   * 试过改成"按宽度定顶部"，结果 9:16 上相纸跑到顶、下方裂开 29% 的空白，
+   * 比原来更糟。相纸是固定长宽比的实体，高画布上必然有余量 —— 让余量
+   * 平均分在上下，比全部堆到一边好。上方 21% 是这个构图的代价，不是 bug。
+   */
   const paperTop = Math.round(height * 0.5 - (width - margin * 2) * 0.62);
   const paperWidth = width - margin * 2;
   const border = Math.round(width * 0.042);
@@ -791,8 +798,16 @@ function paintLyricTemplate(context, frame, theme, data) {
    * 光这一下就 384px，居中之后上方 878px、下方 434px，差了一倍。
    * 起点改成按宽度算并受高度上限约束之后，上下就配平了。
    */
+  /*
+   * 歌词块的起点：居中，但上方分到的余量有上限。
+   *
+   * 纯居中时画布越高上方空得越多 —— 9:16 实测上 41% 下 8%，头重。
+   * 上限按宽度给（不按高度），所以不管什么比例，上方留白都是同一个
+   * 视觉量；多出来的高度落到歌词和底部曲名之间，那里有内容收尾，
+   * 读起来是留白而不是空着。
+   */
   const slack = Math.max(0, footBlockTop - quoteBottom - blockHeight);
-  const top = Math.round(quoteBottom + slack / 2);
+  const top = Math.round(quoteBottom + Math.min(slack / 2, width * 0.05));
 
   // 起始的大引号，纯装饰。跟着歌词块走，不再用固定偏移。
   context.save();
@@ -949,11 +964,28 @@ function paintVinylTemplate(context, frame, theme, data) {
       })
     : null;
 
+  /*
+   * 先给底注留出位置，再决定这一叠文字画到哪、专辑行画不画。
+   *
+   * 原来是从唱片下沿往下顺着排，不看还剩多少 —— 1:1 上唱片直径就占了
+   * 0.72 个画布宽，排到专辑行时已经压到底注上，「女生宿舍」和
+   * 「SongLib Amp · 音屿」直接叠在一起。方版竖向空间本来就不够，
+   * 放不下就不画专辑，而不是画上去撞车。
+   */
+  const footerReserve = Math.round(width * 0.05) + Math.round(width * 0.032);
+  const limit = height - footerReserve;
+  const gapArtist = Math.round(width * 0.028);
+  const gapAlbum = Math.round(width * 0.02);
+
   let y = cy + radius + Math.round(height * 0.06);
+  const need = title.height + gapArtist + artist.height;
+  // 唱片下沿加这一叠超过底注上界时，整叠往上提，不让它压过去。
+  if (y + need > limit) y = Math.max(cy + radius + pad, limit - need);
+
   y = paintText(context, title, cx, y, theme.ink, "center");
-  y = paintText(context, artist, cx, y + Math.round(width * 0.028), rgb(theme.accent, 0.95), "center");
-  if (album) {
-    paintText(context, album, cx, y + Math.round(width * 0.02), "rgb(255 255 255 / 0.42)", "center");
+  y = paintText(context, artist, cx, y + gapArtist, rgb(theme.accent, 0.95), "center");
+  if (album && y + gapAlbum + album.height <= limit) {
+    paintText(context, album, cx, y + gapAlbum, "rgb(255 255 255 / 0.42)", "center");
   }
 
   paintFooter(context, frame, theme, data.footer);

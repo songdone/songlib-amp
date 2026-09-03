@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ipaddress
 import io
 import math
 import re
@@ -16,6 +17,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 from .config import settings
+from urllib.parse import urlparse
 
 
 _LINE_TIME = re.compile(r"\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?]")
@@ -140,26 +142,83 @@ def _bitrate_bits(value: str) -> int:
     return max(1, int(amount * multiplier))
 
 
-def build_master_playlist() -> str:
+def build_master_playlist(profile: dict | None = None) -> str:
+    """主播放列表。
+
+    FRAME-RATE 必须报**实际**的输出帧率。原来这里写死
+    settings.airplay_fps（30），而公网档实际编的是 15fps ——
+    播放列表宣称 30、流里是 15，客户端是按声明去准备解码的，
+    这种不一致本身就够让它出问题。
+    """
     video_bitrate = settings.airplay_video_bitrate or (
         "12M" if settings.airplay_width >= 3840 else "3M"
     )
     bandwidth = int((_bitrate_bits(video_bitrate) + 64_000) * 1.12)
     codec = "avc1.640033" if settings.airplay_width >= 3840 else "avc1.640029"
+    fps = float((profile or stream_profile(False))["fps"])
     return (
         "#EXTM3U\n"
         "#EXT-X-VERSION:7\n"
         "#EXT-X-INDEPENDENT-SEGMENTS\n"
         f'#EXT-X-STREAM-INF:BANDWIDTH={bandwidth},AVERAGE-BANDWIDTH={bandwidth},'
-        f'RESOLUTION={settings.airplay_width}x{settings.airplay_height},FRAME-RATE={settings.airplay_fps:.3f},'
+        f'RESOLUTION={settings.airplay_width}x{settings.airplay_height},FRAME-RATE={fps:.3f},'
         f'CODECS="{codec},mp4a.40.2"\n'
         "media.m3u8\n"
     )
 
 
-def build_ffmpeg_command(output_dir: Path, *, use_qsv: bool) -> list[str]:
+
+def wan_profile(public_base_url: str) -> bool:
+    """这条投屏地址要走公网吗？
+
+    投屏的画面是 Apple TV 自己去拉的 HLS。局域网和公网对 HLS 的要求
+    差得很远，用同一套参数必然有一边是坏的：
+
+    - 局域网：RTT 一两毫秒、带宽足，1 秒分片能做到很低的延迟。
+    - 公网：RTT 几十到上百毫秒，还要过 TLS，NAS 的上行也有限。
+      1 秒分片意味着每秒要完成一次"请求 → 传输 → 解码"，追不上就落后；
+      而直播窗口只有 12 秒，一落后 12 秒，想要的分片已经被删了，
+      于是**永久卡死** —— 实测就是"显示一屏歌词然后不动了"。
+
+    Apple 自己的 HLS 编写指南推荐 6 秒分片。1 秒只在 LL-HLS
+    （带 partial segment 和阻塞式播放列表刷新）下成立，这套不是。
+
+    判据用地址本身：私有网段或 .local 就是局域网，其它按公网算。
+    宁可把局域网误判成公网 —— 那只是延迟高一点，反过来是彻底放不出来。
+    """
+    host = urlparse(public_base_url or "").hostname or ""
+    if not host:
+        return False
+    if host.endswith(".local") or host == "localhost":
+        return False
+    try:
+        return not ipaddress.ip_address(host).is_private
+    except ValueError:
+        # 不是 IP 就是域名。域名一般是对外的。
+        return True
+
+
+def stream_profile(wan: bool) -> dict:
+    """按档位给出分片长度、直播窗口和帧率。
+
+    窗口一律给到 40 秒以上：客户端偶尔卡一下也还能追回来，
+    而不是掉出窗口之后再也回不来。
+
+    帧率压到 15 是因为这块画面一句歌词才变一次，30fps 纯粹在烧上行带宽。
+    """
+    if wan:
+        return {"segment": 4.0, "list_size": 12, "fps": 15}
+    return {
+        "segment": settings.airplay_segment_seconds,
+        "list_size": 12,
+        "fps": settings.airplay_fps,
+    }
+
+
+def build_ffmpeg_command(output_dir: Path, *, use_qsv: bool, profile: dict | None = None) -> list[str]:
     width, height = settings.airplay_width, settings.airplay_height
-    fps, segment = settings.airplay_fps, settings.airplay_segment_seconds
+    chosen = profile or stream_profile(False)
+    fps, segment = int(chosen["fps"]), float(chosen["segment"])
     bitrate = settings.airplay_video_bitrate or ("12M" if width >= 3840 else "3M")
     segment_text = f"{segment:g}"
     command = [
@@ -255,7 +314,7 @@ def build_ffmpeg_command(output_dir: Path, *, use_qsv: bool) -> list[str]:
         "-hls_time",
         segment_text,
         "-hls_list_size",
-        "12",
+        str(int(chosen["list_size"])),
         "-hls_delete_threshold",
         "6",
         "-hls_segment_type",
@@ -668,8 +727,13 @@ class AirPlayCastManager:
         raise KeyError("投屏分片不存在或已滑出实时窗口")
 
     def master_playlist(self, token: str) -> str:
-        self.ensure_started(token)
-        return build_master_playlist()
+        session = self.ensure_started(token)
+        # 用这条会话自己的档位，别用默认值 —— 否则公网会话拿到的是
+        # 局域网档的声明，跟实际编出来的流对不上。
+        profile = stream_profile(
+            wan_profile(getattr(session, "public_base_url", "") or "")
+        )
+        return build_master_playlist(profile)
 
     def _encoder_worker(self, session: CastSession) -> None:
         wants_qsv = settings.airplay_encoder in {"auto", "qsv"}
@@ -686,7 +750,11 @@ class AirPlayCastManager:
             session.error = "FFmpeg 歌词视频编码器意外退出"
 
     def _run_encoder(self, session: CastSession, *, use_qsv: bool) -> bool:
-        command = build_ffmpeg_command(session.output_dir, use_qsv=use_qsv)
+        # 档位由这条会话的对外地址决定：公网走保守参数，局域网保持低延迟。
+        profile = stream_profile(wan_profile(session.public_base_url))
+        command = build_ffmpeg_command(
+            session.output_dir, use_qsv=use_qsv, profile=profile
+        )
         log_path = session.output_dir / "ffmpeg.log"
         try:
             log_file = log_path.open("ab")

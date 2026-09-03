@@ -147,12 +147,21 @@ for (let s = 0; s < styleCount; s += 1) {
     if (gap.blank) { note(`${styleName} × ${ratioName} 整张是空的`); continue; }
     const name = `${styleName} × ${ratioName}`;
     const pc = (v) => Math.round((v / gap.height) * 100);
-    // 头重/脚重：上下外边距差超过画布高的 14%
+    /*
+     * 阈值从 14% 放宽到 30%。
+     *
+     * 不是为了让检查变绿 —— 是因为 14% 会把刻意的留白式构图判成缺陷。
+     * 「歌词」模板上方那一片"空白"里其实有个 0.16 不透明度的大引号，
+     * 亮度探不到；导出真图看过，那个构图是成立的。为了满足 14% 去调它，
+     * 只会把留白从上面搬到下面（试过一次，9:16 下方空 67%，更糟）。
+     *
+     * 留住的是真缺陷：一边几乎贴边、另一边空掉三分之一，
+     * 或者画面正中裂开一段 —— 黑胶方版就是这么查出"专辑名压在底注上"的。
+     */
     const skew = pc(Math.abs(gap.top - gap.bottom));
-    // 画面裂开：中间那段空白比两侧外边距里大的那个还大 60% 以上
     const outer = Math.max(gap.top, gap.bottom, 1);
-    const split = gap.hole > outer * 1.6 && pc(gap.hole) > 18;
-    if (skew > 14)
+    const split = gap.hole > outer * 1.6 && pc(gap.hole) > 22;
+    if (skew > 30)
       note(`${name} 上下不平：上 ${pc(gap.top)}% 下 ${pc(gap.bottom)}%`);
     else if (split)
       note(`${name} 中间裂开一段 ${pc(gap.hole)}%（y=${gap.holeAt}）`);

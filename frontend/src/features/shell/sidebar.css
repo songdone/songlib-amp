@@ -426,3 +426,40 @@
     }
   }
 }
+
+@layer components {
+  /*
+   * 移动端安全区。
+   *
+   * 手机上顶栏原来是 `height:72px; padding:0 16px`（legacy styles.css 里的
+   * 900px 断点），完全没有 env(safe-area-inset-top) —— iPhone 上顶栏直接
+   * 顶到状态栏底下，时间和信号跟标题、汉堡按钮叠在一起。
+   *
+   * 只有 commercial.css 里给某一处加过安全区，主壳层一直漏着。
+   *
+   * 用 min-height 而不是 height：加了安全区之后高度必须能长，
+   * 写死 height 的话内容会被挤出去。
+   */
+  @media (max-width: 900px) {
+    .visual-shell .topbar {
+      height: auto;
+      min-height: calc(64px + env(safe-area-inset-top));
+      padding-block-start: env(safe-area-inset-top);
+    }
+
+    /*
+     * 迷你播放条会浮在页面底部，内容必须给它让位。
+     * legacy 里那条 `.has-mini-player .main>.page{padding-bottom:166px}`
+     * 依赖 has-mini-player 这个类，而它是在别处按条件加的；
+     * 这里不管有没有那个类，都按"底栏 + 播放条 + 安全区"留出空间，
+     * 少留会遮挡，多留只是多滚一点。
+     */
+    .visual-shell .main > .page {
+      padding-block-end: calc(150px + env(safe-area-inset-bottom));
+    }
+
+    .mobile-nav {
+      padding-block-end: calc(6px + env(safe-area-inset-bottom));
+    }
+  }
+}

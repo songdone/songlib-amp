@@ -225,3 +225,68 @@ class PublicBaseUrlTests(unittest.TestCase):
             fake.airplay_public_base_url = "https://cast.example.com"
             base = _airplay_public_base(self._request("http", "192.168.31.28:32783"))
         self.assertEqual(base, "https://cast.example.com")
+
+
+class StreamProfileTests(unittest.TestCase):
+    """投屏参数必须跟着网络走。
+
+    实测症状：外网投到 MacMini 只显示一屏歌词然后卡死，投到 Apple TV
+    毫无反应。原因是参数是给局域网调的 —— 1 秒分片、12 秒直播窗口。
+    公网上客户端一落后 12 秒，要的分片已经被 delete_segments 删掉，
+    再也追不回来。
+    """
+
+    def test_private_addresses_keep_the_low_latency_profile(self):
+        from app.airplay_cast import stream_profile, wan_profile
+
+        for url in (
+            "http://192.168.31.28:32783",
+            "http://10.0.0.5:8080",
+            "http://172.16.3.9:80",
+            "http://nas.local:32783",
+            "http://localhost:8080",
+        ):
+            with self.subTest(url):
+                self.assertFalse(wan_profile(url), f"{url} 应判为局域网")
+
+    def test_public_hosts_get_the_conservative_profile(self):
+        from app.airplay_cast import stream_profile, wan_profile
+
+        for url in ("https://sla.playsong.cn", "https://1.2.3.4:443"):
+            with self.subTest(url):
+                self.assertTrue(wan_profile(url), f"{url} 应判为公网")
+        wan = stream_profile(True)
+        self.assertGreaterEqual(wan["segment"], 3.0, "公网分片不能再是 1 秒")
+        self.assertLessEqual(wan["fps"], 15, "一句歌词才变一次，30fps 是在烧上行")
+        window = wan["segment"] * wan["list_size"]
+        self.assertGreaterEqual(
+            window, 40, f"直播窗口只有 {window} 秒，客户端落后一次就再也追不回来"
+        )
+
+    def test_the_window_is_what_actually_reaches_ffmpeg(self):
+        """光有档位不算，得真的写进 ffmpeg 参数里。"""
+        from app.airplay_cast import build_ffmpeg_command, stream_profile
+
+        cmd = build_ffmpeg_command(
+            Path("/tmp/cast-profile-test"), use_qsv=False, profile=stream_profile(True)
+        )
+        self.assertIn("-hls_time", cmd)
+        self.assertEqual(cmd[cmd.index("-hls_time") + 1], "4")
+        self.assertEqual(cmd[cmd.index("-hls_list_size") + 1], "12")
+        # 注意别断言 -framerate：那是**输入端**往管道推帧的速率
+        # （airplay_render_fps，默认 4），跟输出帧率是两回事。
+        # 第一版断在它上面，读到 4 以为参数没传进去，其实是断错了参数。
+        # 输出帧率写在 -vf 的 fps= 里，gop 由 fps × segment 推出来。
+        self.assertIn("fps=15", cmd[cmd.index("-vf") + 1], "输出帧率要跟着档位")
+        self.assertEqual(cmd[cmd.index("-g") + 1], "60", "gop 应是 15×4")
+
+    def test_the_playlist_advertises_the_real_frame_rate(self):
+        """播放列表声明的帧率必须和实际编出来的一致。
+
+        原来这里写死 settings.airplay_fps（30），公网档实际是 15 ——
+        客户端按声明准备解码，声明和流对不上本身就是故障源。
+        """
+        from app.airplay_cast import build_master_playlist, stream_profile
+
+        self.assertIn("FRAME-RATE=15.000", build_master_playlist(stream_profile(True)))
+        self.assertIn("FRAME-RATE=30.000", build_master_playlist(stream_profile(False)))

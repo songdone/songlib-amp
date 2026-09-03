@@ -869,6 +869,19 @@
 
   .ui-field__trailing {
     flex: none;
+    /*
+     * align-self:stretch 是必需的。
+     *
+     * 这个 span 是 .ui-field__control 的 flex 子项，而那个容器是
+     * align-items:center —— span 于是被压成内容高度（quiet 按钮只有
+     * 11px），它内部再写 align-items:stretch 也无处可拉。
+     * 结果「显示 / 隐藏」在 44px 高的输入框里只有 11px 高，
+     * 看起来像一段浮在边框上的文字压着输入框。
+     *
+     * 下面那条 .ui-field__trailing > .ui-btn 的 stretch 本来就是为了
+     * 修这个，但它拉的是"父容器的高度"，父容器自己没撑起来就白写了。
+     */
+    align-self: stretch;
     display: flex;
     align-items: stretch;
     padding-inline-end: var(--space-1);

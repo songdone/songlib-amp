@@ -293,9 +293,19 @@
      * 定高把行高确定下来，minmax 的下界 0 才让内层的 min-height:0
      * 链条生效，overflow-y:auto 这才真的接得住。
      */
-    height: calc(100dvh - 150px);
+    height: calc(100dvh - var(--now-chrome, 228px));
     grid-template-rows: minmax(0, 1fr);
   }
+
+  /*
+   * --now-chrome 是主区之外那些固定占位的总高，实测拆解：
+   *   108px 顶栏加页头到主区顶部的距离
+   * + 120px 页面下内边距（给迷你播放器留的位置）
+   * = 228px
+   * 第一版只减了 150，漏了那 120 的下内边距，结果整页比视口高出 78px，
+   * 主区明明定高了、页面照样能滚 —— 定高必须把所有固定占位都算进去，
+   * 少算一样就等于没定。
+   */
 
   /* 视口很矮时（横屏手机、分屏）不如让页面自己滚。 */
   @media (max-height: 620px) {
@@ -303,5 +313,51 @@
       height: auto;
       grid-template-rows: auto;
     }
+  }
+}
+
+@layer components {
+  /*
+   * 全屏歌词必须是不透明的。
+   *
+   * 原来底色用 --scrim-on-media（0.68 不透明）—— 那个 token 是给"压在
+   * 图片上的一层遮罩"用的，不是给全屏视图用的。结果底下那一页整个
+   * 透出来，跟歌词叠在一起。
+   *
+   * 自己画底：一层纯色兜底（封面缺失或还没加载时也不会透），
+   * 上面那层虚化封面由 .now-lyrics-overlay-bg 负责。
+   */
+  .now-lyrics-overlay {
+    background: var(--surface-canvas);
+  }
+
+  /* 兜底色之上再压一层，保证虚化封面亮的时候文字也读得清。 */
+  .now-lyrics-overlay-bg::after {
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--palette-neutral-1000) 72%, transparent),
+      color-mix(in srgb, var(--palette-neutral-1000) 86%, transparent)
+    );
+  }
+
+  /*
+   * 退出按钮要一眼看得见。
+   *
+   * 它一直在 DOM 里（.now-overlay-close），但用的是 --surface-2 底、
+   * --now-line 描边，压在虚化封面上几乎看不出是个按钮 —— 用户的结论是
+   * "没有退出全屏歌词的返回按钮"，等于不存在。
+   * 给它实底、加阴影，并且在窄屏上也保证在安全区里。
+   */
+  .now-lyrics-overlay .now-overlay-close {
+    position: relative;
+    z-index: 2;
+    border: 1px solid var(--border-default);
+    background: var(--surface-1);
+    box-shadow: var(--shadow-md);
+    font-weight: var(--weight-semibold);
+  }
+
+  .now-lyrics-overlay .now-overlay-close:hover {
+    background: var(--surface-2);
   }
 }

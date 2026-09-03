@@ -131,7 +131,7 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
    * 范围默认跟着"有没有勾东西"走。
    *
    * 原来死写 "selected"：刚切到这个工作区时一个文件都没勾，
-   * 于是页面上唯一的主按钮点下去只会报错"先去勾几个文件"。
+   * 于是页面上唯一的主按钮点下去只会报错"先勾选文件"。
    * 一个默认状态下必然失败的主操作不该存在。
    */
   const [tagScope, setTagScope] = useState("filtered");
@@ -220,7 +220,7 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
     if (!fileIds.length) {
       setError(
         tagScope === "selected"
-          ? "先在「浏览与筛选」里勾几个文件"
+          ? "先在「浏览与筛选」里勾选文件"
           : "当前筛选结果是空的",
       );
       return;
@@ -285,7 +285,7 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
 
   const previewOrganize = async () => {
     if (!selected.length) {
-      setError("先在「浏览与筛选」里勾几个文件");
+      setError("先在「浏览与筛选」里勾选文件");
       return;
     }
     setBusy("organize-preview");
@@ -408,7 +408,7 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
         <StatTile
           value={fmt(stats.plex_unmatched || 0)}
           label="个 Plex 未识别"
-          detail="同步对照后 Plex 才能显示"
+          detail="需同步对照"
         />
       </StatGrid>
 
@@ -451,7 +451,7 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
         <LibraryCheckup
           navigate={navigate}
           onRescan={() => runJob("local_scan")}
-          /* 体检里点"去处理"就是切到浏览工作区并把筛选设好 ——
+          /* 体检里点"处理"就是切到浏览工作区并把筛选设好 ——
              跳到另一页再让用户自己选筛选条件，等于没帮上忙。 */
           onJumpToFilter={(filter) => {
             setMissing(filter);
@@ -468,7 +468,7 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
             note={
               selected.length
                 ? `已勾选 ${selected.length} 个`
-                : "勾上几个，就能去补标签或整理目录"
+                : "勾选后可补标签或整理目录"
             }
             actions={
               selected.length ? (
@@ -614,8 +614,8 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
               title={search || missing ? "这个条件下没有文件" : "还没扫描到文件"}
               text={
                 search || missing
-                  ? "换个关键词，或者把筛选切回「全部」。"
-                  : "点上面的「重新扫描音乐目录」，音屿会走一遍 NAS 上的音乐目录。"
+                  ? "换个关键词，或把筛选切回「全部」"
+                  : "点上方「重新扫描音乐目录」开始"
               }
               action={
                 search || missing ? (
@@ -641,7 +641,7 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
         <Section>
           <SectionHeader
             title="补标签"
-            note="从文件所在的目录结构推断标题、歌手、专辑，只填空着的字段"
+            note="按目录结构推断，只填空字段"
           />
 
           <div className="local__scope">
@@ -666,7 +666,7 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
               loading={busy === "tag-preview"}
               onClick={previewTags}
             >
-              看看会补什么
+              生成清单
             </Button>
           </div>
 
@@ -717,7 +717,7 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
                 <EmptyState
                   icon={ShieldCheck}
                   title="这些文件不需要补"
-                  text="标题、歌手、专辑、专辑歌手都已经有值了。想改已有的值，用「浏览与筛选」里那个标签编辑器。"
+                  text="四个字段都已填写。要改已有值，用标签编辑器"
                 />
               )}
 
@@ -732,7 +732,7 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
                 <>
                   <SectionHeader
                     title="目录名和标签对不上"
-                    note={`${tagConflicts.length} 个文件。这些不会被自动改动`}
+                    note={`${tagConflicts.length} 个文件 · 不会自动改动`}
                   />
                   <Notice tone="warning" icon={CircleAlert}>
                     左边是文件里现在写的，右边是从目录名推断出来的。
@@ -784,7 +784,7 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
                       disabled={!tagApplying.length}
                       onClick={applyTags}
                     >
-                      写入这 {tagApplying.length} 个
+                      写入 {tagApplying.length} 个
                     </Button>
                   </ButtonGroup>
                 </ConfirmBar>
@@ -796,7 +796,7 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
             <EmptyState
               icon={Tags}
               title="还没有生成清单"
-              text="选好范围，点「看看会补什么」。这一步只是读，不改文件。"
+              text="选好范围后生成清单"
             />
           )}
         </Section>
@@ -807,14 +807,14 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
         <Section>
           <SectionHeader
             title="整理目录"
-            note="按设置里的命名规则算出每个文件应该放哪儿，确认后才移动"
+            note="按命名规则计算目标位置"
           />
 
           <div className="local__scope">
             <p className="local__scope-hint">
               {selected.length
                 ? `已勾选 ${selected.length} 个文件`
-                : "先去「浏览与筛选」勾选文件。建议先按「目录不规范」筛一遍。"}
+                : "先在「浏览与筛选」里勾选文件"}
             </p>
             <Button
               variant="primary"
@@ -846,7 +846,7 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
                   label="个目标位置已被占用"
                   detail={
                     organizeConflicts
-                      ? "已默认勾掉 —— 直接执行会失败"
+                      ? "已默认取消勾选，执行会失败"
                       : "没有冲突"
                   }
                 />
@@ -897,7 +897,7 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
                 <EmptyState
                   icon={ShieldCheck}
                   title="这批文件都在正确位置"
-                  text="按现在的命名规则算下来，这批都已经在该在的位置。"
+                  text="按当前命名规则，都在正确位置"
                 />
               )}
 
@@ -922,7 +922,7 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
                     disabled={!organizeMoving.length}
                     onClick={() => setConfirmOrganize(true)}
                   >
-                    移动这 {organizeMoving.length} 个
+                    移动 {organizeMoving.length} 个
                   </Button>
                 </ButtonGroup>
               </ConfirmBar>
@@ -933,7 +933,7 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
             <EmptyState
               icon={FolderTree}
               title="还没有算过路径"
-              text="命名规则在「设置 → 文件命名」里改。算一遍不会移动任何文件。"
+              text="命名规则在「设置 → 文件命名」"
             />
           )}
         </Section>
@@ -958,7 +958,7 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
         open={Boolean(editing)}
         onClose={() => setEditing(null)}
         title="编辑音频标签"
-        description="改动会写进音频文件，原值记在改动历史里，之后能恢复"
+        description="写入音频文件 · 可在改动历史撤销"
         size="xl"
         dismissible={false}
       >
@@ -984,7 +984,7 @@ export function LocalLibraryPage({ runJob, play, notify, navigate }) {
         description="文件会按命名规则挪到新目录，同名歌词一起走"
         actions={
           <ButtonGroup align="end">
-            <Button onClick={() => setConfirmOrganize(false)}>先不动</Button>
+            <Button onClick={() => setConfirmOrganize(false)}>取消</Button>
             <Button variant="primary" icon={FolderTree} onClick={applyOrganize}>
               开始移动
             </Button>

@@ -127,12 +127,12 @@ export function ChangeHistory({ data, onReload, notify, onError }) {
       <Section>
         <SectionHeader
           title="改动历史"
-          note="标签写入、文件移动和入库都记着原值，可以整批退回去"
+          note="可整批撤销"
         />
         <EmptyState
           icon={RotateCcw}
           title="还没有改动记录"
-          text="写入标签、整理目录或入库之后，每一次都会记在这里，能看到具体动了哪些文件。"
+          text="改动过曲库之后，每次都会记在这里"
         />
       </Section>
     );
@@ -142,7 +142,7 @@ export function ChangeHistory({ data, onReload, notify, onError }) {
     <Section>
       <SectionHeader
         title="改动历史"
-        note={`${groups.length} 次运行。每一次都能整批退回去`}
+        note={`${groups.length} 次运行`}
       />
 
       <ol className="timeline">
@@ -188,7 +188,7 @@ export function ChangeHistory({ data, onReload, notify, onError }) {
                           className={open ? "timeline__toggle is-open" : "timeline__toggle"}
                           onClick={() => toggle(group.id)}
                         >
-                          {open ? "收起" : "看动了什么"}
+                          {open ? "收起" : "查看明细"}
                         </Button>
                         {/* 没有可撤销的条目就不给按钮 ——
                             一个点了必然失败的按钮比没有按钮更糟。 */}
@@ -199,7 +199,7 @@ export function ChangeHistory({ data, onReload, notify, onError }) {
                             disabled={busy}
                             onClick={() => setPending(group)}
                           >
-                            撤销这次
+                            撤销
                           </Button>
                         )}
                       </ButtonGroup>
@@ -273,7 +273,7 @@ export function ChangeHistory({ data, onReload, notify, onError }) {
       <Modal
         open={Boolean(pending)}
         onClose={() => setPending(null)}
-        title="把这一次的改动全部退回去？"
+        title="把这一次的改动全部撤销去？"
         description={
           pending
             ? `${pending.actionLabel} · ${timeAgo(pending.at)} · ${pending.rollbackableIds.length} 个文件`
@@ -282,14 +282,14 @@ export function ChangeHistory({ data, onReload, notify, onError }) {
         size="sm"
         actions={
           <ButtonGroup align="end">
-            <Button onClick={() => setPending(null)}>先不动</Button>
+            <Button onClick={() => setPending(null)}>取消</Button>
             <Button
               variant="danger"
               icon={RotateCcw}
               loading={busy}
               onClick={rollback}
             >
-              全部退回
+              全部撤销
             </Button>
           </ButtonGroup>
         }

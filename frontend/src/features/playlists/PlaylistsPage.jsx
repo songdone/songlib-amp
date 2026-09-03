@@ -67,14 +67,14 @@ const SERVICES = [
     label: "Plex",
     icon: Server,
     notConnected: "还没连上 Plex",
-    connectedEmpty: "Plex 已经连上了，但里面还没有歌单。",
+    connectedEmpty: "Plex 已连接，里面还没有歌单",
   },
   {
     id: "fnos",
     label: "飞牛音乐",
     icon: Radio,
     notConnected: "还没连上飞牛音乐",
-    connectedEmpty: "飞牛音乐已经连上了，但里面还没有歌单。",
+    connectedEmpty: "飞牛音乐已连接，里面还没有歌单",
   },
 ];
 
@@ -348,8 +348,8 @@ export function PlaylistsPage({
   return (
     <Page className="playlists">
       <PageHeader
-        title="把喜欢的歌带回来"
-        lead="从零建一张，导入 M3U，或者把平台上的歌单整张搬过来。"
+        title="歌单"
+        lead="新建、导入 M3U，或从平台整张搬运"
         actions={
           <ButtonGroup>
             <Button
@@ -391,8 +391,8 @@ export function PlaylistsPage({
       {/* --- 从分享链接迁移 --- */}
       <Section>
         <SectionHeader
-          title="从平台搬一张过来"
-          note="QQ 音乐、网易云的公开歌单都能读，不需要你的账号密码"
+          title="导入平台歌单"
+          note="支持 QQ 音乐、网易云公开歌单"
         />
         <form className="playlists__migrate" onSubmit={previewMigration}>
           <Field
@@ -445,7 +445,7 @@ export function PlaylistsPage({
             <div
               className="ui-chips ui-chips--cards"
               role="group"
-              aria-label="搬到哪里"
+              aria-label="目标歌单"
             >
               {MIGRATION_TARGETS.map(({ id, label, icon: Icon }) => {
                 const available = migration.targets?.[id]?.available !== false;
@@ -492,7 +492,7 @@ export function PlaylistsPage({
                   <div className="playlists__fill-options">
                     <select
                       className="ui-select"
-                      aria-label="用哪个音源"
+                      aria-label="音源"
                       value={migrationSource}
                       onChange={(event) => setMigrationSource(event.target.value)}
                     >
@@ -553,7 +553,7 @@ export function PlaylistsPage({
                 <strong>
                   {migrationTargets.length
                     ? `搬到 ${migrationTargets.length} 个地方`
-                    : "还没选要搬到哪里"}
+                    : "未选择目标歌单"}
                 </strong>
                 <span>没对上的那几首会单独列出来，不会悄悄丢掉</span>
               </div>
@@ -611,7 +611,7 @@ export function PlaylistsPage({
                   <EmptyState
                     icon={Link2}
                     title={notConnected}
-                    text="去设置里连上，歌单会自己出现。"
+                    text="在设置里连接后自动出现"
                   />
                 ) : service.items?.length ? (
                   <ListGroup>
@@ -704,7 +704,7 @@ export function PlaylistsPage({
             <EmptyState
               icon={ListMusic}
               title="还没有歌单"
-              text="上面填个名字建一张，或者导入 M3U。"
+              text="新建一张，或导入 M3U"
             />
           )}
         </Section>
@@ -714,7 +714,7 @@ export function PlaylistsPage({
             <EmptyState
               icon={ListMusic}
               title="左边挑一张"
-              text="里面的歌会列在这儿，可以调顺序、同步到 Plex 或飞牛音乐。"
+              text="可调整顺序，或同步到 Plex 和飞牛音乐"
             />
           ) : (
             <>
@@ -810,7 +810,7 @@ export function PlaylistsPage({
                 <EmptyState
                   icon={Music2}
                   title="这张还是空的"
-                  text="导入一个 M3U，或者放歌的时候顺手加进来。"
+                  text="导入 M3U，或播放时加入"
                 />
               )}
             </>

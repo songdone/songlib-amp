@@ -438,7 +438,7 @@ export function PlayerProvider({ children }) {
       const immediate = immediatePlaybackTrack(input, state.quality);
       if (immediate) {
         if (!isPlayableDuration(immediate))
-          throw new Error("这个文件的时长不对，先跳过了 —— 通常是文件损坏或者还没下完。");
+          throw new Error("时长异常已跳过，文件可能损坏或没下完");
         const nextQueue = sanitizeQueue(
           Array.isArray(queue) ? queue : state.queue,
           immediate,
@@ -475,7 +475,7 @@ export function PlayerProvider({ children }) {
             setState((s) => ({
               ...s,
               isPlaying: false,
-              error: err.message || "浏览器不让自动播放，再点一次。",
+              error: err.message || "浏览器拦了自动播放，再点一次",
             })),
           );
         }
@@ -501,10 +501,10 @@ export function PlayerProvider({ children }) {
       const track = await toPlaybackTrack(input, state.quality);
       if (!track?.audioUrl)
         throw new Error(
-          "没拿到播放地址。如果你是用 HTTPS 访问的，检查一下播放流是不是走了音屿自己的代理。",
+          "没取到播放地址；HTTPS 下需确认播放流走内置代理",
         );
       if (!isPlayableDuration(track))
-        throw new Error("这首歌的时长异常，已阻止播放并避免污染队列。");
+        throw new Error("时长异常，已阻止播放");
       const nextQueue = sanitizeQueue(
         Array.isArray(queue) ? queue : state.queue,
         track,
@@ -566,7 +566,7 @@ export function PlayerProvider({ children }) {
         : resume()
       : setState((s) => ({
           ...s,
-          error: "还没开始放。可以随机来一首，或者去音乐库挑。",
+          error: "队列是空的，随机来一首或去音乐库挑",
         }));
   const seek = (time) => {
     if (audioRef.current) {
@@ -604,7 +604,7 @@ export function PlayerProvider({ children }) {
   const addToQueue = async (input) => {
     try {
       const track = await toPlaybackTrack(input, state.quality);
-      if (!isPlayableDuration(track)) throw new Error("时长异常，已跳过。");
+      if (!isPlayableDuration(track)) throw new Error("时长异常，已跳过");
       setState((s) => ({
         ...s,
         queue: sanitizeQueue([...s.queue, track], s.currentTrack),

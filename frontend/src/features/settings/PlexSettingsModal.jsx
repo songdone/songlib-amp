@@ -113,7 +113,7 @@ export function PlexSettingsModal({ initial, onClose, onSaved }) {
       open
       onClose={onClose}
       title="连接 Plex"
-      description="连上之后，Plex 里的歌就能在这里播，也能接管 Plexamp"
+      description="接入 Plex 曲库，并可遥控 Plexamp"
       size="lg"
       dismissible={false}
       actions={
@@ -153,14 +153,14 @@ export function PlexSettingsModal({ initial, onClose, onSaved }) {
           />
           <Field
             label="服务器地址"
-            hint="内网地址，音屿从这里读数据"
+            hint="内网地址，用于读取数据"
             placeholder="http://nas-address:32400"
             value={draft.serverUrl}
             onChange={(event) => setField("serverUrl", event.target.value)}
           />
           <Field
             label="外网播放地址"
-            hint="不填就只能在内网放"
+            hint="留空则仅内网可播"
             placeholder="https://plex.example.com"
             value={draft.externalUrl}
             onChange={(event) => setField("externalUrl", event.target.value)}
@@ -169,7 +169,7 @@ export function PlexSettingsModal({ initial, onClose, onSaved }) {
             label="X-Plex-Token"
             type={showToken ? "text" : "password"}
             placeholder={
-              initial.hasToken ? "留空就沿用已经存好的" : "输入 X-Plex-Token"
+              initial.hasToken ? "留空沿用已保存的" : "输入 X-Plex-Token"
             }
             value={draft.token}
             onChange={(event) => setField("token", event.target.value)}
@@ -189,7 +189,7 @@ export function PlexSettingsModal({ initial, onClose, onSaved }) {
           label="同步哪些音乐库"
           options={[
             { id: "all", label: "全部音乐库" },
-            { id: "some", label: "只同步我勾的" },
+            { id: "some", label: "只同步勾选的" },
           ]}
           value={selectedAll ? "all" : "some"}
           onChange={(id) =>
@@ -208,7 +208,7 @@ export function PlexSettingsModal({ initial, onClose, onSaved }) {
             disabled={Boolean(busy)}
             onClick={test}
           >
-            测一下连接
+            测试连接
           </Button>
           <Button
             size="sm"
@@ -217,7 +217,7 @@ export function PlexSettingsModal({ initial, onClose, onSaved }) {
             disabled={Boolean(busy)}
             onClick={refreshLibraries}
           >
-            重新读音乐库
+            读取音乐库
           </Button>
         </div>
 
@@ -247,7 +247,7 @@ export function PlexSettingsModal({ initial, onClose, onSaved }) {
           <EmptyState
             icon={Library}
             title="还没读到音乐库"
-            text="先测一下连接，能连上就会列出 Plex 里的音乐库供你勾选。"
+            text="测试连接后自动列出"
           />
         )}
 

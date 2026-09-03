@@ -203,7 +203,7 @@ export function LibraryDetailPage({ type, data, back, play, openDetail }) {
           <EmptyState
             icon={Play}
             title="这里还没有曲目"
-            text="可能是 Plex 那边还没扫到，或者这张专辑是空的。"
+            text="Plex 可能还没扫到，或这张专辑是空的"
           />
         )}
       </Section>

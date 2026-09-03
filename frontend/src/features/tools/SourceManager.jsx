@@ -2,12 +2,12 @@
  * 音乐源。
  *
  * 重构掉的：
- * - "导入之后要做什么"那个四步有序列表。那是文档，不是界面 ——
+ * - "导入后"那个四步有序列表。那是文档，不是界面 ——
  *   用户看的时候已经在这一页了，四步里有三步是系统自动做的。
  *   压成区块标题旁边一句话。
  * - 每张源卡片一个六项的 <dl>（检测格式 / 使用权限 / 运行验证 /
  *   支持平台 / 支持音质 / 最近测试）。六行键值对是接口文档的排版。
- *   卡片上只留"能不能用、支持什么、上次测什么时候"，
+ *   卡片上只留"可用性、支持范围与上次测试时间"，
  *   剩下的挪进"检查格式"弹窗 —— 想看细节的人本来就会点它。
  * - confirm() 删源、两个自绘的 modal-wrap 弹窗，都换成 Modal。
  * - 图标按钮只有 title 没有 aria-label。
@@ -98,7 +98,7 @@ export function SourceManager({ sources, refreshSources, notify }) {
     try {
       let result;
       if (mode === "file") {
-        if (!file) throw new Error("请选择本地 .js 音乐源文件。");
+        if (!file) throw new Error("请选择本地 .js 音源文件");
         const body = new FormData();
         body.append("name", name);
         body.append("file", file);
@@ -133,7 +133,7 @@ export function SourceManager({ sources, refreshSources, notify }) {
     const probe = keyword.trim();
     if (!probe) {
       setError(
-        "上面「拿哪首歌去试」里填一首歌名，再点试搜。",
+        "先在「测试关键词」里填一首歌",
       );
       return;
     }
@@ -228,12 +228,12 @@ export function SourceManager({ sources, refreshSources, notify }) {
         {/* --- 导入 --- */}
         <Section>
           <SectionHeader
-            title="导入一个音乐源"
-            note="检查通过就直接启用，可以马上去搜歌"
+            title="导入音乐源"
+            note="检查通过后自动启用"
           />
           <form className="sources__import" onSubmit={importSource}>
             <ChipGroup
-              label="从哪里导入"
+              label="导入来源"
               options={IMPORT_MODES}
               value={mode}
               onChange={(id) => {
@@ -243,8 +243,8 @@ export function SourceManager({ sources, refreshSources, notify }) {
             />
 
             <Field
-              label="给它起个名字"
-              hint="不填就用脚本自己声明的名字"
+              label="名称"
+              hint="留空则用脚本声明的名称"
               placeholder="例如：我的无损源"
               value={name}
               onChange={(event) => setName(event.target.value)}
@@ -309,7 +309,7 @@ export function SourceManager({ sources, refreshSources, notify }) {
       {/* --- 已装的源 --- */}
       <Section reveal>
         <SectionHeader
-          title="已经装上的"
+          title="已导入"
           note={sources.length ? `共 ${sources.length} 个` : undefined}
         />
 
@@ -317,7 +317,7 @@ export function SourceManager({ sources, refreshSources, notify }) {
           这个输入框之前**根本不存在**。
           keyword 有 state、testSearch 里也读它，但全项目没有一处
           调用 setKeyword —— 于是"试搜一首"点下去只会弹
-          "填一首你真会去搜的歌"，而页面上没有任何地方能填。
+          "先填测试关键词"，而页面上没有任何地方能填。
           一个永远不可能成功的按钮。
 
           放在列表上方而不是每张卡片里：搜的是同一个词，
@@ -326,8 +326,8 @@ export function SourceManager({ sources, refreshSources, notify }) {
         */}
         {sources.length > 0 && (
           <Field
-            label="拿哪首歌去试"
-            hint="换成你平时真会搜的歌 —— 冷门歌更能看出这个源到底行不行"
+            label="测试关键词"
+            hint="换成常搜的歌，结果更有参考价值"
             leading={Search}
             value={keyword}
             placeholder="例如：海阔天空"
@@ -430,7 +430,7 @@ export function SourceManager({ sources, refreshSources, notify }) {
           <EmptyState
             icon={Wifi}
             title="还没有音乐源"
-            text="上面填个地址、选个本地文件，或者直接粘源码。"
+            text="填入地址、选择本地文件，或直接粘贴源码"
           />
         )}
       </Section>
@@ -439,8 +439,8 @@ export function SourceManager({ sources, refreshSources, notify }) {
       {testData && (
         <Section reveal>
           <SectionHeader
-            title={`「${testData.source.displayName}」搜到了什么`}
-            note={`${testData.result.count} 首候选，挑一首试试能不能拿到播放地址`}
+            title={`「${testData.source.displayName}」的搜索结果`}
+            note={`${testData.result.count} 首候选 · 选一首验证播放地址`}
             actions={
               <select
                 className="ui-select"
@@ -500,7 +500,7 @@ export function SourceManager({ sources, refreshSources, notify }) {
         open={Boolean(logs)}
         onClose={() => setLogs(null)}
         title={logs ? `${logs.source.displayName} 的记录` : "记录"}
-        description="导入和测试都会记在这里"
+        description="导入与测试记录"
         size="lg"
       >
         {logs?.items?.length ? (
@@ -518,7 +518,7 @@ export function SourceManager({ sources, refreshSources, notify }) {
           <EmptyState
             icon={ScrollText}
             title="还没有记录"
-            text="导入和测试的结果都会记在这里。"
+            text="导入与测试的结果会记在这里"
           />
         )}
       </Modal>

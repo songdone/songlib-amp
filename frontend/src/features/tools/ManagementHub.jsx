@@ -7,7 +7,7 @@
  *   2. 一眼看出有没有事等着处理。
  *
  * 所以顺序是"要处理的事"在前、"工具列表"在后 ——
- * 打开这一页的人多半是想知道"我有没有漏掉什么"。
+ * 打开这一页的人多半是想知道"待处理"。
  *
  * 重构前这里把工具按"文件与下载 / PLEX 资料 / 连接与运行"分三组，
  * 每组配一句技术化的小标题（"服务、队列与故障"）。
@@ -45,7 +45,7 @@ export function ManagementHub({ navigate, stats, jobs, permissions = [] }) {
       {needsAttention && (
         <Section>
           <SectionHeader
-            title="等你处理"
+            title="待处理"
             moreLabel="去任务"
             onMore={() => navigate("tasks")}
           />
@@ -56,7 +56,7 @@ export function ManagementHub({ navigate, stats, jobs, permissions = [] }) {
                 tone="warning"
                 value={waiting}
                 label="首下载完等确认"
-                detail="确认后才会进正式曲库"
+                detail="确认后进曲库"
                 onClick={() => navigate("download")}
               />
             )}
@@ -66,7 +66,7 @@ export function ManagementHub({ navigate, stats, jobs, permissions = [] }) {
                 tone="danger"
                 value={failed}
                 label="个任务需要重试"
-                detail="点开可以看失败原因"
+                detail="点开查看失败原因"
                 onClick={() => navigate("tasks")}
               />
             )}
@@ -101,7 +101,7 @@ export function ManagementHub({ navigate, stats, jobs, permissions = [] }) {
 
       {/* --- 工具 --- */}
       <Section>
-        <SectionHeader title="能做的事" />
+        <SectionHeader title="常用操作" />
         <ListGroup>
           {tools.map((item) => (
             <ListRow

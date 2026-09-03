@@ -160,7 +160,7 @@ export function PosterStudio({ open, onClose, track, lyrics = [] }) {
     } catch (err) {
       setError(
         err.name === "SecurityError"
-          ? "封面来自另一个域名，浏览器不允许把它导出成图片。换成本地封面就可以了。"
+          ? "封面跨域，浏览器禁止导出；改用本地封面"
           : err.message,
       );
     } finally {
@@ -174,8 +174,8 @@ export function PosterStudio({ open, onClose, track, lyrics = [] }) {
     <Modal
       open={open}
       onClose={onClose}
-      title="做一张分享图"
-      description="选模板和比例，右边就是导出的样子"
+      title="分享图"
+      description="右侧即导出效果"
       size="xl"
       actions={
         <ButtonGroup align="end">

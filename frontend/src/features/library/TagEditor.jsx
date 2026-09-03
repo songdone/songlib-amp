@@ -146,7 +146,7 @@ export function TagEditor({ files = [], onClose, onSaved }) {
   const applyGuess = () => {
     const guess = guessFromFilename(primary.filename);
     if (!guess) {
-      setError("这个文件名看不出歌手和歌名，需要手动填。");
+      setError("文件名里认不出歌手和歌名，需手动填写");
       return;
     }
     setError("");
@@ -191,7 +191,7 @@ export function TagEditor({ files = [], onClose, onSaved }) {
           </p>
           <p className="tag-editor__subject-sub">
             {batch
-              ? "只有你改过的字段会被写入，没改的保持各自原值"
+              ? "只写入改动过的字段"
               : primary.artist || "未知歌手"}
           </p>
         </div>

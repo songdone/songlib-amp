@@ -134,3 +134,95 @@
     height: 40%;
   }
 }
+
+@layer components {
+  /*
+   * 左栏三段共用一条列宽。
+   *
+   * 之前封面写死 510px、控制条也写死 510px、曲名不限宽。1440×900
+   * 这类常见窗口下，封面加曲名加控制条超过一屏，控制条被推到折叠线
+   * 以下；右侧歌词面板与左栏等高，于是跟着拉成一片空白。
+   * 列宽同时受视口高度约束，三段共用同一条边。
+   */
+  .now-track-column {
+    --now-col: min(100%, 420px, 44vh);
+  }
+
+  .now-cover-wrap,
+  .now-track-copy,
+  .now-controls {
+    width: var(--now-col);
+    margin-inline: auto;
+  }
+
+  .now-controls {
+    margin-block-start: 20px;
+  }
+
+  .now-cover {
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+  }
+
+  /*
+   * 控制条第二行：音量靠左，喜欢与分享靠右。
+   *
+   * 原来是 justify-content:center 的 flex，音量条自己占 58% 宽，
+   * 把两个按钮顶到偏右 —— 既不居中也不两端对齐。
+   */
+  .now-control-meta {
+    justify-content: flex-start;
+    gap: var(--space-2);
+    margin-block-start: var(--space-3);
+  }
+
+  .now-control-meta > label {
+    width: min(150px, 42%);
+  }
+
+  .now-control-meta > button:first-of-type {
+    margin-inline-start: auto;
+  }
+
+  /*
+   * 已播部分。
+   *
+   * 轨道被上面几条规则显式画成了单色，于是 accent-color 提供的
+   * 填充也一起没了 —— 一条灰线加一个圆点，看不出放到哪儿。
+   * 百分比由组件写在 --fill 上。
+   */
+  .now-progress input::-webkit-slider-runnable-track,
+  .now-control-meta input::-webkit-slider-runnable-track,
+  .now-lyrics-overlay footer input::-webkit-slider-runnable-track {
+    background: linear-gradient(
+      to right,
+      var(--accent-solid) var(--fill, 0%),
+      var(--border-default) var(--fill, 0%)
+    );
+  }
+
+  .now-progress input::-moz-range-track,
+  .now-control-meta input::-moz-range-track,
+  .now-lyrics-overlay footer input::-moz-range-track {
+    background: linear-gradient(
+      to right,
+      var(--accent-solid) var(--fill, 0%),
+      var(--border-default) var(--fill, 0%)
+    );
+  }
+
+  /*
+   * tab 条。--shadow-tint 是阴影色，被当成背景色用了；
+   * 浅色下它是一片半透明灰，深色下几乎看不见。
+   */
+  .now-tabs {
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    background: var(--surface-inset);
+  }
+
+  .now-tabs button.active {
+    background: var(--surface-1);
+    box-shadow: var(--shadow-sm);
+  }
+}

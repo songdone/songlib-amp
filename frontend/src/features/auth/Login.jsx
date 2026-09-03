@@ -37,7 +37,7 @@ const HIGHLIGHTS = [
   {
     icon: Disc3,
     title: "整座曲库在自己手里",
-    desc: "音乐存在你的 NAS 上，不依赖任何云服务",
+    desc: "音乐存在自己的 NAS 上，不依赖云服务",
   },
   {
     icon: Radio,
@@ -221,7 +221,7 @@ export function Login({ onLogin }) {
                 type="button"
                 onClick={() =>
                   setError(
-                    "密码只能在跑这个服务的机器上重置，步骤见部署文档的「恢复管理员访问」。",
+                    "密码需在服务器本机重置，步骤见部署文档「恢复管理员访问」",
                   )
                 }
               >

@@ -238,7 +238,7 @@ export function DiscoverPage({ play, navigate, isAdmin = true }) {
         有的直接放，没有的可以排进下载队列。
       </p>
 
-      <ChipGroup label="看什么" options={VIEWS} value={view} onChange={setView} />
+      <ChipGroup label="分类" options={VIEWS} value={view} onChange={setView} />
 
       {error && (
         <Notice tone="danger" icon={CircleAlert}>
@@ -539,7 +539,7 @@ export function DiscoverPage({ play, navigate, isAdmin = true }) {
                 <EmptyState
                   icon={ListMusic}
                   title="这个分类下没读到歌单"
-                  text="换一个分类，或者过一会儿再试。平台接口偶尔会抽风，你的曲库和播放不受影响。"
+                  text="换个分类，或稍后重试"
                   action={
                     <Button
                       icon={RefreshCw}
@@ -562,7 +562,7 @@ export function DiscoverPage({ play, navigate, isAdmin = true }) {
             title="猜你想听"
             note={
               recs.profile.explanation ||
-              "按你听完、收藏和跳过的歌算出来，算在本机"
+              "按本机的收听、收藏与跳过记录计算"
             }
             actions={
               <Button
@@ -587,7 +587,7 @@ export function DiscoverPage({ play, navigate, isAdmin = true }) {
               max="1"
               step="0.05"
               value={exploration}
-              aria-label="没听过的音乐占多少"
+              aria-label="含新鲜度占比"
               onChange={(event) => setExploration(Number(event.target.value))}
             />
             <small>拉高会多推没听过的，换一批后生效</small>
@@ -656,8 +656,8 @@ export function DiscoverPage({ play, navigate, isAdmin = true }) {
           ) : (
             <EmptyState
               icon={Sparkles}
-              title="还没攒够素材"
-              text="放几首歌、收藏或跳过几次，这里就会开始给结果。也可以先去「平台热门」翻翻别人的歌单。"
+              title="还没有推荐"
+              text="多听几首就会有。也可以去「平台热门」看看"
               action={
                 <Button variant="primary" onClick={() => setView("platform")}>
                   去看平台热门

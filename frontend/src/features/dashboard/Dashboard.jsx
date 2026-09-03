@@ -78,8 +78,8 @@ export function Dashboard({
     recommendations: [],
   });
   const [contentLoading, setContentLoading] = useState(true);
-  // 听到一半的。和下面的"继续播放"是两件事：那个是"你放过什么"，
-  // 这个是"你在哪儿停下的"，而且是跨设备的。
+  // 听到一半的。和下面的"继续播放"是两件事：那个是"播放记录"，
+  // 这个是"上次停下的位置"，而且是跨设备的。
   const [resumePoints, setResumePoints] = useState([]);
 
   useEffect(() => {
@@ -245,7 +245,7 @@ export function Dashboard({
           <EmptyState
             icon={Music2}
             title="音乐库还是空的"
-            text="连上 Plex 或指定 NAS 上的音乐目录，扫描完成后这里就会有内容。"
+            text="先连接 Plex 或指定音乐目录，然后扫描"
             action={
               <Button variant="primary" onClick={() => navigate("settings")}>
                 去连接音乐库
@@ -260,7 +260,7 @@ export function Dashboard({
         <Section>
           <SectionHeader
             title="其他设备正在放"
-            note="点进去可以跟随进度，或直接接管控制"
+            note="可跟随或接管"
           />
           <ListGroup>
             {activeSessions.slice(0, 3).map((session) => (
@@ -290,8 +290,8 @@ export function Dashboard({
       {resumePoints.length > 0 && (
         <Section reveal>
           <SectionHeader
-            title="听到一半的"
-            note="换设备也接着上次的位置"
+            title="听到一半"
+            note="换设备继续"
           />
           <ListGroup>
             {resumePoints.map((point) => (
@@ -325,7 +325,7 @@ export function Dashboard({
                 }
                 trailing={point.device || null}
                 chevron={false}
-                /* 从这里点进去是明确的"接着听"，所以直接 seek ——
+                /* 从这里点进去是明确的"继续播放"，所以直接 seek ——
                    和播放器里那个提示条不同，那边用户没表达过意图。 */
                 onClick={() => resumeFrom(point)}
               />
@@ -368,10 +368,10 @@ export function Dashboard({
           <EmptyState
             icon={Music2}
             title="还没有播放记录"
-            text="放几首歌之后，这里会留下你听过什么。"
+            text="播放过的歌会留在这里"
             action={
               <Button variant="primary" onClick={() => navigate("library")}>
-                去挑一首
+                去曲库
               </Button>
             }
           />
@@ -403,7 +403,7 @@ export function Dashboard({
       <div className="home-columns">
         <Section>
           <SectionHeader
-            title="你的歌单"
+            title="我的歌单"
             moreLabel="全部歌单"
             onMore={() => navigate("playlists")}
           />
@@ -428,7 +428,7 @@ export function Dashboard({
               <EmptyState
                 icon={ListMusic}
                 title="还没有歌单"
-                text="可以从零建一张，也可以导入 M3U 或平台分享链接。"
+                text="新建一张，或导入 M3U"
                 action={
                   <Button
                     variant="primary"
@@ -446,7 +446,7 @@ export function Dashboard({
         <Section>
           <SectionHeader
             title="猜你想听"
-            note="根据你听过、收藏和跳过的歌得出"
+            note="按收听习惯生成"
             moreLabel="更多"
             onMore={() => navigate("discover")}
           />
@@ -481,8 +481,8 @@ export function Dashboard({
             !contentLoading && (
               <EmptyState
                 icon={Sparkles}
-                title="推荐还在攒素材"
-                text="多听几首、收藏或跳过几次，这里就会开始给结果。"
+                title="还没有推荐"
+                text="多听几首就会有"
               />
             )
           )}
@@ -504,7 +504,7 @@ export function Dashboard({
                 trailing={ArrowRight}
                 onClick={() => navigate("library")}
               >
-                随便逛逛
+                进入曲库
               </Button>
             </div>
           </div>
@@ -521,7 +521,7 @@ export function Dashboard({
                 <CircleAlert />
               </span>
             }
-            title="有几件事等你处理"
+            title="待处理"
             subtitle={[
               (stats.waitingIngest || 0) > 0 &&
                 `${stats.waitingIngest} 首下载完等确认入库`,

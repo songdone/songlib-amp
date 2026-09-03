@@ -1237,6 +1237,11 @@ def plex_stream(rating_key: str, request: Request, bitrate: str = "original"):
         passthrough["X-SongLib-Stream-Mode"] = mode
         if mode != requested_mode:
             passthrough["X-SongLib-Stream-Fallback"] = "1"
+            # 退回是静默的（对播放器来说声音照出），但原因不能跟着一起消失 ——
+            # 不然线上只能看到"某些码率悄悄降级"，查不出为什么。
+            # 响应头必须是 latin-1，中文和换行先剔掉。
+            note = "；".join(failures)[:180]
+            passthrough["X-SongLib-Stream-Note"] = note.encode("ascii", "replace").decode("ascii")
 
         status_code = response.status_code
         if mode == "transcode" and total_bytes:

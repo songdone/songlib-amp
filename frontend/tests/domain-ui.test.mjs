@@ -631,3 +631,42 @@ test("只有图标的按钮必须有无障碍名，不能只靠 title", () => {
     `这些按钮只有图标却没有 aria-label：\n${offenders.join("\n")}`,
   );
 });
+
+test("hook 不能写在提前 return 之后", () => {
+  /*
+   * 1.1.3 就栽在这上面：首页的 useMemo 写在 `if (loading) return` 之后，
+   * 加载中那次渲染少一个 hook、加载完多一个，React 抛 #310 整棵树崩掉，
+   * 页面永远停在"正在连接本地音乐库"。
+   *
+   * mock 是同步返回数据、走不到 loading 分支，所以本地一次都没崩 ——
+   * 单测和构建都发现不了，只有真部署上才炸。这条把它变成断言。
+   */
+  const files = [
+    "features/dashboard/Dashboard.jsx",
+    "features/now-playing/NowPlayingPage.jsx",
+    "features/share/PosterStudio.jsx",
+    "features/settings/SettingsPage.jsx",
+    "features/library/LocalLibraryPage.jsx",
+  ];
+  for (const file of files) {
+    const lines = readSource(file).split("\n");
+    let guardAt = -1;
+    for (let i = 0; i < lines.length; i += 1) {
+      // 顶层函数/组件的开头：重置守卫状态。
+      // 不认函数边界的话，辅助函数里的 `if (hour < 5) return "夜深了"`
+      // 会被当成组件守卫，把它后面所有 hook 全判成违规。
+      if (/^(export )?(default )?(function|const|async function) /.test(lines[i])) {
+        guardAt = -1;
+      }
+      // 顶层的守卫式提前 return（缩进两格）
+      if (/^ {2}if \(.*\)\s*return\b/.test(lines[i])) {
+        if (guardAt < 0) guardAt = i + 1;
+      }
+      if (guardAt > 0 && /^ {2}(const|let)?\s*[\w{[\], ]*=?\s*use[A-Z]\w*\(/.test(lines[i])) {
+        assert.fail(
+          `${file}:${i + 1} 有 hook 在提前 return（第 ${guardAt} 行）之后：${lines[i].trim().slice(0, 70)}`,
+        );
+      }
+    }
+  }
+});

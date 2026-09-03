@@ -105,6 +105,36 @@ export function Dashboard({
       .catch(() => setResumePoints([]));
   }, []);
 
+  /*
+   * 首屏那张大封面在最近加入的几张之间轮换。
+   *
+   * 原来是死取 albums[0]：只要曲库没有新增，首页每次打开都是同一张。
+   * 轮换按天推进而不是每次刷新都换：同一天内进出首页看到的是同一张，
+   * 隔天再来才换。取前 8 张里的一张。
+   *
+   * **必须写在 `if (loading) return` 之前。** 第一版放在它后面，于是加载
+   * 中那次渲染少一个 hook、加载完多一个，React 直接抛 #310
+   * （Rendered more hooks than during the previous render）整页白屏。
+   * mock 是同步返回数据、走不到 loading 分支，所以本地一次都没崩，
+   * 只有真部署上才炸 —— 这个 bug 是在真站上跑交互脚本才发现的。
+   */
+  /*
+   * 首屏那张大封面在最近加入的几张之间轮换。
+   *
+   * 原来是死取 albums[0]：只要曲库没有新增，首页每次打开都是同一张，
+   * 「最近加入」这块就永远不动。
+   *
+   * 轮换按天推进而不是每次刷新都换：同一天内进出首页看到的是同一张，
+   * 不会因为刷新一下整块变了脸；隔天再来才换。取前 8 张里的一张 ——
+   * 再往后就不算"最近"了。
+   */
+  const heroAlbum = useMemo(() => {
+    const pool = home.albums.slice(0, 8);
+    if (!pool.length) return undefined;
+    const day = Math.floor(Date.now() / 86_400_000);
+    return pool[day % pool.length];
+  }, [home.albums]);
+
   if (loading) return <PageLoader />;
 
   const history = (player.history || []).slice(0, 6);
@@ -145,22 +175,6 @@ export function Dashboard({
     playItems(result.tracks || []);
   };
 
-  /*
-   * 首屏那张大封面在最近加入的几张之间轮换。
-   *
-   * 原来是死取 albums[0]：只要曲库没有新增，首页每次打开都是同一张，
-   * 「最近加入」这块就永远不动。
-   *
-   * 轮换按天推进而不是每次刷新都换：同一天内进出首页看到的是同一张，
-   * 不会因为刷新一下整块变了脸；隔天再来才换。取前 8 张里的一张 ——
-   * 再往后就不算"最近"了。
-   */
-  const heroAlbum = useMemo(() => {
-    const pool = home.albums.slice(0, 8);
-    if (!pool.length) return undefined;
-    const day = Math.floor(Date.now() / 86_400_000);
-    return pool[day % pool.length];
-  }, [home.albums]);
   const heroCover = heroAlbum?.thumbUrl || "";
   const canPlayHero = Boolean(heroAlbum) || home.tracks.length > 0;
   const activeSessions = remote.sessions.filter((session) => session.playing);

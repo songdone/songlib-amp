@@ -29,8 +29,16 @@ const problems = [];
 const note = (what) => { problems.push(what); console.log("  ✗", what); };
 const ok = (what) => console.log("  ✓", what);
 
+/*
+ * 支持跑在真部署上：SL_STATE 指向一份已登录的 storageState。
+ * 之所以要这条 —— 只在自己写的 mock 上跑，永远发现不了真实数据带来的
+ * 问题（真歌词有版权块、真封面有跨域、真曲库有几千条）。
+ */
 const browser = await pw.chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+const ctx = await browser.newContext({
+  viewport: { width: 1440, height: 1000 },
+  ...(process.env.SL_STATE ? { storageState: process.env.SL_STATE } : {}),
+});
 const page = await ctx.newPage();
 page.on("pageerror", (e) => note(`未捕获异常：${e.message.slice(0, 120)}`));
 page.on("console", (m) => m.type() === "error" && note(`控制台报错：${m.text().slice(0, 120)}`));

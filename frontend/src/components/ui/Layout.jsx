@@ -163,11 +163,22 @@ export const Page = forwardRef(function Page({ children, className = "" }, ref) 
  * 而 .rise 的初始状态是 opacity:0 —— 页面忘了挂 ref，
  * 整个区块就永久不可见，而且不报任何错。这种 API 迟早会出事。
  */
-export function Section({ children, className = "", reveal = false }) {
+/**
+ * @param innerRef 调用方要拿到这个 <section> 时传（比如挂指针跟随光晕）。
+ *
+ *   刻意不叫 `ref`。React 19 名义上允许函数组件把 ref 当普通 prop 收，
+ *   但实测这条链上拿不到 —— 声明了 `ref` 参数、也转发下去了，节点上
+ *   依然没有监听器。`ref` 这个名字在不同版本、不同编译产物里被特殊
+ *   对待，不值得赌。换个普通名字，行为就与版本无关。
+ *
+ *   reveal 打开时 useReveal 自己要用 ref，此时优先给它 —— 两者都要的话
+ *   得改成合并 ref，目前没有这种用法。
+ */
+export function Section({ children, className = "", reveal = false, innerRef }) {
   const revealRef = useReveal({ enabled: reveal });
   return (
     <section
-      ref={reveal ? revealRef : undefined}
+      ref={reveal ? revealRef : innerRef}
       className={["ui-section", reveal && "rise", className]
         .filter(Boolean)
         .join(" ")}

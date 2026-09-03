@@ -283,6 +283,38 @@ else {
   else ok(`权限勾选框尺寸正常 ${JSON.stringify(boxes[0])}`);
 }
 
+/* ---------- 7. 指针跟随：光晕必须真的跟着动 ---------- */
+console.log("\n指针跟随");
+await nav("首页").catch(() => {});
+await page.waitForTimeout(1000);
+const hero = page.locator(".glow-follow").first();
+if (!(await hero.count())) note("首页没有 .glow-follow 元素");
+else {
+  const box = await hero.boundingBox();
+  const readVars = () =>
+    page.evaluate(() => {
+      const el = document.querySelector(".glow-follow");
+      return {
+        px: el.style.getPropertyValue("--px"),
+        py: el.style.getPropertyValue("--py"),
+        glow: getComputedStyle(el, "::before").opacity,
+      };
+    });
+  await page.mouse.move(box.x + box.width * 0.25, box.y + box.height * 0.3);
+  await page.waitForTimeout(300);
+  const a = await readVars();
+  await page.mouse.move(box.x + box.width * 0.8, box.y + box.height * 0.7);
+  await page.waitForTimeout(300);
+  const c = await readVars();
+  // 只有类名和渐变不算 —— 变量必须随指针变。曾经就是"光晕会亮但永远
+  // 停在正中"：回调 ref 写成了 useRef 加空依赖的 effect，节点后出现就漏了。
+  if (!a.px || !c.px) note("指针移动后 --px/--py 仍是空，跟随没生效");
+  else if (a.px === c.px) note(`指针换了位置但 --px 没变（${a.px}），光晕不跟随`);
+  else ok(`光晕跟随生效（--px ${a.px} → ${c.px}）`);
+  if (Number(c.glow) < 0.5) note(`指针在元素上时光晕不可见（opacity ${c.glow}）`);
+  else ok(`悬停时光晕可见（opacity ${Number(c.glow).toFixed(2)}）`);
+}
+
 await browser.close();
 console.log(problems.length ? `\n发现 ${problems.length} 个问题` : "\n交互检查全过");
 process.exit(problems.length ? 1 : 0);

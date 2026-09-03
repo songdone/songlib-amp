@@ -757,8 +757,6 @@ function paintLyricTemplate(context, frame, theme, data) {
   const lyricSize = lines.length
     ? fitLyricSize(context, lines, maxWidth, upper, Math.round(width * 0.036))
     : upper;
-  const lineHeight = Math.round(lyricSize * 1.62);
-
   context.font = font(600, lyricSize);
   const wrapped = lines.flatMap((line) =>
     wrapText(line, maxWidth, (text) => context.measureText(text).width, 2),
@@ -778,36 +776,38 @@ function paintLyricTemplate(context, frame, theme, data) {
   const footBlockTop =
     height - Math.round(pad * 1.6) - titleBlock.height - Math.round(width * 0.018) - artistBlock.height;
 
-  // 歌词块在"引号下方"到"底部块上方"之间垂直居中。
   const quoteSize = Math.round(width * 0.19);
-  /*
-   * 顶部起点原来是 height * 0.2 —— 画布越高、上面空得越多。
-   * 9:16（1920 高）时这一下就是 384px，再加上歌词块在剩余空间里居中，
-   * 实际第一句要到 800px 左右才开始，上方一大片只放着一个引号。
-   * 改成按宽度算：不管什么比例，顶部留白都是同一个视觉比例。
-   */
-  // 引号占位也要受画布高度约束：1:1 上 pad + 0.19*宽 已经是 27% 高，
-  // 光这一下就把内容压到下半部去了。
+  // 引号占位受画布高度约束：1:1 上 pad + 0.19*宽 已经是 27% 高，
+  // 光这一下就把内容压到下半部。
   const quoteBottom = pad + Math.min(quoteSize, Math.round(height * 0.15));
+
+  /*
+   * 行距吃掉多余的高度，而不是让它变成空白。
+   *
+   * 这块前后调了三轮，记下结论免得再绕：
+   *
+   *   纯居中          → 画布越高上方越空（9:16 上 41% 下 8%，头重）
+   *   起点靠上锚定    → 上方是好了，歌词和底部曲名之间裂开 46%
+   *   起点掺一半余量  → 两个毛病各占一半
+   *
+   * 三种都在"把余量堆到某一侧"。四句歌词放进 1920px 高的画布，余量本来
+   * 就有八百多像素，堆哪边都是一片空。真正的解法是让歌词块自己长高：
+   * 余量摊进行距，字号不变（字号跟着长会挤掉可读性），行与行之间松开。
+   *
+   * 上限给 0.9 倍字号：再松就不像一首歌的连续几句，而像四条无关的标语。
+   * 摊完还剩的余量才居中分到上下 —— 那时候剩得已经不多了。
+   */
+  const baseLineHeight = Math.round(lyricSize * 1.62);
+  const gaps = Math.max(1, wrapped.length - 1);
+  const roomForLyrics = footBlockTop - quoteBottom;
+  const baseHeight = (wrapped.length - 1) * baseLineHeight + Math.round(lyricSize * 0.8);
+  const spare = Math.max(0, roomForLyrics - baseHeight);
+  const stretch = Math.min(Math.round(spare / gaps), Math.round(lyricSize * 0.9));
+  const lineHeight = baseLineHeight + stretch;
+
   const blockHeight = (wrapped.length - 1) * lineHeight + Math.round(lyricSize * 0.8);
-  /*
-   * 歌词块在"引号下方"到"底部块上方"之间居中。
-   *
-   * 两行歌词的 9:16 本来就该是大量留白居中，那是这种画幅的正常长相；
-   * 原来的毛病不是"空"，是**头重**：起点写的是 height * 0.2，9:16 上
-   * 光这一下就 384px，居中之后上方 878px、下方 434px，差了一倍。
-   * 起点改成按宽度算并受高度上限约束之后，上下就配平了。
-   */
-  /*
-   * 歌词块的起点：居中，但上方分到的余量有上限。
-   *
-   * 纯居中时画布越高上方空得越多 —— 9:16 实测上 41% 下 8%，头重。
-   * 上限按宽度给（不按高度），所以不管什么比例，上方留白都是同一个
-   * 视觉量；多出来的高度落到歌词和底部曲名之间，那里有内容收尾，
-   * 读起来是留白而不是空着。
-   */
   const slack = Math.max(0, footBlockTop - quoteBottom - blockHeight);
-  const top = Math.round(quoteBottom + Math.min(slack / 2, width * 0.05));
+  const top = Math.round(quoteBottom + slack / 2);
 
   // 起始的大引号，纯装饰。跟着歌词块走，不再用固定偏移。
   context.save();

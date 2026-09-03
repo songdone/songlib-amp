@@ -26,6 +26,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { usePointerGlow } from "../../lib/usePointerGlow";
 import { LiveBadge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { Cover, hueOf } from "../../components/ui/Cover";
@@ -128,6 +129,10 @@ export function Dashboard({
    * 不会因为刷新一下整块变了脸；隔天再来才换。取前 8 张里的一张 ——
    * 再往后就不算"最近"了。
    */
+  // 指针跟随的光晕挂在整块 hero 上。写 CSS 变量、不走 state，
+  // 所以指针移动不会引起任何重渲染。
+  const heroGlow = usePointerGlow();
+
   const heroAlbum = useMemo(() => {
     const pool = home.albums.slice(0, 8);
     if (!pool.length) return undefined;
@@ -218,7 +223,7 @@ export function Dashboard({
 
       {/* --- 焦点专辑：封面即视觉 --- */}
       {heroAlbum ? (
-        <Section className="home-hero">
+        <Section className="home-hero glow-follow" innerRef={heroGlow}>
           {/*
             封面本身放大、模糊、压暗后垫在卡片底下，
             整块的色调就跟着当前这张专辑走 —— 每天首页颜色都不一样。

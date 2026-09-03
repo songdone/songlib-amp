@@ -781,3 +781,128 @@
     }
   }
 }
+
+
+@layer components {
+  /* =============================================================
+   * 指针跟随光晕
+   *
+   * --px / --py 由 usePointerGlow 写在元素上（0-1 的比例，不是像素，
+   * 这样元素尺寸变化不需要重新计算）。用 radial-gradient 画在 ::before，
+   * 不动元素自身的 background —— 免得和主题色打架。
+   * ============================================================= */
+  .glow-follow {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .glow-follow::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity 0.45s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+    background: radial-gradient(
+      circle at calc(var(--px, 0.5) * 100%) calc(var(--py, 0.5) * 100%),
+      var(--accent-soft-hover) 0%,
+      transparent 62%
+    );
+  }
+
+  .glow-follow:hover::before,
+  .glow-follow:focus-within::before {
+    opacity: 1;
+  }
+
+  /*
+   * 卡片跟着指针轻微倾斜。
+   *
+   * 幅度刻意压得很小（最大 3 度）：再大就从"有质感"变成"在晃"，
+   * 而这是一个要长时间盯着的列表页面。
+   */
+  .tilt-follow {
+    transition: transform 0.4s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+    transform-style: preserve-3d;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .tilt-follow:hover {
+      transform: perspective(900px)
+        rotateX(calc((var(--py, 0.5) - 0.5) * -3deg))
+        rotateY(calc((var(--px, 0.5) - 0.5) * 3deg));
+    }
+  }
+
+}
+
+@layer utilities {
+  /* =============================================================
+   * 滚动手感
+   * ============================================================= */
+
+  /*
+   * 滚到边界不要把外层一起带走。
+   *
+   * 没有这条时，在歌词面板里滚到底会继续滚整个页面（滚动链），
+   * 在 iOS 上还会触发下拉刷新那种橡皮筋 —— 明明在读歌词，整页跟着动。
+   */
+  .now-lyrics-lines,
+  .now-overlay-lines,
+  .ui-modal,
+  .track-table,
+  .queue-list {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /*
+   * 长列表只渲染看得见的部分。
+   *
+   * contain-intrinsic-size 必须给：否则滚动条长度会随渲染进度跳动，
+   * 拖着滚动条的手感会"打滑"。给的是一行的估算高度。
+   */
+  .track-table tbody tr,
+  .ui-media-card,
+  .account-row {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 64px;
+  }
+
+  /*
+   * 点击不要有 300ms 延迟，也不要有移动端那层灰色高亮。
+   * touch-action: manipulation 关掉双击缩放，保留滚动和捏合。
+   */
+  button,
+  a,
+  [role="button"],
+  label {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer utilities {
+  /*
+   * 减弱动态效果：一处兜底，覆盖全站。
+   *
+   * 放在 utilities（最后一层）并且用 !important —— 这是唯一一处该用
+   * !important 的地方：它要盖掉的是任何地方写的任何动画，包括以后
+   * 别人加的。无障碍设置不能被某个组件的高特异性选择器绕过去。
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+
+    .tilt-follow:hover {
+      transform: none !important;
+    }
+  }
+}

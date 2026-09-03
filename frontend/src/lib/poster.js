@@ -462,26 +462,26 @@ function paintRule(context, x, y, length, theme) {
 
 function paintCoverTemplate(context, frame, theme, data) {
   const { width, height, pad } = frame;
-  const coverSize = width - pad * 2;
+  const contentWidth = width - pad * 2;
 
   // 先把下半部分的文字量出来，再决定封面放多高 ——
   // 长标题会折两行，封面就得往上挪，否则底注被顶掉。
   const title = layoutText(context, data.title, {
     weight: 700,
     size: Math.round(width * 0.072),
-    maxWidth: coverSize,
+    maxWidth: contentWidth,
     maxLines: 2,
   });
   const artist = layoutText(context, data.artist || "未知歌手", {
     weight: 500,
     size: Math.round(width * 0.036),
-    maxWidth: coverSize,
+    maxWidth: contentWidth,
   });
   const album = data.album
     ? layoutText(context, data.album, {
         weight: 400,
         size: Math.round(width * 0.028),
-        maxWidth: coverSize,
+        maxWidth: contentWidth,
       })
     : null;
 
@@ -493,6 +493,22 @@ function paintCoverTemplate(context, frame, theme, data) {
     artist.height +
     (album ? Math.round(width * 0.022) + album.height : 0);
   const footerBand = Math.round(pad * 1.5);
+  /*
+   * 封面必须吃"剩下的"高度，不能定死成 width - pad*2。
+   *
+   * 原来是定死的正方形，不看画布高：1:1（1080×1080）上封面占到
+   * 92–988，文字从 1042 起画 —— 整块曲名/歌手/专辑**画在画布外面**，
+   * 方版海报上这三行完全看不见。3:4 有富余所以一直没暴露，而只数
+   * 空白带的留白检查也测不出"文字出界"。
+   *
+   * room 只减顶部的 pad（底下紧接着就是底注带，不需要再留一个 pad），
+   * 这样 3:4 / 9:16 算出来仍然是满宽 896，观感完全不变，只有 1:1 会收缩。
+   */
+  const room = height - footerBand - textHeight - pad;
+  const coverSize = Math.min(
+    contentWidth,
+    Math.max(Math.round(width * 0.34), room),
+  );
   const coverY = Math.max(
     pad,
     Math.round((height - footerBand - textHeight - coverSize) / 2),
@@ -620,28 +636,54 @@ function paintDuetTemplate(context, frame, theme, data) {
    * 上下两侧，就是两段"留白"而不是一块"空地"。
    */
   const coverBottom = coverTop + coverSize;
-  const slack = Math.max(0, textTop - coverBottom - lyricHeight - lyricGap);
+  /*
+   * 封面有个 0.34*宽 的下限（再小就不成图了），所以画布矮的时候它会
+   * 吃掉本该留给歌词的空间。这里按封面**实际**占完之后剩的高度收口，
+   * 放不下就少画一行 —— 否则最后一行会压在下面的曲名上。
+   */
+  const lyricRoom = Math.max(
+    0,
+    textTop - coverBottom - lyricGap - Math.round(width * 0.02),
+  );
+  const visible = fitLyricLines(wrapped, lyricRoom, lineHeight, lyricSize);
+  const visibleHeight = visible.length
+    ? (visible.length - 1) * lineHeight + Math.round(lyricSize * 1.04)
+    : 0;
+  const slack = Math.max(0, textTop - coverBottom - visibleHeight - lyricGap);
   let y = coverBottom + lyricGap + Math.round(slack * 0.42) + lyricSize;
-  if (wrapped.length) {
+  if (visible.length) {
     const barTop = y - lyricSize;
     context.fillStyle = rgb(theme.accent, 0.85);
-    context.fillRect(pad, barTop, Math.round(width * 0.006), lyricHeight);
+    context.fillRect(pad, barTop, Math.round(width * 0.006), visibleHeight);
     const textLeft = pad + Math.round(width * 0.032);
     context.font = font(600, lyricSize);
     context.textAlign = "left";
     context.fillStyle = theme.ink;
-    for (const line of wrapped) {
+    for (const line of visible) {
       context.fillText(line, textLeft, y);
       y += lineHeight;
     }
   }
 
-  paintText(context, title, pad, textTop + title.height, theme.ink);
+  /*
+   * paintText 的 y 是**块的顶部**，不是基线（见函数上方那行注释）。
+   *
+   * 这两行原来写的是 `textTop + title.height` 和 `footBottom` ——
+   * 前者把块高加进了顶部坐标，整块往下掉了整整一个自身高度；
+   * 后者拿"预期底边"当顶部用。3:4 上实测：曲名基线 1289、歌手基线 1330，
+   * 而按 textTop=1181 算应该是 1228 / 1294。后果不只是整块偏低 ——
+   * 设计好的 24px 字距被吃光，曲名和歌手还叠了 1px。
+   *
+   * 这两句是 paintText 早期收基线坐标时写的，函数改成收顶部之后没跟着改。
+   * 修法不是调系数（盲调过一次，把拍立得改坏了），而是把用法改回约定：
+   * 顶部传进去，下一块的顶部用返回值接。
+   */
+  const artistTop = paintText(context, title, pad, textTop, theme.ink);
   paintText(
     context,
     artist,
     pad,
-    footBottom,
+    artistTop + Math.round(width * 0.022),
     rgb(theme.accent, 0.92),
   );
   paintFooter(context, frame, theme, data.footer);
@@ -663,13 +705,37 @@ function paintPolaroidTemplate(context, frame, theme, data) {
    * 比原来更糟。相纸是固定长宽比的实体，高画布上必然有余量 —— 让余量
    * 平均分在上下，比全部堆到一边好。上方 21% 是这个构图的代价，不是 bug。
    */
-  const paperTop = Math.round(height * 0.5 - (width - margin * 2) * 0.62);
-  const paperWidth = width - margin * 2;
   const border = Math.round(width * 0.042);
-  const photo = paperWidth - border * 2;
-  // 相纸高度 = 上下白边 + 照片 + 下方那截更宽的手写区
+  // 相纸高度 = 上下白边 + 照片 + 下方那截更宽的手写区。
+  // 白边和照片一加一减正好抵掉，所以 paperHeight === paperWidth + caption。
   const caption = Math.round(width * 0.2);
+  /*
+   * 相纸宽度要受**画布高度**约束，不能只按宽度算。
+   *
+   * 原来是 paperWidth = width - margin*2 一口价。1:1（1080×1080）上
+   * paperHeight 算出来 1134 —— 相纸本身就比画布高 54px，手写区被挤到
+   * 画布外面：歌手那行画在 1055–1084，方版海报上根本看不见，
+   * 曲名还和底注叠了 8px。
+   *
+   * 上下各留一个 margin 之后剩多少高度，倒推出相纸最宽能多少。
+   * 3:4 算出 1062、9:16 算出 1542，都大于 918，所以那两个比例分毫不动，
+   * 只有 1:1 会收窄。
+   */
+  const paperWidth = Math.min(
+    width - margin * 2,
+    Math.max(Math.round(width * 0.4), height - margin * 2 - caption),
+  );
+  const photo = paperWidth - border * 2;
   const paperHeight = border * 2 + photo + caption;
+  /*
+   * 相纸按画布高度居中（0.62 这个系数见上面那段注释），但不许探出画布 ——
+   * 1:1 上原来算出来的顶部是 -29，相纸上沿直接被切掉。
+   */
+  const paperTop = Math.min(
+    Math.max(margin, Math.round(height * 0.5 - paperWidth * 0.62)),
+    height - margin - paperHeight,
+  );
+  const paperX = Math.round((width - paperWidth) / 2);
 
   context.fillStyle = "rgb(238 235 228)";
   context.fillRect(0, 0, width, height);
@@ -682,11 +748,12 @@ function paintPolaroidTemplate(context, frame, theme, data) {
   context.shadowBlur = Math.round(width * 0.05);
   context.shadowOffsetY = Math.round(width * 0.018);
   context.fillStyle = "rgb(253 252 249)";
-  roundRect(context, margin, paperTop, paperWidth, paperHeight, Math.round(width * 0.012));
+  roundRect(context, paperX, paperTop, paperWidth, paperHeight, Math.round(width * 0.012));
   context.fill();
   context.restore();
 
-  const photoX = margin + border;
+  // 相纸收窄之后照片也得跟着走，不能再从 margin 起算。
+  const photoX = paperX + border;
   const photoY = paperTop + border;
   if (data.image) {
     context.save();
@@ -710,8 +777,8 @@ function paintPolaroidTemplate(context, frame, theme, data) {
       maxWidth: photo,
       maxLines: 1,
     });
-    paintText(context, line, photoX, y + line.height, ink);
-    y += line.height + Math.round(width * 0.028);
+    // 同上：y 是顶部。原来的 `y + line.height` 让手写那行低了一整行高。
+    y = paintText(context, line, photoX, y, ink) + Math.round(width * 0.028);
   }
   const title = layoutText(context, data.title, {
     weight: 700,
@@ -719,13 +786,16 @@ function paintPolaroidTemplate(context, frame, theme, data) {
     maxWidth: photo,
     maxLines: 1,
   });
-  paintText(context, title, photoX, y + title.height, ink);
+  paintText(context, title, photoX, y, ink);
   const artist = layoutText(context, data.artist || "未知歌手", {
     weight: 500,
     size: Math.round(width * 0.026),
     maxWidth: photo,
     maxLines: 1,
   });
+  /* 这行不用改：`y + title.height` 正是曲名块的底边（y 是它的顶部），
+     再加 0.038w 的间距 —— 完全符合约定。之前看起来"歌手贴着曲名"，
+     是因为曲名自己被画低了一整块，把这 41px 间距吃掉了。 */
   paintText(context, artist, photoX, y + title.height + Math.round(width * 0.038), "rgb(38 34 28 / 0.62)");
 
   // 底注这里要深色字，paintFooter 是给深底写的，所以自己画。
@@ -734,6 +804,31 @@ function paintPolaroidTemplate(context, frame, theme, data) {
   context.fillStyle = "rgb(38 34 28 / 0.42)";
   context.fillText(data.footer || "", width / 2, height - Math.round(width * 0.05));
   context.textAlign = "left";
+}
+
+/**
+ * 歌词行放不下就砍掉末尾几行，返回真正要画的那些。
+ *
+ * 画布矮而歌词多的时候（1:1 四句最典型），块高会超过留给它的空间，
+ * 而原来没有任何一处收口 —— 最后一行直接压在曲名上（实测 lyric/1:1
+ * 叠 18px、duet/1:1 叠 5px）。字号已经被 fitLyricSize 压到下限了，
+ * 再压就不可读，所以这里选择少显示一句：跟曲名叠在一起比少一句更糟。
+ */
+function fitLyricLines(wrapped, room, lineHeight, lyricSize) {
+  /*
+   * 尾部用 1.04 而不是 0.8/0.9 —— 和 layoutText 的 height 同一个约定：
+   * **块高要算到下伸部分的底，不能停在最后一行的基线**。
+   *
+   * 这两个模板的块高是手写的，没享受到 layoutText 那次修正，于是
+   * 少算了一截下伸：lyric/1:1 四句时最后一行的尾巴正好压进曲名 18px，
+   * 而按代码自己的账是"刚好放下"。
+   */
+  const heightOf = (count) =>
+    count ? (count - 1) * lineHeight + Math.round(lyricSize * 1.04) : 0;
+  let count = wrapped.length;
+  // 至少留一行 —— 一张歌词海报一句都不显示就没意义了。
+  while (count > 1 && heightOf(count) > room) count -= 1;
+  return wrapped.slice(0, count);
 }
 
 function fitLyricSize(context, lines, maxWidth, upper, lower) {
@@ -798,14 +893,17 @@ function paintLyricTemplate(context, frame, theme, data) {
    * 摊完还剩的余量才居中分到上下 —— 那时候剩得已经不多了。
    */
   const baseLineHeight = Math.round(lyricSize * 1.62);
-  const gaps = Math.max(1, wrapped.length - 1);
   const roomForLyrics = footBlockTop - quoteBottom;
-  const baseHeight = (wrapped.length - 1) * baseLineHeight + Math.round(lyricSize * 0.8);
+  // 先收口再摊行距。字号已经压到下限了，放不下只能少画一行 ——
+  // 不收口的话块高会越过 footBlockTop，最后一行压在曲名上。
+  const visible = fitLyricLines(wrapped, roomForLyrics, baseLineHeight, lyricSize);
+  const gaps = Math.max(1, visible.length - 1);
+  const baseHeight = (visible.length - 1) * baseLineHeight + Math.round(lyricSize * 1.04);
   const spare = Math.max(0, roomForLyrics - baseHeight);
   const stretch = Math.min(Math.round(spare / gaps), Math.round(lyricSize * 0.9));
   const lineHeight = baseLineHeight + stretch;
 
-  const blockHeight = (wrapped.length - 1) * lineHeight + Math.round(lyricSize * 0.8);
+  const blockHeight = (visible.length - 1) * lineHeight + Math.round(lyricSize * 1.04);
   const slack = Math.max(0, footBlockTop - quoteBottom - blockHeight);
   // 上方分到的余量给个上限：纯居中时画布越高上面越空，
   // 实测 9:16 首个内容在 36% 处。多出来的高度让它落到歌词和底部曲名
@@ -825,7 +923,7 @@ function paintLyricTemplate(context, frame, theme, data) {
   context.font = font(600, lyricSize);
   context.fillStyle = theme.ink;
   let baseline = top + Math.round(lyricSize * 0.8);
-  for (const line of wrapped) {
+  for (const line of visible) {
     context.fillText(line, pad, baseline);
     baseline += lineHeight;
   }

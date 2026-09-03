@@ -14,13 +14,25 @@
  */
 
 import { BookOpenText, Download, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Button, ButtonGroup, IconButton } from "./ui/Button";
+import { installPromptStore } from "../lib/installPrompt";
 import { pwaInstallGuidance, pwaSecureOrigin } from "../lib/pwa";
 
 export function PwaInstallPrompt() {
-  const [event, setEvent] = useState(null),
-    [visible, setVisible] = useState(false),
+  /*
+   * 安装事件从捕获仓拿，不在这里监听。
+   *
+   * `beforeinstallprompt` 只发一次、而且发得很早；这个组件只在登录之后
+   * 才挂载，自己监听是永远收不到的 —— "Chrome/Edge 没装过也不弹窗"
+   * 就是这么来的，manifest 从头到尾是合规的。见 lib/installPrompt.js。
+   */
+  const event = useSyncExternalStore(
+    installPromptStore.subscribe,
+    () => installPromptStore.event,
+    () => null,
+  );
+  const [visible, setVisible] = useState(false),
     [helpOpen, setHelpOpen] = useState(false),
     [status, setStatus] = useState("");
   const standalone =
@@ -40,37 +52,31 @@ export function PwaInstallPrompt() {
   });
   useEffect(() => {
     if (standalone || localStorage.getItem("songlib-pwa-dismissed") === "1")
-      return;
-    const timer = setTimeout(() => setVisible(true), 2600);
-    const onPrompt = (e) => {
-      e.preventDefault();
-      setEvent(e);
+      return undefined;
+    // 事件已经在捕获仓里了就立刻显示，不用等那 2.6 秒。
+    if (installPromptStore.event) {
       setVisible(true);
-      setHelpOpen(false);
-      clearTimeout(timer);
-    };
-    const onInstalled = () => {
-      setVisible(false);
-      setEvent(null);
-      localStorage.setItem("songlib-pwa-dismissed", "1");
-    };
-    window.addEventListener("beforeinstallprompt", onPrompt);
-    window.addEventListener("appinstalled", onInstalled);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener("beforeinstallprompt", onPrompt);
-      window.removeEventListener("appinstalled", onInstalled);
-    };
-  }, [standalone]);
+      return undefined;
+    }
+    const timer = setTimeout(() => setVisible(true), 2600);
+    return () => clearTimeout(timer);
+  }, [standalone, Boolean(event)]);
+  useEffect(() => {
+    if (!installPromptStore.installed) return;
+    localStorage.setItem("songlib-pwa-dismissed", "1");
+    setVisible(false);
+  }, [event]);
   if (!visible || standalone) return null;
   const install = async () => {
     if (event) {
       setStatus("");
-      await event.prompt();
-      const result = await event.userChoice.catch(() => ({
+      // consume：一个 beforeinstallprompt 只能 prompt() 一次，
+      // 取出来之后仓里就没了，按钮会自动退回"查看安装方法"。
+      const prompt = installPromptStore.consume();
+      await prompt.prompt();
+      const result = await prompt.userChoice.catch(() => ({
         outcome: "dismissed",
       }));
-      setEvent(null);
       if (result.outcome === "accepted") {
         localStorage.setItem("songlib-pwa-dismissed", "1");
         setVisible(false);

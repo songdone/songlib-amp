@@ -318,13 +318,14 @@ test("PWA install guidance never exposes a no-op install action", () => {
     }).actionLabel,
     "查看添加方法",
   );
+  // 内网 HTTP 下 iOS 用户仍然能加到主屏幕，不该被"先上 HTTPS"挡住。
   assert.match(
     pwaInstallGuidance({
       hasPrompt: false,
       secureOrigin: false,
       userAgent: "Mozilla/5.0 (iPad; CPU OS 18_6 like Mac OS X)",
-    }).summary,
-    /仍可添加到主屏幕并正常登录/,
+    }).detail,
+    /登录、播放、管理都正常/,
   );
   assert.equal(
     pwaInstallGuidance({
@@ -344,6 +345,52 @@ test("PWA install guidance never exposes a no-op install action", () => {
       userAgent: "Chrome",
     }).actionLabel,
     "安装应用",
+  );
+});
+
+test("每种浏览器只被告知它自己真的能做的操作", () => {
+  const MAC_SAFARI =
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Safari/605.1.15";
+  const IPHONE_SAFARI =
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1";
+  const FIREFOX =
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:130.0) Gecko/20100101 Firefox/130.0";
+  const CHROME =
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36";
+  const guide = (userAgent, extra = {}) =>
+    pwaInstallGuidance({ hasPrompt: false, secureOrigin: true, userAgent, ...extra });
+
+  /*
+   * 这一条是修回归用的：桌面版 macOS Safari 原来落到兜底分支，
+   * 被告知"在 Chrome 或 Edge 的地址栏里找安装音屿" —— 用户明明在 Safari。
+   * Safari 17 起可以「文件」→「添加到程序坞」，那才是该说的话。
+   */
+  const macSafari = guide(MAC_SAFARI, { platform: "MacIntel", maxTouchPoints: 0 });
+  assert.match(macSafari.summary, /添加到程序坞/);
+  assert.doesNotMatch(`${macSafari.summary}${macSafari.detail}`, /地址栏/);
+  assert.equal(macSafari.canInstall, false);
+
+  // iPhone 走分享菜单，且不许出现"程序坞"（那是 Mac 的说法）。
+  const iphone = guide(IPHONE_SAFARI);
+  assert.match(iphone.detail, /添加到主屏幕/);
+  assert.doesNotMatch(iphone.detail, /程序坞/);
+
+  // Firefox 桌面版装不了，别让人白找菜单。
+  const firefox = guide(FIREFOX, { platform: "MacIntel" });
+  assert.match(firefox.summary, /不支持/);
+
+  // Chromium 没拿到事件时，最可能的原因是已经装过了。
+  const chrome = guide(CHROME, { platform: "MacIntel" });
+  assert.match(chrome.detail, /装过/);
+
+  // 只有真的拿到 beforeinstallprompt 才允许说"能装"。
+  for (const ua of [MAC_SAFARI, IPHONE_SAFARI, FIREFOX, CHROME]) {
+    assert.equal(guide(ua, { platform: "MacIntel" }).canInstall, false);
+    assert.notEqual(guide(ua, { platform: "MacIntel" }).actionLabel, "安装应用");
+  }
+  assert.equal(
+    pwaInstallGuidance({ hasPrompt: true, secureOrigin: true, userAgent: CHROME }).canInstall,
+    true,
   );
 });
 

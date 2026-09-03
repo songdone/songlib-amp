@@ -318,7 +318,39 @@ class PlexClient:
     def all_leaves(self, rating_key: str):
         return self.hierarchy(rating_key, "allLeaves")
 
-    def transcode_url(self, rating_key: str, bitrate: str) -> str:
+    @staticmethod
+    def new_transcode_session() -> str:
+        """每条转码流一个独立会话 id。
+
+        不能用「客户端+曲目+码率」拼出来的固定 id：同一首歌第二次请求会撞上
+        第一次那个还没关掉的会话。会话必须一次一个、用完就关（见 stop_transcode）。
+        """
+        return uuid.uuid4().hex
+
+    def stop_transcode(self, session: str) -> None:
+        """告诉 Plex 这条转码会话不要了。
+
+        **这是当初 400 的更深层原因。** 我们从来没调过 stop，每换一首歌就漏掉
+        一个转码会话；Plex 的并发转码有上限，漏满之后新会话一律被拒。
+        表现是"同一个码率有时能转、有时被退回原始音质"，而且两轮测出来的
+        成功档位正好相反 —— 那不是某个码率坏，是名额被自己占满了。
+
+        关不掉不算错误：客户端已经断了，这里只是尽力回收。
+        """
+        if not session:
+            return
+        try:
+            # universal transcoder 的 stop 在 /video/ 命名空间下，音频也走这个。
+            self.request(
+                "GET",
+                "/video/:/transcode/universal/stop",
+                params={"session": session},
+                timeout=5,
+            )
+        except Exception:
+            pass
+
+    def transcode_url(self, rating_key: str, bitrate: str, *, session: str = "", offset_seconds: float = 0.0) -> str:
         """Plex 通用转码地址。
 
         原先用的是 `start.m3u8` + `protocol=hls` + `maxAudioBitrate`，Plex 回 400：
@@ -326,8 +358,11 @@ class PlexClient:
         Safari 的 <audio> 认，Chrome 下即使拿到播放列表也放不出声。
         这里改成 Plex Web 自己在用的那套 —— `start.mp3` + `protocol=http`
         + `musicBitrate`，回来的是一条普通 MP3 流，<audio> 直接能吃。
+
+        `offset_seconds` 是拖动进度用的：转码流没有字节范围可言，Plex 的做法
+        是从某个时间点重新起转，Plex Web 自己也是这么 seek 的。
         """
-        session = f"{self.client_identifier()}-{rating_key}-{bitrate}"
+        session = session or self.new_transcode_session()
         params = {
             "path": f"/library/metadata/{rating_key}",
             "mediaIndex": 0,
@@ -342,6 +377,8 @@ class PlexClient:
             "X-Plex-Session-Identifier": session,
             "X-Plex-Token": self.token,
         }
+        if offset_seconds > 0:
+            params["offset"] = round(float(offset_seconds), 3)
         params.update(self.client_headers())
         return self.base_url + "/music/:/transcode/universal/start.mp3?" + urllib.parse.urlencode(params)
 
@@ -358,8 +395,10 @@ class PlexClient:
         art = item.get("art") or item.get("parentThumb") or item.get("grandparentThumb")
         base = self.base_url
         original_url = base + part.attrib.get("key", "") + "?" + urllib.parse.urlencode({"X-Plex-Token": self.token})
+        transcode_session = ""
         if bitrate in BITRATE_MAP:
-            stream_url = self.transcode_url(rating_key, bitrate)
+            transcode_session = self.new_transcode_session()
+            stream_url = self.transcode_url(rating_key, bitrate, session=transcode_session)
             mode = "transcode"
         else:
             stream_url = original_url
@@ -387,6 +426,7 @@ class PlexClient:
             "artUrl": ("/api/plex/image?path=" + urllib.parse.quote(art, safe="")) if art else "",
             "streamUrl": stream_url,
             "originalStreamUrl": original_url,
+            "transcodeSession": transcode_session,
             "mode": mode,
             "bitrate": bitrate,
             "qualities": ["original", *BITRATE_MAP],

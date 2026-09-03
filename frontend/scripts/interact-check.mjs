@@ -780,6 +780,81 @@ else {
 
 await mobile.close();
 
+/* ---------- 14. PWA：安装事件必须在 React 之前就被接住 ---------- */
+/*
+ * 「Chrome/Edge 没装过也不弹窗」的根因是监听时机：`beforeinstallprompt`
+ * 只发一次、而且发得很早，原来的监听器却注册在 PwaInstallPrompt 的
+ * useEffect 里 —— 那个组件只在登录之后才挂载，等它挂上来事件早过去了。
+ * manifest 一直是合规的。
+ *
+ * 这条守卫在页面刚开始加载时就把事件发出去，然后看应用有没有接住。
+ * 只截首屏是测不出这个的：事件在"能看见界面"之前就已经发生了。
+ */
+console.log("\nPWA 安装");
+const pwaCtx = await browser.newContext({
+  ...(process.env.SL_STATE ? { storageState: process.env.SL_STATE } : {}),
+});
+const pp = await pwaCtx.newPage();
+await pp.addInitScript(() => {
+  // 伪造一个 beforeinstallprompt，在文档刚开始解析时就派发 ——
+  // 比 React 挂载早得多，正是 Chrome 真实的时机。
+  window.__slPromptPrevented = false;
+  window.__slPromptCalled = false;
+  const fake = new Event("beforeinstallprompt");
+  fake.preventDefault = () => {
+    window.__slPromptPrevented = true;
+  };
+  fake.prompt = async () => {
+    window.__slPromptCalled = true;
+  };
+  Object.defineProperty(fake, "userChoice", {
+    value: Promise.resolve({ outcome: "accepted" }),
+  });
+  /*
+   * 派发时机要贴住 Chrome 的真实行为：load 之后不久。
+   *
+   * 不能用 readyState==="interactive" —— 打包出来的入口是
+   * <script type="module">，它是 defer 的，在 interactive **之后**才执行，
+   * 那样连模块级的捕获都接不到，测的就不是"监听时机"这件事了。
+   * load 之后派发才落在真正的失败窗口里：模块级捕获（文档解析完就装好）
+   * 接得到，而挂在登录后组件里的监听器（还要几秒才挂载）接不到。
+   */
+  window.addEventListener("load", () => setTimeout(() => window.dispatchEvent(fake), 200));
+});
+await pp.goto(BASE, { waitUntil: "domcontentloaded" });
+await pp.waitForTimeout(4000);
+
+const captureReady = await pp
+  .evaluate(() => document.documentElement.dataset.songlibInstallCapture)
+  .catch(() => "");
+if (captureReady !== "ready") note(`安装事件捕获仓没装好（dataset=${captureReady || "无"}）`);
+else ok("安装事件捕获仓在 React 之前就绪");
+
+const prevented = await pp.evaluate(() => window.__slPromptPrevented).catch(() => false);
+if (!prevented)
+  note("没有 preventDefault：Chrome 会改用自己的迷你信息栏，之后就调不出 prompt() 了");
+else ok("安装事件已被接住并 preventDefault");
+
+// 接住了就必须表现为"能装"：按钮写「安装应用」，点了真的调 prompt()。
+const installBtn = pp.getByRole("button", { name: /^安装应用$/ }).first();
+if (!(await installBtn.count())) {
+  const label = await pp
+    .evaluate(() => {
+      const aside = document.querySelector(".pwa-prompt");
+      return aside ? aside.innerText.replace(/\n+/g, " | ").slice(0, 120) : "没有提示条";
+    })
+    .catch(() => "读不到");
+  note(`事件已接住但按钮没变成「安装应用」：${label}`);
+} else {
+  ok("按钮显示「安装应用」");
+  await installBtn.click();
+  await pp.waitForTimeout(700);
+  const called = await pp.evaluate(() => window.__slPromptCalled).catch(() => false);
+  if (!called) note("点了「安装应用」没有真的调 prompt()");
+  else ok("点了「安装应用」真的调起了 prompt()");
+}
+await pwaCtx.close();
+
 await browser.close();
 console.log(problems.length ? `\n发现 ${problems.length} 个问题` : "\n交互检查全过");
 process.exit(problems.length ? 1 : 0);

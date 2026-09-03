@@ -864,8 +864,11 @@ class PlexStreamFallbackTests(unittest.TestCase):
     @staticmethod
     def _playback(bitrate="320k"):
         return {
-            "streamUrl": "http://plex.test/music/:/transcode/universal/start.mp3?x=1",
+            "streamUrl": "http://plex.test/music/:/transcode/universal/start.mp3?session=sess-1",
             "originalStreamUrl": "http://plex.test/library/parts/1/file.flac?X-Plex-Token=t",
+            "transcodeSession": "sess-1",
+            # 4 分 02 秒。320kbps 下 CBR 字节数 = 242 * 320 * 125 = 9,680,000
+            "duration": 242000,
             "mode": "transcode" if bitrate != "original" else "original",
             "bitrate": bitrate,
         }
@@ -943,6 +946,90 @@ class PlexStreamFallbackTests(unittest.TestCase):
         detail = response.json()["detail"]
         self.assertIn("transcode", detail)
         self.assertIn("original", detail)
+
+    def test_a_finished_transcode_stream_releases_its_plex_session(self):
+        """会话不回收 = 每换一首漏一个转码名额，漏满之后一律被静默降级。
+
+        线上实测过：同一个码率两轮下来"能转"的档位正好相反，
+        不是某个码率坏，是名额被自己占满了。
+        """
+        client_mock, _sent = self._upstream(transcode_ok=True)
+        with (
+            patch.object(plex, "playback", return_value=self._playback("320k")),
+            patch.object(plex, "stop_transcode") as stop,
+            patch("app.main.httpx.Client", return_value=client_mock),
+        ):
+            with TestClient(app) as client:
+                self._login(client)
+                response = client.get("/api/player/plex/90056/stream?bitrate=320k")
+                self.assertEqual(response.status_code, 200)
+                response.read()
+        stop.assert_called_once_with("sess-1")
+
+    def test_a_transcode_that_never_starts_also_releases_its_session(self):
+        client_mock, _sent = self._upstream(transcode_ok=False)
+        # 原始音质那条也断掉，逼出 502 分支
+        client_mock.send.side_effect = lambda request, **kwargs: (
+            lambda r: (setattr(r.raise_for_status, "side_effect", RuntimeError("down")), r)[1]
+        )(MagicMock())
+        with (
+            patch.object(plex, "playback", return_value=self._playback("320k")),
+            patch.object(plex, "stop_transcode") as stop,
+            patch("app.main.httpx.Client", return_value=client_mock),
+        ):
+            with TestClient(app) as client:
+                self._login(client)
+                response = client.get("/api/player/plex/90056/stream?bitrate=320k")
+        self.assertEqual(response.status_code, 502)
+        stop.assert_called_once_with("sess-1")
+
+    def test_seeking_a_transcode_restarts_it_at_a_time_offset(self):
+        """转码流没有字节范围，Plex 只能从某个时间点重新起转。
+
+        没有这一步，转码档的进度条是拖不动的（accept-ranges: none，
+        线上量过）—— 等于音质选项只做了一半。
+        """
+        client_mock, sent = self._upstream(transcode_ok=True)
+        with (
+            patch.object(plex, "playback", return_value=self._playback("320k")),
+            patch.object(plex, "stop_transcode"),
+            patch.object(
+                plex, "transcode_url", return_value="http://plex.test/music/:/transcode/universal/start.mp3?offset=60"
+            ) as transcode_url,
+            patch("app.main.httpx.Client", return_value=client_mock),
+        ):
+            with TestClient(app) as client:
+                self._login(client)
+                # 320kbps 下 2,400,000 字节 = 60 秒
+                response = client.get(
+                    "/api/player/plex/90056/stream?bitrate=320k",
+                    headers={"Range": "bytes=2400000-"},
+                )
+        self.assertEqual(response.status_code, 206)
+        self.assertEqual(transcode_url.call_args.kwargs["offset_seconds"], 60.0)
+        total = 242 * 320 * 125
+        self.assertEqual(response.headers["content-range"], f"bytes 2400000-{total - 1}/{total}")
+        self.assertEqual(response.headers["accept-ranges"], "bytes")
+        # Range 不能同时转发给上游：Plex 会当没看见并从头给，进度就错位了
+        self.assertNotIn("Range", client_mock.build_request.call_args.kwargs.get("headers") or {})
+
+    def test_a_transcode_from_the_start_declares_a_seekable_length(self):
+        client_mock, _sent = self._upstream(transcode_ok=True)
+        with (
+            patch.object(plex, "playback", return_value=self._playback("320k")),
+            patch.object(plex, "stop_transcode"),
+            patch("app.main.httpx.Client", return_value=client_mock),
+        ):
+            with TestClient(app) as client:
+                self._login(client)
+                response = client.get("/api/player/plex/90056/stream?bitrate=320k")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["accept-ranges"], "bytes")
+        self.assertEqual(response.headers["content-length"], str(242 * 320 * 125))
+
+    def test_each_transcode_request_gets_its_own_session_id(self):
+        """固定 id（客户端+曲目+码率）会撞上上一次还没关掉的会话。"""
+        self.assertNotEqual(plex.new_transcode_session(), plex.new_transcode_session())
 
     def test_the_transcode_url_carries_a_session_and_client_identifier(self):
         """400 的直接原因：HLS 那条路要求带 session 且客户端要自报身份。"""

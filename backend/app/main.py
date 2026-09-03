@@ -36,7 +36,7 @@ from .jobs import get_job, list_job_logs, list_jobs, manager
 from .local_library import local_library, organizer
 from .lyrics import find_lyrics
 from .media_lyrics import read_local_lyrics
-from .plex import dashboard_stats, local_artist_background_file, local_media_path, plex
+from .plex import BITRATE_MAP, dashboard_stats, local_artist_background_file, local_media_path, plex
 from .playback_positions import forget as forget_position, get as get_position, recent as recent_positions, save as save_position
 from .plex_companion import plex_companion
 from .scraper import build_diff_preview
@@ -1166,6 +1166,12 @@ def plex_playback_info(rating_key: str, bitrate: str = "original"):
         raise HTTPException(status_code=502, detail=f"无法播放该 Plex 曲目，请检查 Plex Token、服务器地址或媒体文件权限。{exc}") from exc
 
 
+def _range_start(value: str) -> int:
+    """从 `bytes=START-END` 里取出起始字节。取不到就当 0。"""
+    match = re.match(r"^\s*bytes\s*=\s*(\d+)\s*-", str(value or ""), re.I)
+    return int(match.group(1)) if match else 0
+
+
 @app.get("/api/player/plex/{rating_key}/stream", dependencies=[Depends(auth.current_user)])
 def plex_stream(rating_key: str, request: Request, bitrate: str = "original"):
     try:
@@ -1173,25 +1179,48 @@ def plex_stream(rating_key: str, request: Request, bitrate: str = "original"):
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"无法播放该 Plex 曲目，请检查 Plex Token、服务器地址或媒体文件权限。{exc}") from exc
 
-    # 转码那条路会因为 Plex 版本、会话、编码器忙等一堆原因失败（线上就是 400）。
+    range_header = request.headers.get("range") or ""
+    requested_mode = playback.get("mode") or "original"
+    session = str(playback.get("transcodeSession") or "")
+    kbps = BITRATE_MAP.get(bitrate, 0)
+    duration_seconds = float(playback.get("duration") or 0) / 1000.0
+    # CBR MP3 的字节数和时间是线性的：kbps * 1000 / 8 = kbps * 125 字节/秒。
+    bytes_per_second = kbps * 125
+    total_bytes = int(duration_seconds * bytes_per_second) if bytes_per_second and duration_seconds else 0
+
+    stream_url = playback.get("streamUrl") or ""
+    start_byte = 0
+    if requested_mode == "transcode" and range_header:
+        # 转码流没有字节范围可言 —— Plex 的做法是从某个时间点重新起转，
+        # Plex Web 自己 seek 也是这么干的。把浏览器要的字节位置换算成秒。
+        start_byte = _range_start(range_header)
+        if start_byte and bytes_per_second:
+            stream_url = plex.transcode_url(
+                rating_key,
+                bitrate,
+                session=session or plex.new_transcode_session(),
+                offset_seconds=start_byte / bytes_per_second,
+            )
+
+    # 转码那条路会因为 Plex 版本、会话名额、编码器忙等一堆原因失败（线上就是 400）。
     # 原始音质那条路是直读文件，一直是好的 —— 所以转码失败就退回它，
     # 而不是把 502 抛给播放器（那等于整个应用不能用）。
-    candidates = [(playback.get("streamUrl") or "", playback.get("mode") or "original")]
+    candidates = [(stream_url, requested_mode)]
     original_url = playback.get("originalStreamUrl") or ""
-    if original_url and original_url != candidates[0][0]:
+    if original_url and original_url != stream_url:
         candidates.append((original_url, "original"))
 
-    headers = {}
-    if request.headers.get("range"):
-        headers["Range"] = request.headers["range"]
-
     failures = []
-    for stream_url, mode in candidates:
-        if not stream_url:
+    for candidate_url, mode in candidates:
+        if not candidate_url:
             continue
+        # Range 只对原始音质有意义（那是真文件）。转码流已经用 offset 表达过
+        # 起点了，再把 Range 转发上去，Plex 会当没看见并从头给 ——
+        # 浏览器却以为拿到的是 seek 之后的数据，进度条就会错位。
+        headers = {"Range": range_header} if (range_header and mode == "original") else {}
         client = httpx.Client(timeout=None, follow_redirects=True)
         try:
-            upstream = client.build_request("GET", stream_url, headers=headers)
+            upstream = client.build_request("GET", candidate_url, headers=headers)
             response = client.send(upstream, stream=True)
             response.raise_for_status()
         except Exception as exc:
@@ -1206,11 +1235,28 @@ def plex_stream(rating_key: str, request: Request, bitrate: str = "original"):
                 passthrough[key] = value
         # 前端要能看出"你点了 320K，实际给的是原始音质"，才不会误以为设置没生效。
         passthrough["X-SongLib-Stream-Mode"] = mode
-        if mode != (playback.get("mode") or "original"):
+        if mode != requested_mode:
             passthrough["X-SongLib-Stream-Fallback"] = "1"
+
+        status_code = response.status_code
+        if mode == "transcode" and total_bytes:
+            # 自己声明字节范围，<audio> 才肯给出可拖动的进度条。
+            # 上游是 chunked、长度未知，所以这里的总长按 CBR 算 ——
+            # 误差在一个 MP3 帧（约 26ms）以内。
+            passthrough["accept-ranges"] = "bytes"
+            passthrough.pop("content-length", None)
+            if start_byte:
+                passthrough["content-range"] = f"bytes {start_byte}-{total_bytes - 1}/{total_bytes}"
+                status_code = 206
+            else:
+                passthrough["content-length"] = str(total_bytes)
         media_type = response.headers.get("content-type", "audio/mpeg")
 
-        def iterator(response=response, client=client):
+        # 会话必须回收。不关的话每换一首就漏一个转码名额，漏满之后
+        # 新会话一律被 Plex 拒掉，用户看到的是"音质设置有时生效有时不生效"。
+        close_session = session if mode == "transcode" else ""
+
+        def iterator(response=response, client=client, close_session=close_session):
             try:
                 for chunk in response.iter_bytes(1024 * 128):
                     if chunk:
@@ -1218,14 +1264,18 @@ def plex_stream(rating_key: str, request: Request, bitrate: str = "original"):
             finally:
                 response.close()
                 client.close()
+                if close_session:
+                    plex.stop_transcode(close_session)
 
         return StreamingResponse(
             iterator(),
-            status_code=response.status_code,
+            status_code=status_code,
             media_type=media_type,
             headers=passthrough,
         )
 
+    if session:
+        plex.stop_transcode(session)
     raise HTTPException(
         status_code=502,
         detail="Plex 播放流代理失败：" + "；".join(failures or ["没有可用的播放地址"]),

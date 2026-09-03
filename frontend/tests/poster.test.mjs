@@ -212,6 +212,100 @@ test("四个模板、三个比例、有无封面有无歌词，都不产生 NaN 
   }
 });
 
+/**
+ * 文字不许重叠、不许画到画布外面。
+ *
+ * 加这条的直接原因：真去量了一遍每行文字的落点，发现
+ *   - 1:1「专辑」：曲名/歌手/专辑整块画在 1042–1234，而画布只有 1080 高，
+ *     方版海报上这三行**完全看不见**；
+ *   - 1:1「拍立得」：相纸自身就比画布高 54px，手写区被挤出去；
+ *   - 「封面歌词」「拍立得」把块高加进了顶部坐标，整块低一个自身高度，
+ *     曲名和歌手之间设计好的间距被吃光还叠了 1px；
+ *   - 1:1 四句歌词时最后一行压在曲名上。
+ *
+ * 上面这些，NaN 检查全过、只数空白带的留白检查也全过 —— 因为它们既不是
+ * NaN，也不改变空白比例。只有"把每个字的盒子摆出来看有没有撞上"才发现得了。
+ */
+test("每个模板 × 比例 × 句数：文字不重叠、不出画布", async (t) => {
+  const { drawPoster } = await import("../src/lib/poster.js");
+  const palette = { accent: [227, 180, 89], ink: "#f5f2ec", dark: true };
+
+  /** 记录每次 fillText 的纵向占位。ascent 0.8 / descent 0.24 跟 layoutText 一致。 */
+  function boxRecordingContext(boxes) {
+    let size = 16;
+    const gradient = { addColorStop: () => {} };
+    const context = {
+      canvas: null,
+      filter: "none",
+      textAlign: "left",
+      createLinearGradient: () => gradient,
+      createRadialGradient: () => gradient,
+      measureText: (text) => ({ width: measure(text) * 8 }),
+      fillText: (text, x, y) => {
+        if (String(text).trim())
+          boxes.push({ text: String(text), top: y - size * 0.8, bottom: y + size * 0.24 });
+      },
+    };
+    Object.defineProperty(context, "font", {
+      get: () => `${size}px x`,
+      set: (value) => {
+        const found = /(\d+(?:\.\d+)?)px/.exec(value);
+        if (found) size = Number(found[1]);
+      },
+    });
+    for (const name of [
+      "setTransform", "save", "restore", "fillRect", "beginPath", "moveTo",
+      "lineTo", "arcTo", "arc", "closePath", "fill", "stroke", "clip", "drawImage",
+    ]) context[name] = () => {};
+    for (const name of ["lineWidth", "globalAlpha", "shadowBlur", "shadowOffsetY"]) {
+      let stored = 0;
+      Object.defineProperty(context, name, { get: () => stored, set: (v) => { stored = v; } });
+    }
+    return context;
+  }
+
+  const LYRIC_SETS = [
+    [],
+    ["原谅我这一生不羁放纵爱自由"],
+    ["原谅我这一生不羁放纵爱自由", "也会怕有一天会跌倒", "背弃了理想谁人都可以", "哪会怕有一天只你共我"],
+  ];
+
+  for (const template of Object.keys(TEMPLATES)) {
+    for (const ratio of Object.keys(RATIOS)) {
+      for (const lyrics of LYRIC_SETS) {
+        const label = `${template}/${ratio}/${lyrics.length}句`;
+        await t.test(label, () => {
+          const boxes = [];
+          const context = boxRecordingContext(boxes);
+          const canvas = { width: 0, height: 0, getContext: () => context };
+          drawPoster(canvas, {
+            template, ratio, title: "海阔天空", artist: "Beyond", album: "乐与怒",
+            lyrics, image: FAKE_IMAGE, palette, footer: "SongLib Amp · 音屿", scale: 1,
+          });
+          for (const box of boxes) {
+            assert.ok(
+              box.top >= 0 && box.bottom <= canvas.height,
+              `"${box.text.slice(0, 14)}" 画到了画布外：${box.top.toFixed(0)}–${box.bottom.toFixed(0)}，画布高 ${canvas.height}`,
+            );
+          }
+          // 大引号是刻意衬在歌词背后的装饰（见 paintLyricTemplate 里的注释），不参与。
+          const stacked = boxes
+            .filter((box) => !/^[“”"']+$/.test(box.text.trim()))
+            .sort((a, b) => a.top - b.top);
+          for (let i = 1; i < stacked.length; i += 1) {
+            const above = stacked[i - 1];
+            const below = stacked[i];
+            assert.ok(
+              below.top >= above.bottom - 0.5,
+              `"${above.text.slice(0, 12)}" 和 "${below.text.slice(0, 12)}" 叠了 ${(above.bottom - below.top).toFixed(0)}px`,
+            );
+          }
+        });
+      }
+    }
+  }
+});
+
 test("标题歌手全空也能画出来，不能因为没内容就崩", async () => {
   const { drawPoster } = await import("../src/lib/poster.js");
   const calls = [];

@@ -88,7 +88,7 @@ export function SetupWizard({ onComplete }) {
             创建账号并进入
           </Button>
         </form>
-        <footer><ShieldCheck />不会给你安排默认密码，这串字符也不会出现在日志里。</footer>
+        <footer><ShieldCheck />不设默认密码，这串字符不会写进日志</footer>
       </section>
     </main>
   );

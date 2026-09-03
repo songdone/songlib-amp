@@ -493,7 +493,7 @@ export function Dashboard({
       {wallItems.length >= 8 && (
         <Section className="home-wall" reveal>
           <div className="home-wall__head">
-            <h2 className="home-wall__title text-gradient">你的曲库</h2>
+            <h2 className="home-wall__title text-gradient">曲库概况</h2>
             <p className="home-wall__note">
               {fmt(stats?.artists || 0)} 位歌手、{fmt(stats?.albums || 0)} 张专辑、
               {fmt(stats?.tracks || 0)} 首歌，都在这台机器上。

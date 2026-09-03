@@ -91,7 +91,10 @@ class PlexClient:
                 (base_url or self.base_url) + path,
                 params=query,
                 content=content,
-                headers={"X-Plex-Token": token_value},
+                # 每次调用都一致地表明客户端身份。转码会话是**按客户端归属**的，
+                # stop 不带 X-Plex-Client-Identifier 时 Plex 匹配不上会话、
+                # 直接回 404 —— 名额于是没还回去（在 NAS 上对着 Plex 直接量到过）。
+                headers={"X-Plex-Token": token_value, **self.client_headers()},
             )
             response.raise_for_status()
             return response

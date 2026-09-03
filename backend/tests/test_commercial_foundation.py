@@ -1027,6 +1027,39 @@ class PlexStreamFallbackTests(unittest.TestCase):
         self.assertEqual(response.headers["accept-ranges"], "bytes")
         self.assertEqual(response.headers["content-length"], str(242 * 320 * 125))
 
+    def test_every_plex_call_identifies_the_same_client(self):
+        """转码会话按客户端归属：stop 不带 X-Plex-Client-Identifier，
+        Plex 匹配不上会话直接回 404，名额就没还回去。
+        （在 NAS 上对着真 Plex 直接量到的：不带 cid 的 stop 出现 404，
+        带上之后稳定 ok。）"""
+        captured = {}
+
+        class FakeClient:
+            def __enter__(self_inner):
+                return self_inner
+
+            def __exit__(self_inner, *args):
+                return False
+
+            def request(self_inner, method, url, params=None, content=None, headers=None):
+                captured["headers"] = headers or {}
+                captured["url"] = url
+                response = MagicMock()
+                response.raise_for_status.return_value = None
+                return response
+
+        with (
+            patch.object(type(plex), "token", new_callable=PropertyMock) as token,
+            patch("app.plex.httpx.Client", return_value=FakeClient()),
+        ):
+            token.return_value = "plex-token"
+            plex.stop_transcode("sess-42")
+        self.assertIn("X-Plex-Client-Identifier", captured["headers"])
+        self.assertEqual(
+            captured["headers"]["X-Plex-Client-Identifier"], plex.client_identifier()
+        )
+        self.assertIn("transcode/universal/stop", captured["url"])
+
     def test_each_transcode_request_gets_its_own_session_id(self):
         """固定 id（客户端+曲目+码率）会撞上上一次还没关掉的会话。"""
         self.assertNotEqual(plex.new_transcode_session(), plex.new_transcode_session())

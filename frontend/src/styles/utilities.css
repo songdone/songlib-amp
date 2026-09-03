@@ -81,20 +81,29 @@
     color: var(--danger-text);
   }
 
-  /* 响应式显隐。断点与 --page-gutter 一致，只有一个移动断点。 */
-  .desktop-only {
-    display: revert;
-  }
-  .mobile-only {
-    display: none;
+  /*
+   * 响应式显隐。断点与 --page-gutter 一致，只有一个移动断点。
+   *
+   * 这两个类只负责"藏"，绝不负责"显"。
+   *
+   * 原来显的那一半写的是 `display: revert` —— revert 是回到**浏览器默认
+   * 值**，不是"回到我本来该有的值"。utilities 是最后一层，于是它把下层
+   * 给元素定的 display 直接抹掉：底栏导航 `.mobile-nav{display:grid}`
+   * 被 revert 成 `<nav>` 的 UA 默认 block，五个按钮竖着堆进 64px 高、
+   * overflow:hidden 的条里，只剩第一个「首页」露在外面。
+   *
+   * 改法是只在"该藏"的那个区间写 display:none，另一个区间什么都不写 ——
+   * 元素自己的 display 就没被碰过，不需要恢复。
+   */
+  @media (min-width: 901px) {
+    .mobile-only {
+      display: none;
+    }
   }
 
   @media (max-width: 900px) {
     .desktop-only {
       display: none;
-    }
-    .mobile-only {
-      display: revert;
     }
   }
 }

@@ -48,6 +48,8 @@ import {
   useAirPlayLyricsCast,
 } from "../airplay/AirPlayLyricsCast";
 import { usePlexSessions } from "./usePlexSessions";
+import { useLyricFollow } from "./useLyricFollow";
+import { useScrollLock } from "../../lib/useScrollLock";
 import { useResumeReporter } from "../player/useResumePoint";
 
 
@@ -148,6 +150,11 @@ function LyricsOverlay({
   onClose,
 }) {
   const cover = coverFor(track);
+  const linesRef = useRef(null);
+  // 覆盖层开着的时候底层不该还能滚。这是它 mount 就等于 open，
+  // 所以直接传 true。
+  useScrollLock(true);
+  useLyricFollow(linesRef, activeLine);
   useEffect(() => {
     const close = (event) => event.key === "Escape" && onClose();
     window.addEventListener("keydown", close);
@@ -166,7 +173,7 @@ function LyricsOverlay({
         </div>
         <AirPlayCastButton cast={cast} overlay />
       </header>
-      <div className="now-overlay-lines">
+      <div className="now-overlay-lines" ref={linesRef}>
         {lines.map((line, index) => (
           <button
             key={`${line.time}-${index}`}
@@ -413,12 +420,26 @@ export default function NowPlayingPage({
 
   const lyricsText = String(track?.lyrics || fallbackLyrics || "").trim();
   const lyricsTrack = track ? { ...track, lyrics: lyricsText } : null;
-  const lines = displayLyricsFor(lyricsTrack, parseLrc(lyricsText));
+  /*
+   * 这个页面每秒因为播放时钟重渲染一次，而这里原来是裸算：每秒重新解析
+   * 一遍 LRC、每秒产出一个新数组。新数组会往下游传，海报弹窗那边的默认值
+   * effect 就跟着每秒重置一次（模板和选中的句子都被按回默认）。
+   * 解析结果只跟歌和歌词文本有关，缓存住。
+   */
+  const lines = useMemo(
+    () => displayLyricsFor(lyricsTrack, parseLrc(lyricsText)),
+    [lyricsTrack, lyricsText],
+  );
+  // 侧栏那块歌词也要跟着歌走，跟全屏用同一套规则。
+  const panelLinesRef = useRef(null);
+
   const activeLine = lines.reduce(
     (current, line, index) =>
       line.time <= effectivePlayer.currentTime ? index : current,
     0,
   );
+  useLyricFollow(panelLinesRef, activeLine, tab === "lyrics");
+
   const cast = useAirPlayLyricsCast({
     track: lyricsTrack,
     lyrics: lyricsText,
@@ -595,7 +616,7 @@ export default function NowPlayingPage({
               {metadataLoading ? (
                 <div className="now-centered"><LoaderCircle className="spin" /><strong>正在读取歌曲与歌词</strong></div>
               ) : lines.length && playerSettings.showLyrics !== false ? (
-                <div className="now-lyrics-lines">
+                <div className="now-lyrics-lines" ref={panelLinesRef}>
                   {lines.map((line, index) => (
                     <button
                       key={`${line.time}-${index}`}

@@ -301,7 +301,15 @@ export function UserAccounts() {
             ["view_logs", "日志/备份"],
             ["manage_users", "用户管理"],
           ].map(([key, label]) => (
-            <label key={key}>
+            /*
+             * 这个 label 必须带类名。settings.css 里有条
+             * `.settings-page label:not([class])` 把无类名的 label 排成竖列
+             * （字段名在上、控件在下），特异性 0,2,1 比
+             * `.account-permissions label` 的 0,1,1 高。没类名的话这里就变成
+             * 竖排，而竖排 flex 默认 align-items:stretch，checkbox 会被拉成
+             * 整行宽的大方块 —— 五个 56px 的灰方块摆在那儿。
+             */
+            <label key={key} className="account-permission">
               <input
                 type="checkbox"
                 checked={(form.permissions || []).includes(key)}

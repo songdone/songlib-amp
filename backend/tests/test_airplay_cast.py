@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 os.environ.setdefault("APP_PASSWORD", "test-password-123")
@@ -164,3 +165,63 @@ class AirPlayCastTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PublicBaseUrlTests(unittest.TestCase):
+    """投屏地址必须跟着"浏览器用哪个地址进来的"走。
+
+    这条是外网使用时唯一能让投屏跑通的前提：Apple TV 自己去拉 HLS，
+    所以那个地址必须是 Apple TV 够得着的 —— 也就是浏览器刚用过的那个。
+    写死内网 IP 的话，人在外网时 Apple TV 解析不到，投屏必然失败。
+    """
+
+    @staticmethod
+    def _request(scheme, host, headers=None):
+        from starlette.requests import Request
+
+        raw = [(b"host", host.encode())]
+        for key, value in (headers or {}).items():
+            raw.append((key.encode(), value.encode()))
+        return Request(
+            {
+                "type": "http",
+                "method": "POST",
+                "scheme": scheme,
+                "server": (host.split(":")[0], 8080),
+                "path": "/api/airplay/cast",
+                "query_string": b"",
+                "headers": raw,
+            }
+        )
+
+    def test_follows_the_host_the_browser_used(self):
+        from app.main import _airplay_public_base
+
+        with patch("app.main.settings") as fake:
+            fake.airplay_public_base_url = ""
+            base = _airplay_public_base(self._request("http", "192.168.31.28:32783"))
+        self.assertEqual(base, "http://192.168.31.28:32783")
+
+    def test_https_reverse_proxy_yields_https(self):
+        """反代卸载 TLS 之后 scheme 是内网 http，直接用会拼出 http:// 前缀，
+        而页面是 https —— 混合内容被拦，<video> 根本加载不了。"""
+        from app.main import _airplay_public_base
+
+        with patch("app.main.settings") as fake:
+            fake.airplay_public_base_url = ""
+            base = _airplay_public_base(
+                self._request(
+                    "http",
+                    "sla.playsong.cn",
+                    {"x-forwarded-proto": "https", "x-forwarded-host": "sla.playsong.cn"},
+                )
+            )
+        self.assertEqual(base, "https://sla.playsong.cn")
+
+    def test_explicit_override_still_wins(self):
+        from app.main import _airplay_public_base
+
+        with patch("app.main.settings") as fake:
+            fake.airplay_public_base_url = "https://cast.example.com"
+            base = _airplay_public_base(self._request("http", "192.168.31.28:32783"))
+        self.assertEqual(base, "https://cast.example.com")

@@ -6,6 +6,24 @@ import { playbackDurationSeconds, playlistTrackPayload } from "../../lib/contrac
 import { isPlayableDuration, normalizeTrackTitle, persistableTrack, sanitizeQueue, trackIdentity } from "../../lib/media";
 import { storedJson } from "../../lib/storage";
 
+export const PLAYBACK_QUALITIES = ["original", "320k", "256k", "192k", "128k"];
+
+const QUALITY_STORAGE_KEY = "songlib-player-quality";
+
+/*
+ * 远程播放音质只有一处真相。
+ *
+ * 以前有两处：「播放器设置 → 远程默认 320K」（存服务端 settings.player.remoteBitrate）
+ * 和「用户偏好 → 默认音质」（存 profile.defaultQuality，选项里还有 FLAC / Hi-Res ——
+ * 那是下载音质，Plex 转码根本没有这两档）。用户取消了前者，后者还在发 320k。
+ * 现在：本机选过就听本机的，没选过才用服务端的默认值；profile.defaultQuality
+ * 只管下载，不再参与播放。
+ */
+const normalizeQuality = (value) =>
+  PLAYBACK_QUALITIES.includes(value) ? value : "";
+
+const storedQuality = () => normalizeQuality(storedJson(QUALITY_STORAGE_KEY, ""));
+
 const PlayerContext = createContext(null);
 
 const PlayerClockContext = createContext({ currentTime: 0, duration: 0 });
@@ -223,7 +241,7 @@ export function PlayerProvider({ children }) {
     duration: 0,
     volume: 0.86,
     playMode: "order",
-    quality: "original",
+    quality: storedQuality() || "original",
     loading: false,
     error: "",
   });
@@ -308,9 +326,12 @@ export function PlayerProvider({ children }) {
           }));
         if (remote.currentTrack) {
           try {
+            /* 恢复上次那首时也要用当前音质，不能写死 "original" ——
+               否则用户选的 320K 每次刷新都被悄悄降回原始音质，
+               看起来就是"设置不生效"。音质的唯一真相见文件顶部。 */
             const restored = await toPlaybackTrack(
               remote.currentTrack,
-              "original",
+              storedQuality() || "original",
             );
             if (!cancelled)
               setState((value) => ({
@@ -579,7 +600,14 @@ export function PlayerProvider({ children }) {
   const setQuality = async (quality) => {
     const audio = audioRef.current;
     const keep = audio?.currentTime || 0;
-    setState((s) => ({ ...s, quality }));
+    const next = normalizeQuality(quality) || "original";
+    try {
+      localStorage.setItem(QUALITY_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      /* 隐身模式下写不进去，不影响本次播放 */
+    }
+    quality = next;
+    setState((s) => ({ ...s, quality: next }));
     if (!currentTrack) return;
     if (currentTrack.sourceType === "plex_item") {
       const track = await toPlaybackTrack(
@@ -736,6 +764,14 @@ export function PlayerProvider({ children }) {
     );
     play(previousTrack, nextQueue);
   };
+  /* 服务端「播放器设置 → 远程播放音质」。本机选过就不覆盖 —— 否则用户
+     在迷你条上选的档位每次刷新都会被服务端默认值顶掉。 */
+  const applyRemoteDefaultQuality = (value) => {
+    if (storedQuality()) return;
+    const next = normalizeQuality(value);
+    if (!next) return;
+    setState((s) => (s.quality === next ? s : { ...s, quality: next }));
+  };
   const clear = () => {
     audioRef.current?.pause();
     previousTracksRef.current = [];
@@ -761,6 +797,7 @@ export function PlayerProvider({ children }) {
     addToQueue,
     removeFromQueue,
     setQuality,
+    applyRemoteDefaultQuality,
     setPlayMode,
     isFavorite,
     toggleFavorite,

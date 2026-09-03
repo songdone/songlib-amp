@@ -1169,38 +1169,67 @@ def plex_playback_info(rating_key: str, bitrate: str = "original"):
 @app.get("/api/player/plex/{rating_key}/stream", dependencies=[Depends(auth.current_user)])
 def plex_stream(rating_key: str, request: Request, bitrate: str = "original"):
     try:
-        stream_url = plex.playback(rating_key, bitrate)["streamUrl"]
+        playback = plex.playback(rating_key, bitrate)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"无法播放该 Plex 曲目，请检查 Plex Token、服务器地址或媒体文件权限。{exc}") from exc
+
+    # 转码那条路会因为 Plex 版本、会话、编码器忙等一堆原因失败（线上就是 400）。
+    # 原始音质那条路是直读文件，一直是好的 —— 所以转码失败就退回它，
+    # 而不是把 502 抛给播放器（那等于整个应用不能用）。
+    candidates = [(playback.get("streamUrl") or "", playback.get("mode") or "original")]
+    original_url = playback.get("originalStreamUrl") or ""
+    if original_url and original_url != candidates[0][0]:
+        candidates.append((original_url, "original"))
+
     headers = {}
     if request.headers.get("range"):
         headers["Range"] = request.headers["range"]
-    client = httpx.Client(timeout=None, follow_redirects=True)
-    try:
-        upstream = client.build_request("GET", stream_url, headers=headers)
-        response = client.send(upstream, stream=True)
-        response.raise_for_status()
-    except Exception as exc:
-        client.close()
-        raise HTTPException(status_code=502, detail=f"Plex 播放流代理失败：{exc}") from exc
 
-    passthrough = {}
-    for key in ("content-type", "content-length", "content-range", "accept-ranges", "cache-control"):
-        value = response.headers.get(key)
-        if value:
-            passthrough[key] = value
-    media_type = response.headers.get("content-type", "audio/mpeg")
-
-    def iterator():
+    failures = []
+    for stream_url, mode in candidates:
+        if not stream_url:
+            continue
+        client = httpx.Client(timeout=None, follow_redirects=True)
         try:
-            for chunk in response.iter_bytes(1024 * 128):
-                if chunk:
-                    yield chunk
-        finally:
-            response.close()
+            upstream = client.build_request("GET", stream_url, headers=headers)
+            response = client.send(upstream, stream=True)
+            response.raise_for_status()
+        except Exception as exc:
             client.close()
+            failures.append(f"{mode}: {exc}")
+            continue
 
-    return StreamingResponse(iterator(), status_code=response.status_code, media_type=media_type, headers=passthrough)
+        passthrough = {}
+        for key in ("content-type", "content-length", "content-range", "accept-ranges", "cache-control"):
+            value = response.headers.get(key)
+            if value:
+                passthrough[key] = value
+        # 前端要能看出"你点了 320K，实际给的是原始音质"，才不会误以为设置没生效。
+        passthrough["X-SongLib-Stream-Mode"] = mode
+        if mode != (playback.get("mode") or "original"):
+            passthrough["X-SongLib-Stream-Fallback"] = "1"
+        media_type = response.headers.get("content-type", "audio/mpeg")
+
+        def iterator(response=response, client=client):
+            try:
+                for chunk in response.iter_bytes(1024 * 128):
+                    if chunk:
+                        yield chunk
+            finally:
+                response.close()
+                client.close()
+
+        return StreamingResponse(
+            iterator(),
+            status_code=response.status_code,
+            media_type=media_type,
+            headers=passthrough,
+        )
+
+    raise HTTPException(
+        status_code=502,
+        detail="Plex 播放流代理失败：" + "；".join(failures or ["没有可用的播放地址"]),
+    )
 
 
 @app.get("/api/player/plex/{rating_key}/lyrics", dependencies=[Depends(auth.current_user)])
@@ -1588,7 +1617,9 @@ def get_settings(user=Depends(auth.current_user)):
         "excludeDirs": overrides.get("excludeDirs", [str(settings.incoming_dir), str(settings.download_root), str(settings.trash_dir), "/music/@eaDir", "/music/#recycle"]),
         "player": overrides.get("player", {
             "defaultSource": "local_first",
-            "remoteBitrate": "320k",
+            # 原始音质是直读文件，实测稳定；转码那条路要看 Plex 编码器状态。
+            # 默认不转码，需要省流量的人自己去设置里选。
+            "remoteBitrate": "original",
             "autoTranscode": False,
             "showLyrics": True,
             "blurBackground": True,

@@ -1,17 +1,66 @@
-import { ChevronRight, Heart, ListMusic, Pause, Play, Volume2, X } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, Heart, ListMusic, Pause, Play, Volume2, X } from "lucide-react";
+import { useCallback, useState } from "react";
 import { IconButton } from "../../components/ui/Button";
 import { formatTime, pct } from "../../lib/format";
 import { coverUrlFor } from "../../lib/media";
+import { storedJson } from "../../lib/storage";
 import { sourceLabel, usePlayer } from "./PlayerProvider";
+
+const COLLAPSED_KEY = "songlib-mini-collapsed";
 
 export function MiniPlayer({ openPlayer, navigate }) {
   const player = usePlayer(),
     current = player.currentTrack;
+  /*
+   * 收起状态。之前迷你条只有"停止播放并清空队列"那个 X ——
+   * 想让它别挡路就只能把歌关掉，等于没得选。收起后只剩封面和播放键
+   * 贴在右下角，歌还在放。记在本机，刷新后保持。
+   *
+   * hook 必须写在 `if (!current) return null` 之前 —— 提前 return 之后
+   * 再调 hook，首屏没歌时不执行、有歌时多出来，直接 React #310 白屏。
+   * 这个上过线（1.1.3）。
+   */
+  const [collapsed, setCollapsed] = useState(() =>
+    Boolean(storedJson(COLLAPSED_KEY, false)),
+  );
+  const toggleCollapsed = () =>
+    setCollapsed((value) => {
+      const next = !value;
+      try {
+        localStorage.setItem(COLLAPSED_KEY, JSON.stringify(next));
+      } catch {
+        /* 隐身模式写不进去，不影响本次 */
+      }
+      return next;
+    });
+  /* 迷你条自己的真实高度也发布出去，页面底部留白按它算。
+     回调 ref：这个组件是条件渲染的（showMiniPlayer && <MiniPlayer/>）。 */
+  const measure = useCallback((node) => {
+    const root = document.documentElement;
+    if (!node) {
+      root.style.setProperty("--mini-player-height", "0px");
+      return;
+    }
+    const publish = () => {
+      const height = Math.round(node.getBoundingClientRect().height);
+      if (height > 0) root.style.setProperty("--mini-player-height", `${height}px`);
+    };
+    publish();
+    if (typeof ResizeObserver === "function") {
+      const observer = new ResizeObserver(publish);
+      observer.observe(node);
+      node.__slMiniObserver?.disconnect();
+      node.__slMiniObserver = observer;
+    }
+  }, []);
   if (!current) return null;
   const cover = coverUrlFor(current);
   const liked = player.isFavorite(current);
   return (
-    <div className="mini-player">
+    <div
+      ref={measure}
+      className={`mini-player${collapsed ? " mini-player--collapsed" : ""}`}
+    >
       <button
         type="button"
         className="mini-cover"
@@ -98,6 +147,20 @@ export function MiniPlayer({ openPlayer, navigate }) {
         label="停止播放并清空队列"
         onClick={player.clear}
       />
+      {/* 收起键只在窄屏出现（见 player.css）。宽屏迷你条不挡任何东西。 */}
+      <button
+        type="button"
+        className="mini-collapse"
+        aria-label={collapsed ? "展开播放条" : "收起播放条"}
+        aria-expanded={!collapsed}
+        onClick={toggleCollapsed}
+      >
+        {collapsed ? (
+          <ChevronUp aria-hidden="true" />
+        ) : (
+          <ChevronDown aria-hidden="true" />
+        )}
+      </button>
     </div>
   );
 }

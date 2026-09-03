@@ -112,11 +112,36 @@
   @media (max-width: 720px) {
     .home-hero {
       grid-template-columns: minmax(0, 1fr);
-      justify-items: start;
+      /*
+       * 这里原来是 justify-items: start，两处都被它坑到 ——
+       *
+       * 一是封面：它宽 min(56vw,220px)，在 316px 的内容列里贴左，
+       *   左边留 21px、右边留 119px，差 98px，看起来就是"歪向一边"。
+       * 二是文字：justify-items:start 让 grid 子项一律收缩到内容宽，
+       *   .home-hero__copy 只有 276px 而不是满格 316px，标题白白提前折行。
+       *
+       * 换成 stretch（让文字吃满整列）+ 封面自己居中。跟 .profile-form
+       * 那次是同一类错误：换布局方向却留着上一套方向的 align/justify。
+       */
+      justify-items: stretch;
+      /* 竖排时文字居中会难读，明确锁成左对齐 —— 只有封面居中。 */
+      text-align: start;
     }
 
     .home-hero__art {
       width: min(56vw, 220px);
+      /* 两条都写：justify-self 管 grid 轴向，margin-inline 管盒子本身。
+         只写一条的话，将来若有人把这层的 display 换成 block 或 flex，
+         居中就会静默失效 —— 这个仓库里"换机制丢属性"已经出过七次。 */
+      justify-self: center;
+      margin-inline: auto;
+    }
+
+    /* 衬底那层的遮罩是为"封面在左、文字在右"设计的（向右渐隐）。
+       竖排之后文字在下面，向右渐隐等于左半边发光、右半边干净，
+       会把"歪了"的观感再放大一次。竖排改成向下渐隐。 */
+    .home-hero__bleed {
+      mask-image: linear-gradient(180deg, #000, transparent 62%);
     }
   }
 

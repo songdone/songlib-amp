@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import urllib.parse
+import uuid
 import xml.etree.ElementTree as ET
 from collections import Counter
 from pathlib import Path
@@ -9,8 +10,12 @@ from pathlib import Path
 import httpx
 
 from .config import settings
-from .db import get_kv, now
+from .db import get_kv, now, set_kv
 from .media_lyrics import decode_lyrics, read_local_lyrics
+
+
+# 一份码率表，playback / playback_info / 转码 URL 共用，避免又出现两处不一致。
+BITRATE_MAP = {"320k": 320, "256k": 256, "192k": 192, "128k": 128}
 
 
 def has_chinese(text: str, minimum: int = 20) -> bool:
@@ -55,6 +60,27 @@ class PlexClient:
                 raise RuntimeError("Preferences.xml 中没有 PlexOnlineToken")
         return self._token
 
+    @staticmethod
+    def client_identifier() -> str:
+        """稳定的 X-Plex-Client-Identifier：转码会话要靠它归属，换一次等于换一个客户端。"""
+        identifier = str(get_kv("plex_client_identifier", "") or "").strip()
+        if identifier:
+            return identifier
+        identifier = f"songlib-amp-{uuid.uuid4().hex}"
+        set_kv("plex_client_identifier", identifier)
+        return identifier
+
+    def client_headers(self) -> dict[str, str]:
+        return {
+            "X-Plex-Client-Identifier": self.client_identifier(),
+            "X-Plex-Product": "SongLib Amp",
+            "X-Plex-Version": "1.0",
+            "X-Plex-Device": "SongLib Amp Web",
+            "X-Plex-Device-Name": "SongLib Amp",
+            "X-Plex-Platform": "Web",
+            "X-Plex-Provides": "player",
+        }
+
     def request(self, method: str, path: str, *, params=None, content=None, timeout=60, base_url=None, token=None):
         query = dict(params or {})
         token_value = token or self.token
@@ -70,8 +96,10 @@ class PlexClient:
             response.raise_for_status()
             return response
 
-    def xml(self, path: str, params=None, *, base_url=None, token=None):
-        return ET.fromstring(self.request("GET", path, params=params, base_url=base_url, token=token).content)
+    def xml(self, path: str, params=None, *, base_url=None, token=None, timeout=60):
+        return ET.fromstring(
+            self.request("GET", path, params=params, base_url=base_url, token=token, timeout=timeout).content
+        )
 
     def libraries(self, *, base_url=None, token=None):
         root = self.xml("/library/sections", base_url=base_url, token=token)
@@ -290,6 +318,33 @@ class PlexClient:
     def all_leaves(self, rating_key: str):
         return self.hierarchy(rating_key, "allLeaves")
 
+    def transcode_url(self, rating_key: str, bitrate: str) -> str:
+        """Plex 通用转码地址。
+
+        原先用的是 `start.m3u8` + `protocol=hls` + `maxAudioBitrate`，Plex 回 400：
+        HLS 那条路要求带 `session` 且客户端要自报身份，缺了就被拒；而且 HLS 只有
+        Safari 的 <audio> 认，Chrome 下即使拿到播放列表也放不出声。
+        这里改成 Plex Web 自己在用的那套 —— `start.mp3` + `protocol=http`
+        + `musicBitrate`，回来的是一条普通 MP3 流，<audio> 直接能吃。
+        """
+        session = f"{self.client_identifier()}-{rating_key}-{bitrate}"
+        params = {
+            "path": f"/library/metadata/{rating_key}",
+            "mediaIndex": 0,
+            "partIndex": 0,
+            "protocol": "http",
+            "directPlay": 0,
+            "directStream": 0,
+            "musicBitrate": BITRATE_MAP[bitrate],
+            # 老参数一并带上：不同 Plex 版本认的名字不一样，多给不会报错。
+            "maxAudioBitrate": BITRATE_MAP[bitrate],
+            "session": session,
+            "X-Plex-Session-Identifier": session,
+            "X-Plex-Token": self.token,
+        }
+        params.update(self.client_headers())
+        return self.base_url + "/music/:/transcode/universal/start.mp3?" + urllib.parse.urlencode(params)
+
     def playback(self, rating_key: str, bitrate: str = "original"):
         root = self.xml(f"/library/metadata/{rating_key}", {"includeFields": 1})
         element = next((child for child in root if child.attrib.get("ratingKey")), None)
@@ -303,17 +358,8 @@ class PlexClient:
         art = item.get("art") or item.get("parentThumb") or item.get("grandparentThumb")
         base = self.base_url
         original_url = base + part.attrib.get("key", "") + "?" + urllib.parse.urlencode({"X-Plex-Token": self.token})
-        bitrate_map = {"320k": 320, "256k": 256, "192k": 192, "128k": 128}
-        if bitrate in bitrate_map:
-            transcode_path = "/music/:/transcode/universal/start.m3u8"
-            stream_url = base + transcode_path + "?" + urllib.parse.urlencode({
-                "path": f"/library/metadata/{rating_key}",
-                "mediaIndex": 0,
-                "partIndex": 0,
-                "protocol": "hls",
-                "maxAudioBitrate": bitrate_map[bitrate],
-                "X-Plex-Token": self.token,
-            })
+        if bitrate in BITRATE_MAP:
+            stream_url = self.transcode_url(rating_key, bitrate)
             mode = "transcode"
         else:
             stream_url = original_url
@@ -340,9 +386,10 @@ class PlexClient:
             "thumbUrl": ("/api/plex/image?path=" + urllib.parse.quote(thumb, safe="")) if thumb else "",
             "artUrl": ("/api/plex/image?path=" + urllib.parse.quote(art, safe="")) if art else "",
             "streamUrl": stream_url,
+            "originalStreamUrl": original_url,
             "mode": mode,
             "bitrate": bitrate,
-            "qualities": ["original", "320k", "256k", "192k", "128k"],
+            "qualities": ["original", *BITRATE_MAP],
             "lyricStreamKey": lyric_stream.attrib.get("key", "") if lyric_stream is not None else "",
             "lyricFormat": (
                 lyric_stream.attrib.get("format")
@@ -384,7 +431,7 @@ class PlexClient:
         base = self.base_url
         info = self.playback(rating_key, "original")
         transcode_urls = {"original": f"/api/player/plex/{urllib.parse.quote(str(rating_key), safe='')}/stream?bitrate=original"}
-        for bitrate in ("320k", "256k", "192k", "128k"):
+        for bitrate in BITRATE_MAP:
             transcode_urls[bitrate] = f"/api/player/plex/{urllib.parse.quote(str(rating_key), safe='')}/stream?bitrate={bitrate}"
         lyrics = ""
         file_path = local_media_path(info.get("file") or "")

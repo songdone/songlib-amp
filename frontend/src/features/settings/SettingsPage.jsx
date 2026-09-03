@@ -69,7 +69,7 @@ export function SettingsPage({
     [restoring, setRestoring] = useState(null);
   const defaultPlayerPrefs = {
     defaultSource: "local_first",
-    remoteBitrate: "320k",
+    remoteBitrate: "original",
     autoTranscode: false,
     showLyrics: true,
     blurBackground: true,
@@ -888,7 +888,6 @@ export function SettingsPage({
             <div className="settings-switches">
               {[
                 ["本地优先", "defaultSource", true],
-                ["远程默认 320K", "remoteBitrate", true],
                 ["自动转码", "autoTranscode"],
                 ["显示歌词", "showLyrics"],
                 ["背景低模糊", "blurBackground"],
@@ -905,9 +904,7 @@ export function SettingsPage({
                     checked={
                       key === "defaultSource"
                         ? playerPrefs.defaultSource === "local_first"
-                        : key === "remoteBitrate"
-                          ? playerPrefs.remoteBitrate === "320k"
-                          : !!playerPrefs[key]
+                        : !!playerPrefs[key]
                     }
                     onChange={() =>
                       key === "defaultSource"
@@ -918,21 +915,38 @@ export function SettingsPage({
                                 ? "plex_first"
                                 : "local_first",
                           }))
-                        : key === "remoteBitrate"
-                          ? setPlayerPrefs((v) => ({
-                              ...v,
-                              remoteBitrate:
-                                v.remoteBitrate === "320k"
-                                  ? "original"
-                                  : "320k",
-                            }))
-                          : togglePlayerPref(key)
+                        : togglePlayerPref(key)
                     }
                   />
                   <span>{label}</span>
                 </label>
               ))}
             </div>
+            {/* 远程播放音质只有这一处。用户偏好里那个"下载音质"管的是
+                从音源下载时要哪一档（含 FLAC / Hi-Res），跟播放无关。
+                label 不加类名 —— 设置页的约定是无类名 label 走默认竖排，
+                加了类名就得自己管布局（见 settings.css 里那段）。 */}
+            <label>
+              远程播放音质
+              <select
+                value={playerPrefs.remoteBitrate || "original"}
+                onChange={(event) =>
+                  setPlayerPrefs((value) => ({
+                    ...value,
+                    remoteBitrate: event.target.value,
+                  }))
+                }
+              >
+                <option value="original">原始音质（不转码）</option>
+                <option value="320k">320K</option>
+                <option value="256k">256K</option>
+                <option value="192k">192K</option>
+                <option value="128k">128K</option>
+              </select>
+              <small>
+                这台设备在播放器里选过音质后以本机为准；转码失败会自动退回原始音质。
+              </small>
+            </label>
             <ButtonGroup wrap>
               <Button size="sm" variant="primary" icon={Check} onClick={savePlayerPrefs}>
                 保存
@@ -1004,7 +1018,7 @@ export function SettingsPage({
                   </select>
                 </label>
                 <label>
-                  默认音质
+                  下载音质
                   <select
                     value={profile?.defaultQuality || "320k"}
                     onChange={(e) =>

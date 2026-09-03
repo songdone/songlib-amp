@@ -599,6 +599,185 @@ else {
     note(`手机上够不到「全屏歌词」：${String(err.message).slice(0, 60)}`);
   }
 }
+/* ---------- 12. 迷你条不许压住底栏，而且必须能收起 ---------- */
+/*
+ * 这条守卫的由来：用户报"迷你播放条遮住底栏导航，且关不掉"。
+ * CDP 问出来的胜出规则是 legacy.protected 层的 `.mini-player{bottom:78px}`，
+ * 它无视特异性压掉了带 env(safe-area-inset-bottom) 的版本。
+ * 无头浏览器安全区恒为 0，**所以只量真实间距是量不出这个 bug 的** ——
+ * 必须把安全区注入进去再量。
+ */
+/* 用应用内导航离开播放页 —— 播放页本身不显示迷你条（showMiniPlayer 的条件）。
+   不能用 goto：整页重载会把内存里的播放状态丢掉，迷你条就不出现了，
+   于是这条守卫每次都以"量不到"收场，看起来像通过了。 */
+await mp
+  .locator("nav button:visible")
+  .filter({ hasText: "曲库" })
+  .first()
+  .click()
+  .catch(() => {});
+for (let i = 0; i < 15; i += 1) {
+  await mp.waitForTimeout(800);
+  const ready = await mp
+    .evaluate(() => !!document.querySelector(".mini-player") && !!document.querySelector(".mobile-nav"))
+    .catch(() => false);
+  if (ready) break;
+}
+
+const geometry = () =>
+  mp.evaluate(() => {
+    const box = (sel) => {
+      const el = document.querySelector(sel);
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right) };
+    };
+    return {
+      mini: box(".mini-player"),
+      nav: box(".mobile-nav"),
+      navVar: getComputedStyle(document.documentElement).getPropertyValue("--mobile-nav-height").trim(),
+      miniVar: getComputedStyle(document.documentElement).getPropertyValue("--mini-player-height").trim(),
+      vw: window.innerWidth,
+    };
+  });
+
+const before = await geometry();
+if (!before.mini || !before.nav) {
+  note("手机上量不到迷你条或底栏（没有在放歌？）");
+} else {
+  if (!before.navVar || before.navVar === "0px")
+    note("底栏没有把真实高度写进 --mobile-nav-height，迷你条的偏移又会退回写死值");
+  else ok(`底栏真实高度已发布：${before.navVar}`);
+
+  if (before.mini.bottom > before.nav.top)
+    note(`迷你条压住底栏 ${before.mini.bottom - before.nav.top}px`);
+  else ok(`迷你条与底栏净空 ${before.nav.top - before.mini.bottom}px`);
+
+  /* 展开态是一个居中胶囊，左右必须对称；而且不许有任何一边跑到屏幕外
+     —— left 变负数就是 legacy 的 transform:translateX(-50%) 没清干净
+     （我自己踩过一次，量出 left:-157）。 */
+  const rightGap = before.vw - before.mini.right;
+  if (before.mini.left < 0 || rightGap < 0)
+    note(`迷你条跑出屏幕：左 ${before.mini.left} / 右 ${rightGap}`);
+  else if (Math.abs(before.mini.left - rightGap) > 4)
+    note(`迷你条左右不对称：左 ${before.mini.left} / 右 ${rightGap}`);
+  else ok(`迷你条左右对称（各 ${before.mini.left}）`);
+}
+
+/*
+ * 把安全区补上再验一遍。env() 不能直接改，但底栏和迷你条现在都是
+ * 按"量出来的真实高度"算偏移的 —— 所以只要把底栏撑高，迷你条就该
+ * 自己往上让。撑高用 padding-bottom 模拟 iPhone 的 34px 安全区。
+ */
+await mp.evaluate(() => {
+  const nav = document.querySelector(".mobile-nav");
+  if (nav) nav.style.paddingBottom = "34px";
+});
+await mp.waitForTimeout(700);
+const withInset = await geometry();
+if (withInset.mini && withInset.nav) {
+  if (withInset.mini.bottom > withInset.nav.top)
+    note(`补上 34px 安全区后迷你条压住底栏 ${withInset.mini.bottom - withInset.nav.top}px（真 iPhone 上就是这个）`);
+  else ok(`安全区 34px 下净空仍有 ${withInset.nav.top - withInset.mini.bottom}px`);
+}
+await mp.evaluate(() => {
+  const nav = document.querySelector(".mobile-nav");
+  if (nav) nav.style.paddingBottom = "";
+});
+await mp.waitForTimeout(500);
+
+// 收起：点了要真的变窄，而且歌不能停 —— 收起不是停止播放。
+const collapse = mp.getByRole("button", { name: /收起播放条/ }).first();
+if (!(await collapse.count())) {
+  note("手机上迷你条没有收起按钮（想让它别挡路只能把歌关掉）");
+} else {
+  const wideBefore = (await geometry()).mini;
+  const playingBefore = await mp.evaluate(() => {
+    const a = document.querySelector("audio");
+    return a ? !a.paused : null;
+  });
+  await collapse.click();
+  await mp.waitForTimeout(900);
+  const after = await geometry();
+  const stillHasTrack = await mp.evaluate(() => !!document.querySelector(".mini-player"));
+  if (!stillHasTrack) note("收起把迷你条整个弄没了（应该只是缩小）");
+  else if (!after.mini || after.mini.right - after.mini.left >= wideBefore.right - wideBefore.left)
+    note("点了收起，迷你条宽度没变");
+  else ok(`收起后宽度 ${wideBefore.right - wideBefore.left} → ${after.mini.right - after.mini.left}`);
+  const playingAfter = await mp.evaluate(() => {
+    const a = document.querySelector("audio");
+    return a ? !a.paused : null;
+  });
+  if (playingBefore && !playingAfter) note("收起播放条把歌也停了");
+
+  // 展开要能回去，并且刷新之后收起状态得记住。
+  const expand = mp.getByRole("button", { name: /展开播放条/ }).first();
+  if (!(await expand.count())) note("收起之后找不到展开按钮，收起是个单向门");
+  else {
+    await mp.reload({ waitUntil: "domcontentloaded" });
+    await mp.waitForTimeout(3500);
+    const afterReload = await mp
+      .evaluate(() => ({
+        hasMini: !!document.querySelector(".mini-player"),
+        collapsed: !!document.querySelector(".mini-player--collapsed"),
+      }))
+      .catch(() => ({ hasMini: false, collapsed: false }));
+    // 刷新后没有恢复播放状态时这条测不了（mock 的 player/state 不落盘），
+    // 不能当成失败 —— 否则真问题会被这条假失败盖住。
+    if (!afterReload.hasMini) console.log("  —", "刷新后没恢复播放，收起状态这条跳过");
+    else if (!afterReload.collapsed) note("刷新之后收起状态没记住，每次进来都要再收一次");
+    else ok("收起状态刷新后保持");
+    const expandAgain = mp.getByRole("button", { name: /展开播放条/ }).first();
+    if (await expandAgain.count()) {
+      await expandAgain.click();
+      await mp.waitForTimeout(800);
+      const back = await geometry();
+      if (back.mini && back.mini.right - back.mini.left > 200) ok("展开回到完整条");
+      else note("点了展开没有恢复成完整条");
+    }
+  }
+}
+
+/* ---------- 13. 首页 hero 封面窄屏必须居中 ---------- */
+await mp.goto(BASE, { waitUntil: "domcontentloaded" });
+for (let i = 0; i < 15; i += 1) {
+  await mp.waitForTimeout(1000);
+  const ready = await mp.evaluate(() => !!document.querySelector(".home-hero__art")).catch(() => false);
+  if (ready) break;
+}
+const heroBox = await mp
+  .evaluate(() => {
+    const hero = document.querySelector(".home-hero");
+    const art = document.querySelector(".home-hero__art");
+    const copy = document.querySelector(".home-hero__copy");
+    if (!hero || !art) return null;
+    const h = hero.getBoundingClientRect();
+    const a = art.getBoundingClientRect();
+    const cs = getComputedStyle(hero);
+    const inner = {
+      left: h.left + parseFloat(cs.paddingLeft),
+      right: h.right - parseFloat(cs.paddingRight),
+    };
+    return {
+      leftGap: Math.round(a.left - inner.left),
+      rightGap: Math.round(inner.right - a.right),
+      innerWidth: Math.round(inner.right - inner.left),
+      copyWidth: copy ? Math.round(copy.getBoundingClientRect().width) : null,
+    };
+  })
+  .catch(() => null);
+if (!heroBox) note("首页量不到 hero 封面");
+else {
+  // 差 4px 以内算居中（子像素舍入）。改之前实测是左 21 / 右 119。
+  if (Math.abs(heroBox.leftGap - heroBox.rightGap) > 4)
+    note(`首页 hero 封面没居中：左 ${heroBox.leftGap} / 右 ${heroBox.rightGap}`);
+  else ok(`首页 hero 封面居中（左右各 ${heroBox.leftGap}）`);
+  // justify-items:start 会连带把文字列也缩到内容宽，标题白白提前折行。
+  if (heroBox.copyWidth !== null && heroBox.innerWidth - heroBox.copyWidth > 8)
+    note(`hero 文字列只有 ${heroBox.copyWidth}px，没吃满 ${heroBox.innerWidth}px（justify-items 把子项收缩了）`);
+  else ok("hero 文字列吃满整列");
+}
+
 await mobile.close();
 
 await browser.close();

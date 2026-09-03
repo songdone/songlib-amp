@@ -105,3 +105,136 @@
     }
   }
 }
+
+@layer components {
+  /* =============================================================
+   * 窄屏纵向排布：底栏、迷你条、页面留白
+   *
+   * 这一段的存在理由是一个已经出现第七次的老问题：**偏移量写死，
+   * 然后被换掉的机制留下的旧值压住**。
+   *
+   * 原来的胜出规则（CDP 的 CSS.getMatchedStylesForNode 问出来的）：
+   *   legacy.protected  .mini-player { bottom: 78px }            ← 赢
+   *   legacy.commercial .has-mini-player .mini-player {
+   *                       bottom: calc(72px + env(safe-area-inset-bottom)) }
+   * 层级顺序里 protected 在 commercial 之后，**层比特异性大**，
+   * 所以带安全区的那条被无声地压掉了。真 iPhone 上安全区 34px，
+   * 底栏 calc(64px + 34px) = 98px、顶边在 746，迷你条底边还固定在 766 ——
+   * 正好压住底栏 20px，而无头浏览器安全区是 0，本地怎么量都是"没问题"。
+   *
+   * 所以这里不再猜任何高度：底栏和迷你条各自把 getBoundingClientRect
+   * 量到的真实高度写进 --mobile-nav-height / --mini-player-height
+   * （见 MobileNav.jsx 和 MiniPlayer.jsx 的回调 ref），这里只做加法。
+   * 字号变大、安全区变化、底栏格数变化，全都自动跟上。
+   *
+   * 写在 components 层是刻意的 —— 它排在所有 legacy 子层之后，
+   * 不需要跟 legacy.protected 抢特异性。
+   * ============================================================= */
+  @media (max-width: 900px) {
+    /*
+     * 这里**只**改纵向偏移。
+     *
+     * 横向不动：legacy 的 `.has-mini-player .mini-player` 是一个居中的
+     * 330px 胶囊（left:50% + width:min(330px,…) + transform:translateX(-50%)），
+     * 那是刻意的设计，真站上左右各 30px 是对称的。第一版我顺手改成两边贴边，
+     * 结果只清了 `translate` 没清 `transform` —— 两者是不同的 CSS 属性，
+     * width 又还在，于是整条被 translateX(-50%) 拖到 left:-157px 飘出屏幕。
+     * 同一个"换机制不清旧属性"的坑，这次是我自己踩的。
+     */
+    .mini-player {
+      /* fallback 68px：变量还没写进来的那一帧（首次 paint）用它兜着。 */
+      bottom: calc(var(--mobile-nav-height, 68px) + var(--space-2));
+      /*
+       * 列模板必须显式重写。
+       *
+       * legacy 那边窄屏是三列（封面 / 文字 / 控件），加了收起键就是第四个
+       * 网格项 —— 自动排布把它甩到第二行，而这条 bar 是定高 58px，
+       * 第二行整个被裁掉，按钮"在 DOM 里、有样式、但点不到"。
+       * display:none 的项（mini-like / mini-volume / 那两个 IconButton）
+       * 不是网格项，不占轨道，所以这里正好四列。
+       */
+      grid-template-columns: 38px minmax(0, 1fr) auto auto;
+      transition: bottom var(--duration-normal) var(--ease-out);
+    }
+
+    /* 页面底部留白 = 底栏 + 迷你条 + 一点呼吸。
+       定高/留白必须把所有固定占位都算进去 —— 漏算一项就是"明明留了
+       白、页面照样能滚到被挡"。 */
+    .has-mini-player .main > .page {
+      padding-bottom: calc(
+        var(--mobile-nav-height, 68px) + var(--mini-player-height, 64px) +
+          var(--space-6)
+      );
+    }
+
+    /* 播放页自己就是全屏播放器，不显示迷你条，只留底栏的高度。 */
+    .route-player .main > .page {
+      padding-bottom: calc(var(--mobile-nav-height, 68px) + var(--space-4));
+    }
+
+    /* ---------------------------------------------------------
+     * 收起态：缩成右下角一个胶囊，只留封面 + 播放/暂停 + 展开键。
+     * 歌继续放 —— 收起不是停止。
+     * --------------------------------------------------------- */
+    .mini-player--collapsed {
+      /*
+       * 收起后贴右下角。legacy 的居中三件套必须一次清干净：
+       * left / right / width / transform 少一个都会飘 ——
+       * width 还在的话贴边只是"看起来贴边、实际还是 330 宽"，
+       * transform 还在的话整条往左偏半个身位。
+       */
+      left: auto;
+      right: var(--space-2);
+      width: auto;
+      transform: none;
+      translate: none;
+      /* grid 容器收起时不能再按原来的列模板排，否则空列照样占宽。 */
+      grid-template-columns: auto auto auto;
+      gap: var(--space-1);
+      padding: var(--space-1) var(--space-2);
+    }
+
+    /* 收起后隐藏的部分。用 :where() 把特异性压到 0，
+       让上面那条 .mini-player--collapsed 之外的规则不必跟它抢。 */
+    .mini-player--collapsed
+      > :where(.mini-copy, .mini-like, .mini-volume, .ui-btn--icon) {
+      display: none;
+    }
+
+    /* 控件区只留中间那个播放/暂停键 —— 收起态下前进后退用不上。 */
+    .mini-player--collapsed .mini-controls {
+      display: flex;
+      gap: 0;
+    }
+
+    .mini-player--collapsed .mini-controls > *:not(:nth-child(2)) {
+      display: none;
+    }
+
+    .mini-collapse {
+      display: grid;
+      place-items: center;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-pill);
+      background: var(--surface-2);
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+
+    .mini-collapse svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  /* 宽屏迷你条不挡任何东西，收起键没有意义。
+     收起态也一律还原成完整条 —— 否则手机上收起过，换到桌面就剩个胶囊。 */
+  @media (min-width: 901px) {
+    .mini-collapse {
+      display: none;
+    }
+  }
+}

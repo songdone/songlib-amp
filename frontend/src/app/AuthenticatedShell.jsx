@@ -139,6 +139,11 @@ export function AuthenticatedShell({ setAuthenticated }) {
     const title = pageMeta[active]?.[0];
     document.title = title ? `${title} - ${BRAND.fullName}` : BRAND.fullName;
   }, [active]);
+  /* 「播放器设置 → 远程播放音质」是这台机器没选过时的默认档。
+     选过就以本机为准，见 PlayerProvider 里的 applyRemoteDefaultQuality。 */
+  useEffect(() => {
+    player.applyRemoteDefaultQuality(settingsData.player?.remoteBitrate);
+  }, [settingsData.player?.remoteBitrate, player.applyRemoteDefaultQuality]);
   useEffect(() => {
     const canPoll =
       userIsAdmin(settingsData.user) ||

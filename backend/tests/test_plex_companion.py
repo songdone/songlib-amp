@@ -14,7 +14,16 @@ from app.plex_companion import PlexCompanion, _private_address
 class FakePlex:
     token = "test-token"
 
-    def xml(self, path):
+    @staticmethod
+    def client_identifier():
+        return "songlib-amp-test"
+
+    def client_headers(self):
+        return {"X-Plex-Client-Identifier": self.client_identifier()}
+
+    # timeout 是 sessions() 的轮询预算（POLL_TIMEOUT_SECONDS）传进来的：
+    # 这个接口前端每 4 秒轮一次，不能沿用 60 秒默认超时。
+    def xml(self, path, timeout=None):
         if path == "/clients":
             return ET.fromstring(
                 """
@@ -49,6 +58,11 @@ class FakePlex:
 
 class PlexCompanionTests(unittest.TestCase):
     def setUp(self):
+        # 默认掐掉 plex.tv 那条发现路径：测试必须离网跑。
+        # 想验它的用例自己去 patch _companion_players（见下面那两条）。
+        patcher = patch.object(PlexCompanion, "_companion_players", return_value=[])
+        patcher.start()
+        self.addCleanup(patcher.stop)
         self.companion = PlexCompanion(FakePlex())
 
     def test_control_target_requires_literal_private_address(self):
@@ -121,7 +135,7 @@ class PlexCompanionTests(unittest.TestCase):
         source = FakePlex()
         original = source.xml
 
-        def xml(path):
+        def xml(path, timeout=None):
             if path == "/clients":
                 raise RuntimeError("clients endpoint unavailable")
             return original(path)
@@ -141,7 +155,7 @@ class PlexCompanionTests(unittest.TestCase):
 
         original = source.xml
 
-        def xml(path):
+        def xml(path, timeout=None):
             if path == "/clients":
                 return ET.fromstring('<MediaContainer size="0" />')
             return original(path)
@@ -151,6 +165,103 @@ class PlexCompanionTests(unittest.TestCase):
         self.assertTrue(second["sessions"][0]["controllable"])
         self.assertTrue(second["clientsStale"])
         self.assertTrue(second["clientWarning"])
+
+
+class CompanionDiscoveryTests(unittest.TestCase):
+    """Plexamp 只在 plex.tv 的设备清单里，不在服务端 /clients 里。
+
+    以前只读 /clients，于是 Plexamp 的会话看得见、却配不上任何 client，
+    `controllable` 恒为 False —— 界面上就是"只显示仅跟随、点了没反应"。
+    """
+
+    RESOURCES = [
+        {
+            "name": "客厅 Plexamp",
+            "product": "Plexamp",
+            "platform": "macOS",
+            "productVersion": "4.10.1",
+            "clientIdentifier": "client-playback",
+            "provides": "player,pubsub-player,controller",
+            "presence": True,
+            "connections": [
+                {"address": "8.8.8.8", "port": 32500, "protocol": "http", "local": False},
+                {"address": "192.168.1.77", "port": 32500, "protocol": "http", "local": True},
+            ],
+        },
+        {
+            # 只提供 server，不是播放器，不该出现在列表里
+            "name": "NAS",
+            "product": "Plex Media Server",
+            "clientIdentifier": "server-1",
+            "provides": "server",
+            "connections": [{"address": "192.168.1.5", "port": 32400, "protocol": "http"}],
+        },
+        {
+            # 播放器，但只有公网地址 —— 只能跟随，不许往外发控制请求
+            "name": "外网 Plexamp",
+            "product": "Plexamp",
+            "clientIdentifier": "client-wan",
+            "provides": "player",
+            "presence": True,
+            "connections": [{"address": "203.0.113.9", "port": 32500, "protocol": "https"}],
+        },
+    ]
+
+    def _companion(self):
+        response = MagicMock()
+        response.raise_for_status.return_value = None
+        response.json.return_value = self.RESOURCES
+        http = MagicMock()
+        http.get.return_value = response
+        http.__enter__ = lambda self_: self_
+        http.__exit__ = lambda *args: False
+        return PlexCompanion(FakePlex()), http
+
+    def test_a_companion_player_on_the_lan_becomes_controllable(self):
+        companion, http = self._companion()
+        source = FakePlex()
+
+        def xml(path, timeout=None):
+            if path == "/clients":
+                return ET.fromstring('<MediaContainer size="0" />')
+            return FakePlex.xml(source, path, timeout)
+
+        source.xml = xml
+        companion.plex = source
+        with (
+            patch("app.plex_companion.httpx.Client", return_value=http),
+            patch("app.plex_companion._private_address", side_effect=lambda host: host.startswith("192.168.")),
+        ):
+            result = companion.sessions()
+        session = result["sessions"][0]
+        self.assertTrue(session["controllable"], session["controlReason"])
+        found = {item["id"]: item for item in result["clients"]}
+        self.assertIn("client-playback", found)
+        self.assertEqual(found["client-playback"]["source"], "plex.tv")
+
+    def test_only_players_on_private_addresses_are_controllable(self):
+        companion, http = self._companion()
+        with (
+            patch("app.plex_companion.httpx.Client", return_value=http),
+            patch("app.plex_companion._private_address", side_effect=lambda host: host.startswith("192.168.")),
+        ):
+            players = {item["id"]: item for item in companion._companion_players()}
+        # 只提供 server 的那台不算播放器
+        self.assertNotIn("server-1", players)
+        self.assertTrue(players["client-playback"]["controllable"])
+        # 只有公网地址的那台必须是"仅跟随"，不能拿这个接口当 SSRF 跳板
+        self.assertFalse(players["client-wan"]["controllable"])
+        self.assertIn("本地网络", players["client-wan"]["controlReason"])
+
+    def test_plex_tv_being_unreachable_does_not_break_the_clients_endpoint(self):
+        """plex.tv 够不到（离线、Token 只有服务器权限）时，/clients 那条路还得好。"""
+        companion = PlexCompanion(FakePlex())
+        with (
+            patch("app.plex_companion.httpx.Client", side_effect=RuntimeError("plex.tv unreachable")),
+            patch("app.plex_companion._private_address", side_effect=lambda host: host.startswith("192.168.")),
+        ):
+            result = companion.sessions()
+        self.assertTrue(result["sessions"][0]["controllable"])
 
 
 if __name__ == "__main__":

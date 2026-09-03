@@ -836,3 +836,124 @@ class ReverseProxyOriginTests(unittest.TestCase):
                     ),
                     f"{hostile} 不该被当成同源",
                 )
+
+
+class PlexStreamFallbackTests(unittest.TestCase):
+    """转码那条路挂了，播放不能跟着挂 —— 线上 1.1.9 就是这么坏掉的。
+
+    Plex 对 `protocol=hls&maxAudioBitrate=320` 回 400，我们原样包成 502
+    丢给 <audio>，播放器直接死。原始音质是直读文件，一直是好的。
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        init_db()
+        auth.ensure_bootstrap_password()
+
+    def setUp(self):
+        with rate_limiter._lock:
+            rate_limiter._events.clear()
+
+    @staticmethod
+    def _login(client):
+        client.post(
+            "/api/auth/login",
+            json={"username": "admin", "password": "test-password-123"},
+        )
+
+    @staticmethod
+    def _playback(bitrate="320k"):
+        return {
+            "streamUrl": "http://plex.test/music/:/transcode/universal/start.mp3?x=1",
+            "originalStreamUrl": "http://plex.test/library/parts/1/file.flac?X-Plex-Token=t",
+            "mode": "transcode" if bitrate != "original" else "original",
+            "bitrate": bitrate,
+        }
+
+    def _upstream(self, *, transcode_ok: bool):
+        """伪造 httpx.Client：转码地址按参数决定成败，原始地址总是成功。"""
+        sent = []
+
+        def send(request, **kwargs):
+            sent.append(str(request.url))
+            response = MagicMock()
+            if "transcode" in str(request.url) and not transcode_ok:
+                response.raise_for_status.side_effect = RuntimeError(
+                    "Client error '400 Bad Request'"
+                )
+                return response
+            response.raise_for_status.return_value = None
+            response.status_code = 200
+            response.headers = {"content-type": "audio/flac", "accept-ranges": "bytes"}
+            response.iter_bytes.return_value = iter([b"\x00" * 16])
+            return response
+
+        client = MagicMock()
+        client.build_request.side_effect = lambda method, url, headers=None: MagicMock(url=url)
+        client.send.side_effect = send
+        return client, sent
+
+    def test_a_failing_transcode_falls_back_to_the_original_stream(self):
+        client_mock, sent = self._upstream(transcode_ok=False)
+        with (
+            patch.object(plex, "playback", return_value=self._playback("320k")),
+            patch("app.main.httpx.Client", return_value=client_mock),
+        ):
+            with TestClient(app) as client:
+                self._login(client)
+                response = client.get("/api/player/plex/90056/stream?bitrate=320k")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get("x-songlib-stream-mode"), "original")
+        self.assertEqual(response.headers.get("x-songlib-stream-fallback"), "1")
+        self.assertEqual(len(sent), 2)
+        self.assertIn("transcode", sent[0])
+        self.assertNotIn("transcode", sent[1])
+
+    def test_a_working_transcode_is_not_downgraded(self):
+        client_mock, sent = self._upstream(transcode_ok=True)
+        with (
+            patch.object(plex, "playback", return_value=self._playback("320k")),
+            patch("app.main.httpx.Client", return_value=client_mock),
+        ):
+            with TestClient(app) as client:
+                self._login(client)
+                response = client.get("/api/player/plex/90056/stream?bitrate=320k")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get("x-songlib-stream-mode"), "transcode")
+        self.assertIsNone(response.headers.get("x-songlib-stream-fallback"))
+        self.assertEqual(len(sent), 1)
+
+    def test_both_paths_failing_still_reports_502_with_both_reasons(self):
+        def send(request, **kwargs):
+            response = MagicMock()
+            response.raise_for_status.side_effect = RuntimeError("upstream down")
+            return response
+
+        client_mock = MagicMock()
+        client_mock.build_request.side_effect = lambda method, url, headers=None: MagicMock(url=url)
+        client_mock.send.side_effect = send
+        with (
+            patch.object(plex, "playback", return_value=self._playback("320k")),
+            patch("app.main.httpx.Client", return_value=client_mock),
+        ):
+            with TestClient(app) as client:
+                self._login(client)
+                response = client.get("/api/player/plex/90056/stream?bitrate=320k")
+        self.assertEqual(response.status_code, 502)
+        detail = response.json()["detail"]
+        self.assertIn("transcode", detail)
+        self.assertIn("original", detail)
+
+    def test_the_transcode_url_carries_a_session_and_client_identifier(self):
+        """400 的直接原因：HLS 那条路要求带 session 且客户端要自报身份。"""
+        with patch.object(type(plex), "token", new_callable=PropertyMock) as token:
+            token.return_value = "plex-token"
+            url = plex.transcode_url("90056", "320k")
+        self.assertIn("start.mp3", url)
+        self.assertIn("protocol=http", url)
+        self.assertIn("musicBitrate=320", url)
+        self.assertIn("session=", url)
+        self.assertIn("X-Plex-Client-Identifier=", url)
+        # HLS 只有 Safari 的 <audio> 认，不能再回到 m3u8。
+        self.assertNotIn("start.m3u8", url)
+        self.assertNotIn("protocol=hls", url)

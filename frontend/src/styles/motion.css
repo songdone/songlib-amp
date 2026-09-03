@@ -906,3 +906,111 @@
     }
   }
 }
+
+@layer components {
+  /* =============================================================
+   * 页面转场
+   *
+   * View Transitions 的默认转场是整页交叉淡出。这里把它压短、并给
+   * 新旧帧各自一点位移，让方向感和 route-in 一致（新内容从下方来）。
+   *
+   * ::view-transition-old/new 是伪元素，只在转场那一瞬间存在。
+   * 不能给它们写 transition，只能写 animation。
+   * ============================================================= */
+  ::view-transition-old(root) {
+    animation: vt-out 180ms var(--ease-out) both;
+  }
+
+  ::view-transition-new(root) {
+    animation: vt-in 240ms var(--ease-out) both;
+  }
+
+  @keyframes vt-out {
+    to {
+      opacity: 0;
+      transform: translate3d(0, -6px, 0);
+    }
+  }
+
+  @keyframes vt-in {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 10px, 0);
+    }
+  }
+
+  /*
+   * 减弱动态效果时把转场关掉。
+   *
+   * 注意不能只把时长改成 0.01ms —— 文件末尾那条全局兜底确实会那么做，
+   * 但 View Transitions 在动画期间会把整页冻在截图上，时长再短也会闪。
+   * 这里直接 animation: none，让浏览器跳过转场。
+   */
+  @media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+      animation: none;
+    }
+  }
+
+  /* =============================================================
+   * 滚动驱动：进度条与视差
+   * ============================================================= */
+
+  /*
+   * 页面滚动进度。挂在需要的容器上，用 --scroll-progress 取值。
+   * 纯 CSS，不需要 scroll 监听器 —— 监听 scroll 再 setState 是掉帧的
+   * 主要来源之一（每次滚动都触发 React 重渲染）。
+   */
+  @supports (animation-timeline: scroll()) {
+    @media (prefers-reduced-motion: no-preference) {
+      /*
+       * 首页那张大封面随滚动缓慢下沉，做出景深。
+       * 只动 transform，走合成器，不引起重排。
+       */
+      /*
+       * 两处都踩过坑，记下来：
+       *
+       * 1. 时间轴必须是 `scroll(root block)`，不能是 `nearest`。
+       *    这块背景没有任何 overflow 祖先，页面是文档级滚动，
+       *    nearest 解析不到滚动容器，整条动画就是不激活的 ——
+       *    没有报错、没有警告，transform 一动不动。
+       *
+       * 2. 只能动 `translate`，不能动 `transform`。
+       *    这个元素本身有 `transform: scale(1.2)`（放大到出血），
+       *    关键帧里写 transform 会把那个缩放一起顶掉，封面会先缩一下。
+       *    translate 是独立属性，和 transform 各自生效、互不覆盖。
+       */
+      .home-hero__bleed {
+        animation: hero-parallax linear both;
+        animation-timeline: scroll(root block);
+        animation-range: 0 60vh;
+      }
+    }
+  }
+
+  @keyframes hero-parallax {
+    to {
+      translate: 0 4%;
+    }
+  }
+}
+
+@layer utilities {
+  /*
+   * iOS 上的手势返回（从左缘右滑）。
+   *
+   * 这个不需要写 JS：浏览器原生就支持，前提是路由用真实的 history
+   * 条目。本项目的 navigate 走 pushState，所以手势返回本来就能用 ——
+   * 唯一会破坏它的是在 body 或滚动容器上设 `overscroll-behavior-x`
+   * 或 `touch-action: none`，那会把边缘手势吃掉。
+   *
+   * 所以这里做的是**明确保留**：横向只在真正需要横滚的容器上 contain，
+   * 不在 body 上动手。写下来是为了防止以后有人为了修某个横向滚动
+   * 顺手给 body 加上，把手势返回一起关掉。
+   */
+  body {
+    overscroll-behavior-x: auto;
+    touch-action: pan-x pan-y pinch-zoom;
+  }
+}

@@ -100,16 +100,49 @@ const topGap = () =>
      * 判定：上下差得太多 = 头重或脚重；中间那段比外边距大得多 = 画面裂开。
      */
     const filled = [];
+    const rows = [];
     for (let y = 0; y < c.height; y += 2) {
       let min = 255;
       let max = 0;
+      let sum = 0;
+      let n = 0;
       for (let x = 0; x < c.width; x += 4) {
         const i = (y * c.width + x) * 4;
         const l = 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
         if (l < min) min = l;
         if (l > max) max = l;
+        sum += l;
+        n += 1;
       }
-      filled.push(max - min > 42);
+      rows.push({ contrast: max - min, mean: sum / n });
+    }
+
+    /*
+     * 一行算不算"有内容"，两条判据取或。
+     *
+     * 只看行内对比度（max-min）会漏掉深色实体：黑胶那张的唱片盘身是
+     * 深色纹路压深色底，行内对比很低，于是整个唱片被判成空白，
+     * 报成"画面正中裂开 28%" —— 而实际构图是对的。这条假阳性我一度
+     * 打算忽略，但忽略等于以后真裂开了也不会报。
+     *
+     * 第二条判据：跟**背景渐变**比。底色是从上到下的平滑渐变，
+     * 用首行和末行的平均亮度线性插值当参考；某一行明显偏离参考，
+     * 说明那儿压着东西 —— 不管它自己内部对比高不高。
+     */
+    const head = rows[0]?.mean ?? 0;
+    const tail = rows[rows.length - 1]?.mean ?? 0;
+    for (let i = 0; i < rows.length; i += 1) {
+      const ref = head + ((tail - head) * i) / Math.max(1, rows.length - 1);
+      const offBackground = Math.abs(rows[i].mean - ref) > 6;
+      /*
+       * 阈值 16 是量出来的，不是拍的。同一批海报实测：
+       *   真空白行        对比 0.2 – 8.9
+       *   深色实体（唱片盘身）对比 26 – 29
+       *   文字行          对比 226
+       * 原来写 42，正好把唱片盘身划到空白那边，于是报"画面正中裂开 28%"。
+       * 16 落在两簇中间，两边都留了将近一倍的余量。
+       */
+      filled.push(rows[i].contrast > 16 || offBackground);
     }
     const firstAt = filled.indexOf(true);
     const lastAt = filled.lastIndexOf(true);
@@ -368,6 +401,57 @@ if (await plexTab.count()) {
     await page.keyboard.press("Escape");
   }
 }
+
+/* ---------- 9. 转场与滚动驱动 ---------- */
+console.log("\n转场与滚动驱动");
+await nav("首页").catch(() => {});
+await page.waitForTimeout(900);
+const vt = await page.evaluate(async () => {
+  let called = false;
+  const orig = document.startViewTransition?.bind(document);
+  if (!orig) return { unsupported: true };
+  document.startViewTransition = (cb) => {
+    called = true;
+    return orig(cb);
+  };
+  const btn = [...document.querySelectorAll("nav button, aside button")].find((b) =>
+    b.textContent.includes("音乐库"),
+  );
+  btn?.click();
+  await new Promise((r) => setTimeout(r, 700));
+  document.startViewTransition = orig;
+  return { called };
+});
+if (vt.unsupported) console.log("  — 该浏览器不支持 View Transitions");
+else if (!vt.called) note("切页没有走 View Transitions，转场退化成了旧页面瞬间消失");
+else ok("切页走了 View Transitions");
+
+await nav("首页").catch(() => {});
+await page.waitForTimeout(900);
+const para = await page.evaluate(async () => {
+  if (!CSS.supports("animation-timeline: scroll()")) return { unsupported: true };
+  const el = document.querySelector(".home-hero__bleed");
+  if (!el) return { missing: true };
+  const read = () => ({
+    translate: getComputedStyle(el).translate,
+    transform: getComputedStyle(el).transform,
+  });
+  const before = read();
+  window.scrollTo(0, 420);
+  await new Promise((r) => setTimeout(r, 500));
+  const after = read();
+  window.scrollTo(0, 0);
+  return { before, after };
+});
+if (para.unsupported) console.log("  — 该浏览器不支持滚动驱动动画");
+else if (para.missing) note("找不到 .home-hero__bleed");
+else if (para.before.translate === para.after.translate)
+  // 这条守两个真踩过的坑：scroll(nearest) 解析不到滚动容器时整条动画
+  // 静默不激活；以及关键帧写 transform 会把元素原有的 scale 顶掉。
+  note(`滚动了 420px 但视差没动（translate 一直是 ${para.before.translate}）`);
+else if (para.before.transform !== para.after.transform)
+  note("视差把元素原有的 transform 顶掉了，应该只动 translate");
+else ok(`视差生效（translate ${para.before.translate} → ${para.after.translate}，scale 保住）`);
 
 await browser.close();
 console.log(problems.length ? `\n发现 ${problems.length} 个问题` : "\n交互检查全过");

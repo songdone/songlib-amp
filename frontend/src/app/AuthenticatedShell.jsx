@@ -25,6 +25,7 @@ import { useMediaQuery } from "../hooks/useMediaQuery";
 import { buildAmbientDeck } from "../lib/ambient";
 import { api } from "../lib/api";
 import { DEFAULT_APPEARANCE, appearanceStyle, normalizeAppearance, resolvedTheme } from "../lib/appearance";
+import { withViewTransition } from "../lib/viewTransition";
 import { clearFastCache, readFastCache, writeFastCache } from "../lib/cache";
 import { managementNav, pageMeta } from "../lib/nav-model";
 import { userIsAdmin } from "../lib/permissions";
@@ -81,9 +82,17 @@ export function AuthenticatedShell({ setAuthenticated }) {
   const navigate = useCallback(
     (page, { replace = false } = {}) => {
       const target = knownPage(page) ? page : "home";
-      setManualBackdrop(null);
-      setActive(target);
-      updatePath(pathForPage(target), { replace });
+      /*
+       * 包一层 View Transitions：原来只有新页面淡入上浮，旧页面是**瞬间
+       * 消失**的，看起来是"闪一下再浮上来"而不是一次连续的转场。
+       * 浏览器不支持（Safari 目前还没有）或用户开了减弱动态效果时，
+       * withViewTransition 直接执行回调，切换照旧生效。
+       */
+      withViewTransition(() => {
+        setManualBackdrop(null);
+        setActive(target);
+        updatePath(pathForPage(target), { replace });
+      });
     },
     [updatePath],
   );

@@ -51,6 +51,55 @@ const json = (res,data,status=200)=>{res.writeHead(status,{'content-type':'appli
 const withJson=(req,res,handler)=>{let raw='';req.on('data',c=>{raw+=c});req.on('end',()=>{let payload={};try{payload=JSON.parse(raw||'{}')}catch{}handler(payload)})}
 
 const port = Number(process.env.PORT || 4174)
+
+/*
+ * 一段真的静音音轨。
+ *
+ * 原来这两个 /stream 端点返回 204 零字节 —— 于是 <audio> 永远加载不出
+ * 任何东西，currentTime 恒为 0。后果是**所有依赖播放推进的行为在本地
+ * 都验证不了**：歌词跟随、进度条、续播提示、当前句高亮，全都测不到，
+ * 只能等真机上被人发现。
+ *
+ * 8kHz / 8bit / 单声道，215 秒（对上 mock 里 3:35 的时长），
+ * 内存里约 1.7MB。8bit PCM 的静音是 128 而不是 0。
+ * 支持 Range：浏览器给 <audio> 发的常常是范围请求。
+ */
+const SILENT_WAV = (() => {
+  const rate = 8000, seconds = 215, data = rate * seconds;
+  const buf = Buffer.alloc(44 + data);
+  buf.write('RIFF', 0); buf.writeUInt32LE(36 + data, 4); buf.write('WAVE', 8);
+  buf.write('fmt ', 12); buf.writeUInt32LE(16, 16);
+  buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
+  buf.writeUInt32LE(rate, 24); buf.writeUInt32LE(rate, 28);
+  buf.writeUInt16LE(1, 32); buf.writeUInt16LE(8, 34);
+  buf.write('data', 36); buf.writeUInt32LE(data, 40);
+  buf.fill(128, 44);
+  return buf;
+})();
+
+function sendAudio(req, res) {
+  const total = SILENT_WAV.length;
+  const range = req.headers.range;
+  const head = { 'content-type': 'audio/wav', 'accept-ranges': 'bytes' };
+  if (range) {
+    const match = /bytes=(\d*)-(\d*)/.exec(range) || [];
+    const start = match[1] ? Number(match[1]) : 0;
+    const end = match[2] ? Number(match[2]) : total - 1;
+    if (start >= total) {
+      res.writeHead(416, { 'content-range': `bytes */${total}` });
+      return res.end();
+    }
+    res.writeHead(206, {
+      ...head,
+      'content-range': `bytes ${start}-${end}/${total}`,
+      'content-length': end - start + 1,
+    });
+    return res.end(SILENT_WAV.subarray(start, end + 1));
+  }
+  res.writeHead(200, { ...head, 'content-length': total });
+  return res.end(SILENT_WAV);
+}
+
 http.createServer((req,res)=>{
   const url=new URL(req.url,'http://localhost')
   if(url.pathname.startsWith('/mock-cover/')){res.writeHead(200,{'content-type':'image/svg+xml; charset=utf-8','cache-control':'public,max-age=3600'});return res.end(mockCover(decodeURIComponent(url.pathname.slice(12))))}
@@ -73,10 +122,10 @@ http.createServer((req,res)=>{
     if(url.pathname==='/api/downloads/device-token')return json(res,{ok:true,filename:'周杰伦 - 晴天.mp3',downloadUrl:'/api/mock-audio/download',contentType:'audio/mpeg'})
     if(url.pathname==='/api/downloads/batch-confirm'||url.pathname==='/api/downloads/batch-cancel')return json(res,{items:[]})
     if(url.pathname.startsWith('/api/player/local/')&&!url.pathname.endsWith('/stream')&&!url.pathname.endsWith('/lyrics')&&!url.pathname.endsWith('/cover')){const id=url.pathname.split('/').pop();const item=localFiles.find(file=>file.id===id)||localFiles[0];return json(res,{source:'local_file',id:item.id,title:item.title,artist:item.artist,album:item.album,file:item.path,streamUrl:`/api/player/local/${item.id}/stream`,lyricsUrl:`/api/player/local/${item.id}/lyrics`,qualities:['original']})}
-    if(url.pathname.endsWith('/lyrics'))return json(res,{lyrics:'[00:00.00]暂无歌词\\n[00:10.00]让散落的音乐回到自己的岛屿',format:'lrc'})
-    if(url.pathname.startsWith('/api/local/files/')&&url.pathname.endsWith('/lyrics'))return json(res,{lyrics:'[00:00.00]暂无歌词\\n[00:10.00]让散落的音乐回到自己的岛屿',format:'lrc'})
+    if(url.pathname.endsWith('/lyrics'))return json(res,{lyrics:'[00:00.00]红蔷薇白玫瑰 - G.E.M. 邓紫棋\n[00:01.00]词：TE DI/DEE.P/Johnson Rebecca Rose\n[00:02.00]曲：TE DI/SOL\n[00:03.00]编曲：Lupo\n[00:04.00]改编词：G.E.M. 邓紫棋\n[00:05.00]OP：蜂鸟音乐\n[00:06.00]SP：百纳娱乐\n[00:08.00]说不出说不出一句话\n[00:12.00]连我自己都很惊讶\n[00:16.00]面对最熟悉的你\n[00:20.00]曾经最熟悉的你oh\n[00:24.00]我竟如此害怕\n[00:28.00]我说不出口你能不能别走\n[00:32.00]留不住你曾对我的温柔\n[00:36.00]此刻我忐忑的心\n[00:40.00]像红蔷薇遇上白玫瑰\n[00:44.00]一种花开两种颜色\n[00:48.00]我们都曾经热烈过\n[00:52.00]而后各自沉默各自走\n[00:56.00]如果爱是一场雨\n[00:60.00]我宁愿淋湿也不躲\n[00:64.00]说不出说不出一句话\n[00:68.00]连我自己都很惊讶',format:'lrc'})
+    if(url.pathname.startsWith('/api/local/files/')&&url.pathname.endsWith('/lyrics'))return json(res,{lyrics:'[00:00.00]红蔷薇白玫瑰 - G.E.M. 邓紫棋\n[00:01.00]词：TE DI/DEE.P/Johnson Rebecca Rose\n[00:02.00]曲：TE DI/SOL\n[00:03.00]编曲：Lupo\n[00:04.00]改编词：G.E.M. 邓紫棋\n[00:05.00]OP：蜂鸟音乐\n[00:06.00]SP：百纳娱乐\n[00:08.00]说不出说不出一句话\n[00:12.00]连我自己都很惊讶\n[00:16.00]面对最熟悉的你\n[00:20.00]曾经最熟悉的你oh\n[00:24.00]我竟如此害怕\n[00:28.00]我说不出口你能不能别走\n[00:32.00]留不住你曾对我的温柔\n[00:36.00]此刻我忐忑的心\n[00:40.00]像红蔷薇遇上白玫瑰\n[00:44.00]一种花开两种颜色\n[00:48.00]我们都曾经热烈过\n[00:52.00]而后各自沉默各自走\n[00:56.00]如果爱是一场雨\n[00:60.00]我宁愿淋湿也不躲\n[00:64.00]说不出说不出一句话\n[00:68.00]连我自己都很惊讶',format:'lrc'})
     if(url.pathname.startsWith('/api/local/files/')&&url.pathname.endsWith('/cover')){res.writeHead(302,{location:'/icons/icon-192.png'});return res.end()}
-    if(url.pathname.startsWith('/api/local/files/')&&url.pathname.endsWith('/stream')){res.writeHead(204,{'accept-ranges':'bytes'});return res.end()}
+    if(url.pathname.startsWith('/api/local/files/')&&url.pathname.endsWith('/stream'))return sendAudio(req,res)
     if(url.pathname.startsWith('/api/player/plex/')&&!url.pathname.endsWith('/stream')){const key=url.pathname.split('/')[4];const item=tracks.find(track=>track.ratingKey===key)||tracks[0];return json(res,{source:'plex_item',ratingKey:key,title:item.title,artist:item.grandparentTitle,album:item.parentTitle,file:`/music/${item.grandparentTitle}/${item.parentTitle}/${item.title}.flac`,streamUrl:`/api/player/plex/${key}/stream`,qualities:['original','320k','256k','192k','128k']})}
     if(url.pathname==='/api/player/source-preview')return json(res,{source:'source_preview',title:'晴天',artist:'周杰伦',album:'叶惠美',streamUrl:'/api/mock-audio/preview',quality:'128k'})
     if(url.pathname==='/api/profile')return json(res,{username:'admin',displayName:'管理员',avatarUrl:'',theme:'dark',defaultSource:'tx',defaultQuality:'320k'})
@@ -87,9 +136,9 @@ http.createServer((req,res)=>{
     if(url.pathname==='/api/plex/test')return json(res,{ok:true,message:'Plex 连接成功，已识别到 2 个音乐资料库。',identity:{friendlyName:'Mock Plex'},libraryCount:2,libraries:plexSettings.libraries,connectedAt:new Date().toISOString()})
     if(url.pathname==='/api/plex/libraries')return json(res,{items:plexSettings.libraries})
     if(url.pathname==='/api/plex/sync')return json(res,{id:11,kind:'plex_sync',title:'同步 Plex 音乐资料库',status:'queued',progress:0,created_at:new Date().toISOString()})
-    if(/^\/api\/plex\/items\/[^/]+\/playback$/.test(url.pathname)){const key=url.pathname.split('/')[4];const item=tracks.find(track=>track.ratingKey===key)||tracks[0];return json(res,{ratingKey:key,title:item.title,artist:item.grandparentTitle,album:item.parentTitle,duration:item.duration,coverUrl:`/mock-cover/${encodeURIComponent(item.title)}.svg`,artistBackgroundUrl:`/mock-cover/bg-${encodeURIComponent(item.grandparentTitle)}.svg`,directPlayUrl:`/api/player/plex/${key}/stream?bitrate=original`,transcodeUrls:{original:`/api/player/plex/${key}/stream?bitrate=original`,'320k':`/api/player/plex/${key}/stream?bitrate=320k`},lyrics:'[00:00.00]模拟 Plex 歌词\\n[00:10.00]底部播放器现在会动了',file:`/music/${item.grandparentTitle}/${item.parentTitle}/${item.title}.flac`,openPlexUrl:'http://127.0.0.1:32400/web'})}
-    if(/^\/api\/player\/plex\/[^/]+\/stream$/.test(url.pathname)){res.writeHead(204,{'accept-ranges':'bytes'});return res.end()}
-    if(url.pathname==='/api/settings')return json(res,{appName:'SongLib Amp｜音屿',version:'1.1.2',plex:plexSettings,plexServerName:plexSettings.name,musicRoot:'/music',plexUrl:plexSettings.serverUrl,externalPlexUrl:plexSettings.externalUrl,plexSection:'26',downloadDir:'_downloads',downloadTempDir:'/music/_downloads',incomingDir:'/music/_incoming',manualDownloadDir:'/downloads',trashDir:'/music/.trash',lyricRule:'同名 .lrc',coverRule:'专辑目录 cover.jpg + 音频内嵌封面',scrapeRules:{defaultMode:'missing',writeCover:true,writeLyrics:true,refreshPlex:true,skipExistingCover:true,skipExistingLyrics:true},namingTemplates:{album:'/{artist}/{album} ({year})/{trackNumber} - {title}.{ext}',multiDisc:'/{artist}/{album} ({year})/{discNumber}{trackNumber} - {title}.{ext}',compilation:'/Various Artists/{album} ({year})/{trackNumber} - {artist} - {title}.{ext}',unknown:'/{artist}/Unknown Album/{title}.{ext}'},excludeDirs:['/music/_incoming','/music/_downloads','/music/.trash','/music/@eaDir','/music/#recycle'],player:{},user:{username:'admin',role:'admin',permissions:['manage_users','manage_library','manage_sources'],fontSize:'standard',defaultSource:'tx',defaultQuality:'320k'},maxDownloadMb:500,sourceMaxSizeMb:2,fnosMusic:{configured:false,serverUrl:'http://127.0.0.1:5666/music',authMode:'password',accountLabel:''}})
+    if(/^\/api\/plex\/items\/[^/]+\/playback$/.test(url.pathname)){const key=url.pathname.split('/')[4];const item=tracks.find(track=>track.ratingKey===key)||tracks[0];return json(res,{ratingKey:key,title:item.title,artist:item.grandparentTitle,album:item.parentTitle,duration:item.duration,coverUrl:`/mock-cover/${encodeURIComponent(item.title)}.svg`,artistBackgroundUrl:`/mock-cover/bg-${encodeURIComponent(item.grandparentTitle)}.svg`,directPlayUrl:`/api/player/plex/${key}/stream?bitrate=original`,transcodeUrls:{original:`/api/player/plex/${key}/stream?bitrate=original`,'320k':`/api/player/plex/${key}/stream?bitrate=320k`},lyrics:'[00:00.00]红蔷薇白玫瑰 - G.E.M. 邓紫棋\n[00:01.00]词：TE DI/DEE.P/Johnson Rebecca Rose\n[00:02.00]曲：TE DI/SOL\n[00:03.00]编曲：Lupo\n[00:04.00]改编词：G.E.M. 邓紫棋\n[00:05.00]OP：蜂鸟音乐\n[00:06.00]SP：百纳娱乐\n[00:08.00]说不出说不出一句话\n[00:12.00]连我自己都很惊讶\n[00:16.00]面对最熟悉的你\n[00:20.00]曾经最熟悉的你oh\n[00:24.00]我竟如此害怕\n[00:28.00]我说不出口你能不能别走\n[00:32.00]留不住你曾对我的温柔\n[00:36.00]此刻我忐忑的心\n[00:40.00]像红蔷薇遇上白玫瑰\n[00:44.00]一种花开两种颜色\n[00:48.00]我们都曾经热烈过\n[00:52.00]而后各自沉默各自走\n[00:56.00]如果爱是一场雨\n[00:60.00]我宁愿淋湿也不躲\n[00:64.00]说不出说不出一句话\n[00:68.00]连我自己都很惊讶',file:`/music/${item.grandparentTitle}/${item.parentTitle}/${item.title}.flac`,openPlexUrl:'http://127.0.0.1:32400/web'})}
+    if(/^\/api\/player\/plex\/[^/]+\/stream$/.test(url.pathname))return sendAudio(req,res)
+    if(url.pathname==='/api/settings')return json(res,{appName:'SongLib Amp｜音屿',version:'1.1.3',plex:plexSettings,plexServerName:plexSettings.name,musicRoot:'/music',plexUrl:plexSettings.serverUrl,externalPlexUrl:plexSettings.externalUrl,plexSection:'26',downloadDir:'_downloads',downloadTempDir:'/music/_downloads',incomingDir:'/music/_incoming',manualDownloadDir:'/downloads',trashDir:'/music/.trash',lyricRule:'同名 .lrc',coverRule:'专辑目录 cover.jpg + 音频内嵌封面',scrapeRules:{defaultMode:'missing',writeCover:true,writeLyrics:true,refreshPlex:true,skipExistingCover:true,skipExistingLyrics:true},namingTemplates:{album:'/{artist}/{album} ({year})/{trackNumber} - {title}.{ext}',multiDisc:'/{artist}/{album} ({year})/{discNumber}{trackNumber} - {title}.{ext}',compilation:'/Various Artists/{album} ({year})/{trackNumber} - {artist} - {title}.{ext}',unknown:'/{artist}/Unknown Album/{title}.{ext}'},excludeDirs:['/music/_incoming','/music/_downloads','/music/.trash','/music/@eaDir','/music/#recycle'],player:{},user:{username:'admin',role:'admin',permissions:['manage_users','manage_library','manage_sources'],fontSize:'standard',defaultSource:'tx',defaultQuality:'320k'},maxDownloadMb:500,sourceMaxSizeMb:2,fnosMusic:{configured:false,serverUrl:'http://127.0.0.1:5666/music',authMode:'password',accountLabel:''}})
     if(/^\/api\/library\/artists\/[^/]+$/.test(url.pathname)){const item=artists.find(value=>value.ratingKey===url.pathname.split('/').at(-1))||artists[0];const related=albums.filter(value=>value.parentRatingKey===item.ratingKey);return json(res,{artist:item,albums:related,popularTracks:tracks.slice(0,8).map(value=>({...value,grandparentTitle:item.title})),trackCount:24,albumCount:related.length})}
     if(/^\/api\/library\/albums\/[^/]+$/.test(url.pathname)){const item=albums.find(value=>value.ratingKey===url.pathname.split('/').at(-1))||albums[0];const artist=artists.find(value=>value.ratingKey===item.parentRatingKey)||artists[0];const related=tracks.slice(0,10).map((value,index)=>({...value,index:index+1,parentTitle:item.title,grandparentTitle:artist.title}));return json(res,{album:item,artist,tracks:related,trackCount:related.length,duration:related.reduce((sum,value)=>sum+value.duration,0)})}
     if(url.pathname==='/api/library/artists'){const q=(url.searchParams.get('search')||'').trim();const items=q?artists.filter(a=>a.title.includes(q)):artists;return json(res,{items,total:items.length,page:1,pageSize:200})}

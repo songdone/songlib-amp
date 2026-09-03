@@ -16,6 +16,10 @@
  */
 
 /** 画布尺寸。宽度固定 1080，高度按比例算 —— 1080 是各平台通用的分享宽度。 */
+// 显式带 .js：poster.js 会被 node --test 直接加载，Node 的 ESM 解析
+// 不做无扩展名补全（Vite 会，所以只在测试里炸）。
+import { isCreditLine } from "./lyrics.js";
+
 export const RATIOS = Object.freeze({
   "3:4": { label: "3:4 竖版", width: 1080, height: 1440 },
   "9:16": { label: "9:16 全屏", width: 1080, height: 1920 },
@@ -201,7 +205,9 @@ export function shareableLyricLines(lines = []) {
   for (const line of lines) {
     const text = String(line?.text || "").trim();
     if (!text || text === "♪") continue;
-    if (/^(作词|作曲|编曲|制作|混音|监制|出品|录音|母带|OP|SP)\s*[：:]/i.test(text)) continue;
+    // 判据集中在 lib/lyrics.js。原来这里自己写了一份，只认「作词」不认
+    // 「词」，于是「词：TE DI」「曲：TE DI/SOL」这类简写全漏了。
+    if (isCreditLine(text)) continue;
     if (text.length > 34) continue;
     const key = text.toLowerCase();
     if (seen.has(key)) continue;

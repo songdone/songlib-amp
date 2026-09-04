@@ -8,18 +8,27 @@ struct LibraryView: View {
     @ObservedObject var state: AppState
     @ObservedObject var player: MusicPlayer
 
+    /// 当前标签。需要它是因为**按下播放要自动跳到「正在播放」**。
+    ///
+    /// 用户报「点击歌曲没有直接跳到播放界面，还是在歌曲列表」—— 这是对的：
+    /// 在任何播放器里，按下播放之后你想看到的就是正在播放的那一屏，
+    /// 而不是继续盯着列表。之前根本没接这个跳转。
+    @State private var tab: Tab = .home
+
+    enum Tab: Hashable { case home, browse, search, playing, settings }
+
     var body: some View {
-        TabView {
-            HomeTab(state: state, player: player)
-                .tabItem { Text("资料库") }
-            BrowseTab(state: state, player: player)
-                .tabItem { Text("浏览") }
-            SearchTab(state: state, player: player)
-                .tabItem { Text("搜索") }
+        TabView(selection: $tab) {
+            HomeTab(state: state, player: player, goPlaying: { tab = .playing })
+                .tabItem { Text("资料库") }.tag(Tab.home)
+            BrowseTab(state: state, player: player, goPlaying: { tab = .playing })
+                .tabItem { Text("浏览") }.tag(Tab.browse)
+            SearchTab(state: state, player: player, goPlaying: { tab = .playing })
+                .tabItem { Text("搜索") }.tag(Tab.search)
             NowPlayingTab(state: state, player: player)
-                .tabItem { Text("正在播放") }
+                .tabItem { Text("正在播放") }.tag(Tab.playing)
             SettingsTab(state: state, player: player)
-                .tabItem { Text("设置") }
+                .tabItem { Text("设置") }.tag(Tab.settings)
         }
         .background(Theme.canvas.ignoresSafeArea())
     }
@@ -30,6 +39,8 @@ struct LibraryView: View {
 private struct HomeTab: View {
     @ObservedObject var state: AppState
     @ObservedObject var player: MusicPlayer
+    /// 按下播放后跳到「正在播放」标签。
+    var goPlaying: () -> Void = {}
 
     @State private var recentAlbums: [PlexItem] = []
     @State private var playlists: [PlexItem] = []
@@ -48,7 +59,8 @@ private struct HomeTab: View {
                     // 出现在大图**下面**，货架被挤出屏幕 —— 截图上一眼就是错的。
                     LibraryHeader(state: state)
                     if let hero {
-                        HeroBanner(item: hero, state: state, player: player)
+                        HeroBanner(item: hero, state: state, player: player,
+                                   goPlaying: goPlaying)
                             .padding(.bottom, 8)
                     }
                     if loading {
@@ -60,9 +72,9 @@ private struct HomeTab: View {
                             .foregroundStyle(Theme.textTertiary)
                             .padding(.horizontal, Theme.screenH)
                     }
-                    Shelf(title: "最近添加", items: recentAlbums, state: state, player: player)
-                    Shelf(title: "播放列表", items: playlists, state: state, player: player)
-                    Shelf(title: "艺人", items: artists, state: state, player: player, circular: true)
+                    Shelf(title: "最近添加", items: recentAlbums, state: state, player: player, goPlaying: goPlaying)
+                    Shelf(title: "播放列表", items: playlists, state: state, player: player, goPlaying: goPlaying)
+                    Shelf(title: "艺人", items: artists, state: state, player: player, circular: true, goPlaying: goPlaying)
                 }
                 .padding(.vertical, 40)
             }
@@ -108,6 +120,7 @@ private struct HeroBanner: View {
     let item: PlexItem
     @ObservedObject var state: AppState
     @ObservedObject var player: MusicPlayer
+    var goPlaying: () -> Void = {}
 
     @FocusState private var focus: Field?
     @State private var tracks: [PlexItem] = []
@@ -174,7 +187,8 @@ private struct HeroBanner: View {
                         .focused($focus, equals: .shuffle)
 
                         NavigationLink {
-                            DetailView(item: item, state: state, player: player)
+                            DetailView(item: item, state: state, player: player,
+                                       goPlaying: goPlaying)
                         } label: {
                             PillLabel(title: "查看专辑", icon: "list.bullet")
                         }
@@ -200,6 +214,7 @@ private struct HeroBanner: View {
         }
         guard !tracks.isEmpty else { return }
         player.play(tracks, startingAt: 0, shuffle: shuffle)
+        goPlaying()
     }
 }
 
@@ -210,6 +225,7 @@ private struct Shelf: View {
     @ObservedObject var state: AppState
     @ObservedObject var player: MusicPlayer
     var circular = false
+    var goPlaying: () -> Void = {}
 
     var body: some View {
         if !items.isEmpty {
@@ -223,7 +239,8 @@ private struct Shelf: View {
                     LazyHStack(spacing: Theme.cardGap) {
                         ForEach(items) { item in
                             NavigationLink {
-                                DetailView(item: item, state: state, player: player)
+                                DetailView(item: item, state: state, player: player,
+                                           goPlaying: goPlaying)
                             } label: {
                                 MediaCard(item: item, state: state, circular: circular)
                             }
@@ -289,6 +306,8 @@ private struct MediaCard: View {
 private struct BrowseTab: View {
     @ObservedObject var state: AppState
     @ObservedObject var player: MusicPlayer
+    /// 按下播放后跳到「正在播放」标签。
+    var goPlaying: () -> Void = {}
 
     @State private var mode: Mode = .album
     @State private var items: [PlexItem] = []
@@ -306,7 +325,12 @@ private struct BrowseTab: View {
         }
     }
 
-    private let columns = [GridItem(.adaptive(minimum: 250, maximum: 300), spacing: Theme.cardGap)]
+    /// 列宽下限必须 **≥ 卡片宽度 + 焦点放大的余量**。
+    ///
+    /// 之前写的是 minimum 250 / maximum 300，而卡片本身是 320 宽 ——
+    /// 卡片比列还宽，于是相邻卡片互相挤压重叠。这就是"封面都挤到一起"。
+    /// 卡片 320 + 放大 7%（约 22）+ 间距，取 380。
+    private let columns = [GridItem(.adaptive(minimum: 380, maximum: 440), spacing: Theme.cardGap)]
 
     var body: some View {
         NavigationStack {
@@ -330,10 +354,11 @@ private struct BrowseTab: View {
                         TrackTable(tracks: items, player: player, state: state)
                             .padding(.horizontal, Theme.screenH)
                     } else {
-                        LazyVGrid(columns: columns, spacing: 40) {
+                        LazyVGrid(columns: columns, spacing: 52) {
                             ForEach(items) { item in
                                 NavigationLink {
-                                    DetailView(item: item, state: state, player: player)
+                                    DetailView(item: item, state: state, player: player,
+                                               goPlaying: goPlaying)
                                 } label: {
                                     MediaCard(item: item, state: state, circular: mode == .artist)
                                 }
@@ -366,6 +391,8 @@ private struct BrowseTab: View {
 private struct SearchTab: View {
     @ObservedObject var state: AppState
     @ObservedObject var player: MusicPlayer
+    /// 按下播放后跳到「正在播放」标签。
+    var goPlaying: () -> Void = {}
 
     @State private var text = ""
     @State private var tracks: [PlexItem] = []
@@ -382,17 +409,17 @@ private struct SearchTab: View {
                             .frame(maxWidth: .infinity).padding(.vertical, 40)
                     }
                     if !albums.isEmpty {
-                        Shelf(title: "专辑", items: albums, state: state, player: player)
+                        Shelf(title: "专辑", items: albums, state: state, player: player, goPlaying: goPlaying)
                     }
                     if !artists.isEmpty {
-                        Shelf(title: "艺人", items: artists, state: state, player: player, circular: true)
+                        Shelf(title: "艺人", items: artists, state: state, player: player, circular: true, goPlaying: goPlaying)
                     }
                     if !tracks.isEmpty {
                         VStack(alignment: .leading, spacing: 18) {
                             Text("歌曲")
                                 .font(.tv(Theme.Size.sectionHeader, .semibold))
                                 .foregroundStyle(Theme.textPrimary)
-                            TrackTable(tracks: tracks, player: player, state: state)
+                            TrackTable(tracks: tracks, player: player, state: state, goPlaying: goPlaying)
                         }
                         .padding(.horizontal, Theme.screenH)
                     }
@@ -428,6 +455,7 @@ struct DetailView: View {
     let item: PlexItem
     @ObservedObject var state: AppState
     @ObservedObject var player: MusicPlayer
+    var goPlaying: () -> Void = {}
 
     @State private var tracks: [PlexItem] = []
     @State private var albums: [PlexItem] = []
@@ -517,6 +545,7 @@ struct DetailView: View {
                     .focused($focusPlay)
                     PillButton(title: "随机播放", icon: "shuffle", fill: true) {
                         player.play(tracks, startingAt: 0, shuffle: true)
+                        goPlaying()
                     }
                     PillButton(title: "加入待播", icon: "text.append", fill: true) {
                         player.append(tracks)
@@ -557,11 +586,12 @@ struct DetailView: View {
                 Text("专辑")
                     .font(.tv(Theme.Size.sectionHeader, .semibold))
                     .foregroundStyle(Theme.textPrimary)
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 230, maximum: 280), spacing: 30)],
-                          spacing: 34) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 380, maximum: 440), spacing: 30)],
+                          spacing: 44) {
                     ForEach(albums) { album in
                         NavigationLink {
-                            DetailView(item: album, state: state, player: player)
+                            DetailView(item: album, state: state, player: player,
+                                       goPlaying: goPlaying)
                         } label: {
                             MediaCard(item: album, state: state)
                         }
@@ -572,7 +602,8 @@ struct DetailView: View {
         } else {
             // 曲目表自成分区：从左边的「播放」按钮按右键能直接进来，
             // 不用先竖着找到某一行的高度。
-            TrackTable(tracks: tracks, player: player, state: state, showArtist: item.playlistType != nil)
+            TrackTable(tracks: tracks, player: player, state: state,
+                       showArtist: item.playlistType != nil, goPlaying: goPlaying)
                 .focusSection()
         }
     }
@@ -608,6 +639,7 @@ struct TrackTable: View {
     @ObservedObject var player: MusicPlayer
     @ObservedObject var state: AppState
     var showArtist = false
+    var goPlaying: () -> Void = {}
 
     var body: some View {
         LazyVStack(spacing: 8) {
@@ -618,7 +650,10 @@ struct TrackTable: View {
                     showArtist: showArtist,
                     isCurrent: player.currentTrack?.ratingKey == track.ratingKey,
                     isPlaying: player.isPlaying,
-                    onPlay: { player.play(tracks, startingAt: position) },
+                    onPlay: {
+                        player.play(tracks, startingAt: position)
+                        goPlaying()
+                    },
                     onPlayNext: { player.playNext(track) }
                 )
             }

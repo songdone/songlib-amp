@@ -8,6 +8,7 @@ import {
   airPlayTrackId,
   nativeAirPlayAvailable,
   primeAirPlayVideo,
+  airPlayVideoIsLive,
 } from "../../lib/airplay";
 
 export function useAirPlayLyricsCast({ track, lyrics, player }) {
@@ -19,6 +20,9 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
   const syncQueuedRef = useRef(false);
   const syncMetadataQueuedRef = useRef(false);
   const pickerTimerRef = useRef(null);
+  // 见 showPicker：playing 之后补一次选择器，这两个 ref 是给那段用的。
+  const pickerRetryRef = useRef(null);
+  const pickerOpenRef = useRef(false);
   const routeGuardUntilRef = useRef(0);
   const resumeTimerRef = useRef(null);
   const remoteActionRef = useRef({ action: "", at: 0 });
@@ -35,6 +39,7 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
     return Number.isFinite(saved) ? Math.max(-5000, Math.min(5000, saved)) : 0;
   });
   const hasTrack = Boolean(track);
+  pickerOpenRef.current = pickerOpen;
   const playerRef = useRef(player);
   const wirelessRef = useRef(false);
 
@@ -101,8 +106,14 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
           : "",
       );
       if (active) {
+        /* 路由建立之后的这次 play() 不在用户手势里。元素已经在手势里
+           成功播过一次（primeAirPlayVideo），通常还带着 user-activated
+           状态；万一被拒，退回静音再试 —— 有画面比没画面强。 */
         video.play().catch(() => {
-          setMessage("已选中 Apple TV 但视频未送出，重开设备选择器");
+          video.muted = true;
+          video.play().catch(() => {
+            setMessage("已选中 Apple TV 但视频未送出，重开设备选择器");
+          });
         });
       } else {
         video.pause();
@@ -366,11 +377,28 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
     );
   }, []);
 
+  /*
+   * 在用户点下去之前就把视频喂起来。
+   *
+   * pointerdown 比 click 早几十到几百毫秒 —— 对 HLS 起播来说不算多，
+   * 但足以让 <video> 从"什么都没有"变成"已经在拉流"。
+   * 这一步是为了让设备选择器打开时，已经有一个**正在播放的视频会话**
+   * 可以绑；否则 WebKit 会退回到音频/Now Playing 会话，电视上就是
+   * "封面 + 歌名"的标准音频投屏画面（用户拍照实证过）。
+   */
+  const primeForPicker = useCallback(() => {
+    const video = videoRef.current;
+    const ready = sessionRef.current;
+    if (!video || !ready || !nativeAirPlayAvailable(video)) return;
+    if (airPlayVideoIsLive(video)) return;
+    primeAirPlayVideo(video, ready.streamUrl).catch(() => {});
+  }, []);
+
   const showPicker = useCallback(async () => {
     const video = videoRef.current;
     if (!nativeAirPlayAvailable(video)) {
       setMessage(
-        "本设备不支持 AirPlay，请用 iPhone、iPad 或 macOS Safari",
+        "这个浏览器没有 AirPlay 接口（那是 Safari 独有的）。请在 iPhone、iPad 或 Mac 的 Safari 里打开本页再投。",
       );
       return;
     }
@@ -383,7 +411,9 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
       return;
     }
     setPickerOpen(true);
-    setMessage("请选择同一网络中的 Apple TV");
+    setMessage(
+      "在弹出的列表里选你的 Apple TV。注意：要从这里投，别用 Plexamp 或控制中心的投屏 —— 那两个只投音频，电视上只会显示封面。",
+    );
     try {
       // Safari may suspend media that is effectively hidden or outside the
       // viewport. Make the real HLS video visibly present before asking WebKit
@@ -397,6 +427,26 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
           setMessage("视频未开始传输，检查 Apple TV 能否访问这台 NAS");
         }
       });
+      /*
+       * 视频真的开始播之后再补一次选择器。
+       *
+       * 第一次调用是在用户手势里，必须调 —— 但那一刻视频往往还没解出第一帧，
+       * WebKit 手里没有"正在播放的视频会话"可绑。等 playing 事件到了再补一次，
+       * 这时绑的一定是视频。已经投上了（wireless）就不补，免得又弹一次框。
+       */
+      pickerRetryRef.current?.();
+      const retry = () => {
+        video.removeEventListener("playing", retry);
+        pickerRetryRef.current = null;
+        if (wirelessRef.current || !pickerOpenRef.current) return;
+        try {
+          video.webkitShowPlaybackTargetPicker();
+        } catch {
+          /* 手势之外可能被拒，拒了就算了 —— 第一次那下还在 */
+        }
+      };
+      pickerRetryRef.current = () => video.removeEventListener("playing", retry);
+      video.addEventListener("playing", retry, { once: true });
       video.webkitShowPlaybackTargetPicker();
       if (pickerTimerRef.current) window.clearTimeout(pickerTimerRef.current);
       pickerTimerRef.current = window.setTimeout(() => {
@@ -421,6 +471,7 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
 
   return {
     videoRef,
+    primeForPicker,
     streamUrl: session?.streamUrl || "",
     supported,
     availability,
@@ -458,6 +509,8 @@ export function AirPlayCastButton({ cast, overlay = false }) {
     <button
       type="button"
       className={`airplay-cast-button ${overlay ? "overlay" : ""} ${cast.wireless ? "active" : ""} ${cast.pickerOpen ? "pending" : ""}`}
+      /* pointerdown 比 click 早一步，先把 HLS 拉起来 —— 见 primeForPicker。 */
+      onPointerDown={cast.primeForPicker}
       onClick={cast.showPicker}
       aria-label={label}
       aria-pressed={cast.wireless}

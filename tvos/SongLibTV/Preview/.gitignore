@@ -1,0 +1,5 @@
+# 调视觉用的素材是从用户自己的 Plex 库里导出来的真实内容 ——
+# 专辑封面和歌词都有版权，而这个仓库是公开的。所以素材只留在本地，
+# 不进仓库。要用的时候按 README.md 重新导一次。
+preview-cover.jpg
+preview-lyrics.json

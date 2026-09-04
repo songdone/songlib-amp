@@ -242,7 +242,9 @@ def init_db():
         settings.data_dir.mkdir(parents=True, exist_ok=True)
         settings.source_dir.mkdir(parents=True, exist_ok=True)
         settings.log_dir.mkdir(parents=True, exist_ok=True)
-        with connect() as conn:
+        # transaction() 会提交并**关闭**连接；原来这里是 `with connect()`，
+        # 那只提交不关，启动时就先漏一个（见 reading() 上面那段注释）。
+        with transaction() as conn:
             conn.executescript(SCHEMA)
             _ensure_columns(conn, "jobs", {
                 "source_id": "TEXT",
@@ -364,6 +366,27 @@ def _migrate_legacy_admin_user(conn: sqlite3.Connection):
 
 
 @contextmanager
+def reading():
+    """只读查询用的连接，**用完一定关掉**。
+
+    这里踩过一个大坑：`rows()` / `row()` / `get_kv()` 原来都写成
+    `with connect() as conn:` —— 但 Python 的 sqlite3 里 `with conn:` 是
+    **事务**上下文管理器，它只负责提交/回滚，**不关连接**。
+    于是每一次查询都漏一个连接。
+
+    后果不只是文件描述符：WAL 模式下没关闭的连接会挡住 checkpoint，
+    WAL 越长写越慢，最后写事务拿不到锁 —— 线上抓到过登录等了 31 秒
+    然后 `sqlite3.OperationalError: database is locked`（busy_timeout
+    本来就是 30 秒）。容器只跑了 15 分钟，指向 manager.db 的 fd 已经 30 个。
+    """
+    conn = connect()
+    try:
+        yield conn
+    finally:
+        conn.close()
+
+
+@contextmanager
 def transaction():
     conn = connect()
     try:
@@ -377,7 +400,7 @@ def transaction():
 
 
 def get_kv(key: str, default=None):
-    with connect() as conn:
+    with reading() as conn:
         row = conn.execute("SELECT value FROM kv WHERE key=?", (key,)).fetchone()
     if not row:
         return default
@@ -397,11 +420,11 @@ def set_kv(key: str, value):
 
 
 def rows(query: str, params=()):
-    with connect() as conn:
+    with reading() as conn:
         return [dict(row) for row in conn.execute(query, params).fetchall()]
 
 
 def row(query: str, params=()):
-    with connect() as conn:
+    with reading() as conn:
         result = conn.execute(query, params).fetchone()
         return dict(result) if result else None

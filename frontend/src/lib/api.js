@@ -13,6 +13,17 @@ import { csrfFromCookie } from "./contracts.js";
  */
 const inFlight = new Map();
 
+/*
+ * 还在飞的请求总数（含 POST）。
+ *
+ * 谁要用它：Service Worker 换代时页面会自己刷新一次，而刷新会**中止
+ * 正在飞的请求**。实际抓到过 `ERR_ABORTED /api/auth/login` —— 用户刚点
+ * 登录，新版本的 SW 接管，页面刷新，请求没了、错误提示也被抹掉，
+ * 表现就是"点了没反应"。所以刷新前要等在飞的请求落地。
+ */
+let pending = 0;
+export const pendingRequests = () => pending;
+
 const isPlainGet = (options) =>
   !options.signal &&
   !options.body &&
@@ -32,6 +43,15 @@ export const api = async (path, options = {}) => {
 };
 
 const apiRequest = async (path, options = {}) => {
+  pending += 1;
+  try {
+    return await sendRequest(path, options);
+  } finally {
+    pending -= 1;
+  }
+};
+
+const sendRequest = async (path, options = {}) => {
   const { timeoutMs = 20000, ...requestOptions } = options;
   const isForm = options.body instanceof FormData;
   const csrfToken = csrfFromCookie(document.cookie);

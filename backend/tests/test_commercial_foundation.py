@@ -1370,3 +1370,92 @@ class PlaylistFanoutTests(unittest.TestCase):
         }
         self.assertEqual(grouped["A 单"], ["甲", "乙"])
         self.assertEqual(grouped["B 单"], ["丙"])
+
+
+class ConnectionLeakTests(unittest.TestCase):
+    """查询不许漏 sqlite 连接。
+
+    原来 `rows()` / `row()` / `get_kv()` 都写成 `with connect() as conn:` ——
+    Python 的 sqlite3 里 `with conn:` 是**事务**上下文，只提交/回滚，
+    **不关连接**。于是每次查询漏一个。
+
+    后果不只是文件描述符：WAL 模式下没关闭的连接会挡住 checkpoint，
+    WAL 越长写越慢，最后写事务拿不到锁 —— 线上抓到过登录等 31 秒然后
+    `sqlite3.OperationalError: database is locked`（busy_timeout 就是 30 秒），
+    而容器才跑了 15 分钟，指向 manager.db 的 fd 已经 30 个。
+    """
+
+    def setUp(self):
+        init_db()
+
+    def _count_closed(self, action):
+        """把 connect() 换成能记账的替身，看开了几个、关了几个。
+
+        用代理对象包一层，而不是给连接对象打补丁 ——
+        `sqlite3.Connection.close` 是只读属性，赋不上去。
+        """
+        from app import db as db_module
+
+        opened, closed = [], []
+        real_connect = db_module.connect
+
+        class Tracked:
+            def __init__(self, conn):
+                self._conn = conn
+
+            def close(self):
+                closed.append(self)
+                return self._conn.close()
+
+            def __getattr__(self, name):
+                return getattr(self._conn, name)
+
+            def __enter__(self):
+                return self._conn.__enter__()
+
+            def __exit__(self, *args):
+                return self._conn.__exit__(*args)
+
+        def tracking_connect():
+            tracked = Tracked(real_connect())
+            opened.append(tracked)
+            return tracked
+
+        with patch.object(db_module, "connect", side_effect=tracking_connect):
+            action()
+        return len(opened), len(closed)
+
+    def test_rows_closes_its_connection(self):
+        opened, closed = self._count_closed(lambda: rows("SELECT 1"))
+        self.assertEqual(opened, 1)
+        self.assertEqual(closed, 1, "rows() 漏了连接")
+
+    def test_row_closes_its_connection(self):
+        opened, closed = self._count_closed(lambda: row("SELECT 1"))
+        self.assertEqual((opened, closed), (1, 1), "row() 漏了连接")
+
+    def test_get_kv_closes_its_connection(self):
+        from app.db import get_kv
+
+        opened, closed = self._count_closed(lambda: get_kv("不存在的键", None))
+        self.assertEqual((opened, closed), (1, 1), "get_kv() 漏了连接")
+
+    def test_many_queries_do_not_pile_up_connections(self):
+        """一百次查询之后不该有连接还开着 —— 这才是线上那个症状的形状。"""
+        opened, closed = self._count_closed(
+            lambda: [rows("SELECT 1") for _ in range(100)]
+        )
+        self.assertEqual(opened, 100)
+        self.assertEqual(closed, 100, f"一百次查询漏了 {opened - closed} 个连接")
+
+    def test_a_failing_query_still_closes_its_connection(self):
+        def boom():
+            try:
+                rows("SELECT * FROM 这张表不存在")
+            except Exception:
+                pass
+            else:
+                self.fail("这条查询本该抛异常")
+
+        opened, closed = self._count_closed(boom)
+        self.assertEqual((opened, closed), (1, 1), "查询抛异常时连接没关")

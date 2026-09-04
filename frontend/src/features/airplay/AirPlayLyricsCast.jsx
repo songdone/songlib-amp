@@ -23,6 +23,8 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
   // 见 showPicker：playing 之后补一次选择器，这两个 ref 是给那段用的。
   const pickerRetryRef = useRef(null);
   const pickerOpenRef = useRef(false);
+  /* 路由建好、视频让出音频会话之后，通知外面把音乐接着放。 */
+  const onAudioSessionReleasedRef = useRef(null);
   const routeGuardUntilRef = useRef(0);
   const resumeTimerRef = useRef(null);
   const remoteActionRef = useRef({ action: "", at: 0 });
@@ -106,15 +108,23 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
           : "",
       );
       if (active) {
-        /* 路由建立之后的这次 play() 不在用户手势里。元素已经在手势里
-           成功播过一次（primeAirPlayVideo），通常还带着 user-activated
-           状态；万一被拒，退回静音再试 —— 有画面比没画面强。 */
+        /*
+         * 路由已经建立 —— 立刻把视频静音，**把音频会话还给音乐**。
+         *
+         * 不静音只在"抢路由"那一刻需要：WebKit 要看到一个完整的音视频
+         * 会话才肯把 AirPlay 绑给这个 <video>，而不是绑到音频上。
+         * 但如果一直不静音，它就一直占着 iOS/Safari 的音频会话，
+         * 把本地播放器的音乐挤停 —— 用户实测过：
+         * "能投上屏、歌词在大屏上跳动，但歌没在放"。
+         *
+         * 反正这条流的音轨本来就是数字静音（-91 dB），静音不影响电视上
+         * 看到的画面，只是让出音频会话。路由不会因为静音而断开。
+         */
+        video.muted = true;
         video.play().catch(() => {
-          video.muted = true;
-          video.play().catch(() => {
-            setMessage("已选中 Apple TV 但视频未送出，重开设备选择器");
-          });
+          setMessage("已选中 Apple TV 但视频未送出，重开设备选择器");
         });
+        onAudioSessionReleasedRef.current?.();
       } else {
         video.pause();
         video.removeAttribute("src");
@@ -472,6 +482,10 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
   return {
     videoRef,
     primeForPicker,
+    /* 页面用它注册"投屏接管音频会话之后，把音乐续上"的动作。 */
+    onAudioSessionReleased: (fn) => {
+      onAudioSessionReleasedRef.current = fn;
+    },
     streamUrl: session?.streamUrl || "",
     supported,
     availability,

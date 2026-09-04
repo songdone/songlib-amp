@@ -456,6 +456,48 @@ def _font(size: int, *, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFon
         return ImageFont.load_default()
 
 
+def _accent_from_cover(cover: Image.Image | None, fallback: tuple) -> tuple[int, int, int]:
+    """从封面里挑一个**看得出是颜色**的强调色。
+
+    不能用均值：一张图的平均色几乎总是落在灰轴附近，拿去画进度条和
+    来源胶囊，出来是灰的，整幅画就没有一处颜色把它串起来。
+
+    做法是把封面量化成一小撮代表色，再按"够鲜艳 + 够亮 + 占比不能太小"
+    挑一个。挑不出来（黑白封面这种）就退回均值提饱和 —— 那时候画面本来
+    也不该硬塞一个颜色进去。
+    """
+    if cover is not None:
+        try:
+            small = cover.convert("RGB").resize((64, 64), Image.Resampling.BILINEAR)
+            palette = small.quantize(colors=12, method=Image.Quantize.FASTOCTREE)
+            counts = palette.getcolors() or []
+            table = palette.getpalette() or []
+            total = sum(count for count, _ in counts) or 1
+            best, best_score = None, 0.0
+            for count, index in counts:
+                rgb = tuple(table[index * 3 : index * 3 + 3])
+                if len(rgb) != 3:
+                    continue
+                high, low = max(rgb), min(rgb)
+                if high < 60 or high > 246:
+                    continue  # 太暗看不见，太亮等于白
+                saturation = (high - low) / high
+                share = count / total
+                # 鲜艳度为主，亮度次之，占比只作为一点点加权：
+                # 一块很鲜艳但只占 2% 的色（比如那枚红印章）也该有机会入选。
+                score = saturation * 1.0 + (high / 255) * 0.35 + min(share, 0.35) * 0.5
+                if saturation >= 0.22 and score > best_score:
+                    best, best_score = rgb, score
+            if best:
+                high = max(best)
+                lift = 210 / high if high < 210 else 1.0
+                return tuple(max(48, min(255, int(channel * lift))) for channel in best)
+        except Exception:
+            pass
+    base = max(1, sum(fallback) // 3)
+    return tuple(max(60, min(255, int(base + (channel - base) * 2.6) + 34)) for channel in fallback)
+
+
 def _fit_cover(image: Image.Image, size: tuple[int, int]) -> Image.Image:
     target_w, target_h = size
     ratio = max(target_w / image.width, target_h / image.height)
@@ -492,6 +534,9 @@ class CastSession:
     encoder_mode: str = "pending"
     encoder_starts: int = 0
     track_revision: int = 0
+    # 从封面提出来的强调色。底图画完时写进来，画歌词/进度条时复用 ——
+    # 同一个颜色在一幅画里出现两次，画面才像是设计过的。
+    accent: tuple = (226, 178, 88)
     state: dict = field(default_factory=lambda: {
         "trackId": "",
         "title": "等待播放",
@@ -901,47 +946,118 @@ class AirPlayCastManager:
                 active = index
             else:
                 break
+        accent = tuple(session.accent)
+        left, right = int(width * 0.415), int(width * 0.94)
         if lines:
-            indexes = [active - 2, active - 1, active, active + 1, active + 2]
-            y_positions = [
-                int(height * 0.20),
-                int(height * 0.35),
-                int(height * 0.50),
-                int(height * 0.65),
-                int(height * 0.79),
-            ]
-            for row, (index, y) in enumerate(zip(indexes, y_positions)):
+            #
+            # 歌词的纵向节奏。
+            #
+            # 原来是 5 行钉在 20% / 35% / 50% / 65% / 79% 上 —— 从画面顶部
+            # 一直铺到底部，行距比字号大得多，读起来是五条互不相干的字幕，
+            # 而不是一首歌的连续几句。而且当前句只比别的大一点点，
+            # 焦点不明确。
+            #
+            # 改成：**以当前句为中心、按字号推算行距**。当前句显著更大更亮，
+            # 前后两句按距离递减地暗下去（255 → 132 → 58）。
+            # 这是 Apple Music 全屏歌词那一套的做法，也是"看得出焦点"的关键。
+            #
+            active_size = max(34, int(height * 0.062))
+            idle_size = max(26, int(height * 0.040))
+            active_font = _font(active_size, bold=True)
+            idle_font = _font(idle_size, bold=False)
+            gap = int(idle_size * 2.15)          # 相邻两句之间的呼吸
+            active_gap = int(active_size * 1.45)  # 当前句上下留得更宽，把它托出来
+            center_y = int(height * 0.50)
+            rows = []
+            for offset in (-2, -1, 0, 1, 2):
+                index = active + offset
+                if offset == 0:
+                    y = center_y
+                elif offset < 0:
+                    y = center_y - active_gap + (offset + 1) * gap
+                else:
+                    y = center_y + active_gap + (offset - 1) * gap
+                rows.append((offset, index, y))
+            max_width = right - left
+            for offset, index, y in rows:
                 if not 0 <= index < len(lines):
                     continue
                 line = lines[index]
-                is_active = row == 2
-                font = _font(max(28, int(height * (0.054 if is_active else 0.038))), bold=is_active)
-                max_width = int(width * 0.50)
+                is_active = offset == 0
+                font = active_font if is_active else idle_font
+                distance = abs(offset)
+                alpha = 255 if is_active else (132 if distance == 1 else 58)
                 text = _ellipsize(draw, line.text, font, max_width)
-                x = int(width * 0.435)
-                distance = abs(row - 2)
-                fill = (255, 255, 255, 64 if distance == 2 else 118)
+                if is_active:
+                    # 当前句垫一层极淡的强调色辉光。不是描边 —— 描边在电视上
+                    # 会显脏；辉光只是让这一行"亮起来"。
+                    #
+                    # 用灰度遮罩 paste，不用 alpha_composite：这一帧是 RGB
+                    # （visual_base 最后 convert 过），而且 1080p × 15fps
+                    # 每帧来回转 RGBA 太贵。
+                    #
+                    # 只模糊这一行占的那一小块，不要整帧模糊。
+                    #
+                    # 整帧 1920×1080 的高斯模糊每帧都做，在 NAS 那种 CPU 上
+                    # 会直接吃掉 15fps 的预算（这台机器上单帧 22ms，预算 66ms，
+                    # 余量不能这么花）。辉光只影响文字周围几十像素，
+                    # 裁出来做完再贴回去，结果完全一样。
+                    #
+                    radius = max(6, height // 120)
+                    bbox = draw.textbbox((left, y), text, font=font)
+                    pad = radius * 3
+                    region = (
+                        max(0, bbox[0] - pad), max(0, bbox[1] - pad),
+                        min(width, bbox[2] + pad), min(height, bbox[3] + pad),
+                    )
+                    box_w, box_h = region[2] - region[0], region[3] - region[1]
+                    if box_w > 0 and box_h > 0:
+                        halo = Image.new("L", (box_w, box_h), 0)
+                        ImageDraw.Draw(halo).text(
+                            (left - region[0], y - region[1]), text, font=font, fill=96
+                        )
+                        halo = halo.filter(ImageFilter.GaussianBlur(radius))
+                        image.paste(
+                            Image.new("RGB", (box_w, box_h), accent), (region[0], region[1]), halo
+                        )
+                        draw = ImageDraw.Draw(image, "RGBA")
                 if is_active and line.words:
-                    cursor = x
+                    cursor = left
                     for word in line.words:
-                        segment = word.text
-                        word_fill = (255, 255, 255, 255) if word.time <= lyric_time else (255, 255, 255, 145)
-                        draw.text((cursor, y), segment, font=font, fill=word_fill, stroke_width=1, stroke_fill=(0, 0, 0, 110))
-                        cursor += draw.textlength(segment, font=font)
+                        sung = word.time <= lyric_time
+                        draw.text(
+                            (cursor, y), word.text, font=font,
+                            fill=(255, 255, 255, 255) if sung else (255, 255, 255, 150),
+                        )
+                        cursor += draw.textlength(word.text, font=font)
                 else:
-                    draw.text((x, y), text, font=font, fill=(255, 255, 255, 245) if is_active else fill, stroke_width=1, stroke_fill=(0, 0, 0, 100))
+                    draw.text((left, y), text, font=font, fill=(255, 255, 255, alpha))
         else:
-            draw.text((int(width * 0.435), int(height * 0.50)), "歌词准备中", font=_font(int(height * 0.046), bold=True), fill=(255, 255, 255, 150))
+            draw.text(
+                (left, int(height * 0.50)), "歌词准备中",
+                font=_font(int(height * 0.046), bold=True), fill=(255, 255, 255, 150),
+            )
 
-        left, right = int(width * 0.435), int(width * 0.93)
-        bar_y = int(height * 0.91)
-        draw.rounded_rectangle((left, bar_y, right, bar_y + max(5, height // 180)), radius=8, fill=(255, 255, 255, 42))
+        #
+        # 进度条：细一点、圆角、走强调色。
+        #
+        # 原来是 5px 的纯白条 —— 又粗又抢眼，还和画面里其它元素没有关系。
+        # 细到 4px、填充用封面提出来的强调色，跟左边那枚来源胶囊呼应，
+        # 整幅画就有了一条颜色线索。
+        #
+        bar_h = max(4, height // 260)
+        bar_y = int(height * 0.905)
+        draw.rounded_rectangle((left, bar_y, right, bar_y + bar_h), radius=bar_h, fill=(255, 255, 255, 38))
         ratio = min(1.0, display_time / duration) if duration else 0.0
-        draw.rounded_rectangle((left, bar_y, left + int((right - left) * ratio), bar_y + max(5, height // 180)), radius=8, fill=(255, 255, 255, 230))
-        small = _font(max(18, height // 48))
-        draw.text((left, bar_y + 18), self._format_time(display_time), font=small, fill=(255, 255, 255, 145))
+        if ratio > 0:
+            draw.rounded_rectangle(
+                (left, bar_y, left + int((right - left) * ratio), bar_y + bar_h),
+                radius=bar_h, fill=(*accent, 235),
+            )
+        small = _font(max(17, height // 54))
+        draw.text((left, bar_y + int(height * 0.022)), self._format_time(display_time), font=small, fill=(255, 255, 255, 120))
         remaining = self._format_time(duration)
-        draw.text((right - draw.textlength(remaining, font=small), bar_y + 18), remaining, font=small, fill=(255, 255, 255, 145))
+        draw.text((right - draw.textlength(remaining, font=small), bar_y + int(height * 0.022)), remaining, font=small, fill=(255, 255, 255, 120))
         if not state.get("playing"):
             draw.rounded_rectangle((width - 175, 42, width - 52, 90), radius=24, fill=(0, 0, 0, 110), outline=(255, 255, 255, 32))
             draw.text((width - 143, 52), "已暂停", font=_font(22, bold=True), fill=(255, 255, 255, 185))
@@ -982,15 +1098,39 @@ class AirPlayCastManager:
             sample = (221, 164, 69)
         glow = Image.new("RGBA", (width, height), (0, 0, 0, 0))
         glow_draw = ImageDraw.Draw(glow, "RGBA")
-        glow_draw.ellipse((-width // 5, -height // 3, width // 2, height * 4 // 3), fill=(*sample, 72))
-        glow_draw.ellipse((width // 2, height // 3, width * 6 // 5, height * 4 // 3), fill=(116, 79, 190, 42))
+        glow_draw.ellipse((-width // 5, -height // 3, width // 2, height * 4 // 3), fill=(*sample, 82))
+        glow_draw.ellipse((width // 2, height // 3, width * 6 // 5, height * 4 // 3), fill=(116, 79, 190, 46))
         glow = glow.filter(ImageFilter.GaussianBlur(max(50, width // 16)))
         image = Image.alpha_composite(background.convert("RGBA"), glow)
+
+        #
+        # 左右分栏用**渐变**，不能用两块矩形。
+        #
+        # 原来是 `rectangle(0..0.36)` 加 `rectangle(0.34..width)` 两块平涂，
+        # 交界处直接是一条硬竖缝 —— 1080p 投到电视上那条缝非常明显，
+        # 整张图立刻显得廉价。渐变是一列一列画的，没有边界可言。
+        #
         shade = Image.new("RGBA", (width, height), (0, 0, 0, 0))
         shade_draw = ImageDraw.Draw(shade, "RGBA")
-        shade_draw.rectangle((0, 0, int(width * 0.36), height), fill=(0, 0, 0, 72))
-        shade_draw.rectangle((int(width * 0.34), 0, width, height), fill=(4, 5, 9, 42))
+        split = width * 0.35
+        span = width * 0.22  # 过渡带宽度：越宽越看不出分栏，太宽又压不住文字底
+        for x in range(width):
+            ratio = min(1.0, max(0.0, (x - (split - span / 2)) / span))
+            # 左栏压暗一点让封面浮起来，右栏只要一层极淡的冷色垫住歌词
+            alpha = int(84 * (1 - ratio) + 34 * ratio)
+            tint = (0, 0, 0) if ratio < 0.5 else (4, 5, 9)
+            shade_draw.line((x, 0, x, height), fill=(*tint, alpha))
         image = Image.alpha_composite(image, shade)
+
+        # 四周压暗（vignette）。电视是大面积发光，边角不收一下会显得散。
+        vignette = Image.new("L", (width, height), 0)
+        ImageDraw.Draw(vignette).ellipse(
+            (-width * 0.25, -height * 0.35, width * 1.25, height * 1.35), fill=255
+        )
+        vignette = vignette.filter(ImageFilter.GaussianBlur(width // 12))
+        dark = Image.new("RGBA", (width, height), (0, 0, 0, 132))
+        image = Image.composite(image, Image.alpha_composite(image, dark), vignette)
+        accent = _accent_from_cover(session.cover, sample)
         cover_size = int(min(width * 0.255, height * 0.46))
         cover_x, cover_y = int(width * 0.072), int(height * 0.175)
         radius = width // 70
@@ -1005,16 +1145,23 @@ class AirPlayCastManager:
         # 于是"淡淡的投影"变成纯黑边框，"5% 白的占位块"变成纯白方块。
         # 上面 glow 和 shade 两层就是这么做对的，这一块当时漏了。
         #
+        #
+        # 封面只要**一层柔和的投影**，不要外框。
+        #
+        # 原来画了两个带白描边的圆角矩形，一个套一个 —— 在电视上看就是
+        # "画框里又套了个画框"，很廉价。改成一层高斯模糊的投影，
+        # 封面自然浮起来；描边只在封面自身边缘留极淡的一道，用来跟
+        # 背景切开，而不是当装饰。
+        #
+        shadow = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        ImageDraw.Draw(shadow, "RGBA").rounded_rectangle(
+            (cover_x - 6, cover_y + 26, cover_x + cover_size + 6, cover_y + cover_size + 34),
+            radius=radius + 6, fill=(0, 0, 0, 150),
+        )
+        shadow = shadow.filter(ImageFilter.GaussianBlur(max(18, width // 90)))
+        image = Image.alpha_composite(image, shadow)
         chrome = Image.new("RGBA", (width, height), (0, 0, 0, 0))
         chrome_draw = ImageDraw.Draw(chrome, "RGBA")
-        chrome_draw.rounded_rectangle(
-            (cover_x - 22, cover_y + 18, cover_x + cover_size + 22, cover_y + cover_size + 36),
-            radius=radius + 5, fill=(0, 0, 0, 96), outline=(255, 255, 255, 32), width=2,
-        )
-        chrome_draw.rounded_rectangle(
-            (cover_x - 7, cover_y - 7, cover_x + cover_size + 7, cover_y + cover_size + 7),
-            radius=radius, fill=(0, 0, 0, 92), outline=(255, 255, 255, 28), width=2,
-        )
         if not session.cover:
             # 缺封面时的占位。和网页端 Cover 组件同一个思路：
             # 低饱和底色 + 曲名首字。
@@ -1049,23 +1196,46 @@ class AirPlayCastManager:
                 fill=(255, 255, 255, 92),
             )
         state = session.state
-        label = _font(max(18, height // 50), bold=True)
-        title_font = _font(max(30, height // 27), bold=True)
-        meta_font = _font(max(20, height // 39))
-        info_width = int(width * 0.34)
+        label = _font(max(16, height // 58), bold=True)
+        title_font = _font(max(30, height // 26), bold=True)
+        meta_font = _font(max(20, height // 40))
+        info_width = int(width * 0.30)
         info_center = cover_x + cover_size // 2
         title = _ellipsize(draw, state.get("title") or "等待播放", title_font, info_width)
         title_x = info_center - int(draw.textlength(title, font=title_font) / 2)
-        title_y = cover_y + cover_size + int(height * 0.09)
-        draw.text((title_x, title_y), title, font=title_font, fill=(255, 255, 255, 245), stroke_width=1, stroke_fill=(0, 0, 0, 100))
+        # 与封面的间距收紧（原来 0.09 高，中间空一大块，标题像掉队了）
+        title_y = cover_y + cover_size + int(height * 0.058)
+        draw.text((title_x, title_y), title, font=title_font, fill=(255, 255, 255, 250))
         meta = f"{state.get('artist') or '未知歌手'}  ·  {state.get('album') or '未知专辑'}"
         meta = _ellipsize(draw, meta, meta_font, info_width)
         meta_x = info_center - int(draw.textlength(meta, font=meta_font) / 2)
-        draw.text((meta_x, title_y + int(height * 0.057)), meta, font=meta_font, fill=(255, 255, 255, 145))
-        quality = state.get("quality") or "LYRICS CAST"
-        quality_text = quality.upper()
-        quality_x = info_center - int(draw.textlength(quality_text, font=label) / 2)
-        draw.text((quality_x, title_y + int(height * 0.112)), quality_text, font=label, fill=(255, 255, 255, 105))
+        draw.text((meta_x, title_y + int(height * 0.052)), meta, font=meta_font, fill=(255, 255, 255, 150))
+
+        #
+        # 来源做成一枚带强调色的胶囊，而不是一行灰字。
+        #
+        # 整幅画面原来全是白字压在灰底上，没有任何一处颜色把它串起来。
+        # 强调色取自封面（下面进度条用的是同一个），一幅画里出现两次同一个
+        # 颜色，就有"设计过"的样子了。
+        #
+        quality_text = (state.get("quality") or "LYRICS CAST").upper()
+        pill_w = int(draw.textlength(quality_text, font=label)) + int(width * 0.026)
+        pill_h = int(height * 0.038)
+        pill_x = info_center - pill_w // 2
+        pill_y = title_y + int(height * 0.108)
+        pill = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        ImageDraw.Draw(pill, "RGBA").rounded_rectangle(
+            (pill_x, pill_y, pill_x + pill_w, pill_y + pill_h),
+            radius=pill_h // 2, fill=(*accent, 42), outline=(*accent, 120), width=2,
+        )
+        image = Image.alpha_composite(image, pill)
+        draw = ImageDraw.Draw(image, "RGBA")
+        box = draw.textbbox((0, 0), quality_text, font=label)
+        draw.text(
+            (info_center - (box[2] - box[0]) / 2 - box[0], pill_y + (pill_h - (box[3] - box[1])) / 2 - box[1]),
+            quality_text, font=label, fill=(*accent, 255),
+        )
+        session.accent = accent
         return image.convert("RGB")
 
     def stop(self, session_id: str, owner_id: str) -> None:

@@ -233,6 +233,8 @@ export function PlayerProvider({ children }) {
   const audioRef = useRef(null);
   const hydratedRef = useRef(false);
   const progressMilestoneRef = useRef(0);
+  /* 已经为哪首歌做过"原始放不了→换转码"的降级，每首只降一次。 */
+  const transcodeFallbackRef = useRef(null);
   /*
    * 待执行的起播位置。
    *
@@ -918,7 +920,40 @@ export function PlayerProvider({ children }) {
           }
         }}
         onError={(e) => {
-          const error = e.currentTarget.error;
+          const audio = e.currentTarget;
+          const error = audio.error;
+          /*
+           * 解码失败就自动换转码，别把"这个格式浏览器放不了"甩给用户。
+           *
+           * 浏览器之间的解码能力差很多：同一个 24bit FLAC，Chrome 放得了、
+           * Safari 未必。用户不该为了听歌去研究自己浏览器支持什么格式 ——
+           * 原始音质放不出来，就自动退到 320K（服务端转码成 MP3，
+           * 各家浏览器都认），并把原因说清楚。
+           *
+           * 只在"格式/解码"这两类错误上降级（3 = DECODE，4 = SRC_NOT_SUPPORTED）；
+           * 网络中断（2）重试转码没意义，中止（1）是用户自己的操作。
+           * 每首歌只降一次，避免来回打转。
+           */
+          const decodeFailed = error?.code === 3 || error?.code === 4;
+          const url = String(audio.currentSrc || audio.src || "");
+          const canFallBack =
+            decodeFailed &&
+            url.includes("/api/player/") &&
+            url.includes("bitrate=original") &&
+            transcodeFallbackRef.current !== currentTrack?.id;
+          if (canFallBack) {
+            transcodeFallbackRef.current = currentTrack?.id;
+            const keep = audio.currentTime || 0;
+            audio.src = url.replace("bitrate=original", "bitrate=320k");
+            audio.load();
+            pendingSeekRef.current = keep;
+            audio.play().catch(() => {});
+            setState((s) => ({
+              ...s,
+              error: "这首的原始格式当前浏览器放不了，已自动换成 320K",
+            }));
+            return;
+          }
           const messages = {
             1: "播放已中止",
             2: "连接断了，过会儿再试",

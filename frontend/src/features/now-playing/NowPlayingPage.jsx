@@ -446,6 +446,22 @@ export default function NowPlayingPage({
     lyrics: lyricsText,
     player: effectivePlayer,
   });
+  /*
+   * 投屏抢路由的那一刻，歌词视频是不静音的（否则 WebKit 会把 AirPlay
+   * 绑到音频会话上，电视只显示封面）。路由一建立它就自动静音、让出音频
+   * 会话 —— 这里负责把本地音乐接上去。
+   *
+   * 只管本地播放这一路：跟随 Plexamp 时音乐在 Plexamp 那边，不归我们管。
+   */
+  useEffect(() => {
+    cast.onAudioSessionReleased(() => {
+      if (usingRemote) return;
+      if (!localPlayer.currentTrack) return;
+      // 让出音频会话有一瞬间的空档，等一拍再续播更稳。
+      window.setTimeout(() => localPlayer.resume?.(), 300);
+    });
+    return () => cast.onAudioSessionReleased(null);
+  }, [cast, usingRemote, localPlayer.currentTrack?.id, localPlayer.resume]);
 
   const cover = coverFor(track);
   const background = coverFor(track);

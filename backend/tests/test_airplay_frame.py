@@ -168,3 +168,95 @@ class FrameTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class VisualQualityTests(unittest.TestCase):
+    """投屏画面的几条视觉约定。
+
+    用户看完实机反馈"不够高级精美"，这几条是当时逐条改掉的问题 ——
+    它们都是像素级可验的，不必靠眼睛记住。
+    """
+
+    def test_no_hard_vertical_seam_between_the_two_columns(self):
+        """左右分栏必须是渐变，不能是两块平涂矩形拼出来的硬缝。
+
+        原来是 rectangle(0..0.36) + rectangle(0.34..width) 两块平涂，
+        交界处一条竖缝，1080p 投到电视上非常明显，整张图立刻显得廉价。
+        """
+        session = session_at(20.0)
+        frame = cast_manager._render_frame(session, at=20.0).convert("L")
+        width, height = frame.size
+        # 取一条不经过任何文字的扫描线（很靠上），逐列看亮度跳变
+        row = height // 22
+        values = [frame.getpixel((x, row)) for x in range(width)]
+        jumps = [
+            (x, abs(values[x] - values[x - 1]))
+            for x in range(int(width * 0.20), int(width * 0.55))
+        ]
+        worst_x, worst = max(jumps, key=lambda item: item[1])
+        self.assertLessEqual(
+            worst, 6,
+            f"第 {worst_x} 列出现 {worst} 级亮度跳变 —— 分栏那里又变成硬边了",
+        )
+
+    def test_the_active_line_is_clearly_the_focus(self):
+        """当前句必须明显比相邻句更亮更大，否则看不出焦点在哪。"""
+        session = session_at(20.0)
+        frame = cast_manager._render_frame(session, at=20.0)
+        width, height = frame.size
+        lyric_left, lyric_right = int(width * 0.41), int(width * 0.95)
+        # 当前句在纵向正中，相邻句在它上下
+        active = ink_ratio(frame, (lyric_left, int(height * 0.46), lyric_right, int(height * 0.58)))
+        neighbour = ink_ratio(frame, (lyric_left, int(height * 0.34), lyric_right, int(height * 0.44)))
+        self.assertGreater(active, 0.02, "当前句这一带没有墨")
+        self.assertGreater(
+            active, neighbour * 1.4,
+            f"当前句({active:.3f})没有比相邻句({neighbour:.3f})突出，焦点不明确",
+        )
+
+    def test_the_accent_colour_comes_from_the_cover_and_is_actually_a_colour(self):
+        """强调色要从封面里挑，而且不能是灰的。
+
+        原来用封面均值 —— 均值几乎总落在灰轴上，画出来的进度条和来源
+        胶囊看起来没有颜色，整幅画就少了那条把它串起来的线索。
+        """
+        from PIL import Image as PILImage
+        from app.airplay_cast import _accent_from_cover
+
+        cover = PILImage.new("RGB", (64, 64), (40, 44, 48))
+        # 一小块很鲜艳的红，占比不到 6% —— 也应该被挑中
+        for x in range(64):
+            for y in range(58, 64):
+                cover.putpixel((x, y), (198, 46, 40))
+        accent = _accent_from_cover(cover, (80, 80, 80))
+        high, low = max(accent), min(accent)
+        self.assertGreater(
+            (high - low) / max(1, high), 0.30,
+            f"选出来的 {accent} 太接近灰色，看不出是颜色",
+        )
+        self.assertEqual(accent.index(max(accent)), 0, "红色封面应该挑出偏红的强调色")
+
+    def test_a_greyscale_cover_does_not_get_a_fake_colour(self):
+        """黑白封面就不该硬塞一个颜色进去 —— 挑不出来时退回均值。"""
+        from PIL import Image as PILImage
+        from app.airplay_cast import _accent_from_cover
+
+        accent = _accent_from_cover(PILImage.new("RGB", (64, 64), (128, 128, 128)), (128, 128, 128))
+        high, low = max(accent), min(accent)
+        self.assertLessEqual((high - low) / max(1, high), 0.12, f"{accent} 是凭空造的颜色")
+
+    def test_rendering_a_frame_stays_well_inside_the_frame_budget(self):
+        """15fps 的预算是 66.7 毫秒。加视觉效果不能把余量吃掉 ——
+        当前句那层辉光一度是整帧高斯模糊，单帧从 11ms 涨到 22ms。"""
+        import time
+
+        session = session_at(20.0)
+        session.visual_base = cast_manager._build_visual_base(session)
+        start = time.perf_counter()
+        for index in range(10):
+            cast_manager._render_frame(session, at=20.0 + index / 15)
+        per_frame = (time.perf_counter() - start) / 10
+        self.assertLess(
+            per_frame, 0.045,
+            f"单帧 {per_frame * 1000:.0f} 毫秒，离 66.7 毫秒的预算太近了",
+        )

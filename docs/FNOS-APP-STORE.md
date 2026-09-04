@@ -6,7 +6,7 @@ SongLib Amp 提供符合飞牛 fnOS 应用包结构的 Docker 应用，源码位
 
 - 应用名称：SongLib Amp
 - 应用包名：`songlib-amp`
-- 当前版本：`1.2.7`
+- 当前版本：`1.3.0`
 - 支持架构：x86_64、arm64
 - 服务类型：本地优先的 NAS 音乐管理与播放平台
 - 项目主页：<https://github.com/songdone/songlib-amp>

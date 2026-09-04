@@ -255,6 +255,8 @@ class JobManager:
     def _plex_scan(payload, progress):
         progress(20, "正在请求 Plex 扫描")
         plex.scan()
+        # 目录有 60 秒缓存，扫完主动清掉，别让新入库的歌等一分钟才出现。
+        plex.invalidate_catalog()
         return {"triggered": True}
 
     @staticmethod

@@ -31,6 +31,7 @@ import {
   mergeCatalogResults,
   sourceCatalogReady,
 } from "../src/lib/sources.js";
+import { persistableTrack } from "../src/lib/media.js";
 import { pwaInstallGuidance, pwaSecureOrigin } from "../src/lib/pwa.js";
 import { buildAmbientDeck } from "../src/lib/ambient.js";
 import {
@@ -716,4 +717,76 @@ test("hook 不能写在提前 return 之后", () => {
       }
     }
   }
+});
+
+test("存进 player/state 的曲目必须是瘦的，不能把上游原始属性整份带上", () => {
+  /*
+   * 线上实测过一次代价：队列 194 条 = 323 KB、history 82 KB、
+   * playEvents 116 KB，整个 /api/player/state 有 520 KB，每次开应用
+   * 都要下载一遍、状态一变还要整份传回去。那条链路每个请求本来就有
+   * 约 370ms 固定开销 —— 这 520 KB 是"卡顿"实打实的一半。
+   *
+   * 根因是这里原来用黑名单（只剔 audioUrl/transcodeUrls/raw），
+   * 上游多一个字段它就悄悄变胖一点。改成白名单之后，这条守卫负责
+   * 让它一直瘦下去。
+   */
+  const plexTrack = {
+    id: "plex-90056",
+    sourceType: "plex_item",
+    plexRatingKey: "90056",
+    title: "爱的飞行日记",
+    artist: "周杰伦",
+    album: "跨时代",
+    duration: 254,
+    coverUrl: "/api/plex/image?path=%2Flibrary%2Fmetadata%2F1%2Fthumb%2F1",
+    file: "/music/周杰伦/跨时代/爱的飞行日记.flac",
+    quality: "original",
+    bitrate: "original",
+    // 下面这些是 Plex 的原始属性，一个都不该被存下来
+    guid: "plex://track/5d07c3b3403c6402919b1e5d",
+    parentGuid: "plex://album/5d07",
+    grandparentGuid: "plex://artist/5d07",
+    librarySectionKey: "/library/sections/26",
+    librarySectionID: 26,
+    librarySectionTitle: "音乐",
+    musicAnalysisVersion: "1",
+    playlistItemID: 12345,
+    parentStudio: "JVR",
+    key: "/library/metadata/90056",
+    parentKey: "/library/metadata/90055",
+    grandparentKey: "/library/metadata/90000",
+    partKey: "/library/parts/1/1/file.flac",
+    partId: 1,
+    addedAt: 1700000000,
+    updatedAt: 1700000000,
+    lastViewedAt: 1700000000,
+    viewCount: 3,
+    ratingCount: 10,
+    summary: "很长的简介……".repeat(40),
+    tags: ["流行", "华语"],
+    // 这三个原本就在黑名单里，必须继续被剔掉
+    audioUrl: "/api/player/plex/90056/stream?bitrate=original",
+    transcodeUrls: { "320k": "/x", "256k": "/y" },
+    raw: { 一大坨: "Plex 的完整原始响应".repeat(60) },
+    lyrics: "[00:01.00]歌词……".repeat(80),
+  };
+
+  const slim = persistableTrack(plexTrack);
+
+  // 恢复播放和列表显示需要的，一个都不能少
+  for (const field of ["id", "sourceType", "plexRatingKey", "title", "artist", "album", "duration", "coverUrl", "file"])
+    assert.ok(slim[field], `瘦身之后丢了 ${field}，恢复播放会坏`);
+
+  // 上游原始属性一个都不许留
+  for (const field of ["guid", "librarySectionKey", "musicAnalysisVersion", "playlistItemID",
+                       "parentStudio", "key", "partKey", "addedAt", "viewCount", "summary", "tags",
+                       "audioUrl", "transcodeUrls", "raw", "lyrics"])
+    assert.equal(slim[field], undefined, `${field} 不该被存进 player/state`);
+
+  // 线上单条是 1.6 KB；给个宽松上限，胖回去就报警
+  const size = JSON.stringify(slim).length;
+  assert.ok(size < 400, `单条 ${size} 字节，太胖了（线上出过 1.6 KB，整份 520 KB）`);
+
+  // 试听不进历史
+  assert.equal(persistableTrack({ sourceType: "source_preview", id: "x" }), null);
 });

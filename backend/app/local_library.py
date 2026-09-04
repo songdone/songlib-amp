@@ -481,6 +481,8 @@ class LocalLibraryService:
 
     def sync_plex(self, payload: dict, progress):
         progress(5, "正在读取 Plex 歌手、专辑与曲目")
+        # 手动点同步就是"我要最新的"，不能拿 60 秒的缓存糊弄过去。
+        plex.invalidate_catalog()
         artists, albums, tracks = plex.artists(), plex.albums(), plex.tracks()
         stamp, paths = now(), {}
         artist_dirs, album_dirs = {}, {}

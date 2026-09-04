@@ -388,3 +388,35 @@
     }
   }
 }
+
+@layer components {
+  /*
+   * 投屏状态/原因。
+   *
+   * 放在页头标题那一列（块级容器）里，不是塞进 .now-page-actions ——
+   * 那一组的样式全靠 `>` 直接子选择器，多插一个元素就会被那几条规则
+   * 一并接管，形状全乱。这个仓库里"换结构没对齐旧规则"已经踩过很多次。
+   *
+   * 为什么需要它：AirPlay 的设备选择器只有 Safari 提供，别的浏览器点
+   * "投到电视"只会得到一条说明 —— 而那条说明原来只在「歌词」标签页里
+   * 渲染，用户在页头点的按钮，提示出现在他看不见的地方，
+   * 表现就是"投屏毫无反应"。
+   */
+  .now-page-head .now-cast-note {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-block-start: var(--space-2);
+    max-width: 52ch;
+    font-size: var(--text-xs);
+    line-height: var(--leading-normal);
+    color: var(--accent-text);
+  }
+
+  /* 不支持 AirPlay 的浏览器上，按钮本身已经写着"投屏需用 Safari"。
+     它不是坏了，是这个浏览器没有这个接口 —— 所以别做成禁用的死按钮，
+     保留可点，点了在上面那行给出完整说明。 */
+  .now-page-actions > .airplay-cast-button:not(.active):not(.pending) {
+    white-space: nowrap;
+  }
+}

@@ -3,6 +3,7 @@ import secrets
 import tempfile
 import unittest
 import wave
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest.mock import MagicMock, PropertyMock, patch
 
@@ -1172,3 +1173,96 @@ class HeaderSafetyTests(unittest.TestCase):
         # 7 个非 ASCII 字符 → 7 个替换符。重点是"不抛异常、能当头值"，
         # 而不是中文本身能保住（响应头值只能是 latin-1）。
         self.assertEqual(_header_safe("原因：转码失败"), "?" * 7)
+
+
+class CatalogCacheTests(unittest.TestCase):
+    """曲库翻页不许每翻一次就把整个 Plex 库重抓一遍。
+
+    改之前 `/api/library/tracks?pageSize=12` 的实现是"把全部曲目拉下来、
+    切 12 条返回"。1526 首要分 500 条抓 4 次，实测单次请求 2.9–3.1 秒，
+    而前端还要继续加载剩下的 1300 多项 —— 每翻一页全量重抓一次。
+    曲库页那个"0 项 / 正在读取音乐库…"就是这么来的。
+    """
+
+    def setUp(self):
+        plex.invalidate_catalog()
+
+    def tearDown(self):
+        plex.invalidate_catalog()
+
+    @staticmethod
+    def _library(count):
+        rows = "".join(
+            f'<Track ratingKey="t{i}" title="曲目 {i}" grandparentTitle="歌手" parentTitle="专辑" duration="200000" />'
+            for i in range(count)
+        )
+        return ET.fromstring(f'<MediaContainer size="{count}">{rows}</MediaContainer>')
+
+    def test_paging_the_library_fetches_plex_only_once(self):
+        calls = []
+
+        def xml(path, params=None, **kwargs):
+            calls.append(path)
+            start = int((params or {}).get("X-Plex-Container-Start") or 0)
+            return self._library(0 if start else 30)
+
+        with (
+            patch.object(plex, "xml", side_effect=xml),
+            patch.object(plex, "enabled_library_keys", return_value=["26"]),
+        ):
+            first = plex.tracks()
+            for _ in range(5):
+                plex.tracks()
+        self.assertEqual(len(first), 30)
+        # 六次调用只抓一轮（一轮 = 拿到不足 500 条就停，这里 1 次）
+        self.assertEqual(len(calls), 1, f"翻页把 Plex 重抓了 {len(calls)} 次")
+
+    def test_searching_runs_against_the_cache_not_against_plex(self):
+        calls = []
+
+        def xml(path, params=None, **kwargs):
+            calls.append(path)
+            return self._library(3)
+
+        with (
+            patch.object(plex, "xml", side_effect=xml),
+            patch.object(plex, "enabled_library_keys", return_value=["26"]),
+        ):
+            plex.tracks()
+            hit = plex.tracks(search="曲目 1")
+        self.assertEqual(len(calls), 1)
+        self.assertEqual([item["title"] for item in hit], ["曲目 1"])
+
+    def test_a_scan_drops_the_cache_so_new_songs_show_up(self):
+        calls = []
+
+        def xml(path, params=None, **kwargs):
+            calls.append(path)
+            return self._library(2)
+
+        with (
+            patch.object(plex, "xml", side_effect=xml),
+            patch.object(plex, "enabled_library_keys", return_value=["26"]),
+        ):
+            plex.tracks()
+            plex.invalidate_catalog()
+            plex.tracks()
+        self.assertEqual(len(calls), 2, "清过缓存之后应该重新抓一次")
+
+    def test_different_media_types_do_not_share_a_cache_entry(self):
+        seen = []
+
+        def xml(path, params=None, **kwargs):
+            seen.append((params or {}).get("type"))
+            return self._library(1)
+
+        with (
+            patch.object(plex, "xml", side_effect=xml),
+            patch.object(plex, "enabled_library_keys", return_value=["26"]),
+        ):
+            plex.artists()
+            plex.albums()
+            plex.tracks()
+            plex.artists()
+        # 8/9/10 各抓一次，第二次 artists 命中缓存
+        self.assertEqual(seen, [8, 9, 10])

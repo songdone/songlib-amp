@@ -1,4 +1,4 @@
-import { csrfFromCookie } from "./contracts";
+import { csrfFromCookie } from "./contracts.js";
 
 export const api = async (path, options = {}) => {
   const { timeoutMs = 20000, ...requestOptions } = options;

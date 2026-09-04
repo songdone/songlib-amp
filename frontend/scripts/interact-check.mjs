@@ -855,6 +855,65 @@ if (!(await installBtn.count())) {
 }
 await pwaCtx.close();
 
+/* ---------- 15. 投屏按钮不许"点了毫无反应" ---------- */
+/*
+ * AirPlay 的设备选择器（webkitShowPlaybackTargetPicker）只有 Safari 提供。
+ * Chromium 里点"投到电视"只会得到一条说明 —— 而那条说明原来只在
+ * 「歌词」标签页里渲染，用户在页头点的按钮，提示出现在他看不见的地方。
+ * 用户报的"投屏依旧只是个摆设"就是这个。
+ *
+ * 这条守卫跑在 Chromium 上（本来就没有那个 API），要求：
+ *   点之前 → 按钮标签已经说明要用 Safari
+ *   点之后 → 页面上出现可见的说明文字
+ */
+console.log("\n投屏");
+await page.goto(BASE, { waitUntil: "domcontentloaded" });
+await page.waitForTimeout(2000);
+// 必须先有歌在放。没歌时页头是另一个**禁用的占位**按钮，上面同样写着
+// "投到电视" —— 拿它来验等于验错了对象（第一版守卫就栽在这）。
+const castPlay = page.getByRole("button", { name: /播放这张专辑/ }).first();
+if (await castPlay.count()) {
+  await castPlay.click();
+  await page.waitForTimeout(1200);
+}
+await page
+  .locator("nav button:visible, aside button:visible")
+  .filter({ hasText: "正在播放" })
+  .first()
+  .click()
+  .catch(() => {});
+await page.waitForTimeout(2500);
+
+const castBtn = page.locator(".airplay-cast-button:not([disabled])").first();
+if (!(await castBtn.count())) {
+  note("正在播放页找不到投屏按钮");
+} else {
+  const before = (await castBtn.innerText()).trim();
+  // Chromium 没有 AirPlay 接口，按钮就该在点之前把这件事说清楚
+  if (/^投到电视$/.test(before))
+    note(`不支持 AirPlay 的浏览器上按钮仍写着「${before}」，点下去只会没反应`);
+  else ok(`按钮已说明限制：「${before}」`);
+
+  const visibleTextBefore = await page.evaluate(() => document.body.innerText);
+  await castBtn.click({ timeout: 5000 }).catch(() => {});
+  await page.waitForTimeout(1200);
+  const visibleTextAfter = await page.evaluate(() => document.body.innerText);
+  const gained = visibleTextAfter.length > visibleTextBefore.length;
+  const explained = /Safari|AirPlay|投屏/.test(
+    visibleTextAfter.slice(0, 4000),
+  );
+  const noteVisible = await page.evaluate(() => {
+    const el = document.querySelector(".now-cast-note");
+    if (!el) return false;
+    const r = el.getBoundingClientRect();
+    return r.height > 0 && r.width > 0 && getComputedStyle(el).visibility !== "hidden";
+  });
+  if (!noteVisible && !gained)
+    note("点了投屏，页面上没有任何可见反馈（说明被渲染在别的标签页里了）");
+  else if (!explained) note("点了投屏有反馈，但没说清为什么不能投");
+  else ok("点了投屏有可见说明");
+}
+
 await browser.close();
 console.log(problems.length ? `\n发现 ${problems.length} 个问题` : "\n交互检查全过");
 process.exit(problems.length ? 1 : 0);

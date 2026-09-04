@@ -111,17 +111,10 @@ export function MiniPlayer({ openPlayer, navigate }) {
           {formatTime(player.currentTime)} / {formatTime(player.duration)}
         </span>
       </div>
+      {/* 这里原来还有一个音质下拉，就贴在音量条旁边 —— 太容易误碰，
+          一碰就切到转码播放。音质现在只有设置页一处（见 SettingsPage
+          的「远程播放音质」），那才是"合并成一处"该有的样子。 */}
       <label className="mini-volume">
-        <select
-          value={player.quality}
-          onChange={(e) => player.setQuality(e.target.value)}
-        >
-          <option value="original">Original</option>
-          <option value="320k">320K</option>
-          <option value="256k">256K</option>
-          <option value="192k">192K</option>
-          <option value="128k">128K</option>
-        </select>
         <Volume2 />
         <input
           type="range"

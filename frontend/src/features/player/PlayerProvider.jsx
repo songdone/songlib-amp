@@ -11,18 +11,30 @@ export const PLAYBACK_QUALITIES = ["original", "320k", "256k", "192k", "128k"];
 const QUALITY_STORAGE_KEY = "songlib-player-quality";
 
 /*
- * 远程播放音质只有一处真相。
+ * 远程播放音质只有一处真相：服务端的 settings.player.remoteBitrate
+ * （设置 → 播放器设置 → 远程播放音质）。
  *
- * 以前有两处：「播放器设置 → 远程默认 320K」（存服务端 settings.player.remoteBitrate）
- * 和「用户偏好 → 默认音质」（存 profile.defaultQuality，选项里还有 FLAC / Hi-Res ——
- * 那是下载音质，Plex 转码根本没有这两档）。用户取消了前者，后者还在发 320k。
- * 现在：本机选过就听本机的，没选过才用服务端的默认值；profile.defaultQuality
- * 只管下载，不再参与播放。
+ * 历史上这里乱过两轮：
+ *  1. 最早有两处 —— 「播放器设置 → 远程默认 320K」和「用户偏好 → 默认音质」
+ *     （后者选项里还有 FLAC / Hi-Res，那其实是下载音质，Plex 转码没有这两档），
+ *     用户取消了前者、后者还在发 320k。
+ *  2. 然后我加了"本机选过就以本机为准"，并把音质下拉放在迷你条上 ——
+ *     那个下拉就贴着音量条，一碰就切到转码，而且切完还会一直记住。
+ *     等于把"两处"变成了"两处 + 一个容易误碰的开关"。
+ *
+ * 现在只有设置页那一处。这里保留清理旧值的逻辑，让升级上来的人
+ * 不会被上一版存下的档位卡住。
  */
 const normalizeQuality = (value) =>
   PLAYBACK_QUALITIES.includes(value) ? value : "";
 
-const storedQuality = () => normalizeQuality(storedJson(QUALITY_STORAGE_KEY, ""));
+// 1.2.0–1.2.7 存过本机档位。那个入口已经没了，留着只会让人莫名其妙
+// 一直在转码，所以启动时清掉。
+try {
+  window.localStorage?.removeItem(QUALITY_STORAGE_KEY);
+} catch {
+  /* 隐身模式，无所谓 */
+}
 
 const PlayerContext = createContext(null);
 
@@ -241,7 +253,8 @@ export function PlayerProvider({ children }) {
     duration: 0,
     volume: 0.86,
     playMode: "order",
-    quality: storedQuality() || "original",
+    // 服务端设置到位之前先按"不转码"走 —— 原始音质是直读文件，最稳。
+    quality: "original",
     loading: false,
     error: "",
   });
@@ -331,7 +344,7 @@ export function PlayerProvider({ children }) {
                看起来就是"设置不生效"。音质的唯一真相见文件顶部。 */
             const restored = await toPlaybackTrack(
               remote.currentTrack,
-              storedQuality() || "original",
+              "original",
             );
             if (!cancelled)
               setState((value) => ({
@@ -438,11 +451,22 @@ export function PlayerProvider({ children }) {
   }, [currentTrack?.id, currentTrack?.audioUrl]);
   const remember = (track) => {
     const playedAt = new Date().toISOString();
-    setPlayEvents((value) => [{ ...track, playedAt }, ...value].slice(0, 1000));
+    /*
+     * 记的是**瘦身后**的曲目，不是整份。
+     *
+     * 原来存的是 { ...track }，里面带着 raw（Plex 的完整原始属性）、
+     * audioUrl 和整首歌词 —— 单条 2190 字节。playEvents 还留 1000 条，
+     * 攒满就是 2 MB，而这些都在 /api/player/state 里来回搬。
+     * 线上实测 history 40 条 82 KB、playEvents 55 条 116 KB。
+     *
+     * 上限也从 1000 收到 200：这两份是"最近听了什么"，不是永久档案，
+     * 真正的收听统计走 sendListeningEvent 落在服务端。
+     */
+    const slim = { ...persistableTrack(track), playedAt };
+    setPlayEvents((value) => [slim, ...value].slice(0, 200));
     setHistory((value) => {
-      const item = { ...track, playedAt };
       return [
-        item,
+        slim,
         ...value.filter(
           (entry) => trackIdentity(entry) !== trackIdentity(track),
         ),
@@ -601,11 +625,6 @@ export function PlayerProvider({ children }) {
     const audio = audioRef.current;
     const keep = audio?.currentTime || 0;
     const next = normalizeQuality(quality) || "original";
-    try {
-      localStorage.setItem(QUALITY_STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      /* 隐身模式下写不进去，不影响本次播放 */
-    }
     quality = next;
     setState((s) => ({ ...s, quality: next }));
     if (!currentTrack) return;
@@ -764,10 +783,8 @@ export function PlayerProvider({ children }) {
     );
     play(previousTrack, nextQueue);
   };
-  /* 服务端「播放器设置 → 远程播放音质」。本机选过就不覆盖 —— 否则用户
-     在迷你条上选的档位每次刷新都会被服务端默认值顶掉。 */
+  /* 服务端「播放器设置 → 远程播放音质」，唯一真相。 */
   const applyRemoteDefaultQuality = (value) => {
-    if (storedQuality()) return;
     const next = normalizeQuality(value);
     if (!next) return;
     setState((s) => (s.quality === next ? s : { ...s, quality: next }));

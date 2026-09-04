@@ -470,6 +470,16 @@ export default function NowPlayingPage({
         <div>
           <h1 className="now-page-title">正在播放</h1>
           <p>{sourceDescription}</p>
+          {/* 投屏的状态/原因必须跟着按钮走。原来它只在「歌词」标签页里
+              渲染一份，而按钮在页头 —— 在别的标签页点投屏，提示出现在
+              看不见的地方，表现就是"点了毫无反应"。
+              这里是页头那个块级容器，不影响 .now-page-actions 那几条
+              直接子选择器（`>`），不会像包一层 div 那样把样式打散。 */}
+          {cast.message && (
+            <p className="now-cast-note" role="status">
+              {cast.message}
+            </p>
+          )}
         </div>
         <div className="now-page-actions">
           {track ? (

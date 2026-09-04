@@ -1,4 +1,4 @@
-import { playbackDurationSeconds } from "./contracts";
+import { playbackDurationSeconds } from "./contracts.js";
 
 /**
  * 视觉兜底资源。
@@ -79,8 +79,53 @@ export const sanitizeQueue = (items = [], current = null) => {
     });
 };
 
+/*
+ * 存进 /api/player/state 的曲目要瘦。
+ *
+ * 原来这里是**黑名单**（只剔掉 audioUrl / transcodeUrls / raw），于是 Plex
+ * 的原始属性整份被存了下来 —— guid、librarySectionKey、musicAnalysisVersion、
+ * playlistItemID、parentStudio……一条 50 个字段、1.6 KB。线上实测：
+ * 队列 194 条 = 323 KB，加上 history 与 playEvents，**整个 player/state
+ * 有 520 KB**，每次打开应用都要下载一遍，状态一变还要整份传回去。
+ * 那条链路每个请求本来就有约 370ms 固定开销，这 520 KB 就是"卡顿"的一半。
+ *
+ * 改成白名单：只留恢复播放和列表显示真正用得上的字段。
+ * 加字段的人请一并加进这张表 —— 黑名单会随着上游多一个字段就悄悄变胖，
+ * 白名单不会。
+ */
+const PERSISTED_TRACK_FIELDS = [
+  // 身份（trackIdentity 按这个顺序找）
+  "id",
+  "canonicalKey",
+  "sourceType",
+  "source",
+  "plexRatingKey",
+  "ratingKey",
+  "localFileId",
+  // 显示
+  "title",
+  "filename",
+  "artist",
+  "grandparentTitle",
+  "album",
+  "parentTitle",
+  "duration",
+  "coverUrl",
+  "albumCoverUrl",
+  "thumbUrl",
+  "artistBackgroundUrl",
+  // 恢复播放要用
+  "file",
+  "quality",
+  "bitrate",
+];
+
 export const persistableTrack = (track) => {
   if (!track || track.sourceType === "source_preview") return null;
-  const { audioUrl, transcodeUrls, raw, ...rest } = track;
-  return rest;
+  const slim = {};
+  for (const field of PERSISTED_TRACK_FIELDS) {
+    const value = track[field];
+    if (value !== undefined && value !== null && value !== "") slim[field] = value;
+  }
+  return slim;
 };

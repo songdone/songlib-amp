@@ -437,11 +437,23 @@ export function useAirPlayLyricsCast({ track, lyrics, player }) {
 }
 
 export function AirPlayCastButton({ cast, overlay = false }) {
+  /*
+   * 不支持的浏览器要在**点之前**就看出来。
+   *
+   * AirPlay 的 `webkitShowPlaybackTargetPicker` 只有 Safari 有。原来这里
+   * 一律显示"投到电视"，Chrome/Edge/Firefox/安卓上点下去只会
+   * setMessage(...)，而那条消息只在「歌词」标签页里渲染 —— 用户在页头
+   * 点的按钮，提示出现在他看不见的地方，于是"投屏毫无反应"。
+   * 这不是能力问题，是 Apple 只给 Safari 开了这个接口，
+   * 所以要把限制讲清楚，而不是摆一个点不动的按钮。
+   */
   const label = cast.wireless
     ? "正在投到电视"
     : cast.pickerOpen
       ? "正在选择电视"
-      : "投到电视";
+      : cast.supported
+        ? "投到电视"
+        : "投屏需用 Safari";
   return (
     <button
       type="button"
@@ -454,7 +466,7 @@ export function AirPlayCastButton({ cast, overlay = false }) {
           ? cast.availability === "not-available"
             ? "Safari 当前未发现可用的 AirPlay 目标"
             : "打开 Apple 系统原生 AirPlay 设备选择器"
-          : "此设备不能原生发起 AirPlay"
+          : "AirPlay 的设备选择器只有 Safari 提供。在 iPhone、iPad 或 Mac 的 Safari 里打开这个页面就能投屏。"
       }
     >
       <Airplay />

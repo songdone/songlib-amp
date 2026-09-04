@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import re
+import threading
+import time
 import urllib.parse
 import uuid
 import xml.etree.ElementTree as ET
@@ -17,6 +19,16 @@ from .media_lyrics import decode_lyrics, read_local_lyrics
 # 一份码率表，playback / playback_info / 转码 URL 共用，避免又出现两处不一致。
 BITRATE_MAP = {"320k": 320, "256k": 256, "192k": 192, "128k": 128}
 
+# 全量目录的缓存寿命。
+#
+# 为什么必须有：`/api/library/tracks?pageSize=12` 的实现是"把 Plex 上全部
+# 曲目拉下来，再切 12 条返回"。1526 首要分 500 条抓 4 次，实测单次请求
+# 2.9–3.1 秒；而前端还要继续翻页加载剩下的 1300 多项，**每翻一次就全量
+# 重抓一次**。曲库页那个"0 项 / 正在读取音乐库…"就是这么来的。
+# 60 秒足够把一次浏览会话里的翻页全部命中，又不至于让刚入库的歌很久不出现；
+# 扫描/同步完成时会主动清掉（见 invalidate_catalog）。
+CATALOG_TTL_SECONDS = 60.0
+
 
 def has_chinese(text: str, minimum: int = 20) -> bool:
     return sum("\u4e00" <= char <= "\u9fff" for char in (text or "")) >= minimum
@@ -25,6 +37,8 @@ def has_chinese(text: str, minimum: int = 20) -> bool:
 class PlexClient:
     def __init__(self):
         self._token = ""
+        self._catalog_cache: dict[tuple, tuple[float, list[dict]]] = {}
+        self._catalog_lock = threading.Lock()
 
     @staticmethod
     def saved_settings() -> dict:
@@ -149,10 +163,44 @@ class PlexClient:
             return [str(selected)]
         return [settings.plex_section] if settings.plex_section else []
 
+    def invalidate_catalog(self):
+        """扫描/同步之后调它，别让用户等 60 秒才看到新歌。"""
+        with self._catalog_lock:
+            self._catalog_cache.clear()
+
     def paged(self, media_type: int, *, limit=0, search=""):
+        """按类型取目录。全量结果走缓存，搜索和切页在缓存上做。
+
+        原来每次调用都重新把整个库从 Plex 抓一遍 —— 翻一页抓一次全量。
+        现在抓取和"过滤+截断"分开：抓取带 TTL 缓存，后者是内存操作。
+        """
+        items = self._catalog(media_type)
+        if search:
+            needle = search.casefold()
+            fields = ("title", "parentTitle", "grandparentTitle", "originalTitle", "artist", "summary", "year")
+            items = [
+                item
+                for item in items
+                if any(needle in str(item.get(field) or "").casefold() for field in fields)
+            ]
+        return items[:limit] if limit else items
+
+    def _catalog(self, media_type: int) -> list[dict]:
+        key = (media_type, tuple(self.enabled_library_keys()))
+        now_value = time.monotonic()
+        with self._catalog_lock:
+            hit = self._catalog_cache.get(key)
+            if hit and now_value - hit[0] < CATALOG_TTL_SECONDS:
+                return hit[1]
+        items = self._fetch_catalog(media_type, key[1])
+        with self._catalog_lock:
+            self._catalog_cache[key] = (time.monotonic(), items)
+        return items
+
+    def _fetch_catalog(self, media_type: int, sections: tuple) -> list[dict]:
         size = 500
         items = []
-        for section in self.enabled_library_keys():
+        for section in sections:
             start = 0
             while True:
                 root = self.xml(
@@ -170,11 +218,9 @@ class PlexClient:
                     if item.attrib.get("ratingKey")
                 ]
                 items.extend(page)
-                if len(page) < size or (limit and len(items) >= limit):
+                if len(page) < size:
                     break
                 start += len(page)
-                if limit and len(items) >= limit:
-                    break
         seen = set()
         deduped = []
         for item in items:
@@ -183,15 +229,8 @@ class PlexClient:
                 continue
             seen.add(key)
             deduped.append(item)
-        items = deduped
-        if search:
-            needle = search.casefold()
-            fields = ("title", "parentTitle", "grandparentTitle", "originalTitle", "artist", "summary", "year")
-            items = [
-                item for item in items
-                if any(needle in str(item.get(field) or "").casefold() for field in fields)
-            ]
-        return items[:limit] if limit else items
+        # 过滤和切页移到 paged() 里，在缓存上做 —— 这里只负责"把全量抓回来"。
+        return deduped
 
     def refresh_enabled_libraries(self):
         for section in self.enabled_library_keys():

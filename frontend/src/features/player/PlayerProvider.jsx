@@ -360,11 +360,12 @@ export function PlayerProvider({ children }) {
       .finally(() => {
         hydratedRef.current = true;
       });
-    api("/api/playlists")
+    /* withItems=1：歌单连曲目一次拿全。
+       原来是先 /api/playlists、再对每个歌单打一次 /api/playlists/{id} ——
+       这条链路每个请求约 370ms 固定开销，N 个歌单就是 N × 370ms。 */
+    api("/api/playlists?withItems=1")
       .then(async (data) => {
-        const details = await Promise.all(
-          (data.items || []).map((item) => api(`/api/playlists/${item.id}`)),
-        );
+        const details = data.items || [];
         const mapped = {};
         for (const playlist of details) {
           playlistIdsRef.current[playlist.name] = playlist.id;

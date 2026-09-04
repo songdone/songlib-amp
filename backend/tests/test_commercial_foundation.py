@@ -20,7 +20,7 @@ from mutagen import File as MutagenFile
 
 from app import auth
 from app.config import settings
-from app.db import init_db, row, rows, set_kv, transaction
+from app.db import init_db, now, row, rows, set_kv, transaction
 from app.download_inbox import _repair_mojibake
 from app.jobs import manager
 from app.local_library import local_library
@@ -28,6 +28,7 @@ from app.main import app, fnos_music, plex, plex_lyrics
 from app.fnos_music import FnosMusicClient
 from app.plex import dashboard_stats
 from app.playlist_migration import detect_share_link, strict_candidate
+from app import playlists as playlist_service
 from app.playlists import create_playlist, import_m3u
 from app.recommendations import list_recommendations, refresh
 from app.scraper import build_diff_preview
@@ -1305,3 +1306,67 @@ class LibraryPagingCostTests(unittest.TestCase):
         self.assertIn("thumbUrl", page["items"][0])
         self.assertNotIn("thumbUrl", items[0], "装饰结果被写回了缓存里的原对象")
         self.assertNotIn("synced", items[0])
+
+
+class PlaylistFanoutTests(unittest.TestCase):
+    """歌单连曲目一次给全，别让前端打 N+1。
+
+    这条链路每个请求有约 370ms 固定开销（反代 + 公网，应用自己 34–76ms），
+    所以 N 个歌单的 N+1 就是 N × 370ms 的启动延迟。
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        init_db()
+        auth.ensure_bootstrap_password()
+
+    def setUp(self):
+        with rate_limiter._lock:
+            rate_limiter._events.clear()
+        with transaction() as conn:
+            conn.execute("DELETE FROM playlist_items")
+            conn.execute("DELETE FROM playlists")
+
+    def test_with_items_returns_every_playlist_and_its_tracks_in_one_call(self):
+        # 直接用服务层建，只拿 GET 验接口 —— POST 要带 CSRF 头，
+        # 那是另一回事，不该混进这条守卫里。
+        for name in ("晨间", "夜间"):
+            create_playlist("admin", name)
+        with TestClient(app) as client:
+            client.post(
+                "/api/auth/login",
+                json={"username": "admin", "password": "test-password-123"},
+            )
+            listing = client.get("/api/playlists").json()["items"]
+            self.assertEqual(len(listing), 2)
+            # 不带参数时不该多带曲目（老调用方拿的还是轻量列表）
+            self.assertNotIn("items", listing[0])
+
+            withItems = client.get("/api/playlists?withItems=1").json()["items"]
+        self.assertEqual(len(withItems), 2)
+        for item in withItems:
+            self.assertIn("items", item)
+            self.assertIsInstance(item["items"], list)
+            self.assertEqual(item["itemCount"], len(item["items"]))
+
+    def test_grouping_keeps_each_playlist_with_its_own_tracks(self):
+        """一条 SQL 查回所有曲目再归组 —— 归错组比 N+1 更糟。"""
+        # 签名是 create_playlist(user_id, name, ...) —— 第一版把两个参数写反了，
+        # 直接撞上 FOREIGN KEY constraint failed。
+        first = create_playlist("admin", "A 单")
+        second = create_playlist("admin", "B 单")
+        stamp = now()
+        with transaction() as conn:
+            for index, (playlist_id, title) in enumerate(
+                [(first["id"], "甲"), (first["id"], "乙"), (second["id"], "丙")]
+            ):
+                conn.execute(
+                    "INSERT INTO playlist_items (id,playlist_id,position,title,created_at) VALUES (?,?,?,?,?)",
+                    (f"item-{index}", playlist_id, index, title, stamp),
+                )
+        grouped = {
+            item["name"]: [entry["title"] for entry in item["items"]]
+            for item in playlist_service.list_playlists_with_items("admin")
+        }
+        self.assertEqual(grouped["A 单"], ["甲", "乙"])
+        self.assertEqual(grouped["B 单"], ["丙"])

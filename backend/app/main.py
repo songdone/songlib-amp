@@ -1814,7 +1814,10 @@ def test_fnos_music():
 
 
 @app.get("/api/playlists")
-def playlists(user=Depends(auth.current_user)):
+def playlists(withItems: bool = False, user=Depends(auth.current_user)):
+    """withItems=1 时连曲目一起给，省掉前端那个 N+1。"""
+    if withItems:
+        return {"items": playlist_service.list_playlists_with_items(user["id"])}
     return {"items": playlist_service.list_playlists(user["id"])}
 
 

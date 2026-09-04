@@ -31,6 +31,31 @@ def list_playlists(user_id: str, include_all: bool = False):
     ]
 
 
+def list_playlists_with_items(user_id: str, include_all: bool = False):
+    """歌单连曲目一次给全。
+
+    前端启动时原来是 N+1：先 `/api/playlists`，再对每个歌单打一次
+    `/api/playlists/{id}`。这条链路每个请求有约 370ms 的固定开销
+    （反代 + 公网，应用自己只要 34–76ms），N+1 就是 N × 370ms。
+    这里改成两条 SQL：歌单一条、曲目一条，在内存里归组。
+    """
+    playlists = list_playlists(user_id, include_all)
+    if not playlists:
+        return playlists
+    ids = [item["id"] for item in playlists]
+    placeholders = ",".join("?" for _ in ids)
+    grouped: dict[str, list] = {key: [] for key in ids}
+    for entry in rows(
+        f"SELECT * FROM playlist_items WHERE playlist_id IN ({placeholders}) ORDER BY playlist_id,position",
+        tuple(ids),
+    ):
+        grouped.setdefault(entry["playlist_id"], []).append(entry)
+    for item in playlists:
+        item["items"] = grouped.get(item["id"], [])
+        item["itemCount"] = len(item["items"])
+    return playlists
+
+
 def get_playlist(playlist_id: str, user_id: str, can_manage_all: bool = False):
     item = row("SELECT * FROM playlists WHERE id=?", (playlist_id,))
     if not item:

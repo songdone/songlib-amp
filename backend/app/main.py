@@ -1649,6 +1649,14 @@ def airplay_master_playlist(token: str, request: Request):
 
 @app.get("/api/airplay/stream/{token}/{filename}")
 def airplay_stream_file(token: str, filename: str, request: Request):
+    # 媒体播放列表要加 #EXT-X-START 才知道从哪儿起播（见 media_playlist）。
+    if filename == "media.m3u8":
+        try:
+            return _airplay_playlist_response(cast_manager.media_playlist(token), request)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
     try:
         target = cast_manager.stream_file(token, filename)
     except KeyError as exc:

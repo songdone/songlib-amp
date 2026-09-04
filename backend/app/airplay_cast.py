@@ -772,6 +772,41 @@ class AirPlayCastManager:
             time.sleep(0.05)
         raise RuntimeError("歌词视频流启动超时，请检查 FFmpeg 与编码器配置")
 
+    def media_playlist(self, token: str) -> bytes:
+        """媒体播放列表，并告诉播放器**从哪儿开始播**。
+
+        这是"投过去只有一条进度条、歌词自己跳动、延迟严重"的根因。
+
+        编码器为了扛公网抖动会提前 `lead` 秒（公网 45 秒）把画面编好囤着，
+        而且刻意不删分片（落后了能追回来）。但播放列表里没有 `#EXT-X-START`，
+        Apple TV 就自己决定从哪儿起播 —— 它会从很靠前的位置开始，
+        放的是投屏之前那段"等待播放"的空画面，之后一直落后几十秒。
+        画面本身一直是对的，只是电视放的不是"现在"。
+
+        `#EXT-X-START:TIME-OFFSET=-N` 的含义是"从直播边缘往回 N 秒开始"。
+        把 N 取成 lead，起播点正好落在"此刻"，而前方仍然囤着 45 秒可以抗抖。
+        再留 1.5 个分片的余量，免得正好卡在还没写完的那一片上。
+        """
+        session = self.ensure_started(token)
+        path = self.wait_for_playlist(session)
+        text = path.read_text(encoding="utf-8", errors="replace")
+        profile = stream_profile(wan_profile(session.public_base_url))
+        lead = float(profile.get("lead", 0) or 0)
+        if lead <= 0:
+            return text.encode("utf-8")
+        offset = max(0.0, lead - float(profile.get("segment", 4.0)) * 1.5)
+        if "#EXT-X-START" in text or offset <= 0:
+            return text.encode("utf-8")
+        lines = text.splitlines()
+        # 插在头部标签之后、第一个 #EXTINF 之前
+        for index, line in enumerate(lines):
+            if line.startswith("#EXTINF") or line.startswith("#EXT-X-MAP"):
+                lines.insert(index, f"#EXT-X-START:TIME-OFFSET=-{offset:.3f},PRECISE=YES")
+                break
+        else:
+            lines.append(f"#EXT-X-START:TIME-OFFSET=-{offset:.3f},PRECISE=YES")
+        return ("\n".join(lines) + "\n").encode("utf-8")
+
     def stream_file(self, token: str, filename: str) -> Path:
         if not _STREAM_FILE.fullmatch(filename):
             raise KeyError("非法分片名称")

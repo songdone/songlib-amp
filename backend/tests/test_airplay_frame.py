@@ -260,3 +260,76 @@ class VisualQualityTests(unittest.TestCase):
             per_frame, 0.045,
             f"单帧 {per_frame * 1000:.0f} 毫秒，离 66.7 毫秒的预算太近了",
         )
+
+
+class PlaylistStartTests(unittest.TestCase):
+    """播放列表必须告诉播放器从哪儿开始播。
+
+    这是"投过去只有一条进度条、歌词自己跳动、延迟严重"的根因：
+    编码器为了扛公网抖动会提前 45 秒把画面编好囤着，而且刻意不删分片，
+    但播放列表里没有 `#EXT-X-START` —— Apple TV 就从很靠前的位置起播，
+    放的是投屏之前那段"等待播放"的空画面，之后一直落后几十秒。
+    画面本身一直是对的，只是电视放的不是"现在"。
+    """
+
+    PLAYLIST = (
+        "#EXTM3U\n#EXT-X-VERSION:7\n#EXT-X-TARGETDURATION:4\n"
+        "#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-INDEPENDENT-SEGMENTS\n"
+        '#EXT-X-MAP:URI="init.mp4"\n#EXTINF:4.000000,\nsegment_000000000.m4s\n'
+    )
+
+    def _playlist(self, public_base_url):
+        import tempfile
+        from unittest.mock import patch as mock_patch
+
+        output = Path(tempfile.mkdtemp())
+        (output / "media.m3u8").write_text(self.PLAYLIST, encoding="utf-8")
+        session = CastSession(
+            session_id="s", access_token="tok", owner_id="u",
+            output_dir=output, public_base_url=public_base_url,
+        )
+        with (
+            mock_patch.object(cast_manager, "ensure_started", return_value=session),
+            mock_patch.object(cast_manager, "wait_for_playlist", return_value=output / "media.m3u8"),
+        ):
+            return cast_manager.media_playlist("tok").decode("utf-8")
+
+    def test_public_playlist_starts_at_now_not_at_the_beginning(self):
+        text = self._playlist("https://sla.example.cn")
+        self.assertIn("#EXT-X-START:", text, "公网播放列表没有起播点，电视会从最前面开始放")
+        line = next(item for item in text.splitlines() if item.startswith("#EXT-X-START:"))
+        offset = float(line.split("TIME-OFFSET=")[1].split(",")[0])
+        # 提前编 45 秒，就该从直播边缘往回约 45 秒起播 —— 那里正好是"此刻"
+        self.assertLess(offset, -30, f"起播点 {offset} 太靠近直播边缘，电视会播到未来的画面")
+        self.assertGreater(offset, -46, f"起播点 {offset} 比囤的还早，会播到投屏之前的空画面")
+        # 必须插在第一个分片之前，否则播放器读不到
+        lines = text.splitlines()
+        self.assertLess(
+            lines.index(line),
+            next(i for i, item in enumerate(lines) if item.startswith("#EXTINF")),
+        )
+
+    def test_lan_playlist_is_left_alone(self):
+        """局域网 lead 是 0（要的就是低延迟），没什么可偏移的。"""
+        text = self._playlist("http://192.168.1.10:32783")
+        self.assertNotIn("#EXT-X-START", text)
+
+    def test_an_existing_start_tag_is_not_duplicated(self):
+        import tempfile
+        from unittest.mock import patch as mock_patch
+
+        output = Path(tempfile.mkdtemp())
+        (output / "media.m3u8").write_text(
+            self.PLAYLIST.replace("#EXT-X-MAP", "#EXT-X-START:TIME-OFFSET=-9\n#EXT-X-MAP"),
+            encoding="utf-8",
+        )
+        session = CastSession(
+            session_id="s", access_token="tok", owner_id="u",
+            output_dir=output, public_base_url="https://sla.example.cn",
+        )
+        with (
+            mock_patch.object(cast_manager, "ensure_started", return_value=session),
+            mock_patch.object(cast_manager, "wait_for_playlist", return_value=output / "media.m3u8"),
+        ):
+            text = cast_manager.media_playlist("tok").decode("utf-8")
+        self.assertEqual(text.count("#EXT-X-START"), 1)

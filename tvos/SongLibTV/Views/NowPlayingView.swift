@@ -703,7 +703,7 @@ private struct IconControl: View {
         // 其余用普通玻璃。这比自己涂两种背景色更贴合系统的观感。
         Button(action: action) {
             Image(systemName: system)
-                .font(.system(size: large ? 32 : 25, weight: .bold))
+                .font(.tv(large ? 32 : 25, .bold))
                 .frame(width: large ? 46 : 32, height: large ? 46 : 32)
         }
         .accessibilityLabel(hint)

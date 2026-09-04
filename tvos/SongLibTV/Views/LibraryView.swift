@@ -808,7 +808,7 @@ private struct NowPlayingTab: View {
                 Theme.canvas.ignoresSafeArea()
                 VStack(spacing: 18) {
                     Image(systemName: "music.note.list")
-                        .font(.system(size: 80))
+                        .font(.tv(80))
                         .foregroundStyle(Theme.textTertiary)
                     Text("还没有在播放的内容")
                         .font(.tv(Theme.Size.body, .semibold))

@@ -69,11 +69,11 @@ struct RootView: View {
         ZStack {
             Theme.canvas.ignoresSafeArea()
             VStack(spacing: 26) {
-                Text("SongLib")
-                    .font(.system(size: 60, weight: .bold))
+                Text("SongLib Amp")
+                    .font(.tv(60, .bold))
                     .foregroundStyle(Theme.textPrimary)
                 Text(text)
-                    .font(.system(size: 28, weight: .medium))
+                    .font(.tv(28, .medium))
                     .foregroundStyle(Theme.textSecondary)
                 ProgressView().scaleEffect(1.4)
             }

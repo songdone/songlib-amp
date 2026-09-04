@@ -30,7 +30,13 @@ final class AppState: ObservableObject {
     @Published private(set) var sections: [PlexItem] = []
     /// 当前库。注意**没有** didSet 自动持久化 —— 见 `select(section:)`。
     @Published private(set) var sectionKey: String?
-    private static let sectionDefaultsKey = "plex.selectedSection"
+    /// 存储键带版本号。
+    ///
+    /// 换成 v2 是为了让旧版写进去的脏数据失效：那一版在 sectionKey 的 didSet
+    /// 里无条件持久化，于是**自动挑的**结果也被记成"用户的选择"。第一次自动
+    /// 挑到了只有 109 首的「测试」库，之后每次开机都尊重这个错误的"选择"，
+    /// 按曲目数重挑的逻辑永远不会跑 —— 已经装过旧版的设备光改代码修不过来。
+    private static let sectionDefaultsKey = "plex.selectedSection.v2"
 
     var sectionTitle: String {
         sections.first { $0.ratingKey == sectionKey }?.displayTitle ?? "音乐库"
@@ -100,14 +106,29 @@ final class AppState: ObservableObject {
         // 存在的理由是把问题分开：配对流程有 bug 时，不该连"界面和播放能不能
         // 用"都一起验不了。只在 DEBUG 里编译。
         let args = ProcessInfo.processInfo.arguments
-        if let i = args.firstIndex(of: "-plexToken"), i + 1 < args.count {
-            let injected = args[i + 1]
-            if !injected.isEmpty {
-                note("用启动参数注入的 token 直连")
-                TokenStore.save(injected, key: PlexAuth.tokenKey)
-                connect(token: injected)
+        func value(_ flag: String) -> String? {
+            guard let i = args.firstIndex(of: flag), i + 1 < args.count else { return nil }
+            let v = args[i + 1]
+            return v.isEmpty ? nil : v
+        }
+        if let injected = value("-plexToken") {
+            // 带了服务器地址就**跳过 plex.tv 的服务器发现**，直连。
+            //
+            // 这一条是被一次真实失败逼出来的：注入的 token 是 Plex **服务器**
+            // 的 token，不是 plex.tv 的**账号** token。前者能直连服务器，
+            // 但 plex.tv 的 /api/v2/resources 账号接口不认它 —— 于是发现这步
+            // 直接 401，界面永远停在"连不上你的 Plex 服务器"。
+            //
+            // 两种 token 长得一样、都叫 X-Plex-Token，但作用域完全不同。
+            if let server = value("-plexServer") {
+                note("直连 \(server)（跳过 plex.tv 发现）")
+                Task { await connectDirect(baseURL: server, token: injected) }
                 return
             }
+            note("用启动参数注入的 token 走 plex.tv 发现")
+            TokenStore.save(injected, key: PlexAuth.tokenKey)
+            connect(token: injected)
+            return
         }
 #endif
         if let token = TokenStore.read(key: PlexAuth.tokenKey), !token.isEmpty {
@@ -186,6 +207,41 @@ final class AppState: ObservableObject {
     }
 
     // MARK: - 连接
+
+#if DEBUG
+    /// 直连一个已知地址。仍然核对 `/identity` —— 家里和外地都是
+    /// 192.168.31.x，不核对就可能连到同网段的另一台设备上。
+    private func connectDirect(baseURL: String, token: String) async {
+        phase = .connecting
+        var request = URLRequest(url: URL(string: baseURL + "/identity")!)
+        request.timeoutInterval = 8
+        for (key, value) in PlexAuth.headers { request.setValue(value, forHTTPHeaderField: key) }
+        request.setValue(token, forHTTPHeaderField: "X-Plex-Token")
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+                note("直连失败：HTTP \((response as? HTTPURLResponse)?.statusCode ?? -1)")
+                phase = .signedOut
+                return
+            }
+            let identity = try JSONDecoder().decode(PlexIdentity.self, from: data)
+            connection = PlexConnection(
+                baseURL: baseURL,
+                token: token,
+                machineIdentifier: identity.container.machineIdentifier ?? "",
+                isLocal: baseURL.contains("192.168.") || baseURL.contains("10."),
+                isRelay: false
+            )
+            serverName = "Plex"
+            phase = .ready
+            note("直连成功 v\(identity.container.version ?? "?")")
+            await loadSections()
+        } catch {
+            note("直连报错：\(error.localizedDescription)")
+            phase = .signedOut
+        }
+    }
+#endif
 
     private func connect(token: String) {
         phase = .connecting

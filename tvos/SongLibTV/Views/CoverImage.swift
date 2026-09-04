@@ -51,7 +51,7 @@ struct CoverImage: View {
                     startPoint: .topLeading, endPoint: .bottomTrailing
                 )
                 Text(fallbackText.isEmpty ? "" : String(fallbackText.prefix(1)))
-                    .font(.system(size: 64, weight: .bold))
+                    .font(.tv(64, .bold))
                     .foregroundStyle(Theme.textTertiary)
             }
         }

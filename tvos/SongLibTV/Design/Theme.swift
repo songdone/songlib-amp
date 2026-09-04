@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// 设计系统。
 ///
@@ -114,8 +115,15 @@ enum Theme {
 }
 
 extension Font {
+    /// 全应用统一的取字入口。
+    ///
+    /// 所有文字都必须走这里，不要直接写 `.system(size:)` —— 否则会出现
+    /// 一半中文是苹方、一半是兜底字体的情况，那比全用兜底字体更难看。
     static func tv(_ size: CGFloat, _ weight: Font.Weight = .medium) -> Font {
-        .system(size: size, weight: weight)
+        if let name = TVFont.name(for: weight) {
+            return .custom(name, fixedSize: size)
+        }
+        return .system(size: size, weight: weight)
     }
 }
 
@@ -384,5 +392,50 @@ extension View {
     func posterSurface(_ focused: Bool, radius: CGFloat = Theme.radiusCard,
                        scale: CGFloat = 1.07) -> some View {
         modifier(PosterSurface(focused: focused, radius: radius, scale: scale))
+    }
+}
+
+// MARK: - 字体
+
+/// 苹方。
+///
+/// ## 为什么必须自己带
+///
+/// **tvOS 的运行时里没有 PingFang** —— 查过 tvOS 26.5 的模拟器运行时，
+/// 一个苹方都没有。于是所有中文都落到系统的兜底字体上：字形结构松散、
+/// 字重档位少、标点位置不对。这是"中文看着廉价"的根本原因，而且每一个
+/// 汉字都在受影响 —— 比任何布局或配色问题影响面都大。
+///
+/// Forward 也是这么解决的：它打包了 36MB 的 PingFang SC/HK/TC。
+///
+/// ## 字重映射
+///
+/// 手上这份苹方有 ExtraLight / Light / Medium / Bold / Heavy，**没有
+/// Regular 和 Semibold**。所以做映射时要就近取：
+///
+/// - 正文用 Medium，不是 Light。电视上 Light 在三米外会显得发虚 ——
+///   中文笔画多，细字重在远距离下笔画会糊在一起。
+/// - 标题用 Bold；歌词主行用 Heavy —— 那一行需要在一屏里绝对压过其它内容。
+///
+/// 取不到时退回系统字体（`.system`），不会因为字体缺失而崩或显示空白。
+enum TVFont {
+    private static let available: Bool = {
+        UIFont(name: "PingFangSC-Medium", size: 20) != nil
+    }()
+
+    static func name(for weight: Font.Weight) -> String? {
+        guard available else { return nil }
+        switch weight {
+        case .ultraLight, .thin, .light:
+            return "PingFangSC-Light"
+        case .regular, .medium:
+            return "PingFangSC-Medium"
+        case .semibold, .bold:
+            return "PingFangSC-Bold"
+        case .heavy, .black:
+            return "PingFangSC-Heavy"
+        default:
+            return "PingFangSC-Medium"
+        }
     }
 }

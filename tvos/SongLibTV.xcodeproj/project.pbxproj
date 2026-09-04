@@ -29,6 +29,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Preview/README.md,
+				Info.plist,
 			);
 			target = A1000000000000000000050 /* SongLibTV */;
 		};
@@ -196,6 +197,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SongLibTV/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "SongLib Amp";
 				INFOPLIST_KEY_UIUserInterfaceStyle = Dark;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -218,6 +220,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SongLibTV/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "SongLib Amp";
 				INFOPLIST_KEY_UIUserInterfaceStyle = Dark;
 				LD_RUNPATH_SEARCH_PATHS = (

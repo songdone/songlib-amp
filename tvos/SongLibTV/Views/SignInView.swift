@@ -12,11 +12,11 @@ struct SignInView: View {
             Theme.canvas.ignoresSafeArea()
             VStack(spacing: 44) {
                 VStack(spacing: 12) {
-                    Text("SongLib")
-                        .font(.system(size: 64, weight: .bold))
+                    Text("SongLib Amp")
+                        .font(.tv(64, .bold))
                         .foregroundStyle(Theme.textPrimary)
                     Text("大屏歌词 · 连接你的 Plex 音乐库")
-                        .font(.system(size: 30, weight: .medium))
+                        .font(.tv(30, .medium))
                         .foregroundStyle(Theme.textSecondary)
                 }
 
@@ -25,11 +25,11 @@ struct SignInView: View {
                 } else if let failure = state.failure {
                     VStack(spacing: 24) {
                         Text(failure)
-                            .font(.system(size: 30, weight: .medium))
+                            .font(.tv(30, .medium))
                             .foregroundStyle(Theme.textSecondary)
                             .multilineTextAlignment(.center)
                         Button("重试") { state.startPairing() }
-                            .font(.system(size: 30, weight: .semibold))
+                            .font(.tv(30, .semibold))
                     }
                 } else {
                     ProgressView()
@@ -79,7 +79,7 @@ struct SignInView: View {
                     .tracking(14)
                     .foregroundStyle(Theme.lyricActive)
                 Text("或者用手机相机扫右边的码")
-                    .font(.system(size: 26))
+                    .font(.tv(26))
                     .foregroundStyle(Theme.textTertiary)
             }
 
@@ -98,12 +98,12 @@ struct SignInView: View {
     private func step(_ number: Int, _ text: String) -> some View {
         HStack(spacing: 14) {
             Text("\(number)")
-                .font(.system(size: 24, weight: .bold))
+                .font(.tv(24, .bold))
                 .foregroundStyle(Theme.canvas)
                 .frame(width: 40, height: 40)
                 .background(Circle().fill(Theme.textSecondary))
             Text(text)
-                .font(.system(size: 30, weight: .medium))
+                .font(.tv(30, .medium))
                 .foregroundStyle(Theme.textSecondary)
         }
     }

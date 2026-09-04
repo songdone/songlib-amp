@@ -75,6 +75,8 @@ final class MusicPlayer: ObservableObject {
     }
 
     var position: Double { audio.position }
+    /// 频谱。歌词界面每帧读，所以不走 @Published。
+    var spectrum: SpectrumAnalyzer { audio.spectrum }
 
     var duration: Double {
         let known = audio.duration

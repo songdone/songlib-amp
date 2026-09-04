@@ -80,6 +80,8 @@ final class StreamingAudioEngine {
 
     private let engine = AVAudioEngine()
     private let playerNode = AVAudioPlayerNode()
+    /// 频谱分析器。装在主混音节点上 —— 它拿到的就是最终送到扬声器的样本。
+    let spectrum = SpectrumAnalyzer()
     private let lock = NSLock()
 
     private var streamID: AudioFileStreamID?
@@ -211,6 +213,7 @@ final class StreamingAudioEngine {
         session = nil
         delegate = nil
         if playerNode.isPlaying { playerNode.stop() }
+        spectrum.detach(from: engine)
         if engine.isRunning { engine.stop() }
         if let streamID { AudioFileStreamClose(streamID) }
         streamID = nil
@@ -361,6 +364,9 @@ final class StreamingAudioEngine {
             state = .failed("音频引擎启动失败：\(error.localizedDescription)")
             return
         }
+        // tap 必须在 engine.start() 之后装：引擎没跑起来时主混音节点的
+        // 格式还没定，此时装 tap 拿到的会是 0 声道。
+        spectrum.attach(to: engine)
         playerNode.play()
         state = .playing
         _ = outputFormat

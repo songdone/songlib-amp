@@ -52,6 +52,7 @@ struct PlexItem: Decodable, Identifiable, Hashable {
     let parentThumb: String?
     let grandparentThumb: String?
     let art: String?
+    let grandparentArt: String?
     let duration: Int?
     let index: Int?
     let year: Int?
@@ -63,7 +64,7 @@ struct PlexItem: Decodable, Identifiable, Hashable {
     enum CodingKeys: String, CodingKey {
         case ratingKey, key, type, title, parentTitle, grandparentTitle
         case parentRatingKey, grandparentRatingKey
-        case thumb, parentThumb, grandparentThumb, art
+        case thumb, parentThumb, grandparentThumb, art, grandparentArt
         case duration, index, year, addedAt, leafCount, playlistType
         case media = "Media"
     }

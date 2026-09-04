@@ -47,7 +47,8 @@ struct PlexLibrary {
                     ratingKey: key, key: nil, type: "section",
                     title: directory.title, parentTitle: nil, grandparentTitle: nil,
                     parentRatingKey: nil, grandparentRatingKey: nil,
-                    thumb: nil, parentThumb: nil, grandparentThumb: nil, art: nil,
+                    thumb: nil, parentThumb: nil, grandparentThumb: nil,
+                    art: nil, grandparentArt: nil,
                     duration: nil, index: nil, year: nil, addedAt: nil,
                     leafCount: nil, playlistType: nil, media: nil
                 )
@@ -173,6 +174,28 @@ struct PlexLibrary {
     func streamURL(for track: PlexItem) -> URL? {
         guard let key = track.firstPart?.key else { return nil }
         return connection.url(key, includeTokenInQuery: true)
+    }
+
+    /// 背景大图。
+    ///
+    /// Plex 给艺人和专辑都存了一张宽幅背景（`art`），和方形封面是两张不同的
+    /// 图。之前一直拿方形封面去填 16:9 的画面，只能硬裁或者模糊 —— 有 art
+    /// 的时候直接用它，画面立刻就不一样了。
+    ///
+    /// 曲目条目自己没有 art，但有 `grandparentArt`（艺人的背景）。
+    func backdropURL(for item: PlexItem, width: Int = 1920) -> URL? {
+        guard let path = item.art ?? item.grandparentArt else { return nil }
+        return connection.url(
+            "/photo/:/transcode",
+            query: [
+                "width": String(width),
+                "height": String(Int(Double(width) * 9.0 / 16.0)),
+                "minSize": "1",
+                "upscale": "1",
+                "url": path,
+            ],
+            includeTokenInQuery: true
+        )
     }
 
     /// 封面地址。走 Plex 的缩放接口，别把 1000×1000 的原图拉到电视上。

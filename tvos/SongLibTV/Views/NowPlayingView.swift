@@ -36,7 +36,8 @@ struct NowPlayingView: View {
             onPrevious: { player.previous() },
             onNext: { player.next() },
             onToggle: { player.toggle() },
-            queuePanel: AnyView(QueuePanel(player: player))
+            queuePanel: AnyView(QueuePanel(player: player)),
+            analyzer: player.spectrum
         )
     }
 }
@@ -80,6 +81,8 @@ struct NowPlayingBody: View {
     var onNext: (() -> Void)?
     var onToggle: (() -> Void)?
     var queuePanel: AnyView?
+    /// 频谱分析器。离线预览时为 nil（没有真的音频在跑）。
+    var analyzer: SpectrumAnalyzer?
 
     @State private var showQueue = false
     /// 全屏歌词：把底部信息条整条藏掉，歌词占满画面。
@@ -107,7 +110,8 @@ struct NowPlayingBody: View {
             let lyricsH = H - Theme.screenV * 2
 
             ZStack(alignment: .topLeading) {
-                AmbientBackground(coverURL: coverURL)
+                AmbientBackground(coverURL: coverURL,
+                                  energy: Double(analyzer?.level ?? 0))
                     .frame(width: W, height: H)
 
                 if let track {
@@ -115,10 +119,25 @@ struct NowPlayingBody: View {
                         let _ = timeline.date          // 每帧重算
                         let at = position()
 
+                        // 低频能量。歌词的脉动和背景的呼吸都跟它走 ——
+                        // 人对"音乐的力度"的感觉主要来自低频。
+                        let energy = Double(analyzer?.bass ?? 0)
+
                         ZStack(alignment: .topLeading) {
-                            lyricsLayer(width: contentW, height: lyricsH, at: at, track: track)
+                            lyricsLayer(width: contentW, height: lyricsH, at: at,
+                                        track: track, energy: energy)
                                 .frame(width: contentW, height: lyricsH)
                                 .offset(x: Theme.screenH, y: Theme.screenV)
+
+                            // 频谱带压在歌词下方、信息条上方那道空档里。
+                            if let analyzer {
+                                SpectrumRibbon(analyzer: analyzer, height: 116)
+                                    .frame(width: contentW)
+                                    .opacity(fullscreenLyrics ? 0.55 : 0.30)
+                                    .offset(x: Theme.screenH,
+                                            y: H - Theme.screenV
+                                               - (fullscreenLyrics ? 116 : barHeight + 116))
+                            }
 
                             if !fullscreenLyrics {
                                 TransportBar(
@@ -179,9 +198,10 @@ struct NowPlayingBody: View {
     }
 
     @ViewBuilder
-    private func lyricsLayer(width: CGFloat, height: CGFloat, at: Double, track: PlexItem) -> some View {
+    private func lyricsLayer(width: CGFloat, height: CGFloat, at: Double,
+                             track: PlexItem, energy: Double = 0) -> some View {
         if let lyrics, !lyrics.isEmpty {
-            LyricsStage(lyrics: lyrics, position: at, width: width, height: height)
+            LyricsStage(lyrics: lyrics, position: at, width: width, height: height, energy: energy)
         } else if lyricsLoading {
             centered(width: width, height: height) {
                 Text("正在取歌词…")
@@ -219,6 +239,8 @@ struct NowPlayingBody: View {
 /// 贴图；让它用 30 秒走完一个来回，快到能感觉到、慢到不抢注意力。
 private struct AmbientBackground: View {
     let coverURL: URL?
+    /// 整体能量 0…1。安静段背景暗下去，高潮时亮起来。
+    var energy: Double = 0
     @State private var drifted = false
 
     var body: some View {
@@ -229,8 +251,8 @@ private struct AmbientBackground: View {
                     .scaleEffect(drifted ? 1.46 : 1.30)
                     .offset(x: drifted ? -38 : 38, y: drifted ? 26 : -26)
                     .blur(radius: 120, opaque: true)
-                    .saturation(1.25)
-                    .opacity(0.78)
+                    .saturation(1.25 + 0.35 * energy)
+                    .opacity(0.66 + 0.26 * energy)
                     .id(coverURL)
                     .transition(.opacity)
             }
@@ -267,6 +289,8 @@ private struct LyricsStage: View {
     let position: Double
     let width: CGFloat
     let height: CGFloat
+    /// 低频能量 0…1。只作用在当前行上。
+    var energy: Double = 0
 
     private var slot: CGFloat { Theme.Size.lyricSlot }
 
@@ -290,7 +314,8 @@ private struct LyricsStage: View {
                     LyricLine(
                         text: line.text,
                         distance: index - anchor,
-                        isActive: index == active
+                        isActive: index == active,
+                        energy: index == active ? energy : 0
                     )
                     .frame(width: width, height: slot)
                 }
@@ -350,6 +375,7 @@ private struct LyricLine: View {
     let text: String
     let distance: Int
     let isActive: Bool
+    var energy: Double = 0
 
     private var magnitude: Int { abs(distance) }
 
@@ -364,8 +390,18 @@ private struct LyricLine: View {
             .minimumScaleFactor(0.46)
             .multilineTextAlignment(.center)
             .blur(radius: blur)
-            .scaleEffect(isActive ? 1 : 0.97)
+            // 当前行随低频轻微呼吸。
+            //
+            // 幅度只有 2.5% —— 刻意做得很小。字号 64pt 的字放大 10% 会在
+            // 三米外明显"跳"，那是廉价的；2.5% 只让人**感觉**它跟着音乐在
+            // 呼吸，看不出具体在动。这个分界线是这个效果成败的关键。
+            .scaleEffect(isActive ? 1 + energy * 0.025 : 0.97)
             .shadow(color: .black.opacity(isActive ? 0.6 : 0), radius: 22, y: 5)
+            // 低频重的时候给一层暖色光晕，像声音把字点亮了。
+            .shadow(color: isActive
+                    ? Theme.lyricActive.opacity(0.34 * energy)
+                    : .clear,
+                    radius: 16 + 26 * energy)
             .animation(Theme.Motion.lyric, value: isActive)
             .frame(maxWidth: .infinity, alignment: .center)
     }
@@ -740,6 +776,58 @@ struct QueuePanel: View {
             }
             .padding(.horizontal, Theme.screenH)
             .padding(.vertical, Theme.screenV)
+        }
+    }
+}
+
+// MARK: - 频谱视觉
+
+/// 频谱带。
+///
+/// 上下对称、中间最高，两端收窄成细线 —— 这个形状比一排等高的柱子更像
+/// "声音的形状"，而且在超宽的电视画面上不会显得单调。
+///
+/// 每帧直接从分析器读，**不走 @Published**：频谱一秒变六十次，走 state
+/// 会让整棵视图树每帧重算。这和播放位置是同一个道理。
+struct SpectrumRibbon: View {
+    let analyzer: SpectrumAnalyzer
+    var height: CGFloat = 120
+    var tint: Color = Theme.lyricActive
+
+    @State private var bands = [Float](repeating: 0, count: SpectrumAnalyzer.bandCount)
+
+    var body: some View {
+        TimelineView(.animation) { _ in
+            Canvas { context, size in
+                var levels = bands
+                analyzer.snapshot(into: &levels)
+
+                let count = levels.count
+                let gap: CGFloat = 6
+                let barWidth = max(2, (size.width - gap * CGFloat(count - 1)) / CGFloat(count))
+                let mid = size.height / 2
+
+                for index in 0..<count {
+                    // 两端收窄：越靠边的频段乘一个更小的系数。
+                    let edge = 1 - pow(abs(Double(index) / Double(count - 1) - 0.5) * 2, 1.7)
+                    let level = CGFloat(levels[index]) * CGFloat(0.35 + 0.65 * edge)
+                    let barHeight = max(3, level * size.height)
+                    let x = CGFloat(index) * (barWidth + gap)
+                    let rect = CGRect(x: x, y: mid - barHeight / 2,
+                                      width: barWidth, height: barHeight)
+                    let shape = Path(roundedRect: rect, cornerRadius: barWidth / 2)
+                    context.fill(
+                        shape,
+                        with: .linearGradient(
+                            Gradient(colors: [tint.opacity(0.85), tint.opacity(0.28)]),
+                            startPoint: CGPoint(x: rect.midX, y: rect.minY),
+                            endPoint: CGPoint(x: rect.midX, y: rect.maxY)
+                        )
+                    )
+                }
+            }
+            .frame(height: height)
+            .allowsHitTesting(false)
         }
     }
 }

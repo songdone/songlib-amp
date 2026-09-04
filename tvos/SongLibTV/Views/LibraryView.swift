@@ -120,13 +120,19 @@ private struct HeroBanner: View {
             // 之前是把 1:1 的封面直接拉成 16:5 再裁 —— 裁出来是一张怪异的
             // 局部特写（截图上是半张脸）。Plex 的曲目/专辑大多没有宽幅背景图，
             // 所以正确做法是模糊放大：既填满画面，又不会裁到奇怪的地方。
-            CoverImage(url: state.library?.coverURL(for: item, size: 900), cornerRadius: 0)
-                .frame(height: 560)
-                .scaleEffect(1.6)
-                .blur(radius: 90, opaque: true)
-                .saturation(1.15)
-                .frame(height: 560)
-                .clipped()
+            Group {
+                if let backdrop = state.library?.backdropURL(for: item) {
+                    CoverImage(url: backdrop, cornerRadius: 0)
+                        .saturation(1.08)
+                } else {
+                    CoverImage(url: state.library?.coverURL(for: item, size: 900), cornerRadius: 0)
+                        .scaleEffect(1.6)
+                        .blur(radius: 90, opaque: true)
+                        .saturation(1.15)
+                }
+            }
+            .frame(height: 560)
+            .clipped()
                 .overlay(
                     LinearGradient(
                         stops: [
@@ -433,14 +439,35 @@ struct DetailView: View {
 
     var body: some View {
         ZStack {
-            // 背景：模糊放大的封面，和歌词页同一套语言，切换过去不突兀。
             Theme.canvas.ignoresSafeArea()
-            CoverImage(url: state.library?.coverURL(for: item, size: 720), cornerRadius: 0)
-                .scaleEffect(1.4)
-                .blur(radius: 130, opaque: true)
-                .opacity(0.42)
-                .ignoresSafeArea()
-            LinearGradient(colors: [.black.opacity(0.55), .black.opacity(0.82)],
+
+            // 背景优先用 Plex 存的**宽幅背景图**（art），它是专门为 16:9 画面
+            // 准备的一张图，和方形封面是两回事。艺人页尤其明显：有 art 的时候
+            // 是一张真正的艺人大片，没有的时候只能拿方形封面模糊顶上。
+            if let backdrop = state.library?.backdropURL(for: item) {
+                CoverImage(url: backdrop, cornerRadius: 0)
+                    .scaleEffect(1.06)
+                    .blur(radius: 18, opaque: true)
+                    .opacity(0.62)
+                    .ignoresSafeArea()
+            } else {
+                CoverImage(url: state.library?.coverURL(for: item, size: 720), cornerRadius: 0)
+                    .scaleEffect(1.4)
+                    .blur(radius: 130, opaque: true)
+                    .opacity(0.42)
+                    .ignoresSafeArea()
+            }
+            // 压暗：左边重（内容在左侧），下面重（要压住文字）。
+            LinearGradient(
+                stops: [
+                    .init(color: .black.opacity(0.86), location: 0.00),
+                    .init(color: .black.opacity(0.58), location: 0.42),
+                    .init(color: .black.opacity(0.34), location: 1.00),
+                ],
+                startPoint: .leading, endPoint: .trailing
+            )
+            .ignoresSafeArea()
+            LinearGradient(colors: [.black.opacity(0.20), .black.opacity(0.72)],
                            startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
 

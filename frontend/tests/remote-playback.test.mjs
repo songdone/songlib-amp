@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  castResumeTarget,
   preferredRemoteSession,
   reconcileRemoteSessionClock,
   remoteControlMessage,
@@ -118,4 +119,39 @@ test("remote session becomes an AirPlay-compatible track without an audio URL", 
   assert.equal(track.lyrics, "[00:01.00]为你弹奏");
   assert.equal(track.audioUrl, undefined);
   assert.match(remoteControlMessage({ controllable: false, controlReason: "仅跟随" }), /仅跟随/);
+});
+
+test("抢完 AirPlay 路由之后，被按停的那一路要有人续播", () => {
+  const now = 10_000;
+  // 跟随 Plexamp：解除静音把它按停了，得让它接着放。
+  assert.equal(
+    castResumeTarget({ usingRemote: true, remotePlayingSeenAt: 8_000, now }),
+    "remote",
+  );
+  // 读"当下的 playing"会踩的坑：Plexamp 已经被我们按停、轮询也刷成
+  // false 了，但它明明是刚才还在放的 —— 看的必须是"最后一次在放"。
+  assert.equal(
+    castResumeTarget({ usingRemote: true, remotePlayingSeenAt: now - 1, now }),
+    "remote",
+  );
+  // 用户自己按的暂停不能顶掉：很久没在放就别自作主张。
+  assert.equal(
+    castResumeTarget({ usingRemote: true, remotePlayingSeenAt: now - 60_000, now }),
+    null,
+  );
+  // 0 是"从没见它在放"。不单独挡掉的话，开机头 20 秒里它会被当成
+  // "刚刚还在放"，投个屏就凭空把 Plexamp 点开了。
+  assert.equal(
+    castResumeTarget({ usingRemote: true, remotePlayingSeenAt: 0, now: 5_000 }),
+    null,
+  );
+  // 本地播放这一路照旧。
+  assert.equal(
+    castResumeTarget({ usingRemote: false, hasLocalTrack: true, now }),
+    "local",
+  );
+  assert.equal(
+    castResumeTarget({ usingRemote: false, hasLocalTrack: false, now }),
+    null,
+  );
 });

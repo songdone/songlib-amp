@@ -38,6 +38,7 @@ import { PosterStudio } from "../share/PosterStudio";
 import { api } from "../../lib/api";
 import { displayLyricsFor, isCreditLine, parseLrc } from "../../lib/lyrics";
 import {
+  castResumeTarget,
   preferredRemoteSession,
   remoteControlMessage,
   remotePositionSeconds,
@@ -451,17 +452,46 @@ export default function NowPlayingPage({
    * 绑到音频会话上，电视只显示封面）。路由一建立它就自动静音、让出音频
    * 会话 —— 这里负责把本地音乐接上去。
    *
-   * 只管本地播放这一路：跟随 Plexamp 时音乐在 Plexamp 那边，不归我们管。
+   * 跟随 Plexamp 时同样要续播。
+   *
+   * 原来这里遇到 usingRemote 直接返回，理由是"音乐在 Plexamp 那边，
+   * 不归我们管"。这个理由是错的：抢路由那一下要给视频解除静音，而 iOS
+   * 的音频会话是独占的 —— Safari 一出声，同一台手机上的 Plexamp 就被
+   * 按停了。于是投是投上了，歌却没了，而我们还专门写了行代码不去管它。
+   *
+   * 只在"投屏之前它确实在放"时才发 play，免得把用户自己按的暂停顶掉。
    */
+  /*
+   * 记的是"最后一次看见它在放"的时刻，不是当下的 playing。
+   *
+   * 因为 Plexamp 正是被我们按停的：解除静音 → Plexamp 停 → 下一次轮询
+   * 把 playing 刷成 false。等路由建立好回调进来时，"当下"已经是没在放了，
+   * 直接读 playing 会自己把自己判成"用户不想听"。
+   */
+  const remotePlayingSeenAtRef = useRef(0);
+  if (selectedSession?.playing) remotePlayingSeenAtRef.current = Date.now();
   useEffect(() => {
     cast.onAudioSessionReleased(() => {
-      if (usingRemote) return;
-      if (!localPlayer.currentTrack) return;
       // 让出音频会话有一瞬间的空档，等一拍再续播更稳。
-      window.setTimeout(() => localPlayer.resume?.(), 300);
+      const target = castResumeTarget({
+        usingRemote,
+        remotePlayingSeenAt: remotePlayingSeenAtRef.current,
+        hasLocalTrack: Boolean(localPlayer.currentTrack),
+      });
+      if (!target) return;
+      window.setTimeout(() => {
+        if (target === "remote") remoteCommand("play");
+        else localPlayer.resume?.();
+      }, 300);
     });
     return () => cast.onAudioSessionReleased(null);
-  }, [cast, usingRemote, localPlayer.currentTrack?.id, localPlayer.resume]);
+  }, [
+    cast,
+    usingRemote,
+    remoteCommand,
+    localPlayer.currentTrack?.id,
+    localPlayer.resume,
+  ]);
 
   const cover = coverFor(track);
   const background = coverFor(track);

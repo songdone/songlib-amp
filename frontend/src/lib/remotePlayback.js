@@ -119,3 +119,34 @@ export const remoteControlMessage = (session) => {
   if (session.controllable) return "可在 SongLib 中控制播放、暂停、切歌和进度";
   return session.controlReason || "这个设备只能跟随歌曲与进度";
 };
+
+/*
+ * 抢完 AirPlay 路由之后，该让谁接着放？
+ *
+ * 抢路由那一下必须给歌词视频解除静音，否则 WebKit 会把 AirPlay 绑到音频
+ * 会话上，电视只显示封面。代价是 iOS 的音频会话独占 —— Safari 一出声，
+ * 同一台手机上正在放的东西就被按停了。本地播放这一路一直有人管；跟随
+ * Plexamp 那一路原来写着"音乐在 Plexamp 那边，不归我们管"直接返回，
+ * 于是投是投上了，歌却没了。
+ *
+ * 判断"它本来在放"看的是**最后一次看见它在放**的时刻，不是当下的 playing：
+ * Plexamp 正是被我们按停的，等路由建立好回调进来时，轮询早就把 playing
+ * 刷成 false 了，读当下等于自己把自己判成"用户不想听"。
+ */
+export const CAST_RESUME_GRACE_MS = 20_000;
+
+export function castResumeTarget({
+  usingRemote,
+  remotePlayingSeenAt = 0,
+  hasLocalTrack = false,
+  now = Date.now(),
+  graceMs = CAST_RESUME_GRACE_MS,
+}) {
+  if (usingRemote) {
+    // 0 是"从没见它在放"，不是"1970 年在放过"。不单独挡掉的话，
+    // 开机头 20 秒里这两者会被算成同一件事。
+    if (!remotePlayingSeenAt) return null;
+    return now - remotePlayingSeenAt <= graceMs ? "remote" : null;
+  }
+  return hasLocalTrack ? "local" : null;
+}

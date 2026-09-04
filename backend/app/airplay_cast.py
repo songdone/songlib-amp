@@ -218,7 +218,23 @@ def stream_profile(wan: bool) -> dict:
         # 保留全部之后，落后多少都能继续拉，等于让接收端可以想缓冲多少
         # 缓冲多少。代价是磁盘：歌词画面几秒才变一次，几乎全是静止帧，
         # 一首歌压出来只有几 MB，会话结束时整个目录会被清掉。
-        return {"segment": 4.0, "list_size": 0, "fps": 15, "keep_all": True, "lead": 45.0}
+        # lead 从 45 秒降到 10 秒。
+        #
+        # "提前编好囤着"只在时间轴不变时成立。换歌、暂停、拖动进度条，
+        # 每一次都让囤着的那段画面作废 —— 但它已经写进 ffmpeg 管道、
+        # 已经切成分片挂在播放列表上了，收不回来。lead 有多长，
+        # 换歌之后电视就要先放多久的旧画面才轮到新歌。
+        #
+        # 45 秒买到的抗抖能力，代价是每次换歌都有 45 秒的错画面，
+        # 这笔买卖是亏的。10 秒（2.5 个分片）足够扛住公网抖动，
+        # 而 HLS 本身在接收端还有一层缓冲。
+        # segment 从 4 秒降到 2 秒。
+        #
+        # HLS 播放器起播前普遍要囤 2~3 个分片，这段时间就是"延迟严重"里
+        # 消不掉的那部分 —— 它按分片长度走，不按码率走。分片砍一半，
+        # 这层固有延迟也砍一半。歌词画面几秒才变一次，分片多一倍
+        # 只是多几个几十 KB 的小文件。
+        return {"segment": 2.0, "list_size": 0, "fps": 15, "keep_all": True, "lead": 10.0}
     return {
         "segment": settings.airplay_segment_seconds,
         "list_size": 12,
@@ -875,12 +891,25 @@ class AirPlayCastManager:
         next_frame = time.monotonic()
         wrote_frames = 0
         encoded_time = session.clock.position()
+        encoded_revision = session.track_revision
         idle = False
         try:
             while not session.stop_event.is_set() and process.poll() is None:
                 if time.time() - session.last_stream_access_at > settings.airplay_stream_idle_seconds:
                     idle = True
                     break
+
+                # 换歌之后必须把内容时钟拉回去。
+                #
+                # encoded_time 是"现在在画第几秒"，它只会一直往前爬；
+                # 而换歌时 clock 会 reset 回新歌的 0 秒。不重新对齐的话，
+                # encoded_time 还停在旧歌那个几十秒的位置上，于是新歌
+                # 一上来就从第 40 多秒开始画 —— 电视上看到的就是
+                # "歌词自己在跳"。
+                if session.track_revision != encoded_revision:
+                    encoded_revision = session.track_revision
+                    encoded_time = session.clock.position()
+                    next_frame = time.monotonic()
 
                 frame = self._render_frame(session, at=encoded_time)
                 if process.stdin is None:

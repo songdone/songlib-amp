@@ -27,6 +27,8 @@ from app.airplay_cast import (
     cast_manager,
     cjk_font_missing,
     parse_timed_lyrics,
+    stream_profile,
+    wan_profile,
 )
 
 LRC = (
@@ -266,7 +268,7 @@ class PlaylistStartTests(unittest.TestCase):
     """播放列表必须告诉播放器从哪儿开始播。
 
     这是"投过去只有一条进度条、歌词自己跳动、延迟严重"的根因：
-    编码器为了扛公网抖动会提前 45 秒把画面编好囤着，而且刻意不删分片，
+    编码器为了扛公网抖动会提前若干秒把画面编好囤着，而且刻意不删分片，
     但播放列表里没有 `#EXT-X-START` —— Apple TV 就从很靠前的位置起播，
     放的是投屏之前那段"等待播放"的空画面，之后一直落后几十秒。
     画面本身一直是对的，只是电视放的不是"现在"。
@@ -299,9 +301,11 @@ class PlaylistStartTests(unittest.TestCase):
         self.assertIn("#EXT-X-START:", text, "公网播放列表没有起播点，电视会从最前面开始放")
         line = next(item for item in text.splitlines() if item.startswith("#EXT-X-START:"))
         offset = float(line.split("TIME-OFFSET=")[1].split(",")[0])
-        # 提前编 45 秒，就该从直播边缘往回约 45 秒起播 —— 那里正好是"此刻"
-        self.assertLess(offset, -30, f"起播点 {offset} 太靠近直播边缘，电视会播到未来的画面")
-        self.assertGreater(offset, -46, f"起播点 {offset} 比囤的还早，会播到投屏之前的空画面")
+        # 提前编 lead 秒，就该从直播边缘往回约 lead 秒起播 —— 那里正好是"此刻"
+        profile = stream_profile(wan_profile("https://sla.example.cn"))
+        lead, segment = float(profile["lead"]), float(profile["segment"])
+        self.assertLessEqual(offset, -segment, f"起播点 {offset} 贴着直播边缘，电视会追到没编出来的地方")
+        self.assertGreater(offset, -(lead + 1), f"起播点 {offset} 比囤的还早，会播到投屏之前的空画面")
         # 必须插在第一个分片之前，否则播放器读不到
         lines = text.splitlines()
         self.assertLess(
@@ -333,3 +337,64 @@ class PlaylistStartTests(unittest.TestCase):
         ):
             text = cast_manager.media_playlist("tok").decode("utf-8")
         self.assertEqual(text.count("#EXT-X-START"), 1)
+
+
+class SegmentLatencyTests(unittest.TestCase):
+    """起播前要囤的那几个分片，就是消不掉的那部分延迟。
+
+    它按分片长度走，不按码率走 —— 所以想降延迟只能把分片切短。
+    """
+
+    def test_public_segments_are_short_enough_to_start_quickly(self):
+        segment = float(stream_profile(wan_profile("https://sla.example.cn"))["segment"])
+        self.assertLessEqual(segment, 2.0, f"分片 {segment} 秒，电视起播前要先囤掉两三个")
+
+
+class LeadBudgetTests(unittest.TestCase):
+    """提前编好的画面，换歌之后全是错的 —— 所以不能囤太多。
+
+    "提前编好囤着"只在时间轴不变时成立。换歌、暂停、拖进度条，每一次
+    都让囤着的那段作废，但它已经写进管道、已经切成分片挂在播放列表上，
+    收不回来。lead 有多长，换歌之后电视就要先放多久旧画面。
+    """
+
+    def test_public_lead_stays_small_enough_to_switch_songs(self):
+        lead = float(stream_profile(wan_profile("https://sla.example.cn"))["lead"])
+        self.assertGreater(lead, 4.0, "囤太少扛不住公网抖动")
+        self.assertLessEqual(lead, 12.0, f"囤 {lead} 秒，换歌后电视要放这么久的旧画面才轮到新歌")
+
+
+class TrackChangeReanchorTests(unittest.TestCase):
+    """换歌之后内容时钟必须拉回去，否则新歌从旧歌那个位置开始画。
+
+    encoded_time 是"现在在画第几秒"，只会一直往前爬；换歌时 clock 会
+    reset 回新歌的 0 秒。不重新对齐的话，新歌一上来就从第几十秒开始画 ——
+    电视上看到的就是"歌词自己在跳"。
+    """
+
+    def test_encoder_reanchors_when_the_track_changes(self):
+        import sys, inspect
+
+        source = inspect.getsource(sys.modules[type(cast_manager).__module__])
+        self.assertIn("encoded_revision", source, "编码循环没有跟踪换歌，新歌会从旧歌的位置开始画")
+        self.assertRegex(
+            source,
+            r"track_revision != encoded_revision[\s\S]{0,200}encoded_time = session\.clock\.position\(\)",
+            "换歌时没有把 encoded_time 拉回 clock",
+        )
+
+    def test_changing_the_track_bumps_the_revision_and_resets_the_clock(self):
+        session = CastSession(
+            session_id="s", access_token="tok", owner_id="u",
+            output_dir=Path("/tmp"), public_base_url="https://sla.example.cn",
+        )
+        cast_manager._sessions["s"] = session
+        try:
+            cast_manager.update("s", "u", {"trackId": "a", "position": 0, "playing": True})
+            first = session.track_revision
+            session.clock.update(90.0, True)
+            cast_manager.update("s", "u", {"trackId": "b", "position": 0, "playing": True})
+            self.assertEqual(session.track_revision, first + 1, "换歌没有 bump revision，编码器无从知道要重新对齐")
+            self.assertLess(session.clock.position(), 2.0, "换歌后时钟没有归零")
+        finally:
+            cast_manager._sessions.pop("s", None)

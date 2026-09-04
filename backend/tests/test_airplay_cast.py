@@ -256,7 +256,12 @@ class StreamProfileTests(unittest.TestCase):
             with self.subTest(url):
                 self.assertTrue(wan_profile(url), f"{url} 应判为公网")
         wan = stream_profile(True)
-        self.assertGreaterEqual(wan["segment"], 3.0, "公网分片不能再是 1 秒")
+        # 分片长度是在两件事之间取舍：切得越长，起播前要囤的那两三个
+        # 分片就越久（这就是"延迟严重"里消不掉的那部分）；切得越短，
+        # 文件越碎、请求越多。2 秒是这条歌词流的平衡点 —— 画面几乎全是
+        # 静止帧，碎一点几乎不花钱，而起播延迟直接减半。
+        self.assertLessEqual(wan["segment"], 2.0, "分片太长，电视起播前要先囤掉两三个")
+        self.assertGreaterEqual(wan["segment"], 2.0, "分片再碎下去只是徒增请求数")
         self.assertLessEqual(wan["fps"], 15, "一句歌词才变一次，30fps 是在烧上行")
         # 公网档现在是"根本没有窗口"：list_size 0 表示播放列表列出全部
         # 分片，配合不删分片，客户端落后多少都能追回来。这比原来那条
@@ -272,14 +277,14 @@ class StreamProfileTests(unittest.TestCase):
             Path("/tmp/cast-profile-test"), use_qsv=False, profile=stream_profile(True)
         )
         self.assertIn("-hls_time", cmd)
-        self.assertEqual(cmd[cmd.index("-hls_time") + 1], "4")
+        self.assertEqual(cmd[cmd.index("-hls_time") + 1], "2")
         self.assertEqual(cmd[cmd.index("-hls_list_size") + 1], "0")
         # 注意别断言 -framerate：那是**输入端**往管道推帧的速率
         # （airplay_render_fps，默认 4），跟输出帧率是两回事。
         # 第一版断在它上面，读到 4 以为参数没传进去，其实是断错了参数。
         # 输出帧率写在 -vf 的 fps= 里，gop 由 fps × segment 推出来。
         self.assertIn("fps=15", cmd[cmd.index("-vf") + 1], "输出帧率要跟着档位")
-        self.assertEqual(cmd[cmd.index("-g") + 1], "60", "gop 应是 15×4")
+        self.assertEqual(cmd[cmd.index("-g") + 1], "30", "gop 应是 15×2")
 
     def test_the_playlist_advertises_the_real_frame_rate(self):
         """播放列表声明的帧率必须和实际编出来的一致。
@@ -330,16 +335,23 @@ class SegmentRetentionTests(unittest.TestCase):
 class LeadTests(unittest.TestCase):
     """编码器要跑在播放前面。
 
-    歌词画面完全由时间轴决定，后面几十秒长什么样现在就知道，所以能先编
-    出来。配合"公网不删分片"，接收端才囤得下一大段 —— 这是"先把内容缓存
-    到播放设备上"能落地的前提。
+    歌词画面完全由时间轴决定，后面一小段长什么样现在就知道，所以能先编
+    出来。配合"公网不删分片"，接收端就有一段可以抗抖。
+
+    但这件事只在时间轴不变时成立：换歌、暂停、拖进度条，每一次都让囤着
+    的那段作废，而它已经写进管道、已经切成分片挂在播放列表上，收不回来。
+    lead 有多长，换歌之后电视就要先放多久的旧画面才轮到新歌 —— 所以这里
+    卡的是**上界**，不是下界。第一版卡成"至少 30 秒"，实测就是换歌后几十秒
+    的错画面，也就是用户说的"歌词自己在跳"。
     """
 
     def test_wan_encodes_ahead_lan_does_not(self):
         from app.airplay_cast import stream_profile
 
-        self.assertGreaterEqual(
-            stream_profile(True)["lead"], 30, "公网要提前编够一段才顶得住抖动"
+        lead = stream_profile(True)["lead"]
+        self.assertGreater(lead, 4.0, "囤太少扛不住公网抖动")
+        self.assertLessEqual(
+            lead, 12.0, f"囤 {lead} 秒，换歌后电视要放这么久的旧画面才轮到新歌"
         )
         self.assertEqual(
             stream_profile(False)["lead"], 0.0, "局域网要低延迟，提前编只会让 seek 后丢得更多"

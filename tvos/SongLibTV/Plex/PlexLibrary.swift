@@ -54,6 +54,20 @@ struct PlexLibrary {
             }
     }
 
+    /// 这个库里有多少首歌。
+    ///
+    /// 用来挑默认库：实测这台服务器有两个音乐库，「测试」是空的、「音乐」有
+    /// 三千多首。默认拿第一个会让用户一进来就看到一个空库 —— 那是个很糟的
+    /// 第一印象，而且他会以为应用坏了。
+    func trackCount(section: String) async -> Int {
+        let found = try? await get(
+            "/library/sections/\(section)/all",
+            query: ["type": "10", "X-Plex-Container-Start": "0", "X-Plex-Container-Size": "0"],
+            as: PlexEnvelope<PlexItem>.self
+        )
+        return found?.total ?? 0
+    }
+
     /// Plex 的 type 编号：8 艺人、9 专辑、10 曲目。
     enum ItemType: Int {
         case artist = 8, album = 9, track = 10

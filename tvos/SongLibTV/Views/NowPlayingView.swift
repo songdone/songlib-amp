@@ -82,6 +82,11 @@ struct NowPlayingBody: View {
     var queuePanel: AnyView?
 
     @State private var showQueue = false
+    /// 全屏歌词：把底部信息条整条藏掉，歌词占满画面。
+    ///
+    /// 用户明确要这个。大屏听歌的时候，"现在放什么、进度到哪"这些信息看过
+    /// 一次就够了，之后它们只是在抢注意力 —— 而歌词是唯一该被看见的东西。
+    @State private var fullscreenLyrics = false
 
     /// 底部信息条的高度。显式写死，因为整页的布局算术要靠它。
     private var barHeight: CGFloat { controls == nil ? 168 : 262 }
@@ -115,13 +120,16 @@ struct NowPlayingBody: View {
                                 .frame(width: contentW, height: lyricsH)
                                 .offset(x: Theme.screenH, y: Theme.screenV)
 
-                            TransportBar(
-                                track: track, thumbURL: thumbURL,
-                                position: at, duration: duration, isPlaying: isPlaying,
-                                controls: controls
-                            )
-                            .frame(width: contentW, height: barHeight)
-                            .offset(x: Theme.screenH, y: H - Theme.screenV - barHeight)
+                            if !fullscreenLyrics {
+                                TransportBar(
+                                    track: track, thumbURL: thumbURL,
+                                    position: at, duration: duration, isPlaying: isPlaying,
+                                    controls: controls
+                                )
+                                .frame(width: contentW, height: barHeight)
+                                .offset(x: Theme.screenH, y: H - Theme.screenV - barHeight)
+                                .transition(.move(edge: .bottom).combined(with: .opacity))
+                            }
                         }
                         .frame(width: W, height: H, alignment: .topLeading)
                         .onChange(of: Int(at)) { _, _ in onSecondTick() }
@@ -146,7 +154,20 @@ struct NowPlayingBody: View {
             case .left:  onPrevious?()
             case .right: onNext?()
             case .down:  showQueue = true
+            case .up:    fullscreenLyrics.toggle()
             default: break
+            }
+        }
+        .animation(Theme.Motion.content, value: fullscreenLyrics)
+        // 全屏时给一行很淡的提示，否则用户不知道怎么退出来 ——
+        // 这个平台没有可见的关闭按钮，唯一线索只能是这行字。
+        .overlay(alignment: .bottom) {
+            if fullscreenLyrics {
+                Text("按上键退出全屏歌词 · 下键看待播清单")
+                    .font(.tv(19, .medium))
+                    .foregroundStyle(Theme.textTertiary.opacity(0.55))
+                    .padding(.bottom, 26)
+                    .transition(.opacity)
             }
         }
         // 播放/暂停键（遥控器上的独立按键走 MPRemoteCommandCenter，

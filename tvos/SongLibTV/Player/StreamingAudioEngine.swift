@@ -99,6 +99,23 @@ final class StreamingAudioEngine {
     private var delegate: StreamDelegate?
     private var decodeQueue = DispatchQueue(label: "songlib.decode", qos: .userInitiated)
     private var decoding = false
+    private var writer: CacheWriter?
+
+    /// 从本地文件喂解析器。分块读，和网络路径走同一条解码链。
+    private func feedLocalFile(_ url: URL) {
+        guard let handle = try? FileHandle(forReadingFrom: url) else {
+            state = .failed("本地缓存读不出来")
+            return
+        }
+        decodeQueue.async { [weak self] in
+            while let chunk = try? handle.read(upToCount: 128 * 1024), !chunk.isEmpty {
+                guard let self, self.streamID != nil else { break }
+                self.received(chunk)
+            }
+            try? handle.close()
+            self?.completed(error: nil)
+        }
+    }
 
     /// 起播前先囤够这么多包再开声。
     ///
@@ -120,7 +137,11 @@ final class StreamingAudioEngine {
     }
 
     /// 开始播一个地址。
-    func play(url: URL, headers: [String: String], knownDuration: Double, container: String?) {
+    ///
+    /// `cacheKey` 给了就参与离线缓存：本地已有完整副本时直接读盘（起播即时、
+    /// 不占带宽）；没有则边流边落盘，下次就是本地的了。
+    func play(url: URL, headers: [String: String], knownDuration: Double,
+              container: String?, cacheKey: String? = nil) {
         teardown()
         duration = knownDuration
         state = .buffering
@@ -134,6 +155,15 @@ final class StreamingAudioEngine {
             return
         }
         streamID = stream
+
+        // 本地有完整副本就直接喂文件，一个字节都不用走网络。
+        if let cacheKey, let local = MainActor.assumeIsolated({ OfflineCache.shared.localFile(for: cacheKey) }) {
+            feedLocalFile(local)
+            return
+        }
+        if let cacheKey {
+            writer = MainActor.assumeIsolated { OfflineCache.shared.beginWrite(for: cacheKey) }
+        }
 
         var request = URLRequest(url: url)
         for (key, value) in headers { request.setValue(value, forHTTPHeaderField: key) }
@@ -172,6 +202,9 @@ final class StreamingAudioEngine {
     }
 
     private func teardown() {
+        // 切歌时把半成品丢掉 —— 截断的文件不能当缓存用。
+        writer?.close(complete: false)
+        writer = nil
         task?.cancel()
         task = nil
         session?.invalidateAndCancel()
@@ -478,6 +511,7 @@ final class StreamingAudioEngine {
 
     fileprivate func received(_ data: Data) {
         guard let streamID else { return }
+        writer?.write(data)
         let status = data.withUnsafeBytes { raw in
             AudioFileStreamParseBytes(streamID, UInt32(data.count), raw.baseAddress, [])
         }
@@ -488,9 +522,13 @@ final class StreamingAudioEngine {
 
     fileprivate func completed(error: Error?) {
         if let error, (error as NSError).code != NSURLErrorCancelled {
+            writer?.close(complete: false)
+            writer = nil
             state = .failed("下载中断：\(error.localizedDescription)")
             return
         }
+        writer?.close(complete: error == nil)
+        writer = nil
         lock.lock()
         reachedEndOfStream = true
         let buffered = packets.count

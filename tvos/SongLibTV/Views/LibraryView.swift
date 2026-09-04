@@ -18,6 +18,8 @@ struct LibraryView: View {
                 .tabItem { Text("搜索") }
             NowPlayingTab(state: state, player: player)
                 .tabItem { Text("正在播放") }
+            SettingsTab(state: state, player: player)
+                .tabItem { Text("设置") }
         }
         .background(Theme.canvas.ignoresSafeArea())
     }
@@ -40,6 +42,11 @@ private struct HomeTab: View {
         NavigationStack {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: Theme.shelfGap) {
+                    // 头部在最顶上。
+                    //
+                    // 之前插在 hero 和第一排货架之间，结果标题和资料库选择器
+                    // 出现在大图**下面**，货架被挤出屏幕 —— 截图上一眼就是错的。
+                    LibraryHeader(state: state)
                     if let hero {
                         HeroBanner(item: hero, state: state, player: player)
                             .padding(.bottom, 8)
@@ -53,7 +60,6 @@ private struct HomeTab: View {
                             .foregroundStyle(Theme.textTertiary)
                             .padding(.horizontal, Theme.screenH)
                     }
-                    LibraryHeader(state: state)
                     Shelf(title: "最近添加", items: recentAlbums, state: state, player: player)
                     Shelf(title: "播放列表", items: playlists, state: state, player: player)
                     Shelf(title: "艺人", items: artists, state: state, player: player, circular: true)
@@ -68,10 +74,18 @@ private struct HomeTab: View {
     private func load() async {
         guard let library = state.library else { return }
         loading = true
+        // 每次重新载入都要先清掉上一次的提示。
+        //
+        // 之前没清：首次 load 跑在 sectionKey 还没到位的时候，设了
+        // "这台服务器上没有音乐库"；等库到位、内容加载出来之后，这条提示
+        // 还挂在屏幕上跟 hero 并排显示，自相矛盾。
+        notice = nil
         defer { loading = false }
         do {
             guard let key = state.sectionKey else {
-                notice = "这台服务器上没有音乐库"; return
+                // 库列表还在路上时不报错 —— 只有确定一个音乐库都没有才报。
+                if !state.sections.isEmpty { notice = "这台服务器上没有音乐库" }
+                return
             }
             recentAlbums = try await library.browse(section: key, type: .album, size: 24)
             hero = recentAlbums.first
@@ -101,8 +115,16 @@ private struct HeroBanner: View {
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
-            // 背景用专辑的宽幅图，压暗到能压住白字。
+            // 背景：把方形封面放大模糊当底，不硬裁成宽幅。
+            //
+            // 之前是把 1:1 的封面直接拉成 16:5 再裁 —— 裁出来是一张怪异的
+            // 局部特写（截图上是半张脸）。Plex 的曲目/专辑大多没有宽幅背景图，
+            // 所以正确做法是模糊放大：既填满画面，又不会裁到奇怪的地方。
             CoverImage(url: state.library?.coverURL(for: item, size: 900), cornerRadius: 0)
+                .frame(height: 560)
+                .scaleEffect(1.6)
+                .blur(radius: 90, opaque: true)
+                .saturation(1.15)
                 .frame(height: 560)
                 .clipped()
                 .overlay(
@@ -154,6 +176,7 @@ private struct HeroBanner: View {
                         .focused($focus, equals: .open)
                     }
                     .padding(.top, 8)
+                    .focusSection()
                 }
                 Spacer()
             }
@@ -201,10 +224,13 @@ private struct Shelf: View {
                             .buttonStyle(.card)
                         }
                     }
-                    // 卡片获得焦点时会放大 8%，两侧和上下都得留出放大的余量，
+                    // 卡片获得焦点时会放大，两侧和上下都得留出放大的余量，
                     // 不然放大的那张会被裁掉。
                     .padding(.horizontal, Theme.screenH)
                     .padding(.vertical, 26)
+                    // 每条货架各自成一个焦点分区：上下键在货架之间跳，
+                    // 不会因为横向位置不对就跳不过去（也不会跳错货架）。
+                    .focusSection()
                 }
             }
         }
@@ -289,6 +315,7 @@ private struct BrowseTab: View {
                         }
                     }
                     .padding(.horizontal, Theme.screenH)
+                    .focusSection()
 
                     if loading {
                         ProgressView().scaleEffect(1.4)
@@ -469,6 +496,7 @@ struct DetailView: View {
                     }
                 }
                 .padding(.top, 10)
+                .focusSection()
             }
         }
         .onChange(of: tracks.count) { _, count in if count > 0 { focusPlay = true } }
@@ -515,7 +543,10 @@ struct DetailView: View {
                 }
             }
         } else {
+            // 曲目表自成分区：从左边的「播放」按钮按右键能直接进来，
+            // 不用先竖着找到某一行的高度。
             TrackTable(tracks: tracks, player: player, state: state, showArtist: item.playlistType != nil)
+                .focusSection()
         }
     }
 
@@ -733,7 +764,18 @@ private struct NowPlayingTab: View {
     @ObservedObject var state: AppState
     @ObservedObject var player: MusicPlayer
 
+    // 必须包一层 NavigationStack。
+    //
+    // 用户报「返回不是回应用上一级，有时直接回系统主桌面」—— 根因就在这里：
+    // tvOS 的 Menu 键在**没有可返回的导航层级**时的行为就是退出应用。这个
+    // 标签页原来是裸的一个视图，从它进全屏歌词之后按返回，系统找不到可以
+    // 弹出的层级，于是直接退到桌面。
     var body: some View {
+        NavigationStack { content }
+    }
+
+    @ViewBuilder
+    private var content: some View {
         if player.currentTrack == nil {
             ZStack {
                 Theme.canvas.ignoresSafeArea()
@@ -767,7 +809,7 @@ private struct LibraryHeader: View {
     @ObservedObject var state: AppState
 
     var body: some View {
-        HStack(alignment: .center, spacing: 22) {
+        VStack(alignment: .leading, spacing: 20) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(state.sectionTitle)
                     .font(.tv(Theme.Size.title, .bold))
@@ -780,9 +822,7 @@ private struct LibraryHeader: View {
                 }
             }
 
-            Spacer()
-
-            // 只有一个音乐库时不显示切换器 —— 一个空有其表的下拉框比没有更糟。
+            // 只有一个音乐库时不显示切换器 —— 空有其表的下拉框比没有更糟。
             if state.sections.count > 1 {
                 HStack(spacing: 14) {
                     ForEach(state.sections) { section in
@@ -792,9 +832,112 @@ private struct LibraryHeader: View {
                         ) { state.select(section: section) }
                     }
                 }
+                // 关键的一行。
+                //
+                // tvOS 的焦点移动是**几何**的：按上键时系统在正上方找最近的可
+                // 聚焦元素。选择器原来甩在右上角，用户从左边的卡片按上，那个
+                // 方向上什么都没有，于是根本到不了 —— 必须先横着走到和它对齐
+                // 的位置。这就是用户报的"必须对齐它的位置上滑才能选中"。
+                //
+                // `focusSection()` 把这一排声明成一个焦点分区，焦点就按分区
+                // 跳转而不是严格按几何位置：从下面任何一张卡片按上都能进来。
+                //
+                // 版式也一并改了：选择器现在和内容左对齐、直接压在第一排卡片
+                // 上方，几何关系本身就顺了 —— 分区是保险，不是遮羞布。
+                .focusSection()
             }
         }
         .padding(.horizontal, Theme.screenH)
         .padding(.top, 6)
+    }
+}
+
+
+// MARK: - 设置
+
+/// 设置页。
+///
+/// 用户明确指出缺这个。电视上的设置不该做成一长串开关 —— 遥控器上翻一屏
+/// 开关是苦差事。所以只放真正需要选的几项，每项都用大按钮，一眼能看清
+/// 当前值。
+private struct SettingsTab: View {
+    @ObservedObject var state: AppState
+    @ObservedObject var player: MusicPlayer
+    @ObservedObject private var cache = OfflineCache.shared
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 46) {
+                    Text("设置")
+                        .font(.tv(Theme.Size.title, .bold))
+                        .foregroundStyle(Theme.textPrimary)
+
+                    if state.sections.count > 1 {
+                        SettingsBlock(title: "音乐资料库",
+                                      detail: "当前：\(state.sectionTitle)") {
+                            HStack(spacing: 14) {
+                                ForEach(state.sections) { section in
+                                    SegmentButton(title: section.displayTitle,
+                                                  selected: section.ratingKey == state.sectionKey) {
+                                        state.select(section: section)
+                                    }
+                                }
+                            }
+                            .focusSection()
+                        }
+                    }
+
+                    SettingsBlock(
+                        title: "离线缓存",
+                        detail: "已用 \(cache.usedDescription) / 上限 \(cache.limitDescription)"
+                    ) {
+                        HStack(spacing: 14) {
+                            ForEach(OfflineCache.Limit.allCases, id: \.self) { limit in
+                                SegmentButton(title: limit.label, selected: cache.limit == limit) {
+                                    cache.setLimit(limit)
+                                }
+                            }
+                        }
+                        .focusSection()
+                    }
+
+                    SettingsBlock(title: "缓存内容", detail: "\(cache.trackCount) 首已下载到这台 Apple TV") {
+                        PillButton(title: "清空缓存", icon: "trash") { cache.clear() }
+                    }
+
+                    SettingsBlock(title: "服务器", detail: state.serverName
+                                  + (state.connection?.isLocal == true ? " · 局域网直连" : " · 远程直连")) {
+                        PillButton(title: "退出登录", icon: "rectangle.portrait.and.arrow.right") {
+                            player.stop()
+                            state.signOutAndForget()
+                        }
+                    }
+                }
+                .padding(.horizontal, Theme.screenH)
+                .padding(.vertical, Theme.screenV)
+            }
+            .background(Theme.canvas.ignoresSafeArea())
+        }
+    }
+}
+
+private struct SettingsBlock<Content: View>: View {
+    let title: String
+    let detail: String
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.tv(Theme.Size.sectionHeader, .semibold))
+                    .foregroundStyle(Theme.textPrimary)
+                Text(detail)
+                    .font(.tv(Theme.Size.cardSubtitle))
+                    .foregroundStyle(Theme.textTertiary)
+            }
+            content
+        }
     }
 }

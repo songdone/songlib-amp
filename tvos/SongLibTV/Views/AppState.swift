@@ -28,20 +28,28 @@ final class AppState: ObservableObject {
     /// 库，其中音乐库可能不止一个（分类库、精选库、有声书库都常见），
     /// 默认拿第一个是错的。选择记在本地，下次开机直接用。
     @Published private(set) var sections: [PlexItem] = []
-    @Published private(set) var sectionKey: String? {
-        didSet {
-            if let sectionKey { UserDefaults.standard.set(sectionKey, forKey: Self.sectionDefaultsKey) }
-        }
-    }
+    /// 当前库。注意**没有** didSet 自动持久化 —— 见 `select(section:)`。
+    @Published private(set) var sectionKey: String?
     private static let sectionDefaultsKey = "plex.selectedSection"
 
     var sectionTitle: String {
         sections.first { $0.ratingKey == sectionKey }?.displayTitle ?? "音乐库"
     }
 
+    /// 用户亲自选的库才记住。
+    ///
+    /// 之前是在 sectionKey 的 didSet 里无条件写盘，于是**自动挑的**那个也被
+    /// 当成"用户的选择"记住了 —— 一旦第一次自动挑错（挑到空的「测试」库），
+    /// 之后每次开机都会尊重这个错误的"选择"，按曲目数重挑的逻辑再也不会跑。
     func select(section: PlexItem) {
         guard section.ratingKey != sectionKey else { return }
         sectionKey = section.ratingKey
+        UserDefaults.standard.set(section.ratingKey, forKey: Self.sectionDefaultsKey)
+    }
+
+    func signOutAndForget() {
+        UserDefaults.standard.removeObject(forKey: Self.sectionDefaultsKey)
+        signOut()
     }
 
     /// 连上之后把库列出来，并挑一个：上次选过的优先，否则第一个。
@@ -52,9 +60,21 @@ final class AppState: ObservableObject {
         let remembered = UserDefaults.standard.string(forKey: Self.sectionDefaultsKey)
         if let remembered, found.contains(where: { $0.ratingKey == remembered }) {
             sectionKey = remembered
-        } else {
-            sectionKey = found.first?.ratingKey
+            return
         }
+        // 没有记住过的选择时，挑**曲目最多**的那个，而不是第一个。
+        //
+        // 实测这台服务器有两个音乐库：「测试」是空的、「音乐」有三千多首。
+        // 按顺序拿第一个会让用户一进来就面对一个空库 —— 他会以为应用坏了。
+        guard !found.isEmpty else { sectionKey = nil; return }
+        var best = found[0]
+        var bestCount = -1
+        for candidate in found {
+            let count = await library.trackCount(section: candidate.ratingKey)
+            if count > bestCount { bestCount = count; best = candidate }
+        }
+        sectionKey = best.ratingKey
+        note("默认选中「\(best.displayTitle)」（\(bestCount) 首）")
     }
 
     private var pollTask: Task<Void, Never>?

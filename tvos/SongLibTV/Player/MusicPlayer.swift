@@ -244,7 +244,8 @@ final class MusicPlayer: ObservableObject {
             url: url,
             headers: library.connection.headers,
             knownDuration: track.durationSeconds,
-            container: track.firstPart?.container
+            container: track.firstPart?.container,
+            cacheKey: track.ratingKey
         )
         loadLyrics(for: track)
         updateNowPlayingInfo()

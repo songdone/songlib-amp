@@ -120,6 +120,20 @@ const PERSISTED_TRACK_FIELDS = [
   "bitrate",
 ];
 
+/**
+ * 播放历史/事件里的一条。比曲目多一个 playedAt。
+ *
+ * 单独一个函数是因为这两份列表是**从服务端水合回来的** ——
+ * 只在写入时瘦身不够：老的胖条目会一直被读回来又原样写回去。
+ * 线上实测过：改完写入之后 player/state 仍有 289 KB，就是它俩。
+ */
+export const persistableHistoryEntry = (entry) => {
+  const slim = persistableTrack(entry);
+  if (!slim) return null;
+  if (entry?.playedAt) slim.playedAt = entry.playedAt;
+  return slim;
+};
+
 export const persistableTrack = (track) => {
   if (!track || track.sourceType === "source_preview") return null;
   const slim = {};

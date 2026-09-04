@@ -2,7 +2,7 @@
   "name": "songlib-amp-ui",
   "description": "SongLib Amp｜音屿：本地优先的 NAS 音乐管理与播放平台",
   "private": true,
-  "version": "1.3.0",
+  "version": "1.3.1",
   "packageManager": "pnpm@11.9.0",
   "type": "module",
   "scripts": {

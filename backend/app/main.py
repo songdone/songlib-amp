@@ -226,6 +226,23 @@ def _page(items, page: int, page_size: int):
     return {"items": items[start:start + page_size], "total": total, "page": page, "pageSize": page_size}
 
 
+def _page_decorated(items, page: int, page_size: int):
+    """先切页、再装饰。
+
+    原来一律写成 `_page(_decorate(全部), page, 12)` —— 装饰是对**全部**条目
+    做的：3918 首歌就意味着一条带 3918 个占位符的
+    `WHERE rating_key IN (?,?,…)`，外加 3918 次字典改写，只为返回 12 条。
+    加了目录缓存之后，这一步就成了剩下的大头。
+
+    另外这里对切出来的那一页做浅拷贝：目录列表现在是缓存里的共享对象，
+    直接改会把装饰结果写回缓存。
+    """
+    total = len(items)
+    start = max(0, (page - 1) * page_size)
+    window = [dict(item) for item in items[start : start + page_size]]
+    return {"items": _decorate(window), "total": total, "page": page, "pageSize": page_size}
+
+
 def _decorate(items):
     keys = [str(item.get("ratingKey") or item.get("rating_key") or "") for item in items if item.get("ratingKey") or item.get("rating_key")]
     synced = {}
@@ -449,10 +466,10 @@ def plex_item_playback(rating_key: str):
 @app.get("/api/library/artists", dependencies=[Depends(auth.current_user)])
 def artists(page: int = 1, pageSize: int = Query(48, ge=1, le=200), search: str = ""):
     try:
-        return _page(_decorate(plex.artists(search=search)), page, pageSize)
+        return _page_decorated(plex.artists(search=search), page, pageSize)
     except Exception as exc:
         items = rows("SELECT rating_key AS ratingKey,title,thumb,art,summary FROM plex_items WHERE type='artist' AND title LIKE ? ORDER BY title", (f"%{search}%",))
-        return {**_page(_decorate(items), page, pageSize), "warning": f"Plex 暂不可用，显示最近同步数据：{exc}"}
+        return {**_page_decorated(items, page, pageSize), "warning": f"Plex 暂不可用，显示最近同步数据：{exc}"}
 
 
 @app.get("/api/library/artists/{rating_key}", dependencies=[Depends(auth.current_user)])
@@ -484,10 +501,10 @@ def artist_detail(rating_key: str):
 @app.get("/api/library/albums", dependencies=[Depends(auth.current_user)])
 def albums(page: int = 1, pageSize: int = Query(48, ge=1, le=200), search: str = ""):
     try:
-        return _page(_decorate(plex.albums(search=search)), page, pageSize)
+        return _page_decorated(plex.albums(search=search), page, pageSize)
     except Exception as exc:
         items = rows("SELECT rating_key AS ratingKey,title,artist AS parentTitle,year,thumb,art,summary FROM plex_items WHERE type='album' AND (title LIKE ? OR artist LIKE ?) ORDER BY artist,title", (f"%{search}%", f"%{search}%"))
-        return {**_page(_decorate(items), page, pageSize), "warning": f"Plex 暂不可用，显示最近同步数据：{exc}"}
+        return {**_page_decorated(items, page, pageSize), "warning": f"Plex 暂不可用，显示最近同步数据：{exc}"}
 
 
 @app.get("/api/library/albums/{rating_key}", dependencies=[Depends(auth.current_user)])
@@ -523,10 +540,10 @@ def album_detail(rating_key: str):
 @app.get("/api/library/tracks", dependencies=[Depends(auth.current_user)])
 def tracks(page: int = 1, pageSize: int = Query(50, ge=1, le=200), search: str = ""):
     try:
-        return _page(_decorate(plex.tracks(search=search)), page, pageSize)
+        return _page_decorated(plex.tracks(search=search), page, pageSize)
     except Exception as exc:
         items = rows("SELECT rating_key AS ratingKey,title,artist AS grandparentTitle,album AS parentTitle,year,duration,thumb,art,file_path AS file FROM plex_items WHERE type='track' AND (title LIKE ? OR artist LIKE ? OR album LIKE ?) ORDER BY artist,album,title", (f"%{search}%", f"%{search}%", f"%{search}%"))
-        return {**_page(_decorate(items), page, pageSize), "warning": f"Plex 暂不可用，显示最近同步数据：{exc}"}
+        return {**_page_decorated(items, page, pageSize), "warning": f"Plex 暂不可用，显示最近同步数据：{exc}"}
 
 
 @app.get("/api/plex/image", dependencies=[Depends(auth.current_user)])

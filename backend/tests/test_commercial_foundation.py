@@ -1266,3 +1266,42 @@ class CatalogCacheTests(unittest.TestCase):
             plex.artists()
         # 8/9/10 各抓一次，第二次 artists 命中缓存
         self.assertEqual(seen, [8, 9, 10])
+
+
+class LibraryPagingCostTests(unittest.TestCase):
+    """切 12 条不该为 3918 条买单。
+
+    原来一律写成 `_page(_decorate(全部), page, 12)` —— 装饰是对**全部**条目
+    做的：一条带 3918 个占位符的 `WHERE rating_key IN (?,?,…)`，
+    外加 3918 次字典改写，只为返回 12 条。
+    """
+
+    def test_only_the_requested_page_is_decorated(self):
+        from app.main import _page_decorated
+
+        items = [{"ratingKey": str(i), "title": f"曲目 {i}", "thumb": f"/t/{i}"} for i in range(3918)]
+        seen = {}
+
+        def fake_rows(sql, params=()):
+            seen["params"] = params
+            return []
+
+        with patch("app.main.rows", side_effect=fake_rows):
+            page = _page_decorated(items, 1, 12)
+
+        self.assertEqual(page["total"], 3918)
+        self.assertEqual(len(page["items"]), 12)
+        # 查询里只该带这一页的 12 个 key，不是全部 3918 个
+        self.assertEqual(len(seen["params"]), 12, f"SQL 带了 {len(seen['params'])} 个占位符")
+
+    def test_decorating_a_page_does_not_write_back_into_the_cached_list(self):
+        """目录列表现在是缓存里的共享对象，装饰不能改到它。"""
+        from app.main import _page_decorated
+
+        items = [{"ratingKey": "1", "title": "曲目", "thumb": "/t/1"}]
+        with patch("app.main.rows", return_value=[]):
+            page = _page_decorated(items, 1, 12)
+
+        self.assertIn("thumbUrl", page["items"][0])
+        self.assertNotIn("thumbUrl", items[0], "装饰结果被写回了缓存里的原对象")
+        self.assertNotIn("synced", items[0])

@@ -3,7 +3,7 @@ import { ResumePrompt } from "./ResumePrompt";
 import { fetchResumePoint, useResumeReporter } from "./useResumePoint";
 import { api } from "../../lib/api";
 import { playbackDurationSeconds, playlistTrackPayload } from "../../lib/contracts";
-import { isPlayableDuration, normalizeTrackTitle, persistableTrack, sanitizeQueue, trackIdentity } from "../../lib/media";
+import { isPlayableDuration, normalizeTrackTitle, persistableHistoryEntry, persistableTrack, sanitizeQueue, trackIdentity } from "../../lib/media";
 import { storedJson } from "../../lib/storage";
 
 export const PLAYBACK_QUALITIES = ["original", "320k", "256k", "192k", "128k"];
@@ -399,7 +399,7 @@ export function PlayerProvider({ children }) {
   useEffect(() => {
     localStorage.setItem(
       "songlib-play-events",
-      JSON.stringify(playEvents.slice(0, 1000)),
+      JSON.stringify(playEvents.slice(0, 200)),
     );
   }, [playEvents]);
   useEffect(() => {
@@ -416,8 +416,10 @@ export function PlayerProvider({ children }) {
               queue: state.queue.map(persistableTrack).filter(Boolean),
               currentTrack: persistableTrack(state.currentTrack),
               favorites,
-              history,
-              playEvents,
+              /* 这两份是从服务端水合回来的，只在写入时瘦身不够 ——
+                 老的胖条目会被读回来又原样写回去。每次保存都过一遍。 */
+              history: history.map(persistableHistoryEntry).filter(Boolean).slice(0, 100),
+              playEvents: playEvents.map(persistableHistoryEntry).filter(Boolean).slice(0, 200),
               playlists,
             },
           }),

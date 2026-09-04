@@ -15,8 +15,22 @@ final class AppState: ObservableObject {
     @Published private(set) var failure: String?
     @Published private(set) var connection: PlexConnection?
     @Published private(set) var serverName: String = ""
+    /// 配对过程的诊断，直接显示在登录页上。
+    ///
+    /// tvOS 的 `--console` 抓不到 stdout，统一日志也拉不下来 —— 而用户报的是
+    /// "配对码不停更新、输哪个都不行"。把状态摆在屏幕上，是这个平台上唯一
+    /// 可靠的观察手段，而且用户自己也能看懂发生了什么。
+    @Published private(set) var diagnostics: [String] = []
 
     private var pollTask: Task<Void, Never>?
+    private var pinRequests = 0
+    private var polls = 0
+
+    private func note(_ line: String) {
+        let stamp = Date().formatted(date: .omitted, time: .standard)
+        diagnostics.append("\(stamp)  \(line)")
+        if diagnostics.count > 8 { diagnostics.removeFirst(diagnostics.count - 8) }
+    }
 
     var library: PlexLibrary? {
         connection.map { PlexLibrary(connection: $0) }
@@ -25,6 +39,22 @@ final class AppState: ObservableObject {
     // MARK: - 开机
 
     func boot() {
+#if DEBUG
+        // 调试通道：`-plexToken <token>` 直接注入，跳过配对。
+        //
+        // 存在的理由是把问题分开：配对流程有 bug 时，不该连"界面和播放能不能
+        // 用"都一起验不了。只在 DEBUG 里编译。
+        let args = ProcessInfo.processInfo.arguments
+        if let i = args.firstIndex(of: "-plexToken"), i + 1 < args.count {
+            let injected = args[i + 1]
+            if !injected.isEmpty {
+                note("用启动参数注入的 token 直连")
+                TokenStore.save(injected, key: PlexAuth.tokenKey)
+                connect(token: injected)
+                return
+            }
+        }
+#endif
         if let token = TokenStore.read(key: PlexAuth.tokenKey), !token.isEmpty {
             connect(token: token)
         } else {
@@ -43,6 +73,10 @@ final class AppState: ObservableObject {
     // MARK: - 配对
 
     func startPairing() {
+        // 谁在反复发起配对，只有日志说得清 —— 用户报「配对码不停更新」，
+        // 而正常情况下一个码有 15 分钟有效期。
+        pinRequests += 1
+        note("发起配对 第 \(pinRequests) 次（上一个码 \(pin?.code ?? "无")）")
         pollTask?.cancel()
         failure = nil
         pin = nil
@@ -50,10 +84,16 @@ final class AppState: ObservableObject {
             guard let self else { return }
             do {
                 let fresh = try await PlexAuth.requestPin()
-                await MainActor.run { self.pin = fresh }
+                await MainActor.run {
+                    self.pin = fresh
+                    self.note("拿到码 \(fresh.code)  id=\(fresh.id)  有效 \(fresh.expiresIn ?? -1)s")
+                }
                 try await self.waitForAuthorization(pin: fresh)
             } catch {
-                await MainActor.run { self.failure = error.localizedDescription }
+                await MainActor.run {
+                    self.note("配对报错：\(error.localizedDescription)")
+                    self.failure = error.localizedDescription
+                }
             }
         }
     }
@@ -67,7 +107,14 @@ final class AppState: ObservableObject {
         while !Task.isCancelled, Date() < deadline {
             try? await Task.sleep(nanoseconds: 2_000_000_000)
             if Task.isCancelled { return }
-            if let token = try await PlexAuth.checkPin(id: pin.id) {
+            let polled = try await PlexAuth.checkPin(id: pin.id)
+            await MainActor.run {
+                self.polls += 1
+                if self.polls % 5 == 0 || polled != nil {
+                    self.note("轮询 \(self.polls) 次 -> \(polled == nil ? "还没被认领" : "已认领，拿到 token")")
+                }
+            }
+            if let token = polled {
                 TokenStore.save(token, key: PlexAuth.tokenKey)
                 await MainActor.run {
                     self.pin = nil
@@ -77,7 +124,10 @@ final class AppState: ObservableObject {
             }
         }
         // 码过期了就自动换一个，不要求用户回来点重试。
-        if !Task.isCancelled { startPairing() }
+        if !Task.isCancelled {
+            await MainActor.run { self.note("这个码到期了，换一个新的") }
+            startPairing()
+        }
     }
 
     // MARK: - 连接

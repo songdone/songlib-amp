@@ -31,7 +31,8 @@ struct NowPlayingView: View {
             isPlaying: player.isPlaying,
             duration: player.duration,
             position: { player.position },
-            onSecondTick: { player.tick() }
+            onSecondTick: { player.tick() },
+            controls: AnyView(TransportControls(player: player))
         )
     }
 }
@@ -50,7 +51,8 @@ struct NowPlayingPreviewBody: View {
             track: track, lyrics: lyrics, lyricsLoading: false,
             coverURL: coverURL, thumbURL: coverURL,
             isPlaying: true, duration: track.durationSeconds,
-            position: position, onSecondTick: {}
+            position: position, onSecondTick: {},
+            controls: nil
         )
     }
 }
@@ -68,9 +70,11 @@ struct NowPlayingBody: View {
     let duration: Double
     let position: () -> Double
     let onSecondTick: () -> Void
+    /// 走带控制。离线预览时为 nil —— 预览没有真的播放器可以控制。
+    let controls: AnyView?
 
     /// 底部信息条的高度。显式写死，因为整页的布局算术要靠它。
-    private let barHeight: CGFloat = 168
+    private var barHeight: CGFloat { controls == nil ? 168 : 262 }
     /// 歌词区和信息条之间的呼吸。
     private let barGap: CGFloat = 44
 
@@ -103,7 +107,8 @@ struct NowPlayingBody: View {
 
                             TransportBar(
                                 track: track, thumbURL: thumbURL,
-                                position: at, duration: duration, isPlaying: isPlaying
+                                position: at, duration: duration, isPlaying: isPlaying,
+                                controls: controls
                             )
                             .frame(width: contentW, height: barHeight)
                             .offset(x: Theme.screenH, y: H - Theme.screenV - barHeight)
@@ -349,20 +354,7 @@ private struct IntroCard: View {
                 }
                 .padding(.horizontal, 54)
                 .padding(.vertical, 38)
-                .background(
-                    RoundedRectangle(cornerRadius: Theme.radiusPanel, style: .continuous)
-                        .fill(Color.black.opacity(0.34))
-                        .background(
-                            RoundedRectangle(cornerRadius: Theme.radiusPanel, style: .continuous)
-                                .fill(.ultraThinMaterial)
-                                .environment(\.colorScheme, .dark)
-                        )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: Theme.radiusPanel, style: .continuous)
-                        .stroke(Theme.hairline, lineWidth: 1)
-                )
-                .shadow(color: .black.opacity(0.5), radius: 30, y: 14)
+                .glassSurface(radius: Theme.radiusPanel, tint: 0.34)
             }
             BreathingDots()
         }
@@ -426,8 +418,10 @@ private struct TransportBar: View {
     let position: Double
     let duration: Double
     let isPlaying: Bool
+    let controls: AnyView?
 
     var body: some View {
+        VStack(spacing: 20) {
         HStack(spacing: 28) {
             ArtworkTile(url: thumbURL, fallback: track.displayTitle, side: 104, radius: 12)
 
@@ -455,18 +449,11 @@ private struct TransportBar: View {
                 ProgressLine(position: position, duration: duration)
             }
         }
+        if let controls { controls }
+        }
         .padding(.horizontal, 30)
         .padding(.vertical, 22)
-        .background(
-            RoundedRectangle(cornerRadius: Theme.radiusPanel, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .environment(\.colorScheme, .dark)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.radiusPanel, style: .continuous)
-                .stroke(Theme.hairline, lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.45), radius: 26, y: 12)
+        .glassSurface(radius: Theme.radiusPanel, tint: 0.30)
     }
 
     private var subtitle: String {
@@ -564,5 +551,78 @@ struct ArtworkTile: View {
                     .stroke(Color.white.opacity(0.18), lineWidth: 1)
             )
             .shadow(color: .black.opacity(0.5), radius: side * 0.14, y: side * 0.06)
+    }
+}
+
+// MARK: - 走带控制
+
+/// 走带控制条：随机 / 上一首 / 播放暂停 / 下一首 / 循环。
+///
+/// tvOS 上遥控器的播放键已经能控制播放（走 MPRemoteCommandCenter），但屏幕上
+/// **必须**同时有这排按钮 —— 随机和循环没有对应的物理键，而且"看得见能做什么"
+/// 本身就是界面的职责。Apple Music 的 tvOS 版也是这个排法。
+struct TransportControls: View {
+    @ObservedObject var player: MusicPlayer
+
+    var body: some View {
+        HStack(spacing: 26) {
+            IconControl(
+                system: "shuffle",
+                active: player.shuffled,
+                hint: player.shuffled ? "随机播放已开" : "随机播放"
+            ) { player.toggleShuffle() }
+
+            IconControl(system: "backward.fill", hint: "上一首") { player.previous() }
+
+            IconControl(
+                system: player.isBuffering ? "hourglass" : (player.isPlaying ? "pause.fill" : "play.fill"),
+                large: true,
+                hint: player.isPlaying ? "暂停" : "播放"
+            ) { player.toggle() }
+
+            IconControl(system: "forward.fill", hint: "下一首") { player.next() }
+
+            IconControl(
+                system: player.repeatMode.symbol,
+                active: player.repeatMode != .off,
+                hint: player.repeatMode.label
+            ) { player.cycleRepeat() }
+
+            Spacer(minLength: 20)
+
+            if !player.upNext.isEmpty {
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("下一首")
+                        .font(.tv(17, .semibold))
+                        .foregroundStyle(Theme.textTertiary)
+                    Text(player.upNext[0].displayTitle)
+                        .font(.tv(Theme.Size.cardSubtitle, .medium))
+                        .foregroundStyle(Theme.textSecondary)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: 320, alignment: .trailing)
+            }
+        }
+    }
+}
+
+private struct IconControl: View {
+    let system: String
+    var active = false
+    var large = false
+    let hint: String
+    let action: () -> Void
+
+    var body: some View {
+        // 「已开启」的状态（随机、循环）用 prominent，一眼能看出它是亮着的；
+        // 其余用普通玻璃。这比自己涂两种背景色更贴合系统的观感。
+        Button(action: action) {
+            Image(systemName: system)
+                .font(.system(size: large ? 32 : 25, weight: .bold))
+                .frame(width: large ? 46 : 32, height: large ? 46 : 32)
+        }
+        .accessibilityLabel(hint)
+        // 「已开启」（随机、循环）用 prominent，一眼看出它亮着。
+        .glassButton(prominent: active, circular: true)
     }
 }

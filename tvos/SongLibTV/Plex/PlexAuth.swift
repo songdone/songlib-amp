@@ -57,6 +57,9 @@ enum PlexAuth {
         var request = URLRequest(url: URL(string: "https://plex.tv/api/v2/pins/\(id)")!)
         for (key, value) in headers { request.setValue(value, forHTTPHeaderField: key) }
         let (data, response) = try await URLSession.shared.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            print("[SongLib] checkPin HTTP \(http.statusCode) 体=\(String(data: data.prefix(300), encoding: .utf8) ?? "")")
+        }
         try PlexError.check(response, data: data, what: "查询配对状态")
         let pin = try JSONDecoder().decode(PlexPin.self, from: data)
         guard let token = pin.authToken, !token.isEmpty else { return nil }

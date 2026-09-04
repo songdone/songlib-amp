@@ -115,3 +115,167 @@ extension View {
         modifier(FocusLift(focused: focused, scale: scale, radius: radius))
     }
 }
+
+// MARK: - 液态玻璃
+
+/// tvOS 26 的液态玻璃，在这个平台上能用到什么程度。
+///
+/// 查过 tvOS 26.5 SDK 的 SwiftUI 接口，结论是有边界的：
+///
+/// - **有** `GlassButtonStyle` / `GlassProminentButtonStyle`（`.buttonStyle(.glass)`、
+///   `.glassProminent`，标注 tvOS 26.0+）—— 按钮可以直接用系统原生的液态玻璃，
+///   包括它自带的焦点高光和折射。
+/// - **没有** `glassEffect()` 和 `GlassEffectContainer` —— 这两个在这版 SDK 里
+///   只给 iOS / macOS / watchOS。所以任意表面没法一行变玻璃。
+///
+/// 于是面板类表面按液态玻璃的构成自己搭。它不是"半透明加模糊"那么简单，
+/// 真正让它像一片玻璃的是这四层叠在一起：
+///
+/// 1. **材质层** —— 背后的内容被折射、去饱和
+/// 2. **顶部高光** —— 一道自上而下迅速收敛的白色渐变，模拟光打在弧面边缘
+/// 3. **内发丝** —— 一圈 1px 的亮边，让它有厚度而不是一张贴纸
+/// 4. **外投影** —— 让它浮在内容之上，而不是嵌在里面
+///
+/// 少任何一层都会掉档：只有 1 是磨砂塑料，只有 1+3 是卡片，加上 2 才是玻璃。
+struct GlassSurface: ViewModifier {
+    var radius: CGFloat = Theme.radiusPanel
+    /// 深色内容上要更实一点，否则字压不住。
+    var tint: Double = 0.26
+    var elevated = true
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        return content
+            .background {
+                shape
+                    .fill(.ultraThinMaterial)
+                    .environment(\.colorScheme, .dark)
+                    .overlay(shape.fill(Color.black.opacity(tint)))
+                    .overlay(
+                        // 高光只占上缘一小段就收住 —— 铺满会变成一块灰。
+                        shape.fill(
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .white.opacity(0.22), location: 0.00),
+                                    .init(color: .white.opacity(0.05), location: 0.16),
+                                    .init(color: .clear, location: 0.42),
+                                ],
+                                startPoint: .top, endPoint: .bottom
+                            )
+                        )
+                        .blendMode(.plusLighter)
+                    )
+            }
+            .overlay(
+                shape.stroke(
+                    LinearGradient(
+                        colors: [Color.white.opacity(0.34), Color.white.opacity(0.08)],
+                        startPoint: .top, endPoint: .bottom
+                    ),
+                    lineWidth: 1
+                )
+            )
+            .shadow(color: .black.opacity(elevated ? 0.46 : 0), radius: elevated ? 28 : 0, y: elevated ? 14 : 0)
+    }
+}
+
+extension View {
+    func glassSurface(radius: CGFloat = Theme.radiusPanel, tint: Double = 0.26, elevated: Bool = true) -> some View {
+        modifier(GlassSurface(radius: radius, tint: tint, elevated: elevated))
+    }
+}
+
+// MARK: - 玻璃按钮（跨版本）
+
+/// 玻璃质感的按钮，在 tvOS 26 和 18 上都成立。
+///
+/// 这里必须双轨，原因是实测出来的：这台「卧室」Apple TV 跑的是 **tvOS 18.6**
+/// （tvOS 26.5 是家里那台「客厅」）。而 `.buttonStyle(.glass)` 标注的是
+/// tvOS 26.0+ —— 直接用会编译失败，把部署目标提到 26 则这台机器根本装不上。
+///
+/// 所以：26 及以上走系统原生液态玻璃（它自带的折射和焦点高光流动是手写不出
+/// 来的）；18 上退回自己搭的那四层玻璃。两条路视觉语言一致，用户不会察觉
+/// 在换实现 —— 只有在 26 上会明显更"活"。
+struct GlassButtonLook: ViewModifier {
+    var prominent = false
+    var circular = false
+
+    func body(content: Content) -> some View {
+        if #available(tvOS 26.0, *) {
+            if prominent {
+                content.buttonStyle(.glassProminent)
+            } else {
+                content.buttonStyle(.glass)
+            }
+        } else {
+            content.buttonStyle(LegacyGlassButtonStyle(prominent: prominent, circular: circular))
+        }
+    }
+}
+
+/// tvOS 18 上的玻璃按钮。
+///
+/// 焦点反馈得自己做全套：放大、抬高、亮边、以及"选中时整块变亮"。
+/// tvOS 上没有指针，这三件事同时发生才够清楚。
+struct LegacyGlassButtonStyle: ButtonStyle {
+    var prominent = false
+    var circular = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        LegacyGlassBody(configuration: configuration, prominent: prominent, circular: circular)
+    }
+
+    private struct LegacyGlassBody: View {
+        let configuration: Configuration
+        let prominent: Bool
+        let circular: Bool
+        @Environment(\.isFocused) private var focused
+
+        var body: some View {
+            let radius: CGFloat = circular ? 999 : 999   // 药丸和圆形都用胶囊
+            configuration.label
+                .foregroundStyle(prominent ? Theme.canvas : Theme.textPrimary)
+                .padding(.horizontal, circular ? 18 : 30)
+                .padding(.vertical, 18)
+                .background {
+                    let shape = Capsule(style: .continuous)
+                    ZStack {
+                        if prominent {
+                            shape.fill(focused ? Color.white : Theme.lyricActive.opacity(0.94))
+                        } else {
+                            shape.fill(.ultraThinMaterial)
+                                .environment(\.colorScheme, .dark)
+                            shape.fill(Color.white.opacity(focused ? 0.26 : 0.10))
+                        }
+                        // 上缘高光 —— 玻璃感的关键那一层
+                        shape.fill(
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .white.opacity(prominent ? 0.30 : 0.24), location: 0),
+                                    .init(color: .clear, location: 0.45),
+                                ],
+                                startPoint: .top, endPoint: .bottom
+                            )
+                        )
+                        .blendMode(.plusLighter)
+                    }
+                }
+                .overlay(
+                    Capsule(style: .continuous)
+                        .stroke(Color.white.opacity(focused ? 0.55 : 0.16), lineWidth: 1.5)
+                )
+                .scaleEffect(configuration.isPressed ? 0.97 : (focused ? 1.07 : 1))
+                .shadow(color: .black.opacity(focused ? 0.5 : 0.22),
+                        radius: focused ? 24 : 8, y: focused ? 11 : 4)
+                .animation(Theme.Motion.focus, value: focused)
+                .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+                .opacity(radius > 0 ? 1 : 1)
+        }
+    }
+}
+
+extension View {
+    func glassButton(prominent: Bool = false, circular: Bool = false) -> some View {
+        modifier(GlassButtonLook(prominent: prominent, circular: circular))
+    }
+}

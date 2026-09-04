@@ -163,7 +163,7 @@
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
-				TVOS_DEPLOYMENT_TARGET = 17.0;
+				TVOS_DEPLOYMENT_TARGET = 18.0;
 			};
 			name = Debug;
 		};
@@ -183,7 +183,7 @@
 				SDKROOT = appletvos;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_VERSION = 5.0;
-				TVOS_DEPLOYMENT_TARGET = 17.0;
+				TVOS_DEPLOYMENT_TARGET = 18.0;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
@@ -196,7 +196,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "SongLib";
+				INFOPLIST_KEY_CFBundleDisplayName = "SongLib Amp";
 				INFOPLIST_KEY_UIUserInterfaceStyle = Dark;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -218,7 +218,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "SongLib";
+				INFOPLIST_KEY_CFBundleDisplayName = "SongLib Amp";
 				INFOPLIST_KEY_UIUserInterfaceStyle = Dark;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

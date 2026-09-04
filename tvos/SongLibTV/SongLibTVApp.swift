@@ -60,7 +60,7 @@ struct RootView: View {
             case .connecting:
                 splash("正在连接你的 Plex 服务器…")
             case .ready:
-                BrowseView(state: state, player: player)
+                LibraryView(state: state, player: player)
             }
         }
     }

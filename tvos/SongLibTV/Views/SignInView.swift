@@ -37,8 +37,33 @@ struct SignInView: View {
                 }
             }
             .padding(Theme.screenH)
+
+            // 诊断条。配对出问题时这是唯一能看到发生了什么的地方。
+            if !state.diagnostics.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(state.diagnostics, id: \.self) { line in
+                        Text(line)
+                            .font(.system(size: 17, weight: .regular, design: .monospaced))
+                            .foregroundStyle(Theme.textTertiary)
+                    }
+                }
+                .padding(.horizontal, 22)
+                .padding(.vertical, 14)
+                .glassSurface(radius: 14, tint: 0.4)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                .padding(Theme.screenH)
+            }
         }
-        .task { state.startPairing() }
+        // 守卫：视图重建时不要再发起一次配对。
+        //
+        // 用户报「配对码不停更新，输哪个都不行」—— 每次重新发起都会作废
+        // 上一个码，于是他手上那个永远是过期的。`.task` 在视图身份变化时
+        // 会重跑，而这个页面上有好几个 @Published 在变（pin、failure），
+        // 任何一次重建都可能触发。
+        .task {
+            guard state.pin == nil, state.failure == nil else { return }
+            state.startPairing()
+        }
     }
 
     private func pairing(pin: PlexPin) -> some View {

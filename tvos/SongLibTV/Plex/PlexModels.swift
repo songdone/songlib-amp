@@ -211,6 +211,8 @@ struct PlexLyricsEnvelope: Decodable {
         let endOffset: Int?
     }
 
+    enum CodingKeys: String, CodingKey { case container = "MediaContainer" }
+
     var first: Lyrics? { container.lyrics?.first }
 }
 

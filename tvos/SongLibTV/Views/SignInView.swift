@@ -36,7 +36,7 @@ struct SignInView: View {
                         .scaleEffect(1.6)
                 }
             }
-            .padding(Theme.screenPadding)
+            .padding(Theme.screenH)
         }
         .task { state.startPairing() }
     }

@@ -2,24 +2,21 @@ import SwiftUI
 
 /// 大屏歌词。这个应用存在的理由。
 ///
-/// ## 布局为什么是"歌词占中央"
+/// ## 为什么所有尺寸都是显式算出来的
 ///
-/// 上一版（服务器渲视频投屏）是左边一张封面、右边一列歌词。在 16:9 的电视上
-/// 那个版式右侧总是空一大片，歌词被挤在偏左的一条里 —— 看着像个信息面板，
-/// 不像在听歌。这一版让歌词居中占据整个画面，封面退到背景里做光和色，
-/// 播放信息压到底部一条。三米外只有一件东西该被看见。
+/// 这一页重写过三次，前两次都栽在 SwiftUI 的隐式尺寸协商上：
 ///
-/// ## 时钟
+/// - 第一版 `VStack { 歌词.frame(maxHeight:.infinity); 信息条 }` —— 整块比
+///   屏幕高，信息条被挤出画面。
+/// - 第二版 `ZStack(.bottom) { 歌词.frame(maxHeight:.infinity).padding(.bottom,210) }`
+///   —— 「先占满可用高度、再加 210 边距」= 可用高度 + 210，必然溢出。
+/// - 第三版换成 `safeAreaInset` 之后高度对了，但歌词整层被莫名右推 371pt
+///   （染色量出来的：那一层的 frame 从 461pt 开始，而不是 90pt）。
 ///
-/// 用 `TimelineView(.animation)` 每帧直接读播放头，**不把播放位置放进
-/// @Published**。位置一秒变几十次，走 state 会让整棵视图树每帧重算一遍；
-/// 而且根本不需要 —— 播放头是现成的事实，读它就行。
-///
-/// ## 为什么拆成 NowPlayingBody
-///
-/// 渲染部分不碰 `MusicPlayer`，只吃"当前曲目 + 歌词 + 一个能问出播放头的
-/// 闭包"。这样调视觉时可以用真实素材离线渲染（见 PreviewHarness），走的还是
-/// **同一套代码**。如果预览另写一份，调出来的版式就是假的。
+/// 每次都是"某一层的固有尺寸和父容器的提议打起来"。所以这一版**不参与协商**：
+/// 顶层一个 `GeometryReader` 拿到画面尺寸，剩下每一块的宽高和位置全部自己算。
+/// 代价是多几行算术，换来的是版式完全可预测 —— 而要做到精确的视觉，本来也
+/// 只能这么做。
 struct NowPlayingView: View {
     @ObservedObject var player: MusicPlayer
     let library: PlexLibrary?
@@ -29,8 +26,8 @@ struct NowPlayingView: View {
             track: player.currentTrack,
             lyrics: player.lyrics,
             lyricsLoading: player.lyricsLoading,
-            coverURL: player.currentTrack.flatMap { library?.coverURL(for: $0, size: 720) },
-            thumbURL: player.currentTrack.flatMap { library?.coverURL(for: $0, size: 240) },
+            coverURL: player.currentTrack.flatMap { library?.coverURL(for: $0, size: 900) },
+            thumbURL: player.currentTrack.flatMap { library?.coverURL(for: $0, size: 300) },
             isPlaying: player.isPlaying,
             duration: player.duration,
             position: { player.position },
@@ -40,7 +37,8 @@ struct NowPlayingView: View {
 }
 
 #if DEBUG
-/// 离线预览用的入口。刻意跟真机共用 `NowPlayingBody`。
+/// 离线预览入口。刻意跟真机共用 `NowPlayingBody` —— 预览另写一份的话，
+/// 调出来的版式就是假的。
 struct NowPlayingPreviewBody: View {
     let track: PlexItem
     let lyrics: LyricsTimeline?
@@ -49,21 +47,16 @@ struct NowPlayingPreviewBody: View {
 
     var body: some View {
         NowPlayingBody(
-            track: track,
-            lyrics: lyrics,
-            lyricsLoading: false,
-            coverURL: coverURL,
-            thumbURL: coverURL,
-            isPlaying: true,
-            duration: track.durationSeconds,
-            position: position,
-            onSecondTick: {}
+            track: track, lyrics: lyrics, lyricsLoading: false,
+            coverURL: coverURL, thumbURL: coverURL,
+            isPlaying: true, duration: track.durationSeconds,
+            position: position, onSecondTick: {}
         )
     }
 }
 #endif
 
-// MARK: - 纯展示层
+// MARK: -
 
 struct NowPlayingBody: View {
     let track: PlexItem?
@@ -76,233 +69,215 @@ struct NowPlayingBody: View {
     let position: () -> Double
     let onSecondTick: () -> Void
 
+    /// 底部信息条的高度。显式写死，因为整页的布局算术要靠它。
+    private let barHeight: CGFloat = 168
+    /// 歌词区和信息条之间的呼吸。
+    private let barGap: CGFloat = 44
+
     var body: some View {
-        ZStack {
-            background
-            if let track {
-                content(track: track)
-            } else {
-                Text("没有正在播放的曲目")
-                    .font(.system(size: 38, weight: .medium))
-                    .foregroundStyle(Theme.textSecondary)
+        GeometryReader { geometry in
+            let W = geometry.size.width
+            let H = geometry.size.height
+            let contentW = W - Theme.screenH * 2
+            // 歌词区吃掉整个画面高度，信息条**浮在它上面**，不占位置。
+            //
+            // 先前是把条的高度从歌词区里扣掉，结果歌词那一列的中心落在画面
+            // 40% 处，构图整体偏上，条和最后一句之间还空出一大块。让条浮起来，
+            // 歌词就正好以画面中心为轴 —— 底部那道渐隐蒙版负责让字在碰到条
+            // 之前就消失，两者不会打架。
+            let lyricsH = H - Theme.screenV * 2
+
+            ZStack(alignment: .topLeading) {
+                AmbientBackground(coverURL: coverURL)
+                    .frame(width: W, height: H)
+
+                if let track {
+                    TimelineView(.animation) { timeline in
+                        let _ = timeline.date          // 每帧重算
+                        let at = position()
+
+                        ZStack(alignment: .topLeading) {
+                            lyricsLayer(width: contentW, height: lyricsH, at: at, track: track)
+                                .frame(width: contentW, height: lyricsH)
+                                .offset(x: Theme.screenH, y: Theme.screenV)
+
+                            TransportBar(
+                                track: track, thumbURL: thumbURL,
+                                position: at, duration: duration, isPlaying: isPlaying
+                            )
+                            .frame(width: contentW, height: barHeight)
+                            .offset(x: Theme.screenH, y: H - Theme.screenV - barHeight)
+                        }
+                        .frame(width: W, height: H, alignment: .topLeading)
+                        .onChange(of: Int(at)) { _, _ in onSecondTick() }
+                    }
+                } else {
+                    Text("没有正在播放的曲目")
+                        .font(.tv(Theme.Size.body))
+                        .foregroundStyle(Theme.textSecondary)
+                        .frame(width: W, height: H)
+                }
             }
+            .frame(width: W, height: H, alignment: .topLeading)
         }
+        .background(Theme.canvas)
         .ignoresSafeArea()
     }
 
-    // MARK: - 背景
+    @ViewBuilder
+    private func lyricsLayer(width: CGFloat, height: CGFloat, at: Double, track: PlexItem) -> some View {
+        if let lyrics, !lyrics.isEmpty {
+            LyricsStage(lyrics: lyrics, position: at, width: width, height: height)
+        } else if lyricsLoading {
+            centered(width: width, height: height) {
+                Text("正在取歌词…")
+                    .font(.tv(Theme.Size.body))
+                    .foregroundStyle(Theme.textTertiary)
+            }
+        } else {
+            // 没有歌词不留白 —— 放大封面，做成一个体面的"纯听"界面。
+            centered(width: width, height: height) {
+                VStack(spacing: 30) {
+                    ArtworkTile(url: thumbURL, fallback: track.displayTitle, side: min(460, height * 0.72))
+                    Text("这首没有歌词")
+                        .font(.tv(Theme.Size.caption))
+                        .foregroundStyle(Theme.textTertiary)
+                }
+            }
+        }
+    }
 
-    /// 背景就是那张封面本身：放大、模糊、压暗。
-    ///
-    /// 不另外提取主色调 —— 模糊后的封面**就是**这首歌的颜色，而且比任何取色
-    /// 算法都准。取色算法在灰度封面上会退化成一团脏灰，上一版渲视频时就得
-    /// 为这种情况专门写补偿逻辑。
-    private var background: some View {
+    private func centered<Content: View>(
+        width: CGFloat, height: CGFloat, @ViewBuilder _ content: () -> Content
+    ) -> some View {
+        content().frame(width: width, height: height, alignment: .center)
+    }
+}
+
+// MARK: - 背景
+
+/// 背景就是那张封面本身：放大、模糊、压暗，再让它极慢地漂。
+///
+/// 不另外提取主色调 —— 模糊后的封面**就是**这首歌的颜色，比任何取色算法都准
+/// （取色算法在灰度封面上会退化成一团脏灰，上一版渲视频时得专门为此写补偿）。
+///
+/// 那个漂移是这一页"活着"的关键。完全静止的模糊底图在大屏上会显得像一张
+/// 贴图；让它用 30 秒走完一个来回，快到能感觉到、慢到不抢注意力。
+private struct AmbientBackground: View {
+    let coverURL: URL?
+    @State private var drifted = false
+
+    var body: some View {
         ZStack {
             Theme.canvas
             if let coverURL {
                 CoverImage(url: coverURL, cornerRadius: 0)
-                    .scaleEffect(1.35)
-                    .blur(radius: 110, opaque: true)
-                    .opacity(0.55)
+                    .scaleEffect(drifted ? 1.46 : 1.30)
+                    .offset(x: drifted ? -38 : 38, y: drifted ? 26 : -26)
+                    .blur(radius: 120, opaque: true)
+                    .saturation(1.25)
+                    .opacity(0.78)
                     .id(coverURL)
+                    .transition(.opacity)
             }
-            // 压暗层。背景压够暗、最亮的字压在纯白之下，三米外才读得动。
+            // 压暗层。上下重、中间轻 —— 让歌词所在的那条带子最亮。
             LinearGradient(
-                colors: [
-                    Color.black.opacity(0.55),
-                    Color.black.opacity(0.42),
-                    Color.black.opacity(0.72),
+                stops: [
+                    .init(color: .black.opacity(0.58), location: 0.00),
+                    .init(color: .black.opacity(0.24), location: 0.38),
+                    .init(color: .black.opacity(0.34), location: 0.66),
+                    .init(color: .black.opacity(0.80), location: 1.00),
                 ],
                 startPoint: .top, endPoint: .bottom
             )
         }
-        .animation(.easeInOut(duration: 0.8), value: coverURL)
-    }
-
-    // MARK: - 主体
-
-    private func content(track: PlexItem) -> some View {
-        TimelineView(.animation) { timeline in
-            let _ = timeline.date   // 每帧重算
-            let at = position()
-            VStack(spacing: 0) {
-                lyricsArea(position: at, track: track)
-                    .frame(maxHeight: .infinity)
-                transportBar(track: track, position: at)
+        .clipped()
+        .animation(Theme.Motion.ambient, value: coverURL)
+        .onAppear {
+            withAnimation(.easeInOut(duration: 30).repeatForever(autoreverses: true)) {
+                drifted = true
             }
-            .padding(.horizontal, Theme.screenPadding)
-            .padding(.vertical, 60)
-            .onChange(of: Int(at)) { _, _ in onSecondTick() }
         }
-    }
-
-    // MARK: - 歌词区
-
-    @ViewBuilder
-    private func lyricsArea(position at: Double, track: PlexItem) -> some View {
-        if let lyrics, !lyrics.isEmpty {
-            LyricsScroller(lyrics: lyrics, position: at)
-        } else if lyricsLoading {
-            Text("正在取歌词…")
-                .font(.system(size: 34, weight: .medium))
-                .foregroundStyle(Theme.textTertiary)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            noLyrics(track: track)
-        }
-    }
-
-    /// 没有歌词时不留白 —— 把封面放大居中，做成一个体面的"纯听"界面。
-    private func noLyrics(track: PlexItem) -> some View {
-        VStack(spacing: 34) {
-            CoverImage(url: thumbURL, cornerRadius: 24, fallbackText: track.displayTitle)
-                .frame(width: 420, height: 420)
-                .shadow(color: .black.opacity(0.6), radius: 40, y: 18)
-            Text("这首没有歌词")
-                .font(.system(size: 28, weight: .medium))
-                .foregroundStyle(Theme.textTertiary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    // MARK: - 底部信息条
-
-    private func transportBar(track: PlexItem, position at: Double) -> some View {
-        VStack(spacing: 18) {
-            HStack(spacing: 26) {
-                CoverImage(url: thumbURL, cornerRadius: 12, fallbackText: track.displayTitle)
-                    .frame(width: 116, height: 116)
-                    .shadow(color: .black.opacity(0.5), radius: 18, y: 8)
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(track.displayTitle)
-                        .font(.system(size: 40, weight: .bold))
-                        .foregroundStyle(Theme.textPrimary)
-                        .lineLimit(1)
-                    HStack(spacing: 12) {
-                        Text(track.displayArtist).lineLimit(1)
-                        if !track.displayAlbum.isEmpty {
-                            Text("·")
-                            Text(track.displayAlbum).lineLimit(1)
-                        }
-                    }
-                    .font(.system(size: 28, weight: .medium))
-                    .foregroundStyle(Theme.textSecondary)
-                }
-
-                Spacer(minLength: 20)
-
-                // 音质角标。用户明确说过不喜欢转码播放 —— 如实标出现在放的是
-                // 什么，直连无损就该看得见。
-                if let codec = track.audioCodec {
-                    Text(qualityLabel(codec: codec, bitrate: track.bitrate))
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(Theme.textSecondary)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Capsule().fill(Color.white.opacity(0.10)))
-                        .overlay(Capsule().stroke(Color.white.opacity(0.16), lineWidth: 1))
-                }
-            }
-
-            progress(position: at)
-        }
-    }
-
-    private func qualityLabel(codec: String, bitrate: Int?) -> String {
-        let name = codec.uppercased()
-        if ["FLAC", "ALAC", "PCM", "WAV", "APE", "DSD"].contains(name) {
-            return "\(name) · 无损直连"
-        }
-        if let bitrate, bitrate > 0 { return "\(name) \(bitrate)k" }
-        return name
-    }
-
-    private func progress(position at: Double) -> some View {
-        VStack(spacing: 10) {
-            GeometryReader { geometry in
-                let fraction = duration > 0 ? min(1, max(0, at / duration)) : 0
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color.white.opacity(0.16))
-                    Capsule()
-                        .fill(Color.white.opacity(0.85))
-                        .frame(width: geometry.size.width * fraction)
-                }
-            }
-            .frame(height: 6)
-
-            HStack {
-                Text(timeText(at))
-                Spacer()
-                if !isPlaying {
-                    Text("已暂停").foregroundStyle(Theme.textTertiary)
-                    Spacer()
-                }
-                Text(timeText(duration))
-            }
-            .font(.system(size: 24, weight: .medium).monospacedDigit())
-            .foregroundStyle(Theme.textSecondary)
-        }
-    }
-
-    private func timeText(_ seconds: Double) -> String {
-        guard seconds.isFinite, seconds >= 0 else { return "0:00" }
-        let whole = Int(seconds)
-        return String(format: "%d:%02d", whole / 60, whole % 60)
     }
 }
 
-// MARK: - 歌词滚动
+// MARK: - 歌词舞台
 
-/// 歌词的滚动和高亮。
+/// 歌词的滚动、高亮和景深。
 ///
-/// **每行占一个等高的槽位**，靠 `offset` 把当前行推到画面中央。行高不等的话
-/// 这个位移就算不准（一句换行会把它后面所有行推偏），所以宁可让长句缩字号
-/// 也不让它换行 —— 电视上一句一行本来也更好读。
-private struct LyricsScroller: View {
+/// 位置是**算出来的**，不是让 SwiftUI 分配的：一列等高槽位，总高 n×槽高，
+/// 在容器里居中，于是把第 i 行推到正中所需的位移是
+/// `总高/2 − i×槽高 − 槽高/2`。闭式解，不需要问任何人容器多高。
+private struct LyricsStage: View {
     let lyrics: LyricsTimeline
     let position: Double
+    let width: CGFloat
+    let height: CGFloat
 
-    /// 槽位高度：主行字号 62 + 上下留白。
-    private let slot: CGFloat = 112
+    private var slot: CGFloat { Theme.Size.lyricSlot }
 
     var body: some View {
         let active = lyrics.activeIndex(at: position)
         // 前奏/间奏时没有当前行，但画面不能跳回顶部 —— 停在上一句那儿。
         let anchor = active ?? lastPassed
+        let total = CGFloat(lyrics.lines.count) * slot
 
-        GeometryReader { geometry in
-            let center = geometry.size.height / 2 - slot / 2
+        // 三种状态，界面完全不同：
+        //   前奏  —— 还没唱第一句：只显示制作名单，歌词整列让位。
+        //   间奏  —— 唱过了但这一段没词：歌词列留着（要看得见上下文），
+        //            但整列往下挪半格，把正中让给呼吸指示。
+        //   在唱  —— 正常滚动。
+        let isIntro = active == nil && position < firstLineStart
+        let isInterlude = active == nil && position >= firstLineStart
+
+        ZStack {
             VStack(spacing: 0) {
                 ForEach(Array(lyrics.lines.enumerated()), id: \.element.id) { index, line in
-                    lineView(line: line, distance: index - anchor, isActive: index == active)
-                        .frame(height: slot)
-                        .frame(maxWidth: .infinity, alignment: .center)
+                    LyricLine(
+                        text: line.text,
+                        distance: index - anchor,
+                        isActive: index == active
+                    )
+                    .frame(width: width, height: slot)
                 }
             }
-            .offset(y: center - CGFloat(anchor) * slot)
-            .animation(.spring(response: 0.55, dampingFraction: 0.82), value: anchor)
-            .frame(maxWidth: .infinity)
-            .overlay(alignment: .center) {
-                // 制作名单只在真正的前奏里出现一次，不参与滚动。
-                if active == nil, !lyrics.credits.isEmpty, position < firstLineStart {
-                    creditsCard
-                }
+            .frame(width: width, height: total)
+            // 间奏时挪半格：上一句停在中心偏上、下一句在中心偏下，
+            // 正中那道空档正好给呼吸指示站。不挪的话点会压在字上。
+            .offset(y: total / 2 - CGFloat(anchor) * slot - slot / 2
+                       + (isInterlude ? slot / 2 : 0))
+            // 前奏时整列淡出。先前没做这件事，结果制作名单和第一句歌词
+            // 叠在一起糊成一团 —— 截图上一眼就能看到。
+            .opacity(isIntro ? 0 : 1)
+            .animation(Theme.Motion.lyric, value: anchor)
+            .animation(Theme.Motion.content, value: isIntro)
+            .animation(Theme.Motion.lyric, value: isInterlude)
+
+            if isIntro {
+                IntroCard(credits: lyrics.credits)
+                    .transition(.opacity.combined(with: .scale(scale: 0.97)))
             }
-            // 上下淡出，避免歌词被画面边缘硬切断。
-            .mask(
-                LinearGradient(
-                    stops: [
-                        .init(color: .clear, location: 0),
-                        .init(color: .black, location: 0.22),
-                        .init(color: .black, location: 0.78),
-                        .init(color: .clear, location: 1),
-                    ],
-                    startPoint: .top, endPoint: .bottom
-                )
-            )
+            if isInterlude {
+                BreathingDots()
+                    .transition(.opacity)
+            }
         }
+        .animation(Theme.Motion.content, value: isIntro)
+        .frame(width: width, height: height)
+        .clipped()
+        // 上下淡出，避免歌词被画面边缘硬切断。
+        .mask(
+            LinearGradient(
+                stops: [
+                    .init(color: .clear, location: 0.00),
+                    .init(color: .black, location: 0.24),
+                    .init(color: .black, location: 0.76),
+                    .init(color: .clear, location: 1.00),
+                ],
+                startPoint: .top, endPoint: .bottom
+            )
+            .frame(width: width, height: height)
+        )
     }
 
     private var firstLineStart: Double { lyrics.lines.first?.start ?? 0 }
@@ -310,43 +285,284 @@ private struct LyricsScroller: View {
     private var lastPassed: Int {
         lyrics.lines.lastIndex(where: { $0.start <= position }) ?? 0
     }
+}
 
-    private var creditsCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ForEach(lyrics.credits, id: \.self) { credit in
-                Text(credit)
-                    .font(.system(size: 26, weight: .regular))
+/// 一行歌词。
+///
+/// 远离当前行的行会**逐渐失焦**（模糊 + 变暗 + 缩小）。这层景深是"高级感"
+/// 里最便宜也最有效的一笔：人眼对模糊的深度线索非常敏感，一加上，那列字
+/// 就从"一张列表"变成"一个有前后关系的空间"。
+private struct LyricLine: View {
+    let text: String
+    let distance: Int
+    let isActive: Bool
+
+    private var magnitude: Int { abs(distance) }
+
+    var body: some View {
+        Text(text)
+            .font(.tv(isActive ? Theme.Size.lyricActive : Theme.Size.lyricIdle,
+                      isActive ? .bold : .medium))
+            .foregroundStyle(color)
+            .lineLimit(1)
+            // 长句缩字号而不换行：换行会让槽位高度失准，滚动就对不上了；
+            // 而电视上一句一行本来也更好读。
+            .minimumScaleFactor(0.46)
+            .multilineTextAlignment(.center)
+            .blur(radius: blur)
+            .scaleEffect(isActive ? 1 : 0.97)
+            .shadow(color: .black.opacity(isActive ? 0.6 : 0), radius: 22, y: 5)
+            .animation(Theme.Motion.lyric, value: isActive)
+            .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    private var color: Color {
+        if isActive { return Theme.lyricActive }
+        switch magnitude {
+        case 0, 1: return Theme.lyricNear
+        case 2: return Color.white.opacity(0.28)
+        case 3: return Color.white.opacity(0.20)
+        default: return Theme.lyricFar
+        }
+    }
+
+    private var blur: CGFloat {
+        if isActive { return 0 }
+        return min(CGFloat(magnitude) * 0.9, 3.6)
+    }
+}
+
+/// 前奏卡片：制作名单 + 呼吸指示。
+///
+/// 前奏是这首歌唯一"没有内容可显示"的时段，正好用来交代它是谁做的 ——
+/// 这些信息本来就在歌词文件里，只是不该跟着时间轴闪。
+private struct IntroCard: View {
+    let credits: [String]
+
+    var body: some View {
+        VStack(spacing: 30) {
+            if !credits.isEmpty {
+                VStack(spacing: 14) {
+                    ForEach(credits, id: \.self) { credit in
+                        creditRow(credit)
+                    }
+                }
+                .padding(.horizontal, 54)
+                .padding(.vertical, 38)
+                .background(
+                    RoundedRectangle(cornerRadius: Theme.radiusPanel, style: .continuous)
+                        .fill(Color.black.opacity(0.34))
+                        .background(
+                            RoundedRectangle(cornerRadius: Theme.radiusPanel, style: .continuous)
+                                .fill(.ultraThinMaterial)
+                                .environment(\.colorScheme, .dark)
+                        )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.radiusPanel, style: .continuous)
+                        .stroke(Theme.hairline, lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.5), radius: 30, y: 14)
+            }
+            BreathingDots()
+        }
+    }
+
+    /// 名单排成「角色 — 人名」两列。
+    ///
+    /// 原样打印 `作词 : 小玉 林忠谕` 那种带冒号的原文，在大屏上像一行日志。
+    /// 拆成两列之后角色右对齐、人名左对齐，才像一张演职员表。
+    @ViewBuilder
+    private func creditRow(_ credit: String) -> some View {
+        if let separator = credit.firstIndex(where: { $0 == ":" || $0 == "：" }) {
+            HStack(spacing: 20) {
+                Text(credit[credit.startIndex..<separator].trimmingCharacters(in: .whitespaces))
+                    .font(.tv(Theme.Size.caption, .regular))
                     .foregroundStyle(Theme.textTertiary)
+                    .frame(width: 110, alignment: .trailing)
+                Text(credit[credit.index(after: separator)...].trimmingCharacters(in: .whitespaces))
+                    .font(.tv(Theme.Size.caption, .semibold))
+                    .foregroundStyle(Theme.textSecondary)
+                    .frame(width: 320, alignment: .leading)
+            }
+        } else {
+            Text(credit)
+                .font(.tv(Theme.Size.caption, .regular))
+                .foregroundStyle(Theme.textSecondary)
+        }
+    }
+}
+
+/// 间奏指示。三个点按 1.4 秒一轮依次呼吸 —— 存在感刚够说明"还在放，
+/// 只是这一段没有词"，又不至于变成一个抢眼的动画。
+private struct BreathingDots: View {
+    var body: some View {
+        TimelineView(.animation) { timeline in
+            let phase = timeline.date.timeIntervalSinceReferenceDate / 1.4
+            HStack(spacing: 16) {
+                ForEach(0..<3, id: \.self) { index in
+                    let local = (phase - Double(index) * 0.22).truncatingRemainder(dividingBy: 1)
+                    let wave = 0.35 + 0.65 * max(0, sin(local * .pi))
+                    Circle()
+                        .fill(Color.white.opacity(0.30 * wave + 0.10))
+                        .frame(width: 14, height: 14)
+                        .scaleEffect(0.8 + 0.35 * wave)
+                }
+            }
+        }
+        .frame(height: 20)
+    }
+}
+
+// MARK: - 底部信息条
+
+/// 底部信息条。玻璃面板 + 封面 + 细进度条。
+///
+/// 做成一块有边界的玻璃，而不是几行浮在背景上的字 —— 后者在颜色多变的
+/// 模糊底图上时而看不清，而且没有"这是控制区"的层次感。
+private struct TransportBar: View {
+    let track: PlexItem
+    let thumbURL: URL?
+    let position: Double
+    let duration: Double
+    let isPlaying: Bool
+
+    var body: some View {
+        HStack(spacing: 28) {
+            ArtworkTile(url: thumbURL, fallback: track.displayTitle, side: 104, radius: 12)
+
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .firstTextBaseline, spacing: 16) {
+                    Text(track.displayTitle)
+                        .font(.tv(Theme.Size.title - 10, .bold))
+                        .foregroundStyle(Theme.textPrimary)
+                        .lineLimit(1)
+                    if !isPlaying {
+                        Label("已暂停", systemImage: "pause.fill")
+                            .labelStyle(.titleAndIcon)
+                            .font(.tv(19, .semibold))
+                            .foregroundStyle(Theme.textTertiary)
+                    }
+                    Spacer(minLength: 8)
+                    // 音质角标：用户明确说过不喜欢转码播放，所以现在放的是什么
+                    // 就该看得见。直连无损是这个应用的卖点之一。
+                    QualityBadge(codec: track.audioCodec, bitrate: track.bitrate)
+                }
+                Text(subtitle)
+                    .font(.tv(Theme.Size.caption, .medium))
+                    .foregroundStyle(Theme.textSecondary)
+                    .lineLimit(1)
+                ProgressLine(position: position, duration: duration)
             }
         }
         .padding(.horizontal, 30)
         .padding(.vertical, 22)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white.opacity(0.06))
+            RoundedRectangle(cornerRadius: Theme.radiusPanel, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .environment(\.colorScheme, .dark)
         )
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.radiusPanel, style: .continuous)
+                .stroke(Theme.hairline, lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.45), radius: 26, y: 12)
     }
 
-    private func lineView(line: LyricsTimeline.Line, distance: Int, isActive: Bool) -> some View {
-        Text(line.text)
-            .font(.lyric(isActive ? Theme.lyricActiveSize : Theme.lyricIdleSize,
-                         weight: isActive ? .bold : .medium))
-            .foregroundStyle(color(for: abs(distance), isActive: isActive))
-            .lineLimit(1)
-            // 长句缩字号而不换行：换行会让槽位高度失准，滚动就对不上了。
-            .minimumScaleFactor(0.5)
-            .multilineTextAlignment(.center)
-            .shadow(color: isActive ? Color.black.opacity(0.55) : .clear, radius: 18, y: 4)
-            .padding(.horizontal, 40)
+    private var subtitle: String {
+        let album = track.displayAlbum
+        return album.isEmpty ? track.displayArtist : "\(track.displayArtist) · \(album)"
     }
+}
 
-    /// 越远越暗，但不暗到看不见 —— 上下几句还看得见，才有"歌在往前走"的感觉。
-    private func color(for magnitude: Int, isActive: Bool) -> Color {
-        if isActive { return Theme.lyricActive }
-        switch magnitude {
-        case 0, 1: return Theme.lyricNear
-        case 2: return Color.white.opacity(0.30)
-        default: return Theme.lyricFar
+private struct QualityBadge: View {
+    let codec: String?
+    let bitrate: Int?
+
+    var body: some View {
+        if let codec {
+            Text(label(codec))
+                .font(.tv(19, .semibold))
+                .foregroundStyle(isLossless(codec) ? Theme.lyricActive : Theme.textSecondary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 7)
+                .background(Capsule().fill(Theme.surface))
+                .overlay(Capsule().stroke(Theme.hairline, lineWidth: 1))
         }
+    }
+
+    private func isLossless(_ codec: String) -> Bool {
+        ["flac", "alac", "pcm", "wav", "ape", "dsd"].contains(codec.lowercased())
+    }
+
+    private func label(_ codec: String) -> String {
+        let name = codec.uppercased()
+        if isLossless(codec) { return "\(name) 无损直连" }
+        if let bitrate, bitrate > 0 { return "\(name) \(bitrate)k" }
+        return name
+    }
+}
+
+private struct ProgressLine: View {
+    let position: Double
+    let duration: Double
+
+    var body: some View {
+        HStack(spacing: 18) {
+            Text(time(position))
+            GeometryReader { geometry in
+                let fraction = duration > 0 ? min(1, max(0, position / duration)) : 0
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.white.opacity(0.18))
+                    Capsule()
+                        .fill(LinearGradient(
+                            colors: [Color.white.opacity(0.75), Color.white],
+                            startPoint: .leading, endPoint: .trailing
+                        ))
+                        .frame(width: max(0, geometry.size.width * fraction))
+                }
+                .frame(height: 5)
+                .frame(maxHeight: .infinity, alignment: .center)
+            }
+            .frame(height: 14)
+            Text(time(duration))
+        }
+        .font(.tv(20, .medium).monospacedDigit())
+        .foregroundStyle(Theme.textSecondary)
+    }
+
+    private func time(_ seconds: Double) -> String {
+        guard seconds.isFinite, seconds >= 0 else { return "0:00" }
+        let whole = Int(seconds)
+        return String(format: "%d:%02d", whole / 60, whole % 60)
+    }
+}
+
+// MARK: - 封面
+
+/// 封面块。带一道自上而下的高光，让它看起来是一片有厚度的材质，
+/// 而不是一张贴在背景上的图。
+struct ArtworkTile: View {
+    let url: URL?
+    let fallback: String
+    let side: CGFloat
+    var radius: CGFloat = 18
+
+    var body: some View {
+        CoverImage(url: url, cornerRadius: radius, fallbackText: fallback)
+            .frame(width: side, height: side)
+            .overlay(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .fill(LinearGradient(
+                        colors: [Color.white.opacity(0.16), .clear],
+                        startPoint: .top, endPoint: .center
+                    ))
+                    .blendMode(.plusLighter)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .stroke(Color.white.opacity(0.18), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.5), radius: side * 0.14, y: side * 0.06)
     }
 }

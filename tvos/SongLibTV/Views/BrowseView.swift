@@ -30,7 +30,7 @@ struct BrowseView: View {
                         row(title: "播放列表", items: playlists)
                     }
                 }
-                .padding(.horizontal, Theme.screenPadding)
+                .padding(.horizontal, Theme.screenH)
                 .padding(.vertical, 60)
             }
             .background(Theme.canvas.ignoresSafeArea())
@@ -179,7 +179,7 @@ struct AlbumView: View {
 
                 content
             }
-            .padding(Theme.screenPadding)
+            .padding(Theme.screenH)
         }
         .task { await load() }
     }

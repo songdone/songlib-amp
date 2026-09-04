@@ -33,7 +33,7 @@ actor CoverCache {
 
 struct CoverImage: View {
     let url: URL?
-    var cornerRadius: CGFloat = Theme.cornerRadius
+    var cornerRadius: CGFloat = Theme.radiusCard
     /// 没有封面时用标题的首字兜底，比一个灰方块像样。
     var fallbackText: String = ""
 

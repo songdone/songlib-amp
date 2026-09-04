@@ -53,6 +53,7 @@ private struct HomeTab: View {
                             .foregroundStyle(Theme.textTertiary)
                             .padding(.horizontal, Theme.screenH)
                     }
+                    LibraryHeader(state: state)
                     Shelf(title: "最近添加", items: recentAlbums, state: state, player: player)
                     Shelf(title: "播放列表", items: playlists, state: state, player: player)
                     Shelf(title: "艺人", items: artists, state: state, player: player, circular: true)
@@ -61,7 +62,7 @@ private struct HomeTab: View {
             }
             .background(Theme.canvas.ignoresSafeArea())
         }
-        .task { await load() }
+        .task(id: state.sectionKey) { await load() }
     }
 
     private func load() async {
@@ -69,12 +70,12 @@ private struct HomeTab: View {
         loading = true
         defer { loading = false }
         do {
-            guard let section = try await library.musicSections().first else {
+            guard let key = state.sectionKey else {
                 notice = "这台服务器上没有音乐库"; return
             }
-            recentAlbums = try await library.browse(section: section.ratingKey, type: .album, size: 24)
+            recentAlbums = try await library.browse(section: key, type: .album, size: 24)
             hero = recentAlbums.first
-            artists = try await library.browse(section: section.ratingKey, type: .artist,
+            artists = try await library.browse(section: key, type: .artist,
                                                sort: "addedAt:desc", size: 20)
         } catch {
             notice = "读取音乐库失败：\(error.localizedDescription)"
@@ -216,7 +217,9 @@ private struct MediaCard: View {
     var circular = false
     @Environment(\.isFocused) private var focused
 
-    private var side: CGFloat { 250 }
+    /// 卡片边长。Apple Music 的 tvOS 版在 1080p 上大约 320pt —— 250 太小，
+    /// 一屏塞进七八张，看着像网页而不像大屏应用。
+    private var side: CGFloat { 320 }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -226,12 +229,12 @@ private struct MediaCard: View {
                 fallbackText: item.displayTitle
             )
             .frame(width: side, height: side)
-            .focusLift(focused, radius: circular ? side / 2 : Theme.radiusCard)
+            .posterSurface(focused, radius: circular ? side / 2 : Theme.radiusCard)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.displayTitle)
                     .font(.tv(Theme.Size.cardTitle, .semibold))
-                    .foregroundStyle(Theme.textPrimary)
+                    .foregroundStyle(focused ? Theme.textPrimary : Theme.textSecondary)
                     .lineLimit(1)
                 Text(subtitle)
                     .font(.tv(Theme.Size.cardSubtitle))
@@ -312,17 +315,14 @@ private struct BrowseTab: View {
             }
             .background(Theme.canvas.ignoresSafeArea())
         }
-        .task { await load() }
+        .task(id: state.sectionKey) { await load() }
     }
 
     private func load() async {
         guard let library = state.library else { return }
         loading = true
         defer { loading = false }
-        if section == nil {
-            section = try? await library.musicSections().first?.ratingKey
-        }
-        guard let section else { return }
+        guard let section = state.sectionKey else { return }
         items = (try? await library.browse(section: section, type: mode.type,
                                            sort: "titleSort:asc", size: 120)) ?? []
     }
@@ -752,5 +752,49 @@ private struct NowPlayingTab: View {
         } else {
             NowPlayingView(player: player, library: state.library)
         }
+    }
+}
+
+
+// MARK: - 资料库切换
+
+/// 资料库选择器。
+///
+/// 用户明确指出这是缺的：Plexamp 连上 Plex 之后就是让你挑资料库的。
+/// 实测这台服务器上有 14 个库，音乐库也可能不止一个（分类库、精选库、
+/// 有声书库都常见），默认拿第一个是错的。
+private struct LibraryHeader: View {
+    @ObservedObject var state: AppState
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 22) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(state.sectionTitle)
+                    .font(.tv(Theme.Size.title, .bold))
+                    .foregroundStyle(Theme.textPrimary)
+                if !state.serverName.isEmpty {
+                    Text(state.serverName
+                         + (state.connection?.isLocal == true ? " · 局域网直连" : " · 远程直连"))
+                        .font(.tv(Theme.Size.cardSubtitle))
+                        .foregroundStyle(Theme.textTertiary)
+                }
+            }
+
+            Spacer()
+
+            // 只有一个音乐库时不显示切换器 —— 一个空有其表的下拉框比没有更糟。
+            if state.sections.count > 1 {
+                HStack(spacing: 14) {
+                    ForEach(state.sections) { section in
+                        SegmentButton(
+                            title: section.displayTitle,
+                            selected: section.ratingKey == state.sectionKey
+                        ) { state.select(section: section) }
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, Theme.screenH)
+        .padding(.top, 6)
     }
 }

@@ -22,6 +22,41 @@ final class AppState: ObservableObject {
     /// 可靠的观察手段，而且用户自己也能看懂发生了什么。
     @Published private(set) var diagnostics: [String] = []
 
+    /// 这台服务器上所有音乐库，以及当前选中的那个。
+    ///
+    /// 必须能选：Plexamp 连上之后就是让你挑资料库的。实测这台服务器有 14 个
+    /// 库，其中音乐库可能不止一个（分类库、精选库、有声书库都常见），
+    /// 默认拿第一个是错的。选择记在本地，下次开机直接用。
+    @Published private(set) var sections: [PlexItem] = []
+    @Published private(set) var sectionKey: String? {
+        didSet {
+            if let sectionKey { UserDefaults.standard.set(sectionKey, forKey: Self.sectionDefaultsKey) }
+        }
+    }
+    private static let sectionDefaultsKey = "plex.selectedSection"
+
+    var sectionTitle: String {
+        sections.first { $0.ratingKey == sectionKey }?.displayTitle ?? "音乐库"
+    }
+
+    func select(section: PlexItem) {
+        guard section.ratingKey != sectionKey else { return }
+        sectionKey = section.ratingKey
+    }
+
+    /// 连上之后把库列出来，并挑一个：上次选过的优先，否则第一个。
+    func loadSections() async {
+        guard let library else { return }
+        let found = (try? await library.musicSections()) ?? []
+        sections = found
+        let remembered = UserDefaults.standard.string(forKey: Self.sectionDefaultsKey)
+        if let remembered, found.contains(where: { $0.ratingKey == remembered }) {
+            sectionKey = remembered
+        } else {
+            sectionKey = found.first?.ratingKey
+        }
+    }
+
     private var pollTask: Task<Void, Never>?
     private var pinRequests = 0
     private var polls = 0
@@ -156,6 +191,7 @@ final class AppState: ObservableObject {
                             self.serverName = server.name ?? "Plex"
                             self.phase = .ready
                         }
+                        await self.loadSections()
                         return
                     }
                 }

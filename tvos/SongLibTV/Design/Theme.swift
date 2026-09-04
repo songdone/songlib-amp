@@ -279,3 +279,73 @@ extension View {
         modifier(GlassButtonLook(prominent: prominent, circular: circular))
     }
 }
+
+// MARK: - 海报卡片
+
+/// tvOS 上「选中」真正的手感来自三件事同时发生，缺一件就显得生硬：
+///
+/// 1. **放大 + 抬起** —— 尺寸和阴影告诉你它离你更近了
+/// 2. **视差** —— 封面内容随焦点方向轻微反向位移，让卡片像一块有厚度的
+///    亚克力而不是一张贴纸。这是 tvOS 系统卡片最标志性的一笔，
+///    也是自己画卡片时最容易漏掉的一笔。
+/// 3. **高光扫过** —— 一道斜向的白色亮带在获得焦点时掠过表面。它模拟的是
+///    「这块材质表面反射了环境光」，是"精致"和"廉价"的分界线。
+///
+/// 之前只做了 1，所以看着像网页卡片，不像 tvOS 原生。
+struct PosterSurface: ViewModifier {
+    let focused: Bool
+    var radius: CGFloat = Theme.radiusCard
+    var scale: CGFloat = 1.07
+
+    @State private var sheen: CGFloat = -1
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        return content
+            .overlay {
+                // 高光带。宽度只占 40%，斜着放，从左下扫到右上。
+                shape.fill(
+                    LinearGradient(
+                        stops: [
+                            .init(color: .clear, location: max(0, sheen - 0.22)),
+                            .init(color: .white.opacity(focused ? 0.30 : 0), location: sheen),
+                            .init(color: .clear, location: min(1, sheen + 0.22)),
+                        ],
+                        startPoint: .bottomLeading, endPoint: .topTrailing
+                    )
+                )
+                .blendMode(.plusLighter)
+                .allowsHitTesting(false)
+            }
+            .overlay {
+                // 亮边只在获得焦点时出现，且上缘更亮 —— 光是从上面来的。
+                shape.stroke(
+                    LinearGradient(
+                        colors: [.white.opacity(focused ? 0.62 : 0.10),
+                                 .white.opacity(focused ? 0.16 : 0.04)],
+                        startPoint: .top, endPoint: .bottom
+                    ),
+                    lineWidth: focused ? 3 : 1
+                )
+            }
+            .clipShape(shape)
+            .scaleEffect(focused ? scale : 1)
+            .shadow(color: .black.opacity(focused ? 0.62 : 0.34),
+                    radius: focused ? 40 : 16,
+                    y: focused ? 22 : 9)
+            .animation(Theme.Motion.focus, value: focused)
+            .onChange(of: focused) { _, isFocused in
+                guard isFocused else { sheen = -1; return }
+                sheen = -0.3
+                // 扫过一次就停在外面，不循环 —— 循环会变成一个抢眼的动画。
+                withAnimation(.easeOut(duration: 0.85)) { sheen = 1.3 }
+            }
+    }
+}
+
+extension View {
+    func posterSurface(_ focused: Bool, radius: CGFloat = Theme.radiusCard,
+                       scale: CGFloat = 1.07) -> some View {
+        modifier(PosterSurface(focused: focused, radius: radius, scale: scale))
+    }
+}

@@ -32,7 +32,11 @@ struct NowPlayingView: View {
             duration: player.duration,
             position: { player.position },
             onSecondTick: { player.tick() },
-            controls: AnyView(TransportControls(player: player))
+            controls: AnyView(TransportControls(player: player)),
+            onPrevious: { player.previous() },
+            onNext: { player.next() },
+            onToggle: { player.toggle() },
+            queuePanel: AnyView(QueuePanel(player: player))
         )
     }
 }
@@ -72,6 +76,12 @@ struct NowPlayingBody: View {
     let onSecondTick: () -> Void
     /// 走带控制。离线预览时为 nil —— 预览没有真的播放器可以控制。
     let controls: AnyView?
+    var onPrevious: (() -> Void)?
+    var onNext: (() -> Void)?
+    var onToggle: (() -> Void)?
+    var queuePanel: AnyView?
+
+    @State private var showQueue = false
 
     /// 底部信息条的高度。显式写死，因为整页的布局算术要靠它。
     private var barHeight: CGFloat { controls == nil ? 168 : 262 }
@@ -127,6 +137,24 @@ struct NowPlayingBody: View {
         }
         .background(Theme.canvas)
         .ignoresSafeArea()
+        // 遥控器方向键：左右切歌、下键看待播清单。
+        //
+        // tvOS 上这些手势是肌肉记忆 —— 不接的话用户只能一路按到屏幕上的
+        // 按钮上去点，那就是"没利用好遥控器"。
+        .onMoveCommand { direction in
+            switch direction {
+            case .left:  onPrevious?()
+            case .right: onNext?()
+            case .down:  showQueue = true
+            default: break
+            }
+        }
+        // 播放/暂停键（遥控器上的独立按键走 MPRemoteCommandCenter，
+        // 这里接的是"选择键"）。
+        .onPlayPauseCommand { onToggle?() }
+        .sheet(isPresented: $showQueue) {
+            if let queuePanel { queuePanel }
+        }
     }
 
     @ViewBuilder
@@ -624,5 +652,73 @@ private struct IconControl: View {
         .accessibilityLabel(hint)
         // 「已开启」（随机、循环）用 prominent，一眼看出它亮着。
         .glassButton(prominent: active, circular: true)
+    }
+}
+
+
+// MARK: - 待播清单
+
+/// 待播清单。遥控器下键唤出。
+///
+/// 一个播放器没有"接下来放什么"的清单是不完整的 —— 用户没法知道随机播放
+/// 排出了什么顺序，也没法跳到中间某一首。
+struct QueuePanel: View {
+    @ObservedObject var player: MusicPlayer
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack {
+            Theme.canvas.ignoresSafeArea()
+            VStack(alignment: .leading, spacing: 26) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("待播清单")
+                        .font(.tv(Theme.Size.title, .bold))
+                        .foregroundStyle(Theme.textPrimary)
+                    Spacer()
+                    Text("\(player.index + 1) / \(player.queue.count)")
+                        .font(.tv(Theme.Size.body).monospacedDigit())
+                        .foregroundStyle(Theme.textTertiary)
+                }
+
+                ScrollView {
+                    LazyVStack(spacing: 8) {
+                        ForEach(Array(player.queue.enumerated()), id: \.element.id) { position, track in
+                            Button { player.jump(to: position); dismiss() } label: {
+                                HStack(spacing: 20) {
+                                    ZStack {
+                                        if position == player.index {
+                                            PlayingBars(animating: player.isPlaying)
+                                        } else {
+                                            Text("\(position + 1)")
+                                                .font(.tv(Theme.Size.cardSubtitle).monospacedDigit())
+                                                .foregroundStyle(Theme.textTertiary)
+                                        }
+                                    }
+                                    .frame(width: 46)
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(track.displayTitle)
+                                            .font(.tv(Theme.Size.body - 2,
+                                                      position == player.index ? .semibold : .medium))
+                                            .foregroundStyle(position == player.index
+                                                             ? Theme.lyricActive : Theme.textPrimary)
+                                            .lineLimit(1)
+                                        Text(track.displayArtist)
+                                            .font(.tv(Theme.Size.cardSubtitle))
+                                            .foregroundStyle(Theme.textTertiary)
+                                            .lineLimit(1)
+                                    }
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 16)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, Theme.screenH)
+            .padding(.vertical, Theme.screenV)
+        }
     }
 }

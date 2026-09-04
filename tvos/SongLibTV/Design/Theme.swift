@@ -15,12 +15,46 @@ enum Theme {
 
     // MARK: - 颜色
 
-    /// 底色不用 #000：纯黑在 OLED 上和熄灭的像素无法区分，画面边界会消失；
-    /// 在 LCD 上又会因背光漏光显出一块块不均匀的灰。近黑两边都稳。
-    static let canvas = Color(red: 0.043, green: 0.039, blue: 0.047)
-    static let surface = Color.white.opacity(0.07)
-    static let surfaceStrong = Color.white.opacity(0.12)
-    static let hairline = Color.white.opacity(0.14)
+    // 中性色阶。
+    //
+    // 这套数值不是我调出来的，是从一个公认做得漂亮的 tvOS 播放器
+    // （Forward 1.3.19）的资源包里读出来的 —— 而它用的正是**苹果系统深色
+    // 标准色**：#000 / #1C1C1E / #222 / #3D3D41 / #525252。
+    //
+    // 这件事本身是个结论：好看的 tvOS 应用不自创灰阶，用系统那套。自创的
+    // 灰阶（我之前那个 #0B0A0C 暖调近黑）和系统控件、系统模糊、系统焦点
+    // 效果放在一起会差半档，合起来就是"不像原生"。
+    //
+    // 纯黑在 OLED 上确实和熄灭的像素无法区分 —— 但那是内容区该避免的事，
+    // 底色本身用纯黑才是这个平台的规范：电视多在暗环境看，纯黑底才不发灰。
+    static let canvas = Color.black
+    /// #1C1C1E —— 分组背景，比底色高一档
+    static let group = Color(red: 0.110, green: 0.110, blue: 0.118)
+    /// #222222 —— 实心填充
+    static let darkFill = Color(red: 0.133, green: 0.133, blue: 0.133)
+    /// #3D3D41 —— 次级填充
+    static let fill = Color(red: 0.239, green: 0.239, blue: 0.255)
+    /// #373737 —— 详情页顶部渐变起点
+    static let detailTop = Color(red: 0.216, green: 0.216, blue: 0.216)
+    /// #525252 —— 占位符
+    static let placeholder = Color(red: 0.322, green: 0.322, blue: 0.322)
+
+    static let surface = Color.white.opacity(0.10)        // border
+    static let surfaceStrong = Color.white.opacity(0.20)  // tabBackground
+    static let hairline = Color.white.opacity(0.10)
+
+    /// 玻璃的两个数值。
+    ///
+    /// 同样是量出来的：`glassBackground` = #1F1F1F @ 20%，
+    /// `glassBorder` = #FEFFFF @ 10%。
+    ///
+    /// 注意底色只有 **20%** 不透明度 —— 我之前用的是 26%~34%，太实了，
+    /// 结果"玻璃"看着像一块半透明塑料板。玻璃之所以是玻璃，是因为它几乎
+    /// 不遮挡背后的东西，只是折射；遮挡靠的是模糊，不是涂一层黑。
+    static let glassFill = Color(red: 0.122, green: 0.122, blue: 0.122).opacity(0.20)
+    static let glassBorder = Color(red: 0.996, green: 1.0, blue: 1.0).opacity(0.10)
+    /// 亮态玻璃边框（获得焦点时）：同色但 84% —— 也是量出来的。
+    static let glassBorderBright = Color(red: 0.996, green: 1.0, blue: 1.0).opacity(0.84)
 
     static let textPrimary = Color.white.opacity(0.95)
     static let textSecondary = Color.white.opacity(0.64)
@@ -139,8 +173,11 @@ extension View {
 /// 少任何一层都会掉档：只有 1 是磨砂塑料，只有 1+3 是卡片，加上 2 才是玻璃。
 struct GlassSurface: ViewModifier {
     var radius: CGFloat = Theme.radiusPanel
-    /// 深色内容上要更实一点，否则字压不住。
-    var tint: Double = 0.26
+    /// 已废弃的参数，保留是为了不改所有调用点。
+    ///
+    /// 玻璃的底色不该由调用方决定 —— 量到的标准值是 #1F1F1F @ 20%，
+    /// 各处都用同一个值，整个应用的玻璃才是同一种材质。
+    var tint: Double = 0.20
     var elevated = true
 
     func body(content: Content) -> some View {
@@ -150,7 +187,7 @@ struct GlassSurface: ViewModifier {
                 shape
                     .fill(.ultraThinMaterial)
                     .environment(\.colorScheme, .dark)
-                    .overlay(shape.fill(Color.black.opacity(tint)))
+                    .overlay(shape.fill(Theme.glassFill))
                     .overlay(
                         // 高光只占上缘一小段就收住 —— 铺满会变成一块灰。
                         shape.fill(
@@ -169,7 +206,7 @@ struct GlassSurface: ViewModifier {
             .overlay(
                 shape.stroke(
                     LinearGradient(
-                        colors: [Color.white.opacity(0.34), Color.white.opacity(0.08)],
+                        colors: [Theme.glassBorder.opacity(0.9), Theme.glassBorder.opacity(0.35)],
                         startPoint: .top, endPoint: .bottom
                     ),
                     lineWidth: 1
